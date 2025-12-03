@@ -1,6 +1,6 @@
 import {type ClassValue, clsx} from 'clsx'
 import {twMerge} from 'tailwind-merge'
-import {Columns, FieldMapping, FilterObject} from "@/components/ui/table/TableModels";
+import {Columns, FieldMapping, FilterObject} from "@/components/ui/composed/table/TableModels";
 import moment from "moment";
 import {FilterOperator} from "@/lib/models/filterOperator";
 import {FilterValueType} from "@/lib/models/filterValueType";

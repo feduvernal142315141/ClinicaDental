@@ -9,6 +9,7 @@ import { ProductivitySection } from "@/components/dashboard/productivity-section
 import { PatientsSection } from "@/components/dashboard/patients-section";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileHeader } from "@/components/layout/mobile-header";
+import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { useState } from "react";
 
 export default function HomePage() {
@@ -24,14 +25,7 @@ export default function HomePage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Cargando...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="Cargando..." fullPage />;
   }
 
   if (!user) {

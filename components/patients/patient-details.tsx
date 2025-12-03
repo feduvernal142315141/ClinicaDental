@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { genderOptions, type Patient } from "@/lib/entity/patients/patients";
-import { getAppointmentsByPatient, type Appointment } from "@/lib/entity/appointment/appointments";
+import {
+  getAppointmentsByPatient,
+  type Appointment,
+} from "@/lib/entity/appointment/appointments";
 import { calculateAge, formatDate } from "@/lib/entity/patients/patients-utils";
 import {
   Card,
@@ -10,10 +13,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+} from "@/components/ui/atomic/data-display/card";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import { Badge } from "@/components/ui/atomic/data-display/badge";
+import { Separator } from "@/components/ui/primitives/shadcn/separator";
 import {
   Table,
   TableBody,
@@ -21,7 +24,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/ui/atomic/data-display/table";
 import {
   ArrowLeft,
   Edit,

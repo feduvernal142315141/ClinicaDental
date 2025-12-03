@@ -1,8 +1,8 @@
 "use client";
 
 import { Controller, Control } from "react-hook-form";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/atomic/forms/switch";
+import { Label } from "@/components/ui/atomic/forms/label";
 
 const DAYS = [
   { key: "monday", label: "Lunes" },

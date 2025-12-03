@@ -1,14 +1,14 @@
 "use client";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import {
   Card,
   CardHeader,
   CardContent,
   CardTitle,
   CardDescription,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+} from "@/components/ui/atomic/data-display/card";
+import { Separator } from "@/components/ui/primitives/shadcn/separator";
+import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { User, Edit, Trash2, Clock } from "lucide-react";
 import type { Doctor } from "@/lib/doctors";
 import { doctorService } from "@/lib/doctors";

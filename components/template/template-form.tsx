@@ -1,16 +1,16 @@
 "use client";
 
 import * as React from "react";
-import {Card, CardContent, CardHeader} from "@/components/ui/card";
-import {Button} from "@/components/ui/button";
-import {Input} from "@/components/ui/input";
-import {Label} from "@/components/ui/label";
-import TextArea from "@/components/ui/textarea";
+import {Card, CardContent, CardHeader} from "@/components/ui/atomic/data-display/card";
+import {Button} from "@/components/ui/primitives/shadcn/button";
+import {Input} from "@/components/ui/atomic/forms/input";
+import {Label} from "@/components/ui/atomic/forms/label";
+import TextArea from "@/components/ui/atomic/forms/textarea";
 import {Plus, Info, Smartphone} from "lucide-react";
 import {Controller} from "react-hook-form";
-import {Combobox} from "@/components/ui/combobox";
+import {Combobox} from "@/components/ui/primitives/shadcn/combobox";
 import useTemplateForm from "@/components/template/hooks/useTemplateForm";
-import {TextField} from "@/components/ui/TextField";
+import {TextField} from "@/components/ui/primitives/custom/TextField";
 
 export function TemplateForm() {
 

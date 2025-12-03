@@ -6,9 +6,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+} from "@/components/ui/atomic/data-display/card";
+import { Badge } from "@/components/ui/atomic/data-display/badge";
+import { Progress } from "@/components/ui/atomic/data-display/progress";
 import {
   Calendar,
   Users,
@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { getDashboardStats } from "@/lib/analytics";
 import { useEffect, useState } from "react";
+import { SectionHeader } from "@/components/ui/atomic/layout/section-header";
 
 export function OverviewSection() {
   const [stats, setStats] = useState(getDashboardStats());
@@ -33,12 +34,11 @@ export function OverviewSection() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Vista General</h2>
-        <p className="text-muted-foreground">
-          Snapshot del estado actual de la clínica
-        </p>
-      </div>
+      <SectionHeader
+        title="Vista General"
+        description="Snapshot del estado actual de la clínica"
+        size="lg"
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

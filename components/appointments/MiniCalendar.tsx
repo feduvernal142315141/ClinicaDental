@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/atomic/data-display/card"
+import { Button } from "@/components/ui/primitives/shadcn/button"
 import { Appointment } from "@/lib/entity/appointment/appointments"
 import { getAppointmentsByDate } from "@/lib/supabase/appointments"
 

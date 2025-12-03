@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/primitives/shadcn/button"
+import { Card } from "@/components/ui/atomic/data-display/card"
 import { Plus, User } from "lucide-react"
 import type { Doctor } from "@/lib/doctors"
 import DoctorCard from "./DoctorCard"
 import { DoctorForm } from "./DoctorForm"
-import { Modal } from "@/components/ui/Modal"
+import { Modal } from "@/components/ui/primitives/custom/Modal"
 
 export default function DoctorsList({
   doctors,

@@ -6,18 +6,22 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+} from "@/components/ui/atomic/data-display/card";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
-import { agreementOptions, genderOptions, Patient } from "@/lib/entity/patients/patients";
+import {
+  agreementOptions,
+  genderOptions,
+  Patient,
+} from "@/lib/entity/patients/patients";
 import { createPatient, updatePatient } from "@/lib/supabase/patients";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { TextField } from "../ui/TextField";
-import { FormSelect } from "../ui/FormSelect";
-import { DatePickerField } from "../ui/DatePickerField";
+import { TextField } from "@/components/ui/primitives/custom/TextField";
+import { FormSelect } from "@/components/ui/primitives/custom/FormSelect";
+import { DatePickerField } from "@/components/ui/primitives/custom/DatePickerField";
 
 interface PatientFormProps {
   patient: Patient | null;

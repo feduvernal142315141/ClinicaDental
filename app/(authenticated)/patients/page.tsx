@@ -5,6 +5,7 @@ import { PatientList } from "@/components/patients/patient-list";
 import { PatientForm } from "@/components/patients/patient-form";
 import { PatientDetails } from "@/components/patients/patient-details";
 import { Patient } from "@/lib/entity/patients/patients";
+import { PageHeader } from "@/components/ui/atomic/layout/page-header";
 
 export default function PatientsPage() {
   const [view, setView] = useState<"list" | "form" | "details">("list");
@@ -32,12 +33,10 @@ export default function PatientsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Pacientes</h1>
-        <p className="text-muted-foreground">
-          Gestiona la información de tus pacientes
-        </p>
-      </div>
+      <PageHeader
+        title="Pacientes"
+        description="Gestiona la información de tus pacientes"
+      />
 
       {view === "list" && (
         <PatientList

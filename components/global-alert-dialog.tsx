@@ -16,7 +16,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+} from '@/components/ui/primitives/shadcn/alert-dialog'
 import { AlertCircle, AlertTriangle, Info } from 'lucide-react'
 
 export function GlobalAlertDialog() {

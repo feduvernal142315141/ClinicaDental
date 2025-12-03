@@ -1,7 +1,7 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/atomic/data-display/card"
+import { Badge } from "@/components/ui/atomic/data-display/badge"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
 import { Users, UserPlus, UserX, AlertCircle } from "lucide-react"
 import { getPatientAnalytics } from "@/lib/analytics"

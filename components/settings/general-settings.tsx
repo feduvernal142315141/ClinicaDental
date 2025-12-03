@@ -1,25 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import { Input } from "@/components/ui/atomic/forms/input";
+import { Label } from "@/components/ui/atomic/forms/label";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/components/ui/atomic/data-display/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
+} from "@/components/ui/atomic/forms/select";
+import { Switch } from "@/components/ui/atomic/forms/switch";
+import { Separator } from "@/components/ui/primitives/shadcn/separator";
 import {
   getClinicSettings,
   updateClinicSettings,

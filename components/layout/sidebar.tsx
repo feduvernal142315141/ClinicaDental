@@ -1,8 +1,8 @@
 "use client";
 
 import { useAuth } from "@/contexts/auth-context";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import { Card } from "@/components/ui/atomic/data-display/card";
 import {
   Calendar,
   Users,

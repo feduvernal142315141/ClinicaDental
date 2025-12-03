@@ -7,12 +7,12 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card";
-import {Button} from "@/components/ui/button";
+} from "@/components/ui/atomic/data-display/card";
+import {Button} from "@/components/ui/primitives/shadcn/button";
 import {
     Plus,
 } from "lucide-react";
-import {CustomTable} from "@/components/ui/table/Table";
+import {CustomTable} from "@/components/ui/composed/table/Table";
 import useCampaignList from "@/components/campaign/hooks/useCampaignList";
 
 

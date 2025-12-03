@@ -7,11 +7,11 @@ import {
   CardContent,
   CardTitle,
   CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+} from "@/components/ui/atomic/data-display/card";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import { Checkbox } from "@/components/ui/atomic/forms/checkbox";
+import { Label } from "@/components/ui/atomic/forms/label";
+import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { Shield, Settings } from "lucide-react";
 import type { Role, Permission } from "@/lib/doctors";
 

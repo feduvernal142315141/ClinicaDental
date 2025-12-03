@@ -1,6 +1,6 @@
 "use client";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/primitives/shadcn/tabs";
 import { GeneralSettings } from "./general-settings";
 import { NotificationsSettings } from "./notifications-settings";
 import { IntegrationsSettings } from "./integrations-settings";
