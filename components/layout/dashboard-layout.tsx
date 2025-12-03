@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileHeader } from "@/components/layout/mobile-header";
-import { LoginForm } from "@/components/auth/login-form";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -17,6 +17,13 @@ export function DashboardLayout({
 }: DashboardLayoutProps) {
   const { user, loading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/");
+    }
+  }, [user, loading, router]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -38,7 +45,7 @@ export function DashboardLayout({
   }
 
   if (!user) {
-    return <LoginForm />;
+    return null;
   }
 
   return (
