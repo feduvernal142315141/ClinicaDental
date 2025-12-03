@@ -2,13 +2,13 @@ import {useEffect, useState, useMemo, useCallback} from "react";
 import {useAuth} from "@/contexts/auth-context";
 import {ResponseGetAllCampaign} from "@/lib/entity/campaigns/campaigns";
 import {useDebouncedState} from "@/lib/hooks/useDebouncedState";
-import {Columns} from "@/components/ui/table/TableModels";
+import {Columns} from "@/components/ui/composed/table/TableModels";
 import {FilterOperator} from "@/lib/models/filterOperator";
-import {Badge} from "@/components/ui/badge";
+import {Badge} from "@/components/ui/atomic/data-display/badge";
 import {Edit, Cog, Image, Trash2, Video} from "lucide-react";
 import {serviceGetAllCampaignByClinicId} from "@/lib/services/campaigns/campaigns";
-import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/components/ui/dropdown-menu";
-import {Button} from "@/components/ui/button";
+import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/components/ui/primitives/shadcn/dropdown-menu";
+import {Button} from "@/components/ui/primitives/shadcn/button";
 import {useRouter} from "next/navigation";
 
 

@@ -10,8 +10,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+} from "@/components/ui/primitives/shadcn/alert-dialog";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import { cn } from "@/lib/utils/utils";
 
 type AlertType = "confirm" | "success" | "error";

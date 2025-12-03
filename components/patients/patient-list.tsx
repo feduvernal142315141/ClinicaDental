@@ -12,10 +12,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+} from "@/components/ui/atomic/data-display/card";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import { Input } from "@/components/ui/atomic/forms/input";
+import { Badge } from "@/components/ui/atomic/data-display/badge";
 import {
   Table,
   TableBody,
@@ -23,13 +23,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/ui/atomic/data-display/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/primitives/shadcn/dropdown-menu";
 import {
   Search,
   Plus,
@@ -109,12 +109,13 @@ export function PatientList({
   const handleDelete = (patient: Patient) => {
     showConfirm({
       title: "¿Eliminar paciente?",
-      description: 
-      <>
-        Esta acción no se puede deshacer. Se eliminará permanentemente la
-        información del paciente <strong>{patient.name}</strong> y todos sus datos
-        asociados.
-      </>,
+      description: (
+        <>
+          Esta acción no se puede deshacer. Se eliminará permanentemente la
+          información del paciente <strong>{patient.name}</strong> y todos sus
+          datos asociados.
+        </>
+      ),
       onConfirm: async () => {
         try {
           await supabaseDelete(patient.id);
@@ -272,7 +273,6 @@ export function PatientList({
           )}
         </CardContent>
       </Card>
-      
     </div>
   );
 }

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/atomic/data-display/card";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { Appointment } from "@/lib/entity/appointment/appointments";

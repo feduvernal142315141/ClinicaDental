@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/atomic/data-display/card"
 import { AppointmentForm } from "@/components/appointments/appointment-form"
 import type { Appointment } from "@/lib/entity/appointment/appointments"
 import { MiniCalendar } from "./MiniCalendar"

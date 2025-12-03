@@ -1,6 +1,6 @@
 "use client"
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/primitives/shadcn/tabs"
 import { PatientList } from "./patient-list"
 import { useState } from "react"
 import { Patient } from "@/lib/entity/patients/patients"

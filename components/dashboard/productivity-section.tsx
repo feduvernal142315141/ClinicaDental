@@ -1,8 +1,8 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/atomic/data-display/card"
+import { Badge } from "@/components/ui/atomic/data-display/badge"
+import { Progress } from "@/components/ui/atomic/data-display/progress"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { Clock, Target, Users } from "lucide-react"
 import { getProductivityStats } from "@/lib/analytics"

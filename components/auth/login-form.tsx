@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/primitives/shadcn/button"
+import { Input } from "@/components/ui/atomic/forms/input"
+import { Label } from "@/components/ui/atomic/forms/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/atomic/data-display/card"
 import { useAuth } from "@/contexts/auth-context"
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 

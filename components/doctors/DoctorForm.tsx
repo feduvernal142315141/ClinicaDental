@@ -6,21 +6,21 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+} from "@/components/ui/atomic/data-display/card";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { TextField } from "../ui/TextField";
-import { FormSelect } from "../ui/FormSelect";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { TextField } from "@/components/ui/primitives/custom/TextField";
+import { FormSelect } from "@/components/ui/primitives/custom/FormSelect";
+import { Switch } from "@/components/ui/atomic/forms/switch";
+import { Label } from "@/components/ui/atomic/forms/label";
 import type { Doctor } from "@/lib/doctors";
 import { DoctorScheduleForm } from "./DoctorScheduleForm";
 import { createDoctor, updateDoctor } from "@/lib/supabase/doctors";
 import { useAuth } from "@/contexts/auth-context";
-import TextArea from "@/components/ui/textarea";
+import TextArea from "@/components/ui/atomic/forms/textarea";
 
 const SPECIALTIES = [
   "Odontología General",
@@ -104,7 +104,11 @@ export function DoctorForm({
       if (doctor) {
         await updateDoctor(doctor.id, values);
       } else {
-        await createDoctor({...values, clinic_id: user?.clinicId ?? "", user_id: user?.id ?? ""});
+        await createDoctor({
+          ...values,
+          clinic_id: user?.clinicId ?? "",
+          user_id: user?.id ?? "",
+        });
       }
       onSuccess();
     } catch (error) {
@@ -198,7 +202,9 @@ export function DoctorForm({
                 label="Descripción"
                 placeholder="Ej: Experto en ortodoncia con 10 años de experiencia"
                 rows={3}
-                {...register("description", { required: "La descripción es obligatoria" })}
+                {...register("description", {
+                  required: "La descripción es obligatoria",
+                })}
                 error={errors.description?.message}
               />
             </div>

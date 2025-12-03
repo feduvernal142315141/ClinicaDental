@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 

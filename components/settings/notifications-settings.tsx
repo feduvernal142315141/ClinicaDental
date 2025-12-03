@@ -1,65 +1,95 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { MessageSquare, Mail, Clock, Edit, Save } from "lucide-react"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/atomic/data-display/card";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import { Input } from "@/components/ui/atomic/forms/input";
+import { Label } from "@/components/ui/atomic/forms/label";
+import { Switch } from "@/components/ui/atomic/forms/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/atomic/forms/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/primitives/shadcn/tabs";
+import { Badge } from "@/components/ui/atomic/data-display/badge";
+import { Separator } from "@/components/ui/primitives/shadcn/separator";
+import { MessageSquare, Mail, Clock, Edit, Save } from "lucide-react";
 import {
   type NotificationSettings,
   type WhatsAppTemplate,
   getNotificationSettings,
   saveNotificationSettings,
-} from "@/lib/notifications"
-import TextArea from "../ui/textarea"
+} from "@/lib/notifications";
+import TextArea from "@/components/ui/atomic/forms/textarea";
 
 export function NotificationsSettings() {
-  const [settings, setSettings] = useState<NotificationSettings>(getNotificationSettings())
-  const [editingTemplate, setEditingTemplate] = useState<string | null>(null)
-  const [tempTemplate, setTempTemplate] = useState<WhatsAppTemplate | null>(null)
+  const [settings, setSettings] = useState<NotificationSettings>(
+    getNotificationSettings()
+  );
+  const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
+  const [tempTemplate, setTempTemplate] = useState<WhatsAppTemplate | null>(
+    null
+  );
 
   useEffect(() => {
-    setSettings(getNotificationSettings())
-  }, [])
+    setSettings(getNotificationSettings());
+  }, []);
 
   const handleSave = () => {
-    saveNotificationSettings(settings)
-    alert("Configuración guardada exitosamente")
-  }
+    saveNotificationSettings(settings);
+    alert("Configuración guardada exitosamente");
+  };
 
   const handleEditTemplate = (template: WhatsAppTemplate) => {
-    setEditingTemplate(template.id)
-    setTempTemplate({ ...template })
-  }
+    setEditingTemplate(template.id);
+    setTempTemplate({ ...template });
+  };
 
   const handleSaveTemplate = () => {
     if (tempTemplate && editingTemplate) {
-      const updatedTemplates = settings.whatsappTemplates.map((t) => (t.id === editingTemplate ? tempTemplate : t))
-      setSettings({ ...settings, whatsappTemplates: updatedTemplates })
-      setEditingTemplate(null)
-      setTempTemplate(null)
+      const updatedTemplates = settings.whatsappTemplates.map((t) =>
+        t.id === editingTemplate ? tempTemplate : t
+      );
+      setSettings({ ...settings, whatsappTemplates: updatedTemplates });
+      setEditingTemplate(null);
+      setTempTemplate(null);
     }
-  }
+  };
 
   const handleCancelEdit = () => {
-    setEditingTemplate(null)
-    setTempTemplate(null)
-  }
+    setEditingTemplate(null);
+    setTempTemplate(null);
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Notificaciones y Comunicación</h2>
-          <p className="text-muted-foreground">Configura las notificaciones automáticas y plantillas de mensajes</p>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Notificaciones y Comunicación
+          </h2>
+          <p className="text-muted-foreground">
+            Configura las notificaciones automáticas y plantillas de mensajes
+          </p>
         </div>
-        <Button onClick={handleSave} className="bg-medical-primary hover:bg-medical-primary/90">
+        <Button
+          onClick={handleSave}
+          className="bg-medical-primary hover:bg-medical-primary/90"
+        >
           <Save className="w-4 h-4 mr-2" />
           Guardar Cambios
         </Button>
@@ -85,17 +115,27 @@ export function NotificationsSettings() {
           <Card>
             <CardHeader>
               <CardTitle>Plantillas de WhatsApp</CardTitle>
-              <CardDescription>Personaliza los mensajes que se envían automáticamente por WhatsApp</CardDescription>
+              <CardDescription>
+                Personaliza los mensajes que se envían automáticamente por
+                WhatsApp
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {settings.whatsappTemplates.map((template) => (
-                <div key={template.id} className="border rounded-lg p-4 space-y-4">
+                <div
+                  key={template.id}
+                  className="border rounded-lg p-4 space-y-4"
+                >
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-semibold">{template.name}</h4>
                       <div className="flex flex-wrap gap-1 mt-2">
                         {template.variables.map((variable) => (
-                          <Badge key={variable} variant="secondary" className="text-xs">
+                          <Badge
+                            key={variable}
+                            variant="secondary"
+                            className="text-xs"
+                          >
                             {`{{${variable}}}`}
                           </Badge>
                         ))}
@@ -115,11 +155,18 @@ export function NotificationsSettings() {
                   {editingTemplate === template.id && tempTemplate ? (
                     <div className="space-y-4 border-t pt-4">
                       <div className="space-y-2">
-                        <Label htmlFor={`template-${template.id}`}>Contenido del Mensaje</Label>
+                        <Label htmlFor={`template-${template.id}`}>
+                          Contenido del Mensaje
+                        </Label>
                         <TextArea
                           id={`template-${template.id}`}
                           value={tempTemplate.content}
-                          onChange={(e) => setTempTemplate({ ...tempTemplate, content: e.target.value })}
+                          onChange={(e) =>
+                            setTempTemplate({
+                              ...tempTemplate,
+                              content: e.target.value,
+                            })
+                          }
                           rows={4}
                           className="resize-none"
                         />
@@ -128,13 +175,19 @@ export function NotificationsSettings() {
                         <Button size="sm" onClick={handleSaveTemplate}>
                           Guardar
                         </Button>
-                        <Button size="sm" variant="outline" onClick={handleCancelEdit}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleCancelEdit}
+                        >
                           Cancelar
                         </Button>
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-muted p-3 rounded text-sm">{template.content}</div>
+                    <div className="bg-muted p-3 rounded text-sm">
+                      {template.content}
+                    </div>
                   )}
                 </div>
               ))}
@@ -146,7 +199,9 @@ export function NotificationsSettings() {
           <Card>
             <CardHeader>
               <CardTitle>Configuración de Email</CardTitle>
-              <CardDescription>Configura el proveedor de email para envío de notificaciones</CardDescription>
+              <CardDescription>
+                Configura el proveedor de email para envío de notificaciones
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
@@ -157,7 +212,10 @@ export function NotificationsSettings() {
                     onValueChange={(value: "smtp" | "sendgrid" | "resend") =>
                       setSettings({
                         ...settings,
-                        emailConfig: { ...settings.emailConfig, provider: value },
+                        emailConfig: {
+                          ...settings.emailConfig,
+                          provider: value,
+                        },
                       })
                     }
                   >
@@ -185,7 +243,10 @@ export function NotificationsSettings() {
                     onChange={(e) =>
                       setSettings({
                         ...settings,
-                        emailConfig: { ...settings.emailConfig, fromEmail: e.target.value },
+                        emailConfig: {
+                          ...settings.emailConfig,
+                          fromEmail: e.target.value,
+                        },
                       })
                     }
                   />
@@ -198,7 +259,10 @@ export function NotificationsSettings() {
                     onChange={(e) =>
                       setSettings({
                         ...settings,
-                        emailConfig: { ...settings.emailConfig, fromName: e.target.value },
+                        emailConfig: {
+                          ...settings.emailConfig,
+                          fromName: e.target.value,
+                        },
                       })
                     }
                   />
@@ -217,7 +281,10 @@ export function NotificationsSettings() {
                         onChange={(e) =>
                           setSettings({
                             ...settings,
-                            emailConfig: { ...settings.emailConfig, smtpHost: e.target.value },
+                            emailConfig: {
+                              ...settings.emailConfig,
+                              smtpHost: e.target.value,
+                            },
                           })
                         }
                       />
@@ -231,7 +298,10 @@ export function NotificationsSettings() {
                         onChange={(e) =>
                           setSettings({
                             ...settings,
-                            emailConfig: { ...settings.emailConfig, smtpPort: Number.parseInt(e.target.value) },
+                            emailConfig: {
+                              ...settings.emailConfig,
+                              smtpPort: Number.parseInt(e.target.value),
+                            },
                           })
                         }
                       />
@@ -244,7 +314,10 @@ export function NotificationsSettings() {
                         onChange={(e) =>
                           setSettings({
                             ...settings,
-                            emailConfig: { ...settings.emailConfig, smtpUser: e.target.value },
+                            emailConfig: {
+                              ...settings.emailConfig,
+                              smtpUser: e.target.value,
+                            },
                           })
                         }
                       />
@@ -258,7 +331,10 @@ export function NotificationsSettings() {
                         onChange={(e) =>
                           setSettings({
                             ...settings,
-                            emailConfig: { ...settings.emailConfig, smtpPassword: e.target.value },
+                            emailConfig: {
+                              ...settings.emailConfig,
+                              smtpPassword: e.target.value,
+                            },
                           })
                         }
                       />
@@ -267,7 +343,8 @@ export function NotificationsSettings() {
                 </div>
               )}
 
-              {(settings.emailConfig.provider === "sendgrid" || settings.emailConfig.provider === "resend") && (
+              {(settings.emailConfig.provider === "sendgrid" ||
+                settings.emailConfig.provider === "resend") && (
                 <div className="space-y-4 border-t pt-4">
                   <h4 className="font-semibold">API Key</h4>
                   <div className="space-y-2">
@@ -279,7 +356,10 @@ export function NotificationsSettings() {
                       onChange={(e) =>
                         setSettings({
                           ...settings,
-                          emailConfig: { ...settings.emailConfig, apiKey: e.target.value },
+                          emailConfig: {
+                            ...settings.emailConfig,
+                            apiKey: e.target.value,
+                          },
                         })
                       }
                     />
@@ -295,7 +375,9 @@ export function NotificationsSettings() {
             <Card>
               <CardHeader>
                 <CardTitle>Recordatorio 24 Horas Antes</CardTitle>
-                <CardDescription>Envía recordatorios automáticos 24 horas antes de la cita</CardDescription>
+                <CardDescription>
+                  Envía recordatorios automáticos 24 horas antes de la cita
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center space-x-2">
@@ -307,12 +389,17 @@ export function NotificationsSettings() {
                         ...settings,
                         reminders: {
                           ...settings.reminders,
-                          reminder24h: { ...settings.reminders.reminder24h, enabled: checked },
+                          reminder24h: {
+                            ...settings.reminders.reminder24h,
+                            enabled: checked,
+                          },
                         },
                       })
                     }
                   />
-                  <Label htmlFor="reminder-24h">Activar recordatorio 24h antes</Label>
+                  <Label htmlFor="reminder-24h">
+                    Activar recordatorio 24h antes
+                  </Label>
                 </div>
 
                 {settings.reminders.reminder24h.enabled && (
@@ -326,7 +413,10 @@ export function NotificationsSettings() {
                             ...settings,
                             reminders: {
                               ...settings.reminders,
-                              reminder24h: { ...settings.reminders.reminder24h, whatsappTemplate: value },
+                              reminder24h: {
+                                ...settings.reminders.reminder24h,
+                                whatsappTemplate: value,
+                              },
                             },
                           })
                         }
@@ -352,7 +442,10 @@ export function NotificationsSettings() {
                             ...settings,
                             reminders: {
                               ...settings.reminders,
-                              reminder24h: { ...settings.reminders.reminder24h, emailTemplate: value },
+                              reminder24h: {
+                                ...settings.reminders.reminder24h,
+                                emailTemplate: value,
+                              },
                             },
                           })
                         }
@@ -362,7 +455,9 @@ export function NotificationsSettings() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="reminder">Recordatorio</SelectItem>
-                          <SelectItem value="confirmation">Confirmación</SelectItem>
+                          <SelectItem value="confirmation">
+                            Confirmación
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -374,7 +469,9 @@ export function NotificationsSettings() {
             <Card>
               <CardHeader>
                 <CardTitle>Recordatorio 2 Horas Antes</CardTitle>
-                <CardDescription>Envía recordatorios automáticos 2 horas antes de la cita</CardDescription>
+                <CardDescription>
+                  Envía recordatorios automáticos 2 horas antes de la cita
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center space-x-2">
@@ -386,12 +483,17 @@ export function NotificationsSettings() {
                         ...settings,
                         reminders: {
                           ...settings.reminders,
-                          reminder2h: { ...settings.reminders.reminder2h, enabled: checked },
+                          reminder2h: {
+                            ...settings.reminders.reminder2h,
+                            enabled: checked,
+                          },
                         },
                       })
                     }
                   />
-                  <Label htmlFor="reminder-2h">Activar recordatorio 2h antes</Label>
+                  <Label htmlFor="reminder-2h">
+                    Activar recordatorio 2h antes
+                  </Label>
                 </div>
 
                 {settings.reminders.reminder2h.enabled && (
@@ -405,7 +507,10 @@ export function NotificationsSettings() {
                             ...settings,
                             reminders: {
                               ...settings.reminders,
-                              reminder2h: { ...settings.reminders.reminder2h, whatsappTemplate: value },
+                              reminder2h: {
+                                ...settings.reminders.reminder2h,
+                                whatsappTemplate: value,
+                              },
                             },
                           })
                         }
@@ -431,7 +536,10 @@ export function NotificationsSettings() {
                             ...settings,
                             reminders: {
                               ...settings.reminders,
-                              reminder2h: { ...settings.reminders.reminder2h, emailTemplate: value },
+                              reminder2h: {
+                                ...settings.reminders.reminder2h,
+                                emailTemplate: value,
+                              },
                             },
                           })
                         }
@@ -441,7 +549,9 @@ export function NotificationsSettings() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="reminder">Recordatorio</SelectItem>
-                          <SelectItem value="confirmation">Confirmación</SelectItem>
+                          <SelectItem value="confirmation">
+                            Confirmación
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -453,5 +563,5 @@ export function NotificationsSettings() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
