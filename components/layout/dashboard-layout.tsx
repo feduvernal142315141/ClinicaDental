@@ -8,14 +8,12 @@ import { LoginForm } from "@/components/auth/login-form";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  activeSection: string;
-  onSectionChange?: (section: string) => void;
+  currentPath: string;
 }
 
 export function DashboardLayout({
   children,
-  activeSection,
-  onSectionChange,
+  currentPath,
 }: DashboardLayoutProps) {
   const { user, loading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -26,13 +24,6 @@ export function DashboardLayout({
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
-  };
-
-  const handleSectionChange = (section: string) => {
-    if (onSectionChange) {
-      onSectionChange(section);
-    }
-    closeSidebar();
   };
 
   if (loading) {
@@ -52,12 +43,14 @@ export function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <MobileHeader isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />
+      <MobileHeader
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={toggleSidebar}
+      />
 
       <div className="flex h-screen lg:h-screen">
         <Sidebar
-          activeSection={activeSection}
-          onSectionChange={handleSectionChange}
+          currentPath={currentPath}
           isOpen={isSidebarOpen}
           onClose={closeSidebar}
         />
@@ -69,4 +62,3 @@ export function DashboardLayout({
     </div>
   );
 }
-
