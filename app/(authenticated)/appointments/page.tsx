@@ -1,30 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CalendarView } from "@/components/appointments/calendar-view";
-import { AppointmentFormWithSidebar } from "@/components/appointments/appointment-form-with-sidebar";
-import { AppointmentDetails } from "@/components/appointments/appointment-details";
 import { Appointment } from "@/lib/entity/appointment/appointments";
 import { PageHeader } from "@/components/ui/atomic/layout/page-header";
 
 export default function AppointmentsPage() {
-  const [view, setView] = useState<"calendar" | "form" | "details">("calendar");
-  const [selectedAppointment, setSelectedAppointment] =
-    useState<Appointment | null>(null);
+  const router = useRouter();
 
   const handleNewAppointment = () => {
-    setSelectedAppointment(null);
-    setView("form");
+    router.push("/appointments/new");
   };
 
   const handleAppointmentClick = (appointment: Appointment) => {
-    setSelectedAppointment(appointment);
-    setView("details");
-  };
-
-  const handleBack = () => {
-    setSelectedAppointment(null);
-    setView("calendar");
+    router.push(`/appointments/${appointment.id}`);
   };
 
   return (
@@ -34,27 +23,10 @@ export default function AppointmentsPage() {
         description="Gestiona las citas de tus pacientes"
       />
 
-      {view === "calendar" && (
-        <CalendarView
-          onNewAppointment={handleNewAppointment}
-          onAppointmentClick={handleAppointmentClick}
-        />
-      )}
-
-      {view === "form" && (
-        <AppointmentFormWithSidebar
-          onSuccess={handleBack}
-          onCancel={handleBack}
-        />
-      )}
-
-      {view === "details" && selectedAppointment && (
-        <AppointmentDetails
-          appointment={selectedAppointment}
-          onClose={handleBack}
-          onUpdate={handleBack}
-        />
-      )}
+      <CalendarView
+        onNewAppointment={handleNewAppointment}
+        onAppointmentClick={handleAppointmentClick}
+      />
     </div>
   );
 }
