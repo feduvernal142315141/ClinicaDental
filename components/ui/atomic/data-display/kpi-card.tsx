@@ -3,13 +3,8 @@
 /**
  * KPI CARD ATOMIC COMPONENT
  *
- * Componente atómico para mostrar métricas clave (KPIs) de manera consistente.
- * Sigue los principios de Screaming Architecture: componentes atómicos reutilizables.
- *
- * Variantes:
- * - KpiCard: Tarjeta básica con métrica, ícono y descripción
- * - KpiCardWithBadges: Incluye badges informativos
- * - KpiCardWithTrend: Incluye indicador de tendencia (aumento/disminución)
+ * Componente atómico unificado para mostrar métricas clave (KPIs).
+ * Usa variantes para diferentes visualizaciones: básico, con badges, con tendencia.
  */
 
 import * as React from "react";
@@ -28,7 +23,22 @@ import { cn } from "@/lib/utils/utils";
 // TYPES
 // ============================================
 
+type BadgeConfig = {
+  label: string;
+  variant?: "default" | "secondary" | "destructive" | "outline";
+  className?: string;
+};
+
+type TrendConfig = {
+  value: number;
+  label?: string;
+  color?: "positive" | "negative";
+};
+
 export interface KpiCardProps {
+  /** Variante del componente */
+  variant?: "default" | "badges" | "trend";
+
   /** Título de la métrica */
   title: string;
 
@@ -44,38 +54,24 @@ export interface KpiCardProps {
   /** Descripción o detalle adicional */
   description?: string;
 
+  /** Lista de badges (solo para variant="badges") */
+  badges?: BadgeConfig[];
+
+  /** Configuración de tendencia (solo para variant="trend") */
+  trend?: TrendConfig;
+
   /** Clases CSS adicionales */
   className?: string;
 }
 
-export interface KpiCardWithBadgesProps extends KpiCardProps {
-  /** Lista de badges a mostrar debajo del valor */
-  badges?: Array<{
-    label: string;
-    variant?: "default" | "secondary" | "destructive" | "outline";
-    className?: string;
-  }>;
-}
-
-export interface KpiCardWithTrendProps extends KpiCardProps {
-  /** Porcentaje de cambio */
-  trendValue: number;
-
-  /** Texto adicional para el indicador de tendencia */
-  trendLabel?: string;
-
-  /** Forzar color de tendencia (por defecto se calcula automáticamente) */
-  trendColor?: "positive" | "negative";
-}
-
 // ============================================
-// BASE KPI CARD
+// UNIFIED KPI CARD
 // ============================================
 
 /**
- * Tarjeta KPI básica con métrica, ícono y descripción opcional
+ * Tarjeta KPI unificada con variantes
  *
- * @example
+ * @example Básica
  * <KpiCard
  *   title="Citas de Hoy"
  *   value={24}
@@ -83,40 +79,10 @@ export interface KpiCardWithTrendProps extends KpiCardProps {
  *   iconColor="text-blue-600"
  *   description="Programadas para hoy"
  * />
- */
-export function KpiCard({
-  title,
-  value,
-  icon: Icon,
-  iconColor = "text-blue-600",
-  description,
-  className,
-}: KpiCardProps) {
-  return (
-    <Card className={className}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className={cn("h-4 w-4", iconColor)} />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ============================================
-// KPI CARD WITH BADGES
-// ============================================
-
-/**
- * Tarjeta KPI con badges informativos
  *
- * @example
- * <KpiCardWithBadges
+ * @example Con Badges
+ * <KpiCard
+ *   variant="badges"
  *   title="Citas de Hoy"
  *   value={24}
  *   icon={Calendar}
@@ -126,76 +92,32 @@ export function KpiCard({
  *     { label: "❌ 3 Canceladas", variant: "destructive" }
  *   ]}
  * />
+ *
+ * @example Con Tendencia
+ * <KpiCard
+ *   variant="trend"
+ *   title="Ingresos Estimados"
+ *   value="$45,230"
+ *   icon={DollarSign}
+ *   iconColor="text-orange-600"
+ *   trend={{ value: 12.5, label: "vs mes anterior" }}
+ * />
  */
-export function KpiCardWithBadges({
+export function KpiCard({
+  variant = "default",
   title,
   value,
   icon: Icon,
   iconColor = "text-blue-600",
   description,
   badges = [],
+  trend,
   className,
-}: KpiCardWithBadgesProps) {
-  return (
-    <Card className={className}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className={cn("h-4 w-4", iconColor)} />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        )}
-        {badges.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {badges.map((badge, index) => (
-              <Badge
-                key={index}
-                variant={badge.variant || "secondary"}
-                className={cn("text-xs", badge.className)}
-              >
-                {badge.label}
-              </Badge>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ============================================
-// KPI CARD WITH TREND
-// ============================================
-
-/**
- * Tarjeta KPI con indicador de tendencia
- *
- * @example
- * <KpiCardWithTrend
- *   title="Ingresos Estimados"
- *   value="$45,230"
- *   icon={DollarSign}
- *   iconColor="text-orange-600"
- *   trendValue={12.5}
- *   trendLabel="vs mes anterior"
- * />
- */
-export function KpiCardWithTrend({
-  title,
-  value,
-  icon: Icon,
-  iconColor = "text-blue-600",
-  description,
-  trendValue,
-  trendLabel = "vs periodo anterior",
-  trendColor,
-  className,
-}: KpiCardWithTrendProps) {
-  // Determinar si es tendencia positiva o negativa
-  const isPositive = trendColor ? trendColor === "positive" : trendValue > 0;
-
+}: KpiCardProps) {
+  // Calcular propiedades de tendencia
+  const trendValue = trend?.value ?? 0;
+  const trendLabel = trend?.label ?? "vs periodo anterior";
+  const isPositive = trend?.color ? trend.color === "positive" : trendValue > 0;
   const TrendIcon = isPositive ? TrendingUp : TrendingDown;
   const trendColorClass = isPositive ? "text-green-600" : "text-red-600";
 
@@ -210,12 +132,31 @@ export function KpiCardWithTrend({
         {description && (
           <p className="text-xs text-muted-foreground mt-1">{description}</p>
         )}
-        <div className="flex items-center gap-1 mt-1">
-          <TrendIcon className={cn("h-3 w-3", trendColorClass)} />
-          <span className={cn("text-xs", trendColorClass)}>
-            {Math.abs(trendValue)}% {trendLabel}
-          </span>
-        </div>
+
+        {/* Badges variant */}
+        {variant === "badges" && badges.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {badges.map((badge, index) => (
+              <Badge
+                key={index}
+                variant={badge.variant || "secondary"}
+                className={cn("text-xs", badge.className)}
+              >
+                {badge.label}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Trend variant */}
+        {variant === "trend" && trend && (
+          <div className="flex items-center gap-1 mt-1">
+            <TrendIcon className={cn("h-3 w-3", trendColorClass)} />
+            <span className={cn("text-xs", trendColorClass)}>
+              {Math.abs(trendValue)}% {trendLabel}
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
