@@ -30,7 +30,7 @@ export function Sidebar({ currentPath, isOpen, onClose }: SidebarProps) {
     switch (user?.roleName) {
       case "admin":
         return [
-          { path: "/", label: "Dashboard", icon: ClipboardList },
+          { path: "/dashboard", label: "Dashboard", icon: ClipboardList },
           { path: "/patients", label: "Pacientes", icon: Users },
           { path: "/appointments", label: "Citas", icon: Calendar },
           { path: "/campaigns", label: "Campañas", icon: BookImage },
@@ -39,13 +39,13 @@ export function Sidebar({ currentPath, isOpen, onClose }: SidebarProps) {
         ];
       case "doctor":
         return [
-          { path: "/", label: "Dashboard", icon: Stethoscope },
+          { path: "/dashboard", label: "Dashboard", icon: Stethoscope },
           { path: "/appointments", label: "Mis Citas", icon: Calendar },
           { path: "/patients", label: "Pacientes", icon: UserCheck },
         ];
       case "patient":
         return [
-          { path: "/", label: "Dashboard", icon: UserCheck },
+          { path: "/dashboard", label: "Dashboard", icon: UserCheck },
           { path: "/appointments", label: "Mis Citas", icon: Calendar },
           { path: "/history", label: "Historial", icon: ClipboardList },
         ];
