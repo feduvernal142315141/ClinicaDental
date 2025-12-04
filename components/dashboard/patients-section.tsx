@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  KpiCard,
-  KpiCardWithBadges,
-  KpiGrid,
-} from "@/components/ui/atomic/data-display/kpi-card";
+import { KpiCard, KpiGrid } from "@/components/ui/atomic/data-display/kpi-card";
 import { AlertCard } from "@/components/ui/atomic/data-display/alert-card";
 import { DataCard } from "@/components/ui/atomic/data-display/data-card";
 import { SectionHeader } from "@/components/ui/atomic/layout/section-header";
@@ -61,7 +57,8 @@ export function PatientsSection() {
           iconColor="text-blue-600"
         />
 
-        <KpiCardWithBadges
+        <KpiCard
+          variant="badges"
           title="Nuevos"
           value={analytics.newVsRecurring.new}
           icon={UserPlus}
@@ -79,7 +76,8 @@ export function PatientsSection() {
           ]}
         />
 
-        <KpiCardWithBadges
+        <KpiCard
+          variant="badges"
           title="Recurrentes"
           value={analytics.newVsRecurring.recurring}
           icon={Users}
@@ -97,7 +95,8 @@ export function PatientsSection() {
           ]}
         />
 
-        <KpiCardWithBadges
+        <KpiCard
+          variant="badges"
           title="Cancelaciones"
           value={analytics.frequentCancellations.length}
           icon={UserX}

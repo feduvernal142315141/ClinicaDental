@@ -9,12 +9,7 @@ import {
 } from "@/components/ui/atomic/data-display/card";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { Progress } from "@/components/ui/atomic/data-display/progress";
-import {
-  KpiCardWithBadges,
-  KpiCard,
-  KpiCardWithTrend,
-  KpiGrid,
-} from "@/components/ui/atomic/data-display/kpi-card";
+import { KpiCard, KpiGrid } from "@/components/ui/atomic/data-display/kpi-card";
 import { ProgressList } from "@/components/ui/atomic/data-display/progress-list-item";
 import { AlertCardGrid } from "@/components/ui/atomic/data-display/alert-card";
 import { DataCard } from "@/components/ui/atomic/data-display/data-card";
@@ -46,7 +41,8 @@ export function OverviewSection() {
 
       {/* KPI Cards */}
       <KpiGrid cols={{ default: 1, md: 2, lg: 4 }} gap={6}>
-        <KpiCardWithBadges
+        <KpiCard
+          variant="badges"
           title="Citas de Hoy"
           value={stats.todayAppointments.total}
           icon={Calendar}
@@ -63,7 +59,8 @@ export function OverviewSection() {
           ]}
         />
 
-        <KpiCardWithBadges
+        <KpiCard
+          variant="badges"
           title="Doctores Activos"
           value={stats.doctors.active}
           icon={Users}
@@ -81,7 +78,8 @@ export function OverviewSection() {
           ]}
         />
 
-        <KpiCardWithBadges
+        <KpiCard
+          variant="badges"
           title="Pacientes Este Mes"
           value={stats.patients.thisMonth}
           icon={Activity}
@@ -98,13 +96,16 @@ export function OverviewSection() {
           ]}
         />
 
-        <KpiCardWithTrend
+        <KpiCard
+          variant="trend"
           title="Ingresos Estimados"
           value={`$${stats.revenue.estimated.toLocaleString()}`}
           icon={DollarSign}
           iconColor="text-orange-600"
-          trendValue={stats.revenue.change}
-          trendLabel="vs mes anterior"
+          trend={{
+            value: stats.revenue.change,
+            label: "vs mes anterior",
+          }}
         />
       </KpiGrid>
 
