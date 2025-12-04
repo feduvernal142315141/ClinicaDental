@@ -10,3 +10,6 @@ export * from "./alert-card";
 export * from "./data-card";
 export * from "./doctor-list-item";
 export * from "./metric-card";
+export * from "./calendar-grid";
+export * from "./calendar-header";
+export * from "./appointment-list-item";
