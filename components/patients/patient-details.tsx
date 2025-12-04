@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/atomic/data-display/card";
+import { KpiCard } from "@/components/ui/atomic/data-display/kpi-card";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { Separator } from "@/components/ui/primitives/shadcn/separator";
@@ -232,34 +233,22 @@ export function PatientDetails({
           </Card>
 
           {/* Stats */}
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Estadísticas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {upcomingAppointments.length}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Próximas Citas
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
-                    {
-                      appointments.filter((a) => a.status === "completed")
-                        .length
-                    }
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Completadas
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="mt-6 grid grid-cols-2 gap-4">
+            <KpiCard
+              title="Próximas Citas"
+              value={upcomingAppointments.length}
+              icon={Calendar}
+              iconColor="text-blue-600"
+            />
+            <KpiCard
+              title="Completadas"
+              value={
+                appointments.filter((a) => a.status === "completed").length
+              }
+              icon={Activity}
+              iconColor="text-green-600"
+            />
+          </div>
         </div>
 
         {/* Historial */}
