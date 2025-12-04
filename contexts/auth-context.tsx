@@ -7,6 +7,7 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import {
   AppUser,
@@ -18,6 +19,7 @@ import {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<AppUser | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,10 +112,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (error || !data.user) {
         setAuthError("Usuario o contraseña incorrectos");
+        setLoading(false);
         return;
       }
 
       await hydrateUser({ user: data.user });
+
+      router.push("/dashboard");
+      router.refresh();
     } catch (err) {
       setAuthError(
         err instanceof Error ? err.message : "Error de autenticación"
@@ -148,6 +154,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    router.push("/login");
+    router.refresh();
   };
 
   return (
