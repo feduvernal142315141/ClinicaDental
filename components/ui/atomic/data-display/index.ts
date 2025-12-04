@@ -13,3 +13,4 @@ export * from "./metric-card";
 export * from "./calendar-grid";
 export * from "./calendar-header";
 export * from "./appointment-list-item";
+export * from "./summary-card";
