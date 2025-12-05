@@ -3,7 +3,7 @@
 import { KpiCard, KpiGrid } from "@/components/ui/atomic/data-display/kpi-card";
 import { AlertCard } from "@/components/ui/atomic/data-display/alert-card";
 import { DataCard } from "@/components/ui/atomic/data-display/data-card";
-import { SectionHeader } from "@/components/ui/atomic/layout/section-header";
+import { Header } from "@/components/ui/atomic/layout/header";
 import {
   PieChart,
   Pie,
@@ -40,10 +40,11 @@ export function PatientsSection() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader
+      <Header
+        level={2}
+        size="lg"
         title="Análisis de Pacientes"
         description="Segmentación y comportamiento de pacientes"
-        size="lg"
       />
 
       {/* Patient Overview */}

@@ -4,7 +4,7 @@ import { KpiCard, KpiGrid } from "@/components/ui/atomic/data-display/kpi-card";
 import { DataCard } from "@/components/ui/atomic/data-display/data-card";
 import { DoctorList } from "@/components/ui/atomic/data-display/doctor-list-item";
 import { MetricCard } from "@/components/ui/atomic/data-display/metric-card";
-import { SectionHeader } from "@/components/ui/atomic/layout/section-header";
+import { Header } from "@/components/ui/atomic/layout/header";
 import {
   BarChart,
   Bar,
@@ -27,10 +27,11 @@ export function ProductivitySection() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader
+      <Header
+        level={2}
+        size="lg"
         title="Agenda & Productividad"
         description="Análisis de eficiencia y ocupación"
-        size="lg"
       />
 
       {/* Productivity KPIs */}

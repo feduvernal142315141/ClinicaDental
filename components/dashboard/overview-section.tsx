@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { getDashboardStats } from "@/lib/analytics";
 import { useEffect, useState } from "react";
-import { SectionHeader } from "@/components/ui/atomic/layout/section-header";
+import { Header } from "@/components/ui/atomic/layout/header";
 
 export function OverviewSection() {
   const [stats, setStats] = useState(getDashboardStats());
@@ -33,10 +33,11 @@ export function OverviewSection() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        title="Vista General"
-        description="Snapshot del estado actual de la clínica"
+      <Header
+        level={2}
         size="lg"
+        title="Vista General"
+        // description="Snapshot del estado actual de la clínica"
       />
 
       {/* KPI Cards */}
