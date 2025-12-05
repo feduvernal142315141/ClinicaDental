@@ -1,119 +1,53 @@
 "use client";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/primitives/shadcn/tabs";
-import { GeneralSettings } from "./general-settings";
-import { NotificationsSettings } from "./notifications-settings";
-import { IntegrationsSettings } from "./integrations-settings";
-import { PatientForm } from "../patients/patient-form";
-import { PatientDetails } from "../patients/patient-details";
-import { PatientList } from "../patients/patient-list";
-import { useState } from "react";
-import { Patient } from "@/lib/entity/patients/patients";
-import DoctorsRolesSettings from "../doctors/DoctorsRolesSettings";
+import { PageHeader } from "@/components/ui/atomic/layout/page-header";
+import { TabsContainer } from "@/components/ui/atomic/navigation/tabs-container";
+import { TabPanel } from "@/components/ui/atomic/navigation/tab-panel";
+import {
+  GeneralSettings,
+  NotificationsSettings,
+  IntegrationsSettings,
+  DoctorsRolesSettings,
+  PatientsPageClient,
+} from "./lazy-settings-tabs";
+
+const SETTINGS_TABS = [
+  { value: "general", label: "Opciones Generales" },
+  { value: "patients", label: "Gestión de Pacientes" },
+  { value: "users", label: "Doctores y Roles" },
+  { value: "notifications", label: "Notificaciones" },
+  { value: "integrations", label: "Integraciones" },
+];
 
 export function SettingsPage() {
-  const [showPatientForm, setShowPatientForm] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
-  const [patientRefreshKey, setPatientRefreshKey] = useState(0);
-
-  const handlePatientSuccess = () => {
-    setShowPatientForm(false);
-    setEditingPatient(null);
-    setPatientRefreshKey((prev) => prev + 1);
-  };
-
-  const handleNewPatient = () => {
-    setEditingPatient(null);
-    setShowPatientForm(true);
-  };
-
-  const handleEditPatient = (patient: Patient) => {
-    setEditingPatient(patient);
-    setShowPatientForm(true);
-  };
-
-  const handleViewPatient = (patient: Patient) => {
-    setSelectedPatient(patient);
-  };
-
-  const handlePatientCancel = () => {
-    setShowPatientForm(false);
-    setEditingPatient(null);
-  };
-
-  const handlePatientClose = () => {
-    setSelectedPatient(null);
-  };
-
-  const renderPatients = () => {
-    if (showPatientForm) {
-      return (
-        <PatientForm
-          patient={editingPatient}
-          onSuccess={handlePatientSuccess}
-          onCancel={handlePatientCancel}
-        />
-      );
-    }
-    if (selectedPatient) {
-      return (
-        <PatientDetails
-          patient={selectedPatient}
-          onEdit={handleEditPatient}
-          onClose={handlePatientClose}
-        />
-      );
-    }
-    return (
-      <PatientList
-        key={patientRefreshKey}
-        onNewPatient={handleNewPatient}
-        onEditPatient={handleEditPatient}
-        onViewPatient={handleViewPatient}
-      />
-    );
-  };
-
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Configuración</h1>
-        <p className="text-muted-foreground">
-          Administra la configuración de tu clínica y personaliza el sistema
-          según tus necesidades.
-        </p>
-      </div>
+      <PageHeader
+        title="Configuración"
+        description="Administra la configuración de tu clínica y personaliza el sistema según tus necesidades."
+      />
 
-      <Tabs defaultValue="patients" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="general">Opciones Generales</TabsTrigger>
-          <TabsTrigger value="patients">Gestión de Pacientes</TabsTrigger>
-          <TabsTrigger value="users">Doctores y Roles</TabsTrigger>
-          <TabsTrigger value="notifications">Notificaciones</TabsTrigger>
-          <TabsTrigger value="integrations">Integraciones</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general" className="space-y-4">
+      <TabsContainer defaultValue="general" tabs={SETTINGS_TABS}>
+        <TabPanel value="general">
           <GeneralSettings />
-        </TabsContent>
+        </TabPanel>
 
-        <TabsContent value="patients" className="space-y-4">
-          {renderPatients()}
-        </TabsContent>
+        <TabPanel value="patients">
+          <PatientsPageClient />
+        </TabPanel>
 
-        <TabsContent value="users" className="space-y-4">
+        <TabPanel value="users">
           <DoctorsRolesSettings />
-        </TabsContent>
+        </TabPanel>
 
-        <TabsContent value="notifications" className="space-y-4">
+        <TabPanel value="notifications">
           <NotificationsSettings />
-        </TabsContent>
+        </TabPanel>
 
-        <TabsContent value="integrations" className="space-y-4">
+        <TabPanel value="integrations">
           <IntegrationsSettings />
-        </TabsContent>
-      </Tabs>
+        </TabPanel>
+      </TabsContainer>
     </div>
   );
 }
