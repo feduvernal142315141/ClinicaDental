@@ -1,20 +1,13 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { AppointmentFormWithSidebar } from "@/components/appointments/appointment-form-with-sidebar";
 import { PageHeader } from "@/components/ui/atomic/layout/page-header";
+import { NewAppointmentPageClient } from "@/components/appointments/new-appointment-page-client";
 
+/**
+ * NEW APPOINTMENT PAGE (SERVER COMPONENT)
+ *
+ * Server Component que renderiza el PageHeader estático
+ * y delega la lógica de navegación al Client Component
+ */
 export default function NewAppointmentPage() {
-  const router = useRouter();
-
-  const handleSuccess = () => {
-    router.push("/appointments");
-  };
-
-  const handleCancel = () => {
-    router.back();
-  };
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -22,10 +15,7 @@ export default function NewAppointmentPage() {
         description="Programa una nueva cita para un paciente"
       />
 
-      <AppointmentFormWithSidebar
-        onSuccess={handleSuccess}
-        onCancel={handleCancel}
-      />
+      <NewAppointmentPageClient />
     </div>
   );
 }

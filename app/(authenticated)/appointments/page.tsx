@@ -1,21 +1,13 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { CalendarView } from "@/components/appointments/calendar-view";
-import { Appointment } from "@/lib/entity/appointment/appointments";
 import { PageHeader } from "@/components/ui/atomic/layout/page-header";
+import { AppointmentsPageClient } from "@/components/appointments/appointments-page-client";
 
+/**
+ * APPOINTMENTS PAGE (SERVER COMPONENT)
+ *
+ * Server Component que renderiza el PageHeader estático
+ * y delega la lógica de navegación al Client Component
+ */
 export default function AppointmentsPage() {
-  const router = useRouter();
-
-  const handleNewAppointment = () => {
-    router.push("/appointments/new");
-  };
-
-  const handleAppointmentClick = (appointment: Appointment) => {
-    router.push(`/appointments/${appointment.id}`);
-  };
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -23,10 +15,7 @@ export default function AppointmentsPage() {
         description="Gestiona las citas de tus pacientes"
       />
 
-      <CalendarView
-        onNewAppointment={handleNewAppointment}
-        onAppointmentClick={handleAppointmentClick}
-      />
+      <AppointmentsPageClient />
     </div>
   );
 }

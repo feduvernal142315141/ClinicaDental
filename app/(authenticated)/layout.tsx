@@ -1,16 +1,15 @@
-"use client";
+import { AuthenticatedLayoutClient } from "@/components/layout/authenticated-layout-client";
 
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { usePathname } from "next/navigation";
-
+/**
+ * AUTHENTICATED LAYOUT (SERVER COMPONENT)
+ *
+ * Server Component que wrappea todos los children
+ * Delega pathname tracking al Client Component
+ */
 export default function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-
-  return (
-    <DashboardLayout currentPath={pathname || "/"}>{children}</DashboardLayout>
-  );
+  return <AuthenticatedLayoutClient>{children}</AuthenticatedLayoutClient>;
 }
