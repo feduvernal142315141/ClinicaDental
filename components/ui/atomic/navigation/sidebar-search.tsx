@@ -17,7 +17,7 @@ export function SidebarSearch({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
-        className="border-color-base-300"
+        className="border-color-base-300 rounded-2xl"
       />
     </div>
   );
