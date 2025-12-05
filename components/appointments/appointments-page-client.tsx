@@ -8,8 +8,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { CalendarView } from "@/components/appointments/calendar-view";
+import dynamic from "next/dynamic";
 import { Appointment } from "@/lib/entity/appointment/appointments";
+import { LazyLoadingFallback } from "@/components/ui/atomic/feedback/lazy-loading-fallback";
+
+const CalendarView = dynamic(
+  () =>
+    import("@/components/appointments/calendar-view").then(
+      (mod) => mod.CalendarView
+    ),
+  { loading: () => <LazyLoadingFallback /> }
+);
 
 interface AppointmentsPageClientProps {
   // Aquí podríamos pasar datos fetched desde el server si fuera necesario

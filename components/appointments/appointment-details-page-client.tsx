@@ -8,8 +8,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { AppointmentDetails } from "@/components/appointments/appointment-details";
+import dynamic from "next/dynamic";
 import { Appointment } from "@/lib/entity/appointment/appointments";
+import { LazyLoadingFallback } from "@/components/ui/atomic/feedback/lazy-loading-fallback";
+
+const AppointmentDetails = dynamic(
+  () =>
+    import("@/components/appointments/appointment-details").then(
+      (mod) => mod.AppointmentDetails
+    ),
+  { loading: () => <LazyLoadingFallback /> }
+);
 
 interface AppointmentDetailsPageClientProps {
   appointment: Appointment;

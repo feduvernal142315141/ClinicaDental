@@ -1,11 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { OverviewSection } from "@/components/dashboard/overview-section";
-import { ProductivitySection } from "@/components/dashboard/productivity-section";
-import { PatientsSection } from "@/components/dashboard/patients-section";
+import dynamic from "next/dynamic";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileHeader } from "@/components/layout/mobile-header";
+import { LazyLoadingFallback } from "@/components/ui/atomic/feedback/lazy-loading-fallback";
+
+const OverviewSection = dynamic(
+  () =>
+    import("@/components/dashboard/overview-section").then(
+      (mod) => mod.OverviewSection
+    ),
+  { loading: () => <LazyLoadingFallback /> }
+);
+
+const ProductivitySection = dynamic(
+  () =>
+    import("@/components/dashboard/productivity-section").then(
+      (mod) => mod.ProductivitySection
+    ),
+  { loading: () => <LazyLoadingFallback /> }
+);
+
+const PatientsSection = dynamic(
+  () =>
+    import("@/components/dashboard/patients-section").then(
+      (mod) => mod.PatientsSection
+    ),
+  { loading: () => <LazyLoadingFallback /> }
+);
 
 export default function DashboardPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

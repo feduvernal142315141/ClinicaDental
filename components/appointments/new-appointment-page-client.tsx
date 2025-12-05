@@ -8,7 +8,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { AppointmentFormWithSidebar } from "@/components/appointments/appointment-form-with-sidebar";
+import dynamic from "next/dynamic";
+import { LazyLoadingFallback } from "@/components/ui/atomic/feedback/lazy-loading-fallback";
+
+const AppointmentFormWithSidebar = dynamic(
+  () =>
+    import("@/components/appointments/appointment-form-with-sidebar").then(
+      (mod) => mod.AppointmentFormWithSidebar
+    ),
+  { loading: () => <LazyLoadingFallback /> }
+);
 
 export function NewAppointmentPageClient() {
   const router = useRouter();
