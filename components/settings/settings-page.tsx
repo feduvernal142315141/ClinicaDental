@@ -1,6 +1,6 @@
 "use client";
 
-import { PageHeader } from "@/components/ui/atomic/layout/page-header";
+import { Header } from "@/components/ui/atomic/layout/header";
 import { TabsContainer } from "@/components/ui/atomic/navigation/tabs-container";
 import { TabPanel } from "@/components/ui/atomic/navigation/tab-panel";
 import {
@@ -22,14 +22,17 @@ const SETTINGS_TABS = [
 export function SettingsPage() {
   return (
     <div className="space-y-6">
-      <PageHeader
+      <Header
+        level={1}
         title="Configuración"
         description="Administra la configuración de tu clínica y personaliza el sistema según tus necesidades."
+        showSearch
+        searchPlaceholder="Buscar configuración..."
       />
 
       <TabsContainer defaultValue="general" tabs={SETTINGS_TABS}>
         <TabPanel value="general">
-          <GeneralSettings />
+          <GeneralSettings />1
         </TabPanel>
 
         <TabPanel value="patients">

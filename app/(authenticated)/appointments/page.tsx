@@ -1,12 +1,14 @@
-import { PageHeader } from "@/components/ui/atomic/layout/page-header";
+import { Header } from "@/components/ui/atomic/layout/header";
 import { AppointmentsPageClient } from "@/components/appointments/appointments-page-client";
 
 export default function AppointmentsPage() {
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <div className="space-y-8">
+      <Header
+        level={1}
         title="Citas"
-        description="Gestiona las citas de tus pacientes"
+        showSearch
+        searchPlaceholder="Buscar citas..."
       />
 
       <AppointmentsPageClient />
