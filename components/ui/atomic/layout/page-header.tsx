@@ -1,14 +1,14 @@
-import { cn } from "@/lib/utils/utils";
+import { Header, HeaderProps } from "./header";
 
-export interface PageHeaderProps {
-  title: string;
-  description?: string;
-  className?: string;
-  action?: React.ReactNode;
-}
+export interface PageHeaderProps extends Omit<HeaderProps, "level" | "size"> {}
 
 /**
+ * @deprecated Use Header component instead with level={1}
+ *
  * PageHeader - Componente atómico para encabezados de página
+ *
+ * Este componente ahora es un wrapper del componente Header unificado.
+ * Se recomienda usar Header directamente para mayor flexibilidad.
  *
  * @example
  * ```tsx
@@ -27,19 +27,6 @@ export interface PageHeaderProps {
  * />
  * ```
  */
-export function PageHeader({
-  title,
-  description,
-  className,
-  action,
-}: PageHeaderProps) {
-  return (
-    <div className={cn("flex items-start justify-between", className)}>
-      <div className="space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-        {description && <p className="text-muted-foreground">{description}</p>}
-      </div>
-      {action && <div className="flex items-center gap-2">{action}</div>}
-    </div>
-  );
+export function PageHeader(props: PageHeaderProps) {
+  return <Header {...props} level={1} />;
 }

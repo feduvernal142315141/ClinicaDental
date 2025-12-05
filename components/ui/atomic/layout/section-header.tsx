@@ -1,15 +1,14 @@
-import { cn } from "@/lib/utils/utils";
+import { Header, HeaderProps } from "./header";
 
-export interface SectionHeaderProps {
-  title: string;
-  description?: string;
-  className?: string;
-  size?: "sm" | "md" | "lg";
-  action?: React.ReactNode;
-}
+export interface SectionHeaderProps extends Omit<HeaderProps, "level"> {}
 
 /**
+ * @deprecated Use Header component instead with level={2}
+ *
  * SectionHeader - Componente atómico para subtítulos de sección dentro de páginas
+ *
+ * Este componente ahora es un wrapper del componente Header unificado.
+ * Se recomienda usar Header directamente para mayor flexibilidad.
  *
  * @example
  * ```tsx
@@ -29,28 +28,6 @@ export interface SectionHeaderProps {
  * />
  * ```
  */
-export function SectionHeader({
-  title,
-  description,
-  className,
-  size = "md",
-  action,
-}: SectionHeaderProps) {
-  const titleSizes = {
-    sm: "text-lg",
-    md: "text-xl",
-    lg: "text-2xl",
-  };
-
-  return (
-    <div className={cn("flex items-start justify-between", className)}>
-      <div className="space-y-1">
-        <h2 className={cn("font-bold", titleSizes[size])}>{title}</h2>
-        {description && (
-          <p className="text-sm text-muted-foreground">{description}</p>
-        )}
-      </div>
-      {action && <div className="flex items-center gap-2">{action}</div>}
-    </div>
-  );
+export function SectionHeader(props: SectionHeaderProps) {
+  return <Header {...props} level={2} />;
 }
