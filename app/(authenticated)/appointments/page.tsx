@@ -1,3 +1,5 @@
+"use client";
+
 import { Header } from "@/components/ui/atomic/layout/header";
 import { AppointmentsPageClient } from "@/components/appointments/appointments-page-client";
 

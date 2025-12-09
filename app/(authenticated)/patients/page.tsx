@@ -1,3 +1,5 @@
+"use client";
+
 import { Header } from "@/components/ui/atomic/layout/header";
 import { PatientsPageClient } from "@/components/patients/patients-page-client";
 
