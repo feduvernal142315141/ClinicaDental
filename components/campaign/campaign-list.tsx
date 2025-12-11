@@ -51,12 +51,14 @@ export function CampaignList() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <div>
-              <CardTitle>Lista de Campañas</CardTitle>
-              <CardDescription>
+              <CardTitle className="dark:text-white">
+                Lista de Campañas
+              </CardTitle>
+              <CardDescription className="dark:text-gray-400">
                 {campaign.length} campaña{campaign.length !== 1 ? "s" : ""}{" "}
                 registrada
                 {campaign.length !== 1 ? "s" : ""}
@@ -68,9 +70,9 @@ export function CampaignList() {
           <div className="relative">
             {loading && (
               <div className="absolute top-2 right-2 z-10">
-                <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-md shadow-sm border">
+                <div className="flex items-center gap-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm px-3 py-1.5 rounded-md shadow-sm border dark:border-gray-700">
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-sm text-muted-foreground dark:text-gray-400">
                     Filtrando...
                   </span>
                 </div>
