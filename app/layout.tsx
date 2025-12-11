@@ -14,6 +14,7 @@ import { InterceptorsInitializer } from "@/components/interceptors-initializer";
 import { GlobalLoadingBar } from "@/components/global-loading-spinner";
 import { GlobalAlertDialog } from "@/components/global-alert-dialog";
 import { Theme } from "@radix-ui/themes";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
   title: "Sistema Médico Dental",
@@ -32,34 +33,41 @@ export default function RootLayout({
         className={`${GeistSans.variable} ${GeistMono.variable} font-sans`}
         suppressHydrationWarning
       >
-        <Theme>
-          <Suspense fallback={null}>
-            {/* InterceptorProvider debe estar antes de AuthProvider para que esté disponible */}
-            <InterceptorProvider>
-              <AuthProvider>
-                <AlertProvider>
-                  {/* Inicializar interceptores con Context API */}
-                  <InterceptorsInitializer />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Theme>
+            <Suspense fallback={null}>
+              {/* InterceptorProvider debe estar antes de AuthProvider para que esté disponible */}
+              <InterceptorProvider>
+                <AuthProvider>
+                  <AlertProvider>
+                    {/* Inicializar interceptores con Context API */}
+                    <InterceptorsInitializer />
 
-                  {/* UI Global: Barra de loading superior (menos intrusiva) */}
-                  <GlobalLoadingBar />
+                    {/* UI Global: Barra de loading superior (menos intrusiva) */}
+                    <GlobalLoadingBar />
 
-                  {/* UI Global: Alert dialog para errores críticos */}
-                  <GlobalAlertDialog />
+                    {/* UI Global: Alert dialog para errores críticos */}
+                    <GlobalAlertDialog />
 
-                  {/* Tu aplicación */}
-                  {children}
-                </AlertProvider>
-              </AuthProvider>
-            </InterceptorProvider>
-          </Suspense>
+                    {/* Tu aplicación */}
+                    {children}
+                  </AlertProvider>
+                </AuthProvider>
+              </InterceptorProvider>
+            </Suspense>
 
-          {/* Toast notifications */}
-          <Toaster position="top-right" richColors closeButton />
+            {/* Toast notifications */}
+            <Toaster position="top-right" richColors closeButton />
 
-          {/* Analytics */}
-          <Analytics />
-        </Theme>
+            {/* Analytics */}
+            <Analytics />
+          </Theme>
+        </ThemeProvider>
       </body>
     </html>
   );
