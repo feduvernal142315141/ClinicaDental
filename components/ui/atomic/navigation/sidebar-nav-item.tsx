@@ -21,10 +21,10 @@ export function SidebarNavItem({
       onClick={onClick}
       className={cn(
         "w-full flex items-center gap-3 px-6 py-3 text-sm font-medium transition-colors rounded-lg mx-2",
-        "hover:bg-accent/50 hover:text-accent-foreground",
+        "hover:bg-accent/50 hover:text-accent-foreground dark:hover:bg-gray-800",
         isActive
-          ? "bg-primary text-primary-foreground hover:bg-primary "
-          : "text-[#808080]"
+          ? "bg-primary text-primary-foreground hover:bg-primary dark:bg-primary dark:text-primary-foreground"
+          : "text-[#808080] dark:text-gray-400"
       )}
     >
       <Icon className="h-5 w-5 shrink-0" />

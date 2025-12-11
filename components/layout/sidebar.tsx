@@ -11,6 +11,7 @@ import { StorageNotification } from "@/components/ui/atomic/feedback/storage-not
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils/utils";
 import { Stethoscope } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/atomic/controls/theme-toggle";
 
 interface SidebarProps {
   currentPath: string;
@@ -29,35 +30,43 @@ export function Sidebar({ currentPath, isOpen, onClose }: SidebarProps) {
     onClose();
   };
 
+  const getUserName = () => {
+    if (!user?.email) return "Usuario";
+    const emailParts = user.email.split(String.fromCharCode(64));
+    return emailParts[0] || "Usuario";
+  };
+
+  const themeToggle = <ThemeToggle variant="ghost" size="sm" />;
+
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={onClose}
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={cn(
           "fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto",
-          "w-68 lg:w-68 bg-background",
+          "w-68 lg:w-68",
           "transform transition-transform duration-300 ease-in-out lg:transition-none",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-          "bg-[#eeeeee]",
-          "shadow-[0px_0px_69px_-42px_rgba(0,0,0,0.75)]"
+          "bg-gray-100 dark:bg-gray-900",
+          "shadow-lg dark:shadow-2xl",
+          "transition-colors duration-200"
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Header */}
-          <SidebarHeader title="Sistema Médico" icon={Stethoscope} />
+          <SidebarHeader
+            title="Sistema Médico"
+            icon={Stethoscope}
+            actions={themeToggle}
+          />
 
-          {/* Search */}
           <SidebarSearch placeholder="Search" />
 
-          {/* Main Navigation */}
           <nav className="flex-1 overflow-hidden">
             <SidebarSection className="pb-4 pr-4 mb-16">
               {mainMenuItems.map((item) => (
@@ -71,7 +80,6 @@ export function Sidebar({ currentPath, isOpen, onClose }: SidebarProps) {
               ))}
             </SidebarSection>
 
-            {/* Secondary Navigation */}
             <SidebarSection separator className="pb-4">
               {secondaryMenuItems.map((item) => (
                 <SidebarNavItem
@@ -84,7 +92,6 @@ export function Sidebar({ currentPath, isOpen, onClose }: SidebarProps) {
               ))}
             </SidebarSection>
 
-            {/* Storage Notification */}
             <div className="mt-2">
               <StorageNotification
                 usedPercentage={80}
@@ -94,9 +101,8 @@ export function Sidebar({ currentPath, isOpen, onClose }: SidebarProps) {
             </div>
           </nav>
 
-          {/* Footer */}
           <SidebarFooter
-            userName={user?.email?.split("@")[0] || "Usuario"}
+            userName={getUserName()}
             userEmail={user?.email || ""}
             onLogout={logout}
           />
