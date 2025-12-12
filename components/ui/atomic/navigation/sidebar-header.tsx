@@ -18,7 +18,7 @@ export function SidebarHeader({
   actions,
 }: SidebarHeaderProps) {
   return (
-    <div className="p-4 mb-4">
+    <div className="p-4">
       <div className="flex items-center justify-between gap-4 mb-2">
         <div className="flex items-center gap-4 min-w-0 flex-1">
           <LogoIcon icon={icon} size="md" className="shrink-0" />
