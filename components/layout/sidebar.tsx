@@ -2,7 +2,6 @@
 
 import { useAuth } from "@/contexts/auth-context";
 import { useSidebarNavigation } from "@/hooks/use-sidebar-navigation";
-import { SidebarHeader } from "@/components/ui/atomic/navigation/sidebar-header";
 import { SidebarSearch } from "@/components/ui/atomic/navigation/sidebar-search";
 import { SidebarSection } from "@/components/ui/atomic/navigation/sidebar-section";
 import { SidebarNavItem } from "@/components/ui/atomic/navigation/sidebar-nav-item";
@@ -10,7 +9,6 @@ import { SidebarFooter } from "@/components/ui/atomic/navigation/sidebar-footer"
 import { StorageNotification } from "@/components/ui/atomic/feedback/storage-notification";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils/utils";
-import { Stethoscope } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/atomic/controls/theme-toggle";
 
 interface SidebarProps {
@@ -58,15 +56,7 @@ export function Sidebar({ currentPath, isOpen, onClose }: SidebarProps) {
           "transition-colors duration-200"
         )}
       >
-        <div className="flex flex-col h-full">
-          <SidebarHeader
-            title="Sistema Médico"
-            icon={Stethoscope}
-            actions={themeToggle}
-          />
-
-          <SidebarSearch placeholder="Search" />
-
+        <div className="flex flex-col h-auto py-2">
           <nav className="flex-1 overflow-hidden">
             <SidebarSection className="pb-4 pr-4 mb-16">
               {mainMenuItems.map((item) => (
@@ -100,12 +90,6 @@ export function Sidebar({ currentPath, isOpen, onClose }: SidebarProps) {
               />
             </div>
           </nav>
-
-          <SidebarFooter
-            userName={getUserName()}
-            userEmail={user?.email || ""}
-            onLogout={logout}
-          />
         </div>
       </aside>
     </>
