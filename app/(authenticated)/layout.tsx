@@ -1,5 +1,3 @@
-import { AuthenticatedLayoutClient } from "@/components/layout/authenticated-layout-client";
-
 /**
  * AUTHENTICATED LAYOUT (SERVER COMPONENT)
  *
@@ -11,5 +9,6 @@ export default function AuthenticatedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <AuthenticatedLayoutClient>{children}</AuthenticatedLayoutClient>;
+  // El layout global está gestionado en app/layout.tsx (AppShell)
+  return children;
 }

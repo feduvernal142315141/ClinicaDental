@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileHeader } from "@/components/layout/mobile-header";
+import { AppHeader } from "@/components/layout/app-header";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -54,6 +55,8 @@ export function DashboardLayout({
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
       />
+
+      <AppHeader />
 
       <div className="flex h-screen lg:h-screen">
         <Sidebar
