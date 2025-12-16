@@ -135,7 +135,7 @@ const useCampaignList = () => {
     }, [loadData]);
 
     const onNewCampaign = async () => {
-        router.push("/campaigns/create");
+        router.push("/campaigns/new");
     }
 
     const handlePageChange = useCallback((newPage: number) => {
