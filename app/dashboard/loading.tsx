@@ -1,5 +1,5 @@
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
+import { LoadingSpinner } from "@/components/ui/antd";
 
 export default function DashboardLoading() {
-  return <LoadingSpinner message="Cargando dashboard..." fullPage />;
+  return <LoadingSpinner tip="Cargando dashboard..." fullPage />;
 }

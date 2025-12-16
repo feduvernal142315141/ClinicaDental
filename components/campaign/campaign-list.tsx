@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Plus } from "lucide-react";
 import { CustomTable } from "@/components/ui/composed/table/Table";
 import useCampaignList from "@/components/campaign/hooks/useCampaignList";
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
+import { LoadingSpinner } from "@/components/ui/antd";
 
 export function CampaignList() {
   const {
@@ -39,7 +39,7 @@ export function CampaignList() {
   const isInitialLoading = loading && campaign.length === 0;
 
   if (isInitialLoading) {
-    return <LoadingSpinner message="Cargando campañas..." variant="card" />;
+    return <LoadingSpinner tip="Cargando campañas..." />;
   }
 
   return (

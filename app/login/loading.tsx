@@ -1,5 +1,5 @@
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
+import { LoadingSpinner } from "@/components/ui/antd";
 
 export default function LoginLoading() {
-  return <LoadingSpinner message="Cargando..." fullPage />;
+  return <LoadingSpinner tip="Cargando..." fullPage />;
 }
