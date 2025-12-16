@@ -103,7 +103,7 @@ export function AppShellAntd({ children }: AppShellAntdProps) {
         /> */}
 
         {/* Main Layout */}
-        <Layout className="flex-1 bg-blue-400">
+        <Layout className="flex-1">
           {/* Mobile Header */}
           <MobileHeaderAntd
             onToggleSidebar={() => setMobileDrawerOpen(true)}
@@ -112,7 +112,7 @@ export function AppShellAntd({ children }: AppShellAntdProps) {
           />
 
           {/* Desktop Header */}
-          <div className="hidden lg:block bg-blue-500">
+          <div className="hidden lg:block">
             <AppHeaderAntd
               collapsed={sidebarCollapsed}
               onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}

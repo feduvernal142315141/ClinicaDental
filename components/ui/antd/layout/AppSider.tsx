@@ -49,7 +49,7 @@ export function AppSider({
     >
       {/* Logo */}
       <div
-        className="flex items-center justify-center gap-2 "
+        className="flex items-center justify-center gap-2 mb-6 "
         style={{ height: 64 }}
       >
         <MedicineBoxOutlined

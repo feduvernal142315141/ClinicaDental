@@ -35,7 +35,6 @@ export function NavMenu({
   theme: menuTheme = "dark",
   className,
 }: NavMenuProps) {
-  // Find active key based on current path
   const getActiveKey = () => {
     const activeItem = items.find(
       (item) =>
