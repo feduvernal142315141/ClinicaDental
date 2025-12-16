@@ -58,11 +58,15 @@ export function AppSider({
             color: "#1677ff",
           }}
         />
-        {!collapsed && (
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+          }`}
+        >
           <Text size="base" weight="semibold" className="whitespace-nowrap">
             Sistema Médico
           </Text>
-        )}
+        </div>
       </div>
 
       {/* Navigation Menu */}
