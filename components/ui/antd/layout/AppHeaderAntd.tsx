@@ -1,14 +1,14 @@
 "use client";
 
-import { Layout, Button, Space, Badge, Typography } from "antd";
+import { Layout, Button, Space, Badge } from "antd";
 import {
   BellOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
 } from "@ant-design/icons";
-import { SearchBox } from "@/components/ui/antd/forms/SearchBox";
 import { ThemeSwitch } from "@/components/ui/antd/feedback/ThemeSwitch";
 import { UserDropdown } from "@/components/ui/antd/navigation/UserDropdown";
+import { AppBreadcrumb } from "@/components/ui/antd/navigation/AppBreadcrumb";
 
 const { Header } = Layout;
 
@@ -32,8 +32,6 @@ interface AppHeaderAntdProps {
  * Contains search, notifications, theme toggle, and user dropdown
  */
 export function AppHeaderAntd({
-  collapsed,
-  onToggleCollapse,
   userName,
   userEmail,
   userAvatar,
@@ -42,7 +40,6 @@ export function AppHeaderAntd({
   onSupport,
   onSettings,
   onNotificationsClick,
-  showCollapseButton = false,
   notificationCount = 0,
 }: AppHeaderAntdProps) {
   return (
@@ -58,21 +55,9 @@ export function AppHeaderAntd({
         zIndex: 10,
       }}
     >
-      {/* Left section */}
+      {/* Left section - Breadcrumb */}
       <div className="flex items-center gap-4">
-        {showCollapseButton && onToggleCollapse && (
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={onToggleCollapse}
-            className="hidden lg:flex"
-          />
-        )}
-      </div>
-
-      {/* Center - Search */}
-      <div className="flex-1 flex justify-center max-w-md mx-4">
-        <SearchBox placeholder="Search..." className="w-full" />
+        <AppBreadcrumb />
       </div>
 
       {/* Right section */}
