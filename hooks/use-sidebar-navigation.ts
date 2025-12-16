@@ -27,10 +27,8 @@ type UserRole = "admin" | "doctor" | "patient";
 
 export function useSidebarNavigation(userRole?: string) {
   const getMenuGroups = (): MenuGroups => {
-    const secondaryItems: MenuItem[] = [
-      { path: "/support", label: "Support", icon: HelpCircle },
-      { path: "/settings", label: "Settings", icon: Settings },
-    ];
+    // Support and Settings are now in the global header; remove from sidebar
+    const secondaryItems: MenuItem[] = [];
 
     switch (userRole as UserRole) {
       case "admin":

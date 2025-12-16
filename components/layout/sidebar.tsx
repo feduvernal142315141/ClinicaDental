@@ -1,23 +1,32 @@
 "use client";
 
+import { cn } from "@/lib/utils/utils";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { useSidebarNavigation } from "@/hooks/use-sidebar-navigation";
-import { SidebarSearch } from "@/components/ui/atomic/navigation/sidebar-search";
+import { ThemeToggle } from "@/components/ui/atomic/controls/theme-toggle";
+import { SidebarHeader } from "@/components/ui/atomic/navigation/sidebar-header";
 import { SidebarSection } from "@/components/ui/atomic/navigation/sidebar-section";
 import { SidebarNavItem } from "@/components/ui/atomic/navigation/sidebar-nav-item";
-import { SidebarFooter } from "@/components/ui/atomic/navigation/sidebar-footer";
 import { StorageNotification } from "@/components/ui/atomic/feedback/storage-notification";
-import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils/utils";
-import { ThemeToggle } from "@/components/ui/atomic/controls/theme-toggle";
+import { Stethoscope, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 
 interface SidebarProps {
   currentPath: string;
   isOpen: boolean;
   onClose: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export function Sidebar({ currentPath, isOpen, onClose }: SidebarProps) {
+export function Sidebar({
+  currentPath,
+  isOpen,
+  onClose,
+  isCollapsed = false,
+  onToggleCollapse,
+}: SidebarProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const { mainMenuItems, secondaryMenuItems, isActiveRoute } =
@@ -38,6 +47,7 @@ export function Sidebar({ currentPath, isOpen, onClose }: SidebarProps) {
 
   return (
     <>
+      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
@@ -45,32 +55,85 @@ export function Sidebar({ currentPath, isOpen, onClose }: SidebarProps) {
         />
       )}
 
-      <aside
+      {/* Sidebar content */}
+      <div
         className={cn(
-          "fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto",
-          "w-68 lg:w-68",
-          "transform transition-transform duration-300 ease-in-out lg:transition-none",
+          "fixed lg:static inset-y-0 left-0 z-50 lg:z-auto",
+          "h-full",
+          "transform transition-all duration-300 ease-in-out lg:transform-none",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-          "bg-gray-100 dark:bg-gray-900",
-          "shadow-lg dark:shadow-2xl",
-          "transition-colors duration-200"
+          "flex flex-col",
+          isCollapsed ? "w-20" : "w-64"
         )}
       >
-        <div className="flex flex-col h-auto py-2">
-          <nav className="flex-1 overflow-hidden">
-            <SidebarSection className="pb-4 pr-4 mb-16">
-              {mainMenuItems.map((item) => (
-                <SidebarNavItem
-                  key={item.path}
-                  icon={item.icon}
-                  label={item.label}
-                  isActive={isActiveRoute(currentPath, item.path)}
-                  onClick={() => handleNavigation(item.path)}
-                />
-              ))}
-            </SidebarSection>
+        {/* Header with collapse button */}
+        <div
+          className={cn(
+            "flex items-center py-3 transition-all duration-300",
+            isCollapsed ? "px-2 justify-center" : "px-4 justify-between"
+          )}
+        >
+          {/* Logo and title with animation */}
+          <div
+            className={cn(
+              "flex items-center gap-3 transition-all duration-300 overflow-hidden",
+              isCollapsed ? "w-10 justify-center" : "w-auto"
+            )}
+          >
+            <Stethoscope
+              className={cn(
+                "shrink-0 text-primary transition-all duration-300",
+                isCollapsed ? "h-8 w-8" : "h-6 w-6"
+              )}
+            />
+            <span
+              className={cn(
+                "font-semibold whitespace-nowrap transition-all duration-300",
+                isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto"
+              )}
+            >
+              Sistema Médico
+            </span>
+          </div>
+          {/* Collapse button */}
+          {onToggleCollapse && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleCollapse}
+              className={cn(
+                "shrink-0 h-8 w-8 transition-all duration-300",
+                isCollapsed ? "rotate-0" : "rotate-0"
+              )}
+              aria-label={isCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
+            >
+              <div className="transition-transform duration-300">
+                {isCollapsed ? (
+                  <ChevronsRight className="h-4 w-4" />
+                ) : (
+                  <ChevronsLeft className="h-4 w-4" />
+                )}
+              </div>
+            </Button>
+          )}
+        </div>
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3">
+          <SidebarSection className="space-y-1">
+            {mainMenuItems.map((item) => (
+              <SidebarNavItem
+                key={item.path}
+                icon={item.icon}
+                label={item.label}
+                isActive={isActiveRoute(currentPath, item.path)}
+                onClick={() => handleNavigation(item.path)}
+                isCollapsed={isCollapsed}
+              />
+            ))}
+          </SidebarSection>
 
-            <SidebarSection separator className="pb-4">
+          {secondaryMenuItems.length > 0 && (
+            <SidebarSection separator className="mt-4 pt-4 space-y-1">
               {secondaryMenuItems.map((item) => (
                 <SidebarNavItem
                   key={item.path}
@@ -78,20 +141,27 @@ export function Sidebar({ currentPath, isOpen, onClose }: SidebarProps) {
                   label={item.label}
                   isActive={isActiveRoute(currentPath, item.path)}
                   onClick={() => handleNavigation(item.path)}
+                  isCollapsed={isCollapsed}
                 />
               ))}
             </SidebarSection>
+          )}
+        </nav>
 
-            <div className="mt-2">
-              <StorageNotification
-                usedPercentage={80}
-                onDismiss={() => console.log("Dismissed")}
-                onUpgrade={() => console.log("Upgrade clicked")}
-              />
-            </div>
-          </nav>
+        {/* Storage notification at bottom - animated hide when collapsed */}
+        <div
+          className={cn(
+            "mt-auto px-3 pb-4 transition-all duration-300 overflow-hidden",
+            isCollapsed ? "opacity-0 max-h-0 py-0" : "opacity-100 max-h-48"
+          )}
+        >
+          <StorageNotification
+            usedPercentage={80}
+            onDismiss={() => console.log("Dismissed")}
+            onUpgrade={() => console.log("Upgrade clicked")}
+          />
         </div>
-      </aside>
+      </div>
     </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, User, LifeBuoy, Settings } from "lucide-react";
+import { LogOut, User, LifeBuoy, Settings, ChevronDown } from "lucide-react";
 import { UserProfileCard } from "@/components/ui/atomic/data-display/user-profile-card";
 import { UserAvatar } from "@/components/ui/atomic/data-display/user-avatar";
 import { UserInfo } from "@/components/ui/atomic/data-display/user-info";
@@ -37,12 +37,16 @@ export function SidebarFooter({
     <div className="mt-auto p-4">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="w-full justify-start gap-3">
-            <UserAvatar src={userAvatar} name={userName} size="md" />
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-2 rounded-lg bg-accent/15 text-foreground hover:bg-accent/25 px-3 py-2"
+          >
+            <UserAvatar src={userAvatar} name={userName} size="sm" />
             <div className="text-left">
               <p className="text-sm font-medium leading-tight">{userName}</p>
               <p className="text-xs text-muted-foreground">{userEmail}</p>
             </div>
+            <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="start">
