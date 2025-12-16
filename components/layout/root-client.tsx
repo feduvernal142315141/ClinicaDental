@@ -12,6 +12,7 @@ import { GlobalAlertDialog } from "@/components/global-alert-dialog";
 import { InterceptorProvider } from "@/contexts/interceptor-context";
 import { GlobalLoadingBar } from "@/components/global-loading-spinner";
 import { InterceptorsInitializer } from "@/components/interceptors-initializer";
+import { AppShellAntd } from "../ui/antd";
 
 interface RootClientProps {
   children: React.ReactNode;
@@ -34,7 +35,7 @@ export function RootClient({ children }: RootClientProps) {
                   <InterceptorsInitializer />
                   <GlobalLoadingBar />
                   <GlobalAlertDialog />
-                  <AppShell>{children}</AppShell>
+                  <AppShellAntd>{children}</AppShellAntd>
                 </AlertProvider>
               </AuthProvider>
             </InterceptorProvider>
