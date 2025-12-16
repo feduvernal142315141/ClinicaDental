@@ -39,7 +39,7 @@ export function ThemeSwitch({
           checked={isDark}
           onChange={toggleTheme}
           checkedChildren={<MoonOutlined />}
-          unCheckedChildren={<SunOutlined style={{ color: "#faad14" }} />}
+          unCheckedChildren={<SunOutlined />}
         />
         {showLabel && (
           <span className="text-sm">{isDark ? "Oscuro" : "Claro"}</span>
