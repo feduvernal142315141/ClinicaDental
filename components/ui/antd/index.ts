@@ -10,8 +10,20 @@ export { NavMenu } from "./navigation/NavMenu";
 export { UserDropdown } from "./navigation/UserDropdown";
 export { AppBreadcrumb } from "./navigation/AppBreadcrumb";
 
+// Ant Design Data Display Components
+export { DataTable } from "./data-display/DataTable";
+export type { DataTableColumn, DataTableProps } from "./data-display/DataTable";
+export { PageCard } from "./data-display/PageCard";
+export { StatusTag, ActiveStatusTag } from "./data-display/StatusTag";
+export { ActionButtons, ActionPresets } from "./data-display/ActionButtons";
+export { PageToolbar } from "./data-display/PageToolbar";
+
 // Ant Design Form Components
 export { SearchBox } from "./forms/SearchBox";
+export { FormInput } from "./forms/FormInput";
+export { FormSelect } from "./forms/FormSelect";
+export { FormSwitch } from "./forms/FormSwitch";
+export { FormContainer, FormSection } from "./forms/FormContainer";
 
 // Ant Design Feedback Components
 export { ThemeSwitch } from "./feedback/ThemeSwitch";
