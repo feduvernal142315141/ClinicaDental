@@ -3,10 +3,15 @@
  */
 
 // Servicios base (GET, POST, PUT, DELETE)
-export { serviceGet, servicePost, servicePut, serviceDelete } from './baseService'
+export {
+  serviceGet,
+  servicePost,
+  servicePut,
+  serviceDelete,
+} from "./baseService";
 
 // Instancia de Axios y configuración de interceptores
-export { default as apiInstance, setInterceptorHandlers } from './apiConfig'
+export { default as apiInstance, setInterceptorHandlers } from "./apiConfig";
 
 // Configuraciones predefinidas de interceptores
 export {
@@ -14,8 +19,10 @@ export {
   setupInterceptorsWithAlertContext,
   setupInterceptorsWithLoading,
   setupInterceptorsHybrid,
-} from './interceptors-setup'
+} from "./interceptors-setup";
+
+// Manager Users Services
+export * from "./manager-users";
 
 // Types
-export type { ResponseEntity, ServiceResponse } from '../models/response'
-
+export type { ResponseEntity, ServiceResponse } from "../models/response";
