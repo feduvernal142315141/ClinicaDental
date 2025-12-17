@@ -1,237 +1,216 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Form, App, Divider, Button, Input } from "antd";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import { PageCard, LoadingSpinner } from "@/components/ui/antd";
+import { useDoctors } from "@/lib/hooks/doctors";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/atomic/data-display/card";
-import { Button } from "@/components/ui/primitives/shadcn/button";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { TextField } from "@/components/ui/primitives/custom/TextField";
-import { FormSelect } from "@/components/ui/primitives/custom/FormSelect";
-import { Switch } from "@/components/ui/atomic/forms/switch";
-import { Label } from "@/components/ui/atomic/forms/label";
-import type { Doctor } from "@/lib/doctors";
-import { DoctorScheduleForm } from "./DoctorScheduleForm";
-import { createDoctor, updateDoctor } from "@/lib/supabase/doctors";
-import { useAuth } from "@/contexts/auth-context";
-import TextArea from "@/components/ui/atomic/forms/textarea";
+  CreateDoctorRequest,
+  UpdateDoctorRequest,
+  Doctor,
+} from "@/lib/entity/doctors";
 
-const SPECIALTIES = [
-  "Odontología General",
-  "Ortodoncia",
-  "Endodoncia",
-  "Periodoncia",
-  "Cirugía Oral",
-  "Odontopediatría",
-  "Prostodoncia",
-  "Implantología",
-];
+import { BasicInfoFields } from "./BasicInfoFields";
+import { ProfessionalInfoFields } from "./ProfessionalInfoFields";
+import { SecurityFields } from "./SecurityFields";
+import { RoleStatusFields } from "./RoleStatusFields";
+import { FormActions } from "./FormActions";
 
-const schema = z.object({
-  name: z.string().min(1, "El nombre es obligatorio"),
-  email: z.string().email("El email no es válido"),
-  phone: z.string().min(1, "El teléfono es obligatorio"),
-  specialty: z.string().min(1, "La especialidad es obligatoria"),
-  licenseNumber: z.string().min(1, "El número de licencia es obligatorio"),
-  description: z.string().optional(),
-  isActive: z.boolean().default(true),
-  schedule: z.record(
-    z.object({
-      enabled: z.boolean(),
-      startTime: z.string(),
-      endTime: z.string(),
-      breakStart: z.string().optional(),
-      breakEnd: z.string().optional(),
-    })
-  ),
-});
+const { TextArea } = Input;
 
-const defaultSchedule = {
-  enabled: false,
-  startTime: "08:00",
-  endTime: "17:00",
-  breakStart: "",
-  breakEnd: "",
-};
+interface DoctorFormProps {
+  /** Doctor ID for editing (undefined for new doctor) */
+  doctorId?: string;
+  /** Base path for navigation */
+  basePath?: string;
+  /** Initial data (for editing) */
+  initialData?: Doctor;
+}
 
+/**
+ * Doctor Form Component
+ *
+ * Handles both creation and editing of doctors (system users).
+ * Uses Ant Design Form with validation.
+ *
+ * @example
+ * // New doctor
+ * <DoctorForm basePath="/settings/users" />
+ *
+ * // Edit doctor
+ * <DoctorForm doctorId="123" basePath="/settings/users" initialData={doctor} />
+ */
 export function DoctorForm({
-  doctor,
-  onSuccess,
-  onCancel,
-}: {
-  doctor: Doctor | null;
-  onSuccess: () => void;
-  onCancel: () => void;
-}) {
-  const {
-    control,
-    handleSubmit,
-    setValue,
-    formState: { errors, isSubmitting },
-    register,
-  } = useForm<z.infer<typeof schema>>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      name: doctor?.name || "",
-      email: doctor?.email || "",
-      phone: doctor?.phone || "",
-      specialty: doctor?.specialty || "",
-      licenseNumber: doctor?.licenseNumber || "",
-      description: doctor?.description || "",
-      isActive: doctor?.isActive ?? true,
-      schedule: doctor?.schedule || {
-        monday: { ...defaultSchedule },
-        tuesday: { ...defaultSchedule },
-        wednesday: { ...defaultSchedule },
-        thursday: { ...defaultSchedule },
-        friday: { ...defaultSchedule },
-        saturday: { ...defaultSchedule },
-        sunday: { ...defaultSchedule },
-      },
-    },
-  });
+  doctorId,
+  basePath = "/settings/users",
+  initialData,
+}: DoctorFormProps) {
+  const router = useRouter();
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
+  const [password, setPassword] = useState("");
 
-  const { user } = useAuth();
+  const isEdit = !!doctorId;
 
-  const onSubmit = async (values: z.infer<typeof schema>) => {
-    try {
-      if (doctor) {
-        await updateDoctor(doctor.id, values);
-      } else {
-        await createDoctor({
-          ...values,
-          clinic_id: user?.clinicId ?? "",
-          user_id: user?.id ?? "",
-        });
-      }
-      onSuccess();
-    } catch (error) {
-      console.error("Error guardando doctor:", error);
+  const { createDoctor, updateDoctor, loadDoctorById, isLoading } =
+    useDoctors();
+
+  // Load doctor data if editing
+  useEffect(() => {
+    if (isEdit && doctorId && !initialData) {
+      loadDoctorById(doctorId).then((doctor) => {
+        if (doctor) {
+          form.setFieldsValue({
+            name: doctor.name,
+            email: doctor.email,
+            phone: doctor.phone,
+            licenceNumber: doctor.licenceNumber,
+            specialty: doctor.specialty,
+            gender: doctor.gender,
+            description: doctor.description,
+            roleId: doctor.roleId,
+            active: doctor.active,
+          });
+        }
+      });
+    } else if (initialData) {
+      form.setFieldsValue({
+        name: initialData.name,
+        email: initialData.email,
+        phone: initialData.phone,
+        licenceNumber: initialData.licenceNumber,
+        specialty: initialData.specialty,
+        gender: initialData.gender,
+        description: initialData.description,
+        roleId: initialData.roleId,
+        active: initialData.active,
+      });
     }
-  };
+  }, [isEdit, doctorId, initialData, loadDoctorById, form]);
+
+  // Handle form submission
+  const handleSubmit = useCallback(
+    async (values: any) => {
+      try {
+        if (isEdit && doctorId) {
+          const updateData: UpdateDoctorRequest = {
+            id: doctorId,
+            name: values.name,
+            email: values.email,
+            phone: values.phone,
+            licenceNumber: values.licenceNumber,
+            specialty: values.specialty,
+            gender: values.gender,
+            description: values.description,
+            password: values.password || undefined,
+            roleId: values.roleId,
+            active: values.active,
+          };
+
+          const success = await updateDoctor(updateData);
+          if (success) {
+            message.success("Doctor actualizado correctamente");
+            router.push(basePath);
+          }
+        } else {
+          const createData: CreateDoctorRequest = {
+            name: values.name,
+            email: values.email,
+            phone: values.phone,
+            licenceNumber: values.licenceNumber,
+            specialty: values.specialty,
+            gender: values.gender,
+            description: values.description,
+            roleId: values.roleId,
+            active: values.active ?? true,
+          };
+
+          const newDoctorId = await createDoctor(createData);
+          if (newDoctorId) {
+            message.success("Doctor creado correctamente");
+            router.push(basePath);
+          }
+        }
+      } catch (error) {
+        message.error("Error al guardar doctor");
+      }
+    },
+    [isEdit, doctorId, createDoctor, updateDoctor, message, router, basePath]
+  );
+
+  // Handle cancel
+  const handleCancel = useCallback(() => {
+    router.push(basePath);
+  }, [router, basePath]);
+
+  // Handle back
+  const handleBack = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  if (isLoading && isEdit && !initialData) {
+    return <LoadingSpinner tip="Cargando doctor..." fullPage />;
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={onCancel}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
+    <PageCard
+      title={isEdit ? "Editar Doctor" : "Nuevo Doctor"}
+      subtitle={
+        isEdit
+          ? "Modifique los datos del doctor"
+          : "Complete los datos del nuevo doctor"
+      }
+      extra={
+        <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>
           Volver
         </Button>
-        <p className="text-muted-foreground">
-          {doctor
-            ? "Modifica la información del doctor"
-            : "Registra un nuevo doctor en el sistema"}
-        </p>
-      </div>
+      }
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={{ active: true }}
+        disabled={isLoading}
+      >
+        {/* Basic Information */}
+        <Divider titlePlacement="start">Información Básica</Divider>
+        <BasicInfoFields />
 
-      <Card className="p-6">
-        <CardHeader>
-          <CardTitle>Información del Doctor</CardTitle>
-          <CardDescription>
-            Completa todos los campos obligatorios para{" "}
-            {doctor ? "actualizar" : "registrar"} el doctor
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-8">
-              <TextField
-                name="name"
-                control={control}
-                label="Nombre Completo"
-                placeholder="Ej: Dr. Juan Pérez"
-                required
-                error={errors.name?.message}
-              />
+        {/* Professional Information */}
+        <Divider titlePlacement="start">Información Profesional</Divider>
+        <ProfessionalInfoFields />
 
-              <TextField
-                name="email"
-                control={control}
-                type="email"
-                label="Correo Electrónico"
-                placeholder="Ej: doctor@email.com"
-                required
-                error={errors.email?.message}
-              />
+        {/* Description */}
+        <Divider titlePlacement="start">Descripción</Divider>
+        <Form.Item name="description" label="Descripción / Biografía">
+          <TextArea
+            rows={4}
+            placeholder="Información adicional sobre el doctor..."
+          />
+        </Form.Item>
 
-              <TextField
-                name="phone"
-                control={control}
-                label="Teléfono"
-                placeholder="Ej: +505 8888-9999"
-                required
-                error={errors.phone?.message}
-              />
+        {/* Security Section */}
+        <Divider titlePlacement="start">Seguridad</Divider>
+        <SecurityFields
+          isEdit={isEdit}
+          password={password}
+          onPasswordChange={setPassword}
+        />
 
-              <FormSelect
-                name="specialty"
-                control={control}
-                label="Especialidad"
-                options={SPECIALTIES.map((s) => ({ id: s, label: s }))}
-                required
-              />
+        {/* Role & Status Section */}
+        <Divider titlePlacement="start">Rol y Estado</Divider>
+        <RoleStatusFields />
 
-              <TextField
-                name="licenseNumber"
-                control={control}
-                label="Número de Licencia"
-                placeholder="Ej: 12345-OD"
-                required
-                error={errors.licenseNumber?.message}
-              />
-
-              <div className="flex items-center space-x-2 mt-6">
-                <Switch
-                  id="isActive"
-                  checked={!!doctor?.isActive}
-                  onCheckedChange={(val) => setValue("isActive", val)}
-                />
-                <Label htmlFor="isActive">Doctor Activo</Label>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <TextArea
-                id="description"
-                label="Descripción"
-                placeholder="Ej: Experto en ortodoncia con 10 años de experiencia"
-                rows={3}
-                {...register("description", {
-                  required: "La descripción es obligatoria",
-                })}
-                error={errors.description?.message}
-              />
-            </div>
-
-            <DoctorScheduleForm control={control} />
-
-            <div className="flex gap-4 pt-6">
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {doctor ? "Actualizando..." : "Guardando..."}
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    {doctor ? "Actualizar Doctor" : "Guardar Doctor"}
-                  </>
-                )}
-              </Button>
-              <Button type="button" variant="outline" onClick={onCancel}>
-                Cancelar
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+        {/* Action Buttons */}
+        <FormActions
+          isEdit={isEdit}
+          isLoading={isLoading}
+          onCancel={handleCancel}
+        />
+      </Form>
+    </PageCard>
   );
 }

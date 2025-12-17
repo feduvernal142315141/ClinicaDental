@@ -1,89 +1,181 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/primitives/shadcn/button"
-import { Card } from "@/components/ui/atomic/data-display/card"
-import { Plus, User } from "lucide-react"
-import type { Doctor } from "@/lib/doctors"
-import DoctorCard from "./DoctorCard"
-import { DoctorForm } from "./DoctorForm"
-import { Modal } from "@/components/ui/primitives/custom/Modal"
+import { useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { App } from "antd";
+import {
+  DataTable,
+  DataTableColumn,
+  PageCard,
+  PageToolbar,
+  StatusTag,
+  ActionButtons,
+  LoadingSpinner,
+} from "@/components/ui/antd";
+import { useDoctors } from "@/lib/hooks/doctors";
+import { DoctorListItem } from "@/lib/entity/doctors";
+import dayjs from "dayjs";
 
-export default function DoctorsList({
-  doctors,
-  reload,
-}: {
-  doctors: Doctor[]
-  reload: () => void
-}) {
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null)
-  const [isAddingDoctor, setIsAddingDoctor] = useState(false)
+interface DoctorsListProps {
+  /** Base path for navigation */
+  basePath?: string;
+}
 
-  const isOpen = isAddingDoctor || !!selectedDoctor
+/**
+ * Doctors List Component
+ *
+ * Displays a paginated table of doctors with search, filters, and actions.
+ *
+ * @example
+ * <DoctorsList basePath="/settings/users" />
+ */
+export function DoctorsList({
+  basePath = "/settings/users",
+}: DoctorsListProps) {
+  const router = useRouter();
+  const { modal, message } = App.useApp();
+
+  const { doctors, isLoading, pagination, loadDoctors, refresh } = useDoctors();
+
+  // Navigation handlers
+  const handleNewDoctor = useCallback(() => {
+    router.push(`${basePath}/new`);
+  }, [router, basePath]);
+
+  const handleViewDoctor = useCallback(
+    (doctor: DoctorListItem) => {
+      router.push(`${basePath}/${doctor.id}`);
+    },
+    [router, basePath]
+  );
+
+  const handleEditDoctor = useCallback(
+    (doctor: DoctorListItem) => {
+      router.push(`${basePath}/${doctor.id}/edit`);
+    },
+    [router, basePath]
+  );
+
+  // Table columns
+  const columns: DataTableColumn<DoctorListItem>[] = useMemo(
+    () => [
+      {
+        key: "name",
+        title: "Nombre",
+        dataIndex: "name",
+        sorter: true,
+        render: (_, record) => (
+          <div>
+            <div className="font-medium">{record.name}</div>
+            <div className="text-sm text-gray-500">{record.email}</div>
+          </div>
+        ),
+      },
+      {
+        key: "licenceNumber",
+        title: "Licencia",
+        dataIndex: "licenceNumber",
+      },
+      {
+        key: "phone",
+        title: "Teléfono",
+        dataIndex: "phone",
+        render: (value) => value || "-",
+      },
+      {
+        key: "role",
+        title: "Rol",
+        dataIndex: ["role", "name"],
+        render: (_, record) => record.role?.name || "-",
+      },
+      {
+        key: "active",
+        title: "Estado",
+        dataIndex: "active",
+        align: "center",
+        render: (value) => (
+          <StatusTag
+            status={value ? "success" : "error"}
+            text={value ? "Activo" : "Inactivo"}
+          />
+        ),
+      },
+      {
+        key: "createAt",
+        title: "Fecha Creación",
+        dataIndex: "createAt",
+        render: (value) => dayjs(value).format("DD/MM/YYYY"),
+      },
+      {
+        key: "actions",
+        title: "Acciones",
+        align: "center",
+        fixed: "right",
+        width: 120,
+        render: (_, record) => (
+          <ActionButtons
+            actions={[
+              {
+                key: "view",
+                label: "Ver",
+                onClick: () => handleViewDoctor(record),
+              },
+              {
+                key: "edit",
+                label: "Editar",
+                onClick: () => handleEditDoctor(record),
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [handleViewDoctor, handleEditDoctor]
+  );
+
+  if (isLoading && doctors.length === 0) {
+    return <LoadingSpinner tip="Cargando doctores..." fullPage />;
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-medium">Gestión de Doctores</h3>
-          <p className="text-sm text-muted-foreground">
-            Administra los doctores de tu clínica y sus horarios de atención
-          </p>
-        </div>
-
-        <Button onClick={() => setIsAddingDoctor(true)} className="cursor-pointer">
-          <Plus className="h-4 w-4 mr-2" /> Agregar Doctor
-        </Button>
-      </div>
-
-      <Modal
-        open={isOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedDoctor(null)
-            setIsAddingDoctor(false)
-          }
+    <PageCard
+      title="Gestión de Doctores"
+      subtitle="Administre los doctores del sistema"
+    >
+      <PageToolbar
+        searchPlaceholder="Buscar por nombre..."
+        onSearch={(value) => {
+          // TODO: Implement search
+          console.log("Search:", value);
         }}
-        title={selectedDoctor ? "Editar Doctor" : "Agregar Doctor"}
-        className="w-full sm:max-w-3xl lg:max-w-5xl max-h-[90vh] overflow-y-auto"
-      >
-        <DoctorForm
-          doctor={selectedDoctor}
-          onSuccess={() => {
-            setSelectedDoctor(null)
-            setIsAddingDoctor(false)
-            reload()
-          }}
-          onCancel={() => {
-            setSelectedDoctor(null)
-            setIsAddingDoctor(false)
-          }}
-        />
-      </Modal>
+        actions={[
+          {
+            key: "new",
+            label: "Nuevo Doctor",
+            type: "primary",
+            onClick: handleNewDoctor,
+          },
+          {
+            key: "refresh",
+            label: "Refrescar",
+            onClick: refresh,
+          },
+        ]}
+      />
 
-      {doctors.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-12 text-center space-y-4">
-          <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
-            <User className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h4 className="text-lg font-semibold">No hay doctores registrados</h4>
-          <p className="text-sm text-muted-foreground max-w-md">
-            Aún no has agregado ningún doctor a tu clínica. Agrega tu primer
-            doctor para empezar a gestionar sus horarios y citas.
-          </p>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {doctors.map((doctor) => (
-            <DoctorCard
-              key={doctor.id}
-              doctor={doctor}
-              onEdit={setSelectedDoctor}
-              reload={reload}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
+      <DataTable
+        columns={columns}
+        dataSource={doctors}
+        loading={isLoading}
+        rowKey="id"
+        pagination={{
+          current: pagination.page + 1,
+          pageSize: pagination.pageSize,
+          total: pagination.total,
+          showSizeChanger: true,
+          showTotal: (total) => `Total: ${total} doctores`,
+        }}
+      />
+    </PageCard>
+  );
 }

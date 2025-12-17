@@ -21,8 +21,8 @@ export {
   setupInterceptorsHybrid,
 } from "./interceptors-setup";
 
-// Manager Users Services
-export * from "./manager-users";
+// Doctors Services (replaces manager-users)
+export * from "./doctors";
 
 // Types
 export type { ResponseEntity, ServiceResponse } from "../models/response";
