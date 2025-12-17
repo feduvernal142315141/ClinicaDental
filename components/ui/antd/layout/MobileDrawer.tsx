@@ -2,18 +2,11 @@
 
 import { Drawer, Button, Typography, Space } from "antd";
 import { CloseOutlined, MedicineBoxOutlined } from "@ant-design/icons";
-import { NavMenu } from "@/components/ui/antd/navigation/NavMenu";
+import { NavMenu, MenuItem } from "@/components/ui/antd/navigation/NavMenu";
 import { UserDropdown } from "@/components/ui/antd/navigation/UserDropdown";
 import { ThemeSwitch } from "@/components/ui/antd/feedback/ThemeSwitch";
-import { LucideIcon } from "lucide-react";
 
 const { Text } = Typography;
-
-interface MenuItem {
-  path: string;
-  label: string;
-  icon: LucideIcon;
-}
 
 interface MobileDrawerProps {
   open: boolean;
@@ -28,7 +21,6 @@ interface MobileDrawerProps {
   onLogout: () => void;
   onProfile?: () => void;
   onSupport?: () => void;
-  onSettings?: () => void;
 }
 
 /**
@@ -48,7 +40,6 @@ export function MobileDrawer({
   onLogout,
   onProfile,
   onSupport,
-  onSettings,
 }: MobileDrawerProps) {
   const handleNavigate = (path: string) => {
     onNavigate(path);
@@ -116,7 +107,6 @@ export function MobileDrawer({
               onLogout={onLogout}
               onProfile={onProfile}
               onSupport={onSupport}
-              onSettings={onSettings}
             />
           </Space>
         </div>

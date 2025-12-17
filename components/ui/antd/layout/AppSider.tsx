@@ -2,18 +2,11 @@
 
 import { Layout } from "antd";
 import { MedicineBoxOutlined } from "@ant-design/icons";
-import { NavMenu } from "@/components/ui/antd/navigation/NavMenu";
+import { NavMenu, MenuItem } from "@/components/ui/antd/navigation/NavMenu";
 import { Text } from "@/components/ui/antd/typography/Text";
 import { useTheme } from "@/hooks/use-theme";
-import { LucideIcon } from "lucide-react";
 
 const { Sider } = Layout;
-
-interface MenuItem {
-  path: string;
-  label: string;
-  icon: LucideIcon;
-}
 
 interface AppSiderProps {
   collapsed: boolean;
@@ -44,7 +37,7 @@ export function AppSider({
       collapsed={collapsed}
       onCollapse={onCollapse}
       className="hidden lg:block"
-      width={220}
+      width={240}
       theme={isDark ? "dark" : "light"}
     >
       {/* Logo */}

@@ -21,7 +21,6 @@ interface AppHeaderAntdProps {
   onLogout: () => void;
   onProfile?: () => void;
   onSupport?: () => void;
-  onSettings?: () => void;
   onNotificationsClick?: () => void;
   showCollapseButton?: boolean;
   notificationCount?: number;
@@ -38,7 +37,6 @@ export function AppHeaderAntd({
   onLogout,
   onProfile,
   onSupport,
-  onSettings,
   onNotificationsClick,
   notificationCount = 0,
 }: AppHeaderAntdProps) {
@@ -77,7 +75,6 @@ export function AppHeaderAntd({
           onLogout={onLogout}
           onProfile={onProfile}
           onSupport={onSupport}
-          onSettings={onSettings}
         />
       </Space>
     </Header>

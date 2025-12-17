@@ -26,8 +26,6 @@ export function AppHeader({ supportHref = "/support" }: AppHeaderProps) {
 
   return (
     <header className="hidden lg:flex items-center justify-between gap-4 px-4 lg:px-6 py-2 border-b bg-background">
-      
-
       <div className="flex-1 flex justify-center">
         <div className="w-full max-w-md">
           <SidebarSearch placeholder="Search" />
@@ -42,7 +40,6 @@ export function AppHeader({ supportHref = "/support" }: AppHeaderProps) {
           onLogout={logout}
           onProfile={() => router.push("/settings")}
           onSupport={() => router.push("/support")}
-          onSettings={() => router.push("/settings")}
         />
       </div>
     </header>

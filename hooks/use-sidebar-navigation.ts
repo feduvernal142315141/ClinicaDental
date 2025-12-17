@@ -9,6 +9,10 @@ import {
   FileText,
   LayoutDashboard,
   HelpCircle,
+  Sliders,
+  UserCog,
+  Bell,
+  Link,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -16,6 +20,7 @@ export interface MenuItem {
   path: string;
   label: string;
   icon: LucideIcon;
+  children?: MenuItem[];
 }
 
 export interface MenuGroups {
@@ -30,6 +35,19 @@ export function useSidebarNavigation(userRole?: string) {
     // Support and Settings are now in the global header; remove from sidebar
     const secondaryItems: MenuItem[] = [];
 
+    // Settings sub-menu items
+    const settingsChildren: MenuItem[] = [
+      { path: "/settings/general", label: "Opciones Generales", icon: Sliders },
+      {
+        path: "/settings/patient-management",
+        label: "Gestión de Pacientes",
+        icon: Users,
+      },
+      { path: "/settings/users", label: "Doctores y Roles", icon: UserCog },
+      { path: "/settings/notifications", label: "Notificaciones", icon: Bell },
+      { path: "/settings/integrations", label: "Integraciones", icon: Link },
+    ];
+
     switch (userRole as UserRole) {
       case "admin":
         return {
@@ -39,6 +57,12 @@ export function useSidebarNavigation(userRole?: string) {
             { path: "/appointments", label: "Citas", icon: Calendar },
             { path: "/campaigns", label: "Campañas", icon: BookImage },
             { path: "/template-demo", label: "Templates", icon: FileText },
+            {
+              path: "/settings",
+              label: "Configuración",
+              icon: Settings,
+              children: settingsChildren,
+            },
           ],
           secondary: secondaryItems,
         };

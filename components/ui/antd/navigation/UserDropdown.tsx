@@ -4,7 +4,6 @@ import { Dropdown, Avatar, Space, Typography } from "antd";
 import type { MenuProps } from "antd";
 import {
   UserOutlined,
-  SettingOutlined,
   QuestionCircleOutlined,
   LogoutOutlined,
   DownOutlined,
@@ -19,7 +18,6 @@ interface UserDropdownProps {
   onLogout: () => void;
   onProfile?: () => void;
   onSupport?: () => void;
-  onSettings?: () => void;
   collapsed?: boolean;
 }
 
@@ -34,7 +32,6 @@ export function UserDropdown({
   onLogout,
   onProfile,
   onSupport,
-  onSettings,
   collapsed = false,
 }: UserDropdownProps) {
   const getInitials = (name: string) => {
@@ -65,16 +62,6 @@ export function UserDropdown({
             icon: <QuestionCircleOutlined />,
             label: "Soporte",
             onClick: onSupport,
-          },
-        ]
-      : []),
-    ...(onSettings
-      ? [
-          {
-            key: "settings",
-            icon: <SettingOutlined />,
-            label: "Configuración",
-            onClick: onSettings,
           },
         ]
       : []),

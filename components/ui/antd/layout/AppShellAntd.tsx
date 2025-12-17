@@ -55,10 +55,6 @@ export function AppShellAntd({ children }: AppShellAntdProps) {
     router.push("/settings/profile");
   };
 
-  const handleSettings = () => {
-    router.push("/settings");
-  };
-
   const handleSupport = () => {
     router.push("/support");
   };
@@ -98,7 +94,6 @@ export function AppShellAntd({ children }: AppShellAntdProps) {
           userEmail={userEmail}
           onLogout={handleLogout}
           onProfile={handleProfile}
-          onSettings={handleSettings}
           onSupport={handleSupport}
         /> */}
 
@@ -120,7 +115,6 @@ export function AppShellAntd({ children }: AppShellAntdProps) {
               userEmail={userEmail}
               onLogout={handleLogout}
               onProfile={handleProfile}
-              onSettings={handleSettings}
               onSupport={handleSupport}
               showCollapseButton={false}
             />
