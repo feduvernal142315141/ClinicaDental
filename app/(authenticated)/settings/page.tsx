@@ -1,16 +1,8 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { LazyLoadingFallback } from "@/components/ui/atomic/feedback/lazy-loading-fallback";
+import { redirect } from "next/navigation";
 
-const SettingsPage = dynamic(
-  () =>
-    import("@/components/settings/settings-page").then(
-      (mod) => mod.SettingsPage
-    ),
-  { loading: () => <LazyLoadingFallback /> }
-);
-
+// Redirect to general settings by default
 export default function SettingsRoute() {
-  return <SettingsPage />;
+  redirect("/settings/general");
 }

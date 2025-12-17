@@ -10,6 +10,9 @@ import {
   Bell,
   Shield,
   Palette,
+  UserCog,
+  Sliders,
+  Link,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -61,6 +64,16 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
   },
 
   // Nested routes - Settings
+  general: {
+    label: "Opciones Generales",
+    icon: Sliders,
+    parent: "settings",
+  },
+  "patient-management": {
+    label: "Gestión de Pacientes",
+    icon: Users,
+    parent: "settings",
+  },
   profile: {
     label: "Perfil",
     icon: User,
@@ -79,6 +92,16 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
   appearance: {
     label: "Apariencia",
     icon: Palette,
+    parent: "settings",
+  },
+  users: {
+    label: "Doctores y Roles",
+    icon: UserCog,
+    parent: "settings",
+  },
+  integrations: {
+    label: "Integraciones",
+    icon: Link,
     parent: "settings",
   },
 
