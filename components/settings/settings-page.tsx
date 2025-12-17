@@ -32,7 +32,7 @@ export function SettingsPage() {
 
       <TabsContainer defaultValue="general" tabs={SETTINGS_TABS}>
         <TabPanel value="general">
-          <GeneralSettings />1
+          <GeneralSettings />
         </TabPanel>
 
         <TabPanel value="patients">
