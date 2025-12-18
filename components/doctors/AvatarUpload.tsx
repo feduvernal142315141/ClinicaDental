@@ -1,7 +1,7 @@
 "use client";
 
-import { Upload, Image } from "antd";
-import { LoadingOutlined, PlusOutlined } from "@ant-design/icons";
+import { Upload, Image, ConfigProvider } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import { useAvatarUpload } from "@/hooks/use-avatar-upload";
 import type { UploadFile } from "antd";
 
@@ -20,10 +20,8 @@ interface AvatarUploadProps {
   onFileListChange?: (fileList: UploadFile[]) => void;
   /** List type: picture-card or picture-circle */
   listType?: "picture-card" | "picture-circle";
-  /** Custom width for upload area */
-  width?: string | number;
-  /** Custom height for upload area */
-  height?: string | number;
+  /** Size for picture-card/picture-circle (both upload button and thumbnail) */
+  size?: number;
 }
 
 /**
@@ -31,10 +29,10 @@ interface AvatarUploadProps {
  *
  * Image uploader with preview support for doctor avatars.
  * Supports single or multiple images with validation.
- * Validates file type and size before upload.
+ * Uses Ant Design's native pictureCardSize token for consistent sizing.
  *
  * @example
- * // Single avatar (circle)
+ * // Single avatar with default size (picture-circle)
  * <AvatarUpload
  *   maxCount={1}
  *   listType="picture-circle"
@@ -45,20 +43,21 @@ interface AvatarUploadProps {
  * />
  *
  * @example
+ * // Custom size avatar (300px)
+ * <AvatarUpload
+ *   maxCount={1}
+ *   listType="picture-card"
+ *   size={300}
+ *   onFileListChange={(files) => form.setFieldValue('avatar', files)}
+ * />
+ *
+ * @example
  * // Multiple images (card)
  * <AvatarUpload
  *   maxCount={5}
  *   listType="picture-card"
  *   initialFileList={doctor.images}
  *   onFileListChange={(files) => form.setFieldValue('images', files)}
- * />
- *
- * @example
- * // With server upload
- * <AvatarUpload
- *   action="/api/upload"
- *   maxCount={1}
- *   onFileListChange={(files) => console.log(files)}
  * />
  */
 export function AvatarUpload({
@@ -69,8 +68,7 @@ export function AvatarUpload({
   maxCount = 1,
   onFileListChange,
   listType = "picture-circle",
-  width = "10rem",
-  height = "10rem",
+  size = 320,
 }: AvatarUploadProps) {
   const {
     fileList,
@@ -90,14 +88,27 @@ export function AvatarUpload({
 
   // Upload button
   const uploadButton = (
-    <button style={{ border: 0, background: "none" }} type="button">
-      <PlusOutlined />
-      <div style={{ marginTop: 8 }}>Subir foto</div>
+    <button
+      style={{ border: 0, background: "none" }}
+      type="button"
+      className="flex flex-col items-center justify-center w-full h-full"
+    >
+      <PlusOutlined className="text-2xl mb-2" />
+      <div className="text-sm">Subir foto</div>
     </button>
   );
 
   return (
-    <>
+    <ConfigProvider
+      theme={{
+        components: {
+          Upload: {
+            // Controls size for both upload button AND thumbnails in picture-card/picture-circle
+            pictureCardSize: size,
+          },
+        },
+      }}
+    >
       <Upload
         action={action}
         listType={listType}
@@ -107,7 +118,7 @@ export function AvatarUpload({
         onChange={handleChange}
         maxCount={maxCount}
         accept={allowedFormats?.join(",") || "image/jpeg,image/png,image/jpg"}
-        style={{ width, height }}
+        className="avatar-upload"
       >
         {fileList.length >= maxCount ? null : uploadButton}
       </Upload>
@@ -115,9 +126,9 @@ export function AvatarUpload({
       {/* Preview Modal */}
       {previewImage && (
         <Image
-          wrapperStyle={{ display: "none" }}
+          styles={{ root: { display: "none" } }}
           preview={{
-            visible: previewOpen,
+            open: previewOpen,
             onVisibleChange: handlePreviewOpenChange,
             afterOpenChange: (visible) =>
               !visible && handlePreviewOpenChange(false),
@@ -126,6 +137,6 @@ export function AvatarUpload({
           alt="Preview"
         />
       )}
-    </>
+    </ConfigProvider>
   );
 }
