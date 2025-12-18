@@ -91,9 +91,9 @@ export function useDoctorForm({
             active: values.active,
           };
 
-          const success = await updateDoctor(doctorId, updateData);
-          if (success) {
-            message.success("Doctor actualizado correctamente");
+          const updatedDoctor = await updateDoctor(doctorId, updateData);
+          if (updatedDoctor) {
+            // El interceptor ya muestra el mensaje de éxito
             router.push(basePath);
           }
         } else {
@@ -111,14 +111,15 @@ export function useDoctorForm({
             active: values.active ?? true,
           };
 
-          const newDoctorId = await createDoctor(createData);
-          if (newDoctorId) {
-            message.success("Doctor creado correctamente");
+          const newDoctor = await createDoctor(createData);
+          if (newDoctor) {
+            // El interceptor ya muestra el mensaje de éxito (201)
             router.push(basePath);
           }
         }
-      } catch (error) {
-        message.error("Error al guardar doctor");
+      } catch (error: any) {
+        console.error("❌ Error in handleSubmit:", error);
+        // El interceptor ya muestra el mensaje de error
       }
     },
     [isEdit, doctorId, createDoctor, updateDoctor, message, router, basePath]

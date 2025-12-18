@@ -80,16 +80,14 @@ export function useDoctors() {
       setLoading(true);
       try {
         const newDoctor = await doctorsService.createDoctor(data);
-        message.success("Doctor creado exitosamente");
         return newDoctor;
       } catch (error: any) {
-        message.error(error.message || "Error al crear doctor");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message]
+    []
   );
 
   /**
@@ -100,16 +98,14 @@ export function useDoctors() {
       setLoading(true);
       try {
         const updatedDoctor = await doctorsService.updateDoctor(id, data);
-        message.success("Doctor actualizado exitosamente");
         return updatedDoctor;
       } catch (error: any) {
-        message.error(error.message || "Error al actualizar doctor");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message]
+    []
   );
 
   /**

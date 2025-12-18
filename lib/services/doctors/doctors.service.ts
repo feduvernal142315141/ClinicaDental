@@ -79,10 +79,18 @@ async function createDoctor(data: CreateDoctorRequest): Promise<Doctor> {
     endpoint,
     data
   );
-  if (response?.data) {
+
+  // Check for successful response (2xx status codes)
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
     return response.data;
   }
-  throw new Error("Error al crear doctor");
+
+  // Handle error response
+  const errorMessage =
+    response?.data?.message ||
+    response?.data?.details ||
+    "Error al crear doctor";
+  throw new Error(errorMessage);
 }
 
 /**
@@ -97,10 +105,18 @@ async function updateDoctor(
     `${endpoint}/${id}`,
     data
   );
-  if (response?.data) {
+
+  // Check for successful response (2xx status codes)
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
     return response.data;
   }
-  throw new Error("Error al actualizar doctor");
+
+  // Handle error response
+  const errorMessage =
+    response?.data?.message ||
+    response?.data?.details ||
+    "Error al actualizar doctor";
+  throw new Error(errorMessage);
 }
 
 /**
