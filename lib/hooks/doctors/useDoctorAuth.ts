@@ -11,7 +11,7 @@ import type {
 
 /**
  * useDoctorAuth Hook
- * 
+ *
  * Hook for managing doctor authentication operations
  */
 export function useDoctorAuth() {

@@ -1,4 +1,9 @@
-import { serviceGet, servicePost, servicePut, serviceDelete } from "../baseService";
+import {
+  serviceGet,
+  servicePost,
+  servicePut,
+  serviceDelete,
+} from "../baseService";
 import type {
   Doctor,
   CreateDoctorRequest,
@@ -9,7 +14,7 @@ import type {
 
 /**
  * DoctorsService
- * 
+ *
  * Service for managing doctor operations (CRUD)
  * Base endpoint: /doctor
  */
@@ -44,10 +49,10 @@ async function getDoctors(
 ): Promise<PaginatedDoctorsResponse> {
   const queryString = buildQueryString(params);
   const url = `${endpoint}${queryString ? `?${queryString}` : ""}`;
-  
+
   const response = await serviceGet<PaginatedDoctorsResponse>(url);
   if (response?.data) {
-    return response.data.data;
+    return response.data;
   }
   throw new Error("Error al cargar doctores");
 }
@@ -59,7 +64,7 @@ async function getDoctors(
 async function getDoctorById(id: string): Promise<Doctor> {
   const response = await serviceGet<Doctor>(`${endpoint}/${id}`);
   if (response?.data) {
-    return response.data.data;
+    return response.data;
   }
   throw new Error("Error al cargar doctor");
 }
@@ -69,9 +74,12 @@ async function getDoctorById(id: string): Promise<Doctor> {
  * POST /doctor
  */
 async function createDoctor(data: CreateDoctorRequest): Promise<Doctor> {
-  const response = await servicePost<CreateDoctorRequest, Doctor>(endpoint, data);
+  const response = await servicePost<CreateDoctorRequest, Doctor>(
+    endpoint,
+    data
+  );
   if (response?.data) {
-    return response.data.data;
+    return response.data;
   }
   throw new Error("Error al crear doctor");
 }
@@ -84,9 +92,12 @@ async function updateDoctor(
   id: string,
   data: UpdateDoctorRequest
 ): Promise<Doctor> {
-  const response = await servicePut<UpdateDoctorRequest, Doctor>(`${endpoint}/${id}`, data);
+  const response = await servicePut<UpdateDoctorRequest, Doctor>(
+    `${endpoint}/${id}`,
+    data
+  );
   if (response?.data) {
-    return response.data.data;
+    return response.data;
   }
   throw new Error("Error al actualizar doctor");
 }

@@ -9,7 +9,7 @@ import type {
 
 /**
  * DoctorAuthService
- * 
+ *
  * Service for managing doctor authentication
  * Base endpoints: /auth/*
  */
@@ -19,9 +19,12 @@ import type {
  * POST /auth/login
  */
 async function login(credentials: LoginRequest): Promise<LoginResponse> {
-  const response = await servicePost<LoginRequest, LoginResponse>("/auth/login", credentials);
+  const response = await servicePost<LoginRequest, LoginResponse>(
+    "/auth/login",
+    credentials
+  );
   if (response?.data) {
-    return response.data.data;
+    return response.data;
   }
   throw new Error("Error al iniciar sesión");
 }
