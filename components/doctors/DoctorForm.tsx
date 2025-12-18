@@ -49,20 +49,32 @@ export function DoctorForm({
     useDoctorForm({ doctorId, basePath, initialData });
 
   return (
-    <Card>
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-        initialValues={{ active: true, schedule: DEFAULT_WEEK_SCHEDULE }}
-        disabled={loading}
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={handleSubmit}
+      initialValues={{ active: true, schedule: DEFAULT_WEEK_SCHEDULE }}
+      disabled={loading}
+    >
+      <Card
+        styles={{
+          body: {
+            maxHeight: "calc(100vh - 280px)",
+            overflowY: "auto",
+            overflowX: "hidden",
+          },
+        }}
+        actions={[
+          <Flex key="actions" justify="end" style={{ padding: "0 16px" }}>
+            <FormActions loading={loading} onCancel={handleCancel} />
+          </Flex>,
+        ]}
       >
         <Row gutter={[16, 16]} justify="center" align="middle">
-          <Col span={8}>
-            <Flex align="center" justify="center">
+          <Col xs={24} sm={24} md={8} lg={8}>
+            <Flex align="center" justify="center" className="w-full">
               <AvatarUpload
-                width={'20rem'}
-                height={'20rem'}
+                size={280}
                 maxCount={1}
                 listType="picture-card"
                 onFileListChange={(files) => {
@@ -75,7 +87,7 @@ export function DoctorForm({
             </Flex>
           </Col>
 
-          <Col span={16}>
+          <Col xs={24} sm={24} md={16} lg={16}>
             <Flex justify={"space-between"} align={"start"} wrap={true}>
               <BasicInfoFields />
 
@@ -102,11 +114,7 @@ export function DoctorForm({
         <Row gutter={[16, 16]}>
           <DoctorScheduleFields />
         </Row>
-        <Divider />
-        <Flex justify={"end"}>
-          <FormActions loading={loading} onCancel={handleCancel} />
-        </Flex>
-      </Form>
-    </Card>
+      </Card>
+    </Form>
   );
 }
