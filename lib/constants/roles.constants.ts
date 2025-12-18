@@ -1,0 +1,144 @@
+/**
+ * Roles Constants
+ *
+ * Constants and configuration for roles module
+ */
+
+/**
+ * System predefined role IDs
+ */
+export const SYSTEM_ROLE_IDS = {
+  SUPER_ADMIN: "11111111-1111-1111-1111-111111111111",
+  ADMIN: "22222222-2222-2222-2222-222222222222",
+  DOCTOR: "33333333-3333-3333-3333-333333333333",
+} as const;
+
+/**
+ * System predefined role names
+ */
+export const SYSTEM_ROLE_NAMES = {
+  SUPER_ADMIN: "Super Administrador",
+  ADMIN: "Administrador",
+  DOCTOR: "Doctor",
+} as const;
+
+/**
+ * Permission categories
+ */
+export const PERMISSION_CATEGORIES = {
+  APPOINTMENTS: "appointments",
+  PATIENTS: "patients",
+  DOCTORS: "doctors",
+  SETTINGS: "settings",
+  REPORTS: "reports",
+} as const;
+
+/**
+ * Available permissions
+ */
+export const PERMISSIONS = {
+  USER: {
+    id: "user",
+    name: "Gestión de Usuarios",
+    description: "Gestión de usuarios del sistema",
+    category: PERMISSION_CATEGORIES.SETTINGS,
+  },
+  ROLE: {
+    id: "role",
+    name: "Gestión de Roles",
+    description: "Gestión de roles y permisos",
+    category: PERMISSION_CATEGORIES.SETTINGS,
+  },
+  FINANCIAL_INSTITUTION: {
+    id: "financial_institution",
+    name: "Instituciones Financieras",
+    description: "Gestión de instituciones financieras",
+    category: PERMISSION_CATEGORIES.SETTINGS,
+  },
+  ONLINE_CONSULTATION: {
+    id: "online_consultation",
+    name: "Consultas en Línea",
+    description: "Acceso a consultas en línea",
+    category: PERMISSION_CATEGORIES.APPOINTMENTS,
+  },
+  RESEND_STATEMENT: {
+    id: "resend_statement",
+    name: "Reenvío de Estados",
+    description: "Reenvío de estados de cuenta",
+    category: PERMISSION_CATEGORIES.SETTINGS,
+  },
+  REPORT: {
+    id: "report",
+    name: "Reportes",
+    description: "Generación y acceso a reportes",
+    category: PERMISSION_CATEGORIES.REPORTS,
+  },
+  CAMPAIGN: {
+    id: "campaign",
+    name: "Campañas",
+    description: "Gestión de campañas",
+    category: PERMISSION_CATEGORIES.SETTINGS,
+  },
+} as const;
+
+/**
+ * Role validation rules
+ */
+export const ROLE_VALIDATION = {
+  MIN_NAME_LENGTH: 3,
+  MAX_NAME_LENGTH: 50,
+  MIN_PERMISSIONS: 0,
+  MAX_PERMISSIONS: 20,
+} as const;
+
+/**
+ * Default pagination settings for roles
+ */
+export const ROLES_PAGINATION_DEFAULTS = {
+  PAGE: 0,
+  PAGE_SIZE: 10,
+  PAGE_SIZE_OPTIONS: [10, 20, 50, 100],
+} as const;
+
+/**
+ * Filter operators for roles queries
+ */
+export const FILTER_OPERATORS = {
+  EQUAL: "eq",
+  NOT_EQUAL: "ne",
+  CONTAINS: "contains",
+  STARTS_WITH: "startsWith",
+  ENDS_WITH: "endsWith",
+  GREATER_THAN_OR_EQUAL: "gte",
+  LESS_THAN_OR_EQUAL: "lte",
+} as const;
+
+/**
+ * Sort directions
+ */
+export const SORT_DIRECTIONS = {
+  ASCENDING: "asc",
+  DESCENDING: "desc",
+} as const;
+
+/**
+ * Role colors for UI display
+ */
+export const ROLE_COLORS = {
+  SUPER_ADMIN: "#ff4d4f", // Red
+  ADMIN: "#1890ff", // Blue
+  DOCTOR: "#52c41a", // Green
+  DEFAULT: "#8c8c8c", // Gray
+} as const;
+
+/**
+ * Role status messages
+ */
+export const ROLE_MESSAGES = {
+  CREATE_SUCCESS: "Rol creado exitosamente",
+  CREATE_ERROR: "Error al crear rol",
+  LOAD_ERROR: "Error al cargar roles",
+  LOAD_DETAIL_ERROR: "Error al cargar detalle del rol",
+  VALIDATION_ERROR: "Error de validación en los datos del rol",
+  EMPTY_NAME: "El nombre del rol no puede estar vacío",
+} as const;
