@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Space } from "antd";
-import { SaveOutlined } from "@ant-design/icons";
+import { CloseOutlined, SaveOutlined } from "@ant-design/icons";
 
 /**
  * FormActions Component
@@ -35,7 +35,13 @@ export function FormActions({
       >
         {submitText}
       </Button>
-      <Button onClick={onCancel} size="large" disabled={loading}>
+      <Button
+        danger
+        onClick={onCancel}
+        size="large"
+        disabled={loading}
+        icon={<CloseOutlined />}
+      >
         {cancelText}
       </Button>
     </Space>

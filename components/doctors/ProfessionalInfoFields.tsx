@@ -29,9 +29,7 @@ export function ProfessionalInfoFields() {
         <Form.Item
           label="Especialidad"
           name="specialty"
-          rules={[
-            { max: 100, message: "Máximo 100 caracteres" },
-          ]}
+          rules={[{ max: 100, message: "Máximo 100 caracteres" }]}
         >
           <Input placeholder="Ej: Odontología General" />
         </Form.Item>
@@ -41,9 +39,7 @@ export function ProfessionalInfoFields() {
         <Form.Item
           label="Género"
           name="gender"
-          rules={[
-            { required: true, message: "El género es requerido" },
-          ]}
+          rules={[{ required: true, message: "El género es requerido" }]}
         >
           <Select placeholder="Seleccione género">
             <Option value="male">Masculino</Option>

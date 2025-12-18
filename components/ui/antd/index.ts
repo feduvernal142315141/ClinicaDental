@@ -4,6 +4,7 @@ export { AppSider } from "./layout/AppSider";
 export { AppHeaderAntd } from "./layout/AppHeaderAntd";
 export { MobileDrawer } from "./layout/MobileDrawer";
 export { MobileHeaderAntd } from "./layout/MobileHeaderAntd";
+export { SectionTitle } from "./layout/SectionTitle";
 
 // Ant Design Navigation Components
 export { NavMenu } from "./navigation/NavMenu";
@@ -13,6 +14,8 @@ export { AppBreadcrumb } from "./navigation/AppBreadcrumb";
 // Ant Design Data Display Components
 export { DataTable } from "./data-display/DataTable";
 export type { DataTableColumn, DataTableProps } from "./data-display/DataTable";
+export { Card } from "./data-display/Card";
+export type { CardProps } from "./data-display/Card";
 export { PageCard } from "./data-display/PageCard";
 export { StatusTag, ActiveStatusTag } from "./data-display/StatusTag";
 export { ActionButtons, ActionPresets } from "./data-display/ActionButtons";

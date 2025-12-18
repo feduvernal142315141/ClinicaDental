@@ -16,3 +16,8 @@ export { SecurityFields } from "./SecurityFields";
 export { RoleStatusFields } from "./RoleStatusFields";
 export { FormActions } from "./FormActions";
 export { PasswordStrength } from "./PasswordStrength";
+export { AvatarUpload } from "./AvatarUpload";
+export { DoctorScheduleFields } from "./DoctorScheduleFields";
+
+// Table configuration
+export { getDoctorsColumns } from "./doctors-table.config";

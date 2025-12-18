@@ -20,9 +20,9 @@ export function SecurityFields({ isEditing = false }: SecurityFieldsProps) {
           label="Contraseña"
           name="password"
           rules={[
-            { 
-              required: !isEditing, 
-              message: "La contraseña es requerida" 
+            {
+              required: !isEditing,
+              message: "La contraseña es requerida",
             },
             { min: 8, message: "Mínimo 8 caracteres" },
             { max: 50, message: "Máximo 50 caracteres" },
@@ -31,10 +31,18 @@ export function SecurityFields({ isEditing = false }: SecurityFieldsProps) {
               message: "Debe contener mayúsculas, minúsculas y números",
             },
           ]}
-          help={!isEditing ? <PasswordStrength /> : "Dejar vacío para mantener la contraseña actual"}
+          help={
+            !isEditing ? (
+              <PasswordStrength />
+            ) : (
+              "Dejar vacío para mantener la contraseña actual"
+            )
+          }
         >
-          <Input.Password 
-            placeholder={isEditing ? "Dejar vacío para no cambiar" : "Mínimo 8 caracteres"} 
+          <Input.Password
+            placeholder={
+              isEditing ? "Dejar vacío para no cambiar" : "Mínimo 8 caracteres"
+            }
           />
         </Form.Item>
       </Col>
@@ -45,16 +53,18 @@ export function SecurityFields({ isEditing = false }: SecurityFieldsProps) {
           name="confirmPassword"
           dependencies={["password"]}
           rules={[
-            { 
-              required: !isEditing, 
-              message: "Confirme la contraseña" 
+            {
+              required: !isEditing,
+              message: "Confirme la contraseña",
             },
             ({ getFieldValue }) => ({
               validator(_, value) {
                 if (!value || getFieldValue("password") === value) {
                   return Promise.resolve();
                 }
-                return Promise.reject(new Error("Las contraseñas no coinciden"));
+                return Promise.reject(
+                  new Error("Las contraseñas no coinciden")
+                );
               },
             }),
           ]}

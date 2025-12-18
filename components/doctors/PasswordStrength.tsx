@@ -1,49 +1,129 @@
 "use client";
 
-import { Form } from "antd";
+import { Form, Progress, Card } from "antd";
+import { CheckCircleFilled, CloseCircleFilled } from "@ant-design/icons";
+
+interface PasswordRequirement {
+  label: string;
+  test: (password: string) => boolean;
+}
+
+const requirements: PasswordRequirement[] = [
+  {
+    label: "Al menos 8 caracteres",
+    test: (pwd) => pwd.length >= 8,
+  },
+  {
+    label: "Una letra mayúscula",
+    test: (pwd) => /[A-Z]/.test(pwd),
+  },
+  {
+    label: "Una letra minúscula",
+    test: (pwd) => /[a-z]/.test(pwd),
+  },
+  {
+    label: "Un número",
+    test: (pwd) => /\d/.test(pwd),
+  },
+  {
+    label: "Un carácter especial",
+    test: (pwd) => /[^a-zA-Z0-9]/.test(pwd),
+  },
+];
 
 /**
  * PasswordStrength Component
- * Visual indicator for password strength
+ *
+ * Visual indicator for password strength with progress bar and animated checkpoints
  */
 export function PasswordStrength() {
   return (
     <Form.Item noStyle shouldUpdate>
       {({ getFieldValue }) => {
         const password = getFieldValue("password") || "";
-        
+
         if (!password) return null;
 
-        let strength = 0;
-        let strengthText = "";
-        let strengthColor = "";
+        // Calculate how many requirements are met
+        const metRequirements = requirements.filter((req) =>
+          req.test(password)
+        );
+        const strength = (metRequirements.length / requirements.length) * 100;
 
-        // Calculate strength
-        if (password.length >= 8) strength++;
-        if (password.length >= 12) strength++;
-        if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
-        if (/\d/.test(password)) strength++;
-        if (/[^a-zA-Z0-9]/.test(password)) strength++;
-
-        // Determine text and color
-        if (strength <= 2) {
-          strengthText = "Débil";
-          strengthColor = "#ff4d4f";
-        } else if (strength === 3) {
-          strengthText = "Media";
-          strengthColor = "#faad14";
-        } else if (strength === 4) {
-          strengthText = "Buena";
-          strengthColor = "#52c41a";
-        } else {
-          strengthText = "Excelente";
-          strengthColor = "#52c41a";
+        // Determine progress bar color
+        let progressColor = "#ff4d4f"; // Red (weak)
+        if (strength >= 40 && strength < 60) {
+          progressColor = "#faad14"; // Orange (medium)
+        } else if (strength >= 60 && strength < 80) {
+          progressColor = "#52c41a"; // Green (good)
+        } else if (strength >= 80) {
+          progressColor = "#52c41a"; // Green (excellent)
         }
 
         return (
-          <span style={{ color: strengthColor, fontSize: "12px" }}>
-            Fortaleza: {strengthText}
-          </span>
+          <Card
+            size="small"
+            className="mt-2"
+            styles={{
+              body: { padding: "12px 16px" },
+            }}
+          >
+            <div className="space-y-3">
+              {/* Progress Bar */}
+              <div>
+                <div className="flex justify-between items-center mb-1 flex-wrap gap-2">
+                  <span className="text-xs text-gray-500">
+                    Fortaleza de contraseña
+                  </span>
+                  <span
+                    className="text-xs font-medium"
+                    style={{ color: progressColor }}
+                  >
+                    {strength < 40 && "Débil"}
+                    {strength >= 40 && strength < 60 && "Media"}
+                    {strength >= 60 && strength < 80 && "Buena"}
+                    {strength >= 80 && "Excelente"}
+                  </span>
+                </div>
+                <Progress
+                  percent={strength}
+                  strokeColor={progressColor}
+                  showInfo={false}
+                  size="small"
+                />
+              </div>
+
+              {/* Requirements Checklist - Responsive Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {requirements.map((req, index) => {
+                  const isMet = req.test(password);
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 text-xs transition-all duration-300 ease-in-out"
+                      style={{
+                        color: isMet ? "#52c41a" : "#8c8c8c",
+                        opacity: isMet ? 1 : 0.6,
+                      }}
+                    >
+                      {isMet ? (
+                        <CheckCircleFilled
+                          className="transition-all duration-300 flex-shrink-0"
+                          style={{ fontSize: "14px", color: "#52c41a" }}
+                        />
+                      ) : (
+                        <CloseCircleFilled
+                          className="transition-all duration-300 flex-shrink-0"
+                          style={{ fontSize: "14px", color: "#d9d9d9" }}
+                        />
+                      )}
+                      <span className="whitespace-nowrap">{req.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
         );
       }}
     </Form.Item>
