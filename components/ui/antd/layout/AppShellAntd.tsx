@@ -125,7 +125,7 @@ export function AppShellAntd({ children }: AppShellAntdProps) {
             className="flex-1 overflow-auto rounded-bl-4xl"
             style={{
               padding: 24,
-              background: "var(--background, #fff)",
+              background: currentTheme === "dark" ? "#141414" : "#ffffff",
               height: "calc(100vh - 64px)",
             }}
           >

@@ -43,7 +43,7 @@ export function useSidebarNavigation(userRole?: string) {
         label: "Gestión de Pacientes",
         icon: Users,
       },
-      { path: "/settings/users", label: "Doctores y Roles", icon: UserCog },
+      { path: "/settings/doctors", label: "Doctores y Roles", icon: UserCog },
       { path: "/settings/notifications", label: "Notificaciones", icon: Bell },
       { path: "/settings/integrations", label: "Integraciones", icon: Link },
     ];

@@ -1,6 +1,6 @@
 "use client";
 
-import { Table as AntTable, TableProps as AntTableProps } from "antd";
+import { Table as AntTable, TableProps as AntTableProps, Empty } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import type { FilterValue, SorterResult } from "antd/es/table/interface";
 import { useCallback } from "react";
@@ -8,7 +8,7 @@ import { useCallback } from "react";
 export interface DataTableColumn<T> {
   key: string;
   title: string;
-  dataIndex: string | string[];
+  dataIndex?: string | string[];
   width?: number | string;
   fixed?: "left" | "right";
   ellipsis?: boolean;
@@ -92,11 +92,19 @@ export function DataTable<T extends object>({
   size = "middle",
   showSizeChanger = true,
   pageSizeOptions = ["10", "20", "50", "100"],
-  emptyText = "No hay datos",
+  emptyText,
   className,
   showPagination = true,
   bordered = false,
 }: DataTableProps<T>) {
+  // Default empty state
+  const defaultEmptyState = (
+    <Empty
+      description="No hay datos disponibles"
+      image={Empty.PRESENTED_IMAGE_DEFAULT}
+    />
+  );
+
   // Convert our column format to Ant Design format
   const antColumns: ColumnsType<T> = columns.map((col) => ({
     key: col.key,
@@ -165,7 +173,7 @@ export function DataTable<T extends object>({
       size={size}
       bordered={bordered}
       className={className}
-      locale={{ emptyText }}
+      locale={{ emptyText: emptyText || defaultEmptyState }}
     />
   );
 }

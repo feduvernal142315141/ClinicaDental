@@ -14,7 +14,7 @@ import {
 const SETTINGS_TABS = [
   { value: "general", label: "Opciones Generales" },
   { value: "patients", label: "Gestión de Pacientes" },
-  { value: "users", label: "Doctores y Roles" },
+  { value: "doctors", label: "Doctores y Roles" },
   { value: "notifications", label: "Notificaciones" },
   { value: "integrations", label: "Integraciones" },
 ];
