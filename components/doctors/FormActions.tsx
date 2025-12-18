@@ -27,15 +27,6 @@ export function FormActions({
   return (
     <Space>
       <Button
-        type="primary"
-        htmlType="submit"
-        icon={<SaveOutlined />}
-        loading={loading}
-        size="large"
-      >
-        {submitText}
-      </Button>
-      <Button
         danger
         onClick={onCancel}
         size="large"
@@ -43,6 +34,15 @@ export function FormActions({
         icon={<CloseOutlined />}
       >
         {cancelText}
+      </Button>
+      <Button
+        type="primary"
+        htmlType="submit"
+        icon={<SaveOutlined />}
+        loading={loading}
+        size="large"
+      >
+        {submitText}
       </Button>
     </Space>
   );

@@ -57,12 +57,14 @@ export function DoctorForm({
         initialValues={{ active: true, schedule: DEFAULT_WEEK_SCHEDULE }}
         disabled={loading}
       >
-        <Row gutter={[16, 16]}>
+        <Row gutter={[16, 16]} justify="center" align="middle">
           <Col span={8}>
-            <div className="flex justify-center items-start pt-6">
+            <Flex align="center" justify="center">
               <AvatarUpload
+                width={'20rem'}
+                height={'20rem'}
                 maxCount={1}
-                listType="picture-circle"
+                listType="picture-card"
                 onFileListChange={(files) => {
                   const url = files[0]?.preview || files[0]?.url;
                   if (url) {
@@ -70,8 +72,9 @@ export function DoctorForm({
                   }
                 }}
               />
-            </div>
+            </Flex>
           </Col>
+
           <Col span={16}>
             <Flex justify={"space-between"} align={"start"} wrap={true}>
               <BasicInfoFields />
@@ -99,7 +102,7 @@ export function DoctorForm({
         <Row gutter={[16, 16]}>
           <DoctorScheduleFields />
         </Row>
-        {/* Action Buttons */}
+        <Divider />
         <Flex justify={"end"}>
           <FormActions loading={loading} onCancel={handleCancel} />
         </Flex>
