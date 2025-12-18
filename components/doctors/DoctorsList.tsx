@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { App } from "antd";
 import { DataTable, Card } from "@/components/ui/antd";
 import { useDoctors } from "@/lib/hooks/doctors";
@@ -28,6 +28,11 @@ export function DoctorsList({
 
   const { doctors, loading, pagination, fetchDoctors, deleteDoctor } =
     useDoctors();
+
+  // Load doctors on component mount
+  useEffect(() => {
+    fetchDoctors({ page: 0, pageSize: 10 });
+  }, [fetchDoctors]);
 
   const columns = useMemo(
     () =>
