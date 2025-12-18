@@ -19,7 +19,7 @@ export function useDoctors() {
   const [loading, setLoading] = useState(false);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [pagination, setPagination] = useState({
-    page: 1,
+    page: 0,
     pageSize: 10,
     total: 0,
   });
@@ -34,11 +34,12 @@ export function useDoctors() {
         const response: PaginatedDoctorsResponse =
           await doctorsService.getDoctors(params);
 
-        setDoctors(response.data);
+        // Backend returns { entities: Doctor[], pagination: {...} }
+        setDoctors(response.entities);
         setPagination({
-          page: response.page,
-          pageSize: response.pageSize,
-          total: response.total,
+          page: response.pagination.page,
+          pageSize: response.pagination.pageSize,
+          total: response.pagination.total,
         });
 
         return response;

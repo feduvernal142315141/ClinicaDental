@@ -52,6 +52,7 @@ async function getDoctors(
 
   const response = await serviceGet<PaginatedDoctorsResponse>(url);
   if (response?.data) {
+    // Backend returns { entities: Doctor[], pagination: { page, pageSize, total } }
     return response.data;
   }
   throw new Error("Error al cargar doctores");

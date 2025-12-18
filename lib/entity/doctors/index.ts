@@ -94,11 +94,18 @@ export interface DoctorsQueryParams {
 }
 
 /**
- * Paginated doctors response
+ * Backend pagination structure
  */
-export interface PaginatedDoctorsResponse {
-  data: Doctor[];
+export interface Pagination {
   page: number;
   pageSize: number;
   total: number;
+}
+
+/**
+ * Paginated doctors response from backend
+ */
+export interface PaginatedDoctorsResponse {
+  entities: Doctor[];
+  pagination: Pagination;
 }
