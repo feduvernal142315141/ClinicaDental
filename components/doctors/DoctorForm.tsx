@@ -1,6 +1,7 @@
 "use client";
 
-import { Form, Divider, Input, Row, Col, Flex } from "antd";
+import { Form, Divider, Input, Row, Col, Flex, Avatar } from "antd";
+import { UserOutlined } from "@ant-design/icons";
 import { useDoctorForm } from "@/hooks/use-doctor-form";
 
 import { BasicInfoFields } from "./BasicInfoFields";
@@ -25,36 +26,62 @@ interface DoctorFormProps {
   basePath?: string;
   /** Initial data (for editing) */
   initialData?: Doctor;
+  /** Read-only mode (for detail view) */
+  readOnly?: boolean;
 }
 
 /**
  * Doctor Form Component
  *
- * Handles both creation and editing of doctors (system users).
+ * Handles creation, editing, and viewing of doctors (system users).
  * Uses Ant Design Form with validation.
  *
  * @example
  * // New doctor
- * <DoctorForm basePath="/settings/users" />
+ * <DoctorForm basePath="/settings/doctors" />
  *
  * // Edit doctor
- * <DoctorForm doctorId="123" basePath="/settings/users" initialData={doctor} />
+ * <DoctorForm doctorId="123" basePath="/settings/doctors" />
+ *
+ * // View doctor (read-only)
+ * <DoctorForm doctorId="123" basePath="/settings/doctors" readOnly />
  */
 export function DoctorForm({
   doctorId,
   basePath = "/settings/doctors",
   initialData,
+  readOnly = false,
 }: DoctorFormProps) {
   const { form, isEdit, loading, handleSubmit, handleCancel, handleBack } =
     useDoctorForm({ doctorId, basePath, initialData });
+
+  // Get avatar URL from form (for edit mode)
+  const avatarUrl = Form.useWatch("avatarUrl", form);
+
+  // Build initial file list for AvatarUpload
+  const initialFileList =
+    avatarUrl && isEdit
+      ? [
+          {
+            uid: "-1",
+            name: "avatar.jpg",
+            status: "done" as const,
+            url: avatarUrl,
+          },
+        ]
+      : [];
 
   return (
     <Form
       form={form}
       layout="vertical"
       onFinish={handleSubmit}
-      initialValues={{ active: true, schedule: DEFAULT_WEEK_SCHEDULE }}
-      disabled={loading}
+      initialValues={{
+        active: true,
+        // Always set default schedule, useEffect will override it when editing
+        schedule: DEFAULT_WEEK_SCHEDULE,
+      }}
+      disabled={loading || readOnly}
     >
       <Card
         styles={{
@@ -64,26 +91,49 @@ export function DoctorForm({
             overflowX: "hidden",
           },
         }}
-        actions={[
-          <Flex key="actions" justify="end" style={{ padding: "0 16px" }}>
-            <FormActions loading={loading} onCancel={handleCancel} />
-          </Flex>,
-        ]}
+        actions={
+          readOnly
+            ? undefined
+            : [
+                <Flex key="actions" justify="end" style={{ padding: "0 16px" }}>
+                  <FormActions loading={loading} onCancel={handleCancel} />
+                </Flex>,
+              ]
+        }
       >
         <Row gutter={[16, 16]} justify="center" align="middle">
           <Col xs={24} sm={24} md={8} lg={8}>
             <Flex align="center" justify="center" className="w-full">
-              <AvatarUpload
-                size={280}
-                maxCount={1}
-                listType="picture-card"
-                onFileListChange={(files) => {
-                  const url = files[0]?.preview || files[0]?.url;
-                  if (url) {
-                    form.setFieldValue("avatarUrl", url);
-                  }
-                }}
-              />
+              {readOnly ? (
+                // Read-only mode: Show Avatar with image or default icon
+                <Avatar
+                  size={280}
+                  src={avatarUrl}
+                  icon={!avatarUrl ? <UserOutlined /> : undefined}
+                  style={{
+                    backgroundColor: !avatarUrl ? "#f0f0f0" : undefined,
+                    color: !avatarUrl ? "#8c8c8c" : undefined,
+                  }}
+                />
+              ) : (
+                // Edit/Create mode: Show AvatarUpload component
+                <AvatarUpload
+                  size={280}
+                  maxCount={1}
+                  listType="picture-circle"
+                  initialFileList={initialFileList}
+                  disabled={readOnly}
+                  onFileListChange={(files) => {
+                    const url = files[0]?.preview || files[0]?.url;
+                    if (url) {
+                      form.setFieldValue("avatarUrl", url);
+                    } else {
+                      // If all files removed, clear avatarUrl
+                      form.setFieldValue("avatarUrl", undefined);
+                    }
+                  }}
+                />
+              )}
             </Flex>
           </Col>
 

@@ -22,6 +22,8 @@ interface AvatarUploadProps {
   listType?: "picture-card" | "picture-circle";
   /** Size for picture-card/picture-circle (both upload button and thumbnail) */
   size?: number;
+  /** Disable upload (read-only mode) */
+  disabled?: boolean;
 }
 
 /**
@@ -69,6 +71,7 @@ export function AvatarUpload({
   onFileListChange,
   listType = "picture-circle",
   size = 320,
+  disabled = false,
 }: AvatarUploadProps) {
   const {
     fileList,
@@ -119,8 +122,12 @@ export function AvatarUpload({
         maxCount={maxCount}
         accept={allowedFormats?.join(",") || "image/jpeg,image/png,image/jpg"}
         className="avatar-upload"
+        disabled={disabled}
+        showUploadList={{
+          showRemoveIcon: !disabled,
+        }}
       >
-        {fileList.length >= maxCount ? null : uploadButton}
+        {fileList.length >= maxCount || disabled ? null : uploadButton}
       </Upload>
 
       {/* Preview Modal */}
@@ -129,7 +136,7 @@ export function AvatarUpload({
           styles={{ root: { display: "none" } }}
           preview={{
             open: previewOpen,
-            onVisibleChange: handlePreviewOpenChange,
+            onOpenChange: handlePreviewOpenChange,
             afterOpenChange: (visible) =>
               !visible && handlePreviewOpenChange(false),
           }}
