@@ -3,6 +3,7 @@ import {
   StatusTag,
   ActionButtons,
 } from "@/components/ui/antd";
+import { EyeOutlined, EditOutlined } from "@ant-design/icons";
 import type { DoctorListItem } from "@/lib/entity/doctors";
 import dayjs from "dayjs";
 
@@ -81,11 +82,13 @@ export function getDoctorsColumns({
             {
               key: "view",
               label: "Ver",
+              icon: <EyeOutlined />,
               onClick: () => onView(record.id),
             },
             {
               key: "edit",
               label: "Editar",
+              icon: <EditOutlined />,
               onClick: () => onEdit(record.id),
             },
           ]}

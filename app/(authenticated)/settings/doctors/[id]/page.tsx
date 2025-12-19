@@ -7,7 +7,7 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function UserDetailPage({ params }: PageProps) {
+export default function DoctorDetailPage({ params }: PageProps) {
   const { id } = use(params);
-  return <DoctorDetail doctorId={id} basePath="/settings/users" />;
+  return <DoctorDetail doctorId={id} basePath="/settings/doctors" />;
 }

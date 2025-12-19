@@ -75,20 +75,17 @@ export function useDoctors() {
   /**
    * Create new doctor
    */
-  const createDoctor = useCallback(
-    async (data: CreateDoctorRequest) => {
-      setLoading(true);
-      try {
-        const newDoctor = await doctorsService.createDoctor(data);
-        return newDoctor;
-      } catch (error: any) {
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+  const createDoctor = useCallback(async (data: CreateDoctorRequest) => {
+    setLoading(true);
+    try {
+      const newDoctor = await doctorsService.createDoctor(data);
+      return newDoctor;
+    } catch (error: any) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   /**
    * Update existing doctor

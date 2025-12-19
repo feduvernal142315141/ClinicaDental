@@ -81,41 +81,41 @@ apiInstance.interceptors.response.use(
     // Manejar respuestas exitosas con notificaciones
     const status = response.status;
     const method = response.config.method?.toUpperCase();
-    
+
     // Mostrar notificación de éxito para operaciones CREATE (POST con 201)
-    if (status === 201 && method === 'POST') {
-      const url = response.config.url || '';
-      let message = 'Recurso creado exitosamente';
-      
+    if (status === 201 && method === "POST") {
+      const url = response.config.url || "";
+      let message = "Recurso creado exitosamente";
+
       // Mensajes personalizados según el endpoint
-      if (url.includes('/doctor')) {
-        message = 'Doctor creado correctamente';
-      } else if (url.includes('/patient')) {
-        message = 'Paciente creado correctamente';
-      } else if (url.includes('/appointment')) {
-        message = 'Cita creada correctamente';
+      if (url.includes("/doctor")) {
+        message = "Doctor creado correctamente";
+      } else if (url.includes("/patient")) {
+        message = "Paciente creado correctamente";
+      } else if (url.includes("/appointment")) {
+        message = "Cita creada correctamente";
       }
-      
-      interceptorHandlers.onNotification?.(message, 'success');
+
+      interceptorHandlers.onNotification?.(message, "success");
     }
-    
+
     // Mostrar notificación de éxito para operaciones UPDATE (PUT con 200)
-    if (status === 200 && method === 'PUT') {
-      const url = response.config.url || '';
-      let message = 'Recurso actualizado exitosamente';
-      
+    if (status === 200 && method === "PUT") {
+      const url = response.config.url || "";
+      let message = "Recurso actualizado exitosamente";
+
       // Mensajes personalizados según el endpoint
-      if (url.includes('/doctor')) {
-        message = 'Doctor actualizado correctamente';
-      } else if (url.includes('/patient')) {
-        message = 'Paciente actualizado correctamente';
-      } else if (url.includes('/appointment')) {
-        message = 'Cita actualizada correctamente';
+      if (url.includes("/doctor")) {
+        message = "Doctor actualizado correctamente";
+      } else if (url.includes("/patient")) {
+        message = "Paciente actualizado correctamente";
+      } else if (url.includes("/appointment")) {
+        message = "Cita actualizada correctamente";
       }
-      
-      interceptorHandlers.onNotification?.(message, 'success');
+
+      interceptorHandlers.onNotification?.(message, "success");
     }
-    
+
     return response;
   },
   (error: AxiosError) => {
