@@ -24,6 +24,7 @@ export interface Doctor {
   licenceNumber: string;
   specialty?: string;
   description?: string;
+  avatarUrl?: string;
   schedule?: Record<string, any>; // JSON schedule data
   gender?: "male" | "female" | "other";
   role?: Role;
@@ -59,6 +60,7 @@ export interface CreateDoctorRequest {
   licenceNumber: string;
   specialty?: string;
   description?: string;
+  avatarUrl?: string;
   schedule?: object; // JSON object (Spring Boot handles conversion)
   gender?: "male" | "female" | "other";
   roleId?: string;
@@ -69,12 +71,14 @@ export interface CreateDoctorRequest {
  * Update doctor request payload
  */
 export interface UpdateDoctorRequest {
+  id?: string;
   name?: string;
   email?: string;
   phone?: string;
   licenceNumber?: string;
   specialty?: string;
   description?: string;
+  avatarUrl?: string;
   schedule?: object; // JSON object (Spring Boot handles conversion)
   gender?: "male" | "female" | "other";
   roleId?: string;

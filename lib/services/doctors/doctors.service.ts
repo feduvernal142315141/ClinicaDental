@@ -95,14 +95,14 @@ async function createDoctor(data: CreateDoctorRequest): Promise<Doctor> {
 
 /**
  * Update existing doctor
- * PUT /doctor/:id
+ * PUT /doctor
  */
 async function updateDoctor(
   id: string,
   data: UpdateDoctorRequest
 ): Promise<Doctor> {
   const response = await servicePut<UpdateDoctorRequest, Doctor>(
-    `${endpoint}/${id}`,
+    endpoint,
     data
   );
 
