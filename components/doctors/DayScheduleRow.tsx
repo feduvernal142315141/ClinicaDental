@@ -1,6 +1,6 @@
 "use client";
 
-import { Switch, Row, Col, Space, Typography } from "antd";
+import { Form, Switch, Row, Col, Space, Typography } from "antd";
 import { WorkingHours } from "./WorkingHours";
 import { BreakTime } from "./BreakTime";
 
@@ -35,6 +35,11 @@ export function DayScheduleRow({
       align="middle"
       className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
     >
+      {/* Hidden Form.Item to persist 'enabled' field in form state */}
+      <Form.Item name={["schedule", dayKey, "enabled"]} hidden>
+        <input type="checkbox" />
+      </Form.Item>
+
       {/* Day Name + Enable Switch */}
       <Col xs={24} sm={6} md={4}>
         <Space>
