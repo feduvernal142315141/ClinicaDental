@@ -99,6 +99,18 @@ export function useBreadcrumb(options: UseBreadcrumbOptions = {}) {
       const isLast = index === segments.length - 1;
       const isDynamic = isDynamicSegment(segment);
 
+      // Check if the next segment is an action (edit, delete, etc.)
+      const nextSegment = segments[index + 1];
+      const nextIsAction =
+        nextSegment &&
+        ["edit", "delete", "create", "new"].includes(nextSegment.toLowerCase());
+
+      // Skip dynamic segments when the next segment is an action
+      // e.g., /doctors/[id]/edit should show "Doctores / Editar" not "Doctores / Detalle / Editar"
+      if (isDynamic && nextIsAction) {
+        return;
+      }
+
       // Determine the label
       let label: string;
       if (isDynamic && dynamicLabels[segment]) {
