@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { DoctorForm } from "./DoctorForm";
+import { SectionTitle } from "@/components/ui/antd";
+import { useDoctorsPage } from "@/hooks/use-doctors-page";
 import { useRouter } from "next/navigation";
-import { Descriptions, Button, Space, Divider, App } from "antd";
-import { ArrowLeftOutlined, EditOutlined } from "@ant-design/icons";
-import { PageCard, LoadingSpinner, StatusTag } from "@/components/ui/antd";
-import { useDoctors } from "@/lib/hooks/doctors";
-import { Doctor } from "@/lib/entity/doctors";
-import dayjs from "dayjs";
+import { Button, Space } from "antd";
+import { EditOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 
 interface DoctorDetailProps {
   /** Doctor ID to display */
@@ -19,105 +17,51 @@ interface DoctorDetailProps {
 /**
  * Doctor Detail Component
  *
- * Displays detailed information about a doctor.
+ * Displays detailed information about a doctor in read-only mode.
+ * Uses the same DoctorForm component with disabled fields.
  *
  * @example
- * <DoctorDetail doctorId="123" basePath="/settings/users" />
+ * <DoctorDetail doctorId="123" basePath="/settings/doctors" />
  */
 export function DoctorDetail({
   doctorId,
-  basePath = "/settings/users",
+  basePath = "/settings/doctors",
 }: DoctorDetailProps) {
   const router = useRouter();
-  const { message } = App.useApp();
-  const { loadDoctorById, isLoading } = useDoctors();
-  const [doctor, setDoctor] = useState<Doctor | null>(null);
-
-  useEffect(() => {
-    if (doctorId) {
-      loadDoctorById(doctorId).then((data) => {
-        if (data) {
-          setDoctor(data);
-        } else {
-          message.error("Doctor no encontrado");
-          router.push(basePath);
-        }
-      });
-    }
-  }, [doctorId, loadDoctorById, message, router, basePath]);
+  const { handleBackToList } = useDoctorsPage({ basePath });
 
   const handleEdit = () => {
     router.push(`${basePath}/${doctorId}/edit`);
   };
 
-  const handleBack = () => {
-    router.push(basePath);
-  };
-
-  if (isLoading || !doctor) {
-    return <LoadingSpinner tip="Cargando doctor..." fullPage />;
-  }
-
   return (
-    <PageCard
-      title="Detalle del Doctor"
-      subtitle={doctor.name}
-      extra={
+    <>
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex-1">
+          <h2 className="text-2xl font-semibold mb-1">Detalle del Doctor</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+            Visualice la información del doctor en el sistema
+          </p>
+        </div>
         <Space>
-          <Button icon={<EditOutlined />} type="primary" onClick={handleEdit}>
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={handleEdit}
+            size="large"
+          >
             Editar
           </Button>
-          <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>
-            Volver
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={handleBackToList}
+            size="large"
+          >
+            Atrás
           </Button>
         </Space>
-      }
-    >
-      <Divider orientation="left">Información Básica</Divider>
-      <Descriptions column={2} bordered>
-        <Descriptions.Item label="Nombre">{doctor.name}</Descriptions.Item>
-        <Descriptions.Item label="Email">{doctor.email}</Descriptions.Item>
-        <Descriptions.Item label="Teléfono">
-          {doctor.phone || "-"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Estado">
-          <StatusTag
-            status={doctor.active ? "success" : "error"}
-            text={doctor.active ? "Activo" : "Inactivo"}
-          />
-        </Descriptions.Item>
-      </Descriptions>
-
-      <Divider orientation="left">Información Profesional</Divider>
-      <Descriptions column={2} bordered>
-        <Descriptions.Item label="Licencia">
-          {doctor.licenceNumber}
-        </Descriptions.Item>
-        <Descriptions.Item label="Especialidad">
-          {doctor.specialty || "-"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Género">
-          {doctor.gender || "-"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Rol">
-          {doctor.role?.name || "-"}
-        </Descriptions.Item>
-      </Descriptions>
-
-      {doctor.description && (
-        <>
-          <Divider orientation="left">Descripción</Divider>
-          <p className="text-gray-700">{doctor.description}</p>
-        </>
-      )}
-
-      <Divider orientation="left">Información del Sistema</Divider>
-      <Descriptions column={2} bordered>
-        <Descriptions.Item label="Fecha de Creación">
-          {dayjs(doctor.createAt).format("DD/MM/YYYY HH:mm")}
-        </Descriptions.Item>
-        <Descriptions.Item label="ID">{doctor.id}</Descriptions.Item>
-      </Descriptions>
-    </PageCard>
+      </div>
+      <DoctorForm doctorId={doctorId} basePath={basePath} readOnly />
+    </>
   );
 }
