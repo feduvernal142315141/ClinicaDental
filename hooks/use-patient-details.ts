@@ -2,7 +2,7 @@ import { Patient } from "@/lib/entity/patients/patients";
 import { createClient } from "@/lib/supabase/server";
 
 export async function usePatientDetails(id: string): Promise<Patient | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("patients")

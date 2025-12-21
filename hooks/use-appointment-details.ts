@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function useAppointmentDetails(
   id: string
 ): Promise<Appointment | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("appointments")
