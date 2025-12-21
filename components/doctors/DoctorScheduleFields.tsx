@@ -36,13 +36,16 @@ export function DoctorScheduleFields() {
                   enabled={enabled}
                   onToggle={(checked) => {
                     // Get the current schedule or use defaults
-                    const currentDaySchedule = getFieldValue(["schedule", day.key]) || {
+                    const currentDaySchedule = getFieldValue([
+                      "schedule",
+                      day.key,
+                    ]) || {
                       startTime: "09:00",
                       endTime: "18:00",
                       breakStart: "13:00",
                       breakEnd: "14:00",
                     };
-                    
+
                     // Update the entire day schedule with the new enabled value
                     setFieldValue(["schedule", day.key], {
                       ...currentDaySchedule,

@@ -68,7 +68,7 @@ const transformScheduleToBackend = (frontendSchedule: any): any => {
 
   Object.keys(frontendSchedule).forEach((day) => {
     const daySchedule = frontendSchedule[day];
-    
+
     // Only include enabled days in the backend payload
     if (daySchedule && daySchedule.enabled) {
       backendSchedule[day] = {
@@ -170,10 +170,10 @@ export function useDoctorForm({
       try {
         console.log("📝 Form values:", values);
         console.log("📅 Schedule from form:", values.schedule);
-        
+
         // Debug: Log each day's schedule in detail
         if (values.schedule) {
-          Object.keys(values.schedule).forEach(day => {
+          Object.keys(values.schedule).forEach((day) => {
             console.log(`  ${day}:`, values.schedule[day]);
           });
         }
