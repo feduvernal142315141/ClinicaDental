@@ -11,7 +11,9 @@ const PatientsPageClient = dynamic(
   {
     loading: () => (
       <div className="flex justify-center items-center h-64">
-        <Spin tip="Cargando..." />
+        <Spin tip="Cargando...">
+          <div style={{ padding: "50px" }} />
+        </Spin>
       </div>
     ),
   }
