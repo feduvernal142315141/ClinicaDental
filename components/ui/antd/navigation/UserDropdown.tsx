@@ -4,6 +4,7 @@ import { Dropdown, Avatar, Space, Typography } from "antd";
 import type { MenuProps } from "antd";
 import {
   UserOutlined,
+  KeyOutlined,
   QuestionCircleOutlined,
   LogoutOutlined,
   DownOutlined,
@@ -17,6 +18,7 @@ interface UserDropdownProps {
   userAvatar?: string;
   onLogout: () => void;
   onProfile?: () => void;
+  onChangePassword?: () => void;
   onSupport?: () => void;
   collapsed?: boolean;
 }
@@ -31,6 +33,7 @@ export function UserDropdown({
   userAvatar,
   onLogout,
   onProfile,
+  onChangePassword,
   onSupport,
   collapsed = false,
 }: UserDropdownProps) {
@@ -55,6 +58,16 @@ export function UserDropdown({
       label: "Mi Perfil",
       onClick: onProfile,
     },
+    ...(onChangePassword
+      ? [
+          {
+            key: "change-password",
+            icon: <KeyOutlined />,
+            label: "Cambiar contraseña",
+            onClick: onChangePassword,
+          },
+        ]
+      : []),
     ...(onSupport
       ? [
           {

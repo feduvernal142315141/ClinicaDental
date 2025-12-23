@@ -8,6 +8,7 @@ import type {
   Doctor,
   CreateDoctorRequest,
   UpdateDoctorRequest,
+  DoctorChangePasswordRequest,
   DoctorsQueryParams,
   PaginatedDoctorsResponse,
 } from "@/lib/entity/doctors";
@@ -130,10 +131,34 @@ async function deleteDoctor(id: string): Promise<void> {
   }
 }
 
+/**
+ * Change doctor password
+ * PUT /doctor/change-password
+ */
+async function changeDoctorPassword(
+  data: DoctorChangePasswordRequest
+): Promise<void> {
+  const response = await servicePut<DoctorChangePasswordRequest, {}>(
+    `${endpoint}/change-password`,
+    data
+  );
+
+  if (response?.status >= 200 && response?.status < 300) {
+    return;
+  }
+
+  const errorMessage =
+    response?.data?.message ||
+    response?.data?.details ||
+    "Error al cambiar contraseña";
+  throw new Error(errorMessage);
+}
+
 export const doctorsService = {
   getDoctors,
   getDoctorById,
   createDoctor,
   updateDoctor,
   deleteDoctor,
+  changeDoctorPassword,
 };

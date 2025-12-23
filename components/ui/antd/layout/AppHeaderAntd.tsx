@@ -20,6 +20,7 @@ interface AppHeaderAntdProps {
   userAvatar?: string;
   onLogout: () => void;
   onProfile?: () => void;
+  onChangePassword?: () => void;
   onSupport?: () => void;
   onNotificationsClick?: () => void;
   showCollapseButton?: boolean;
@@ -36,6 +37,7 @@ export function AppHeaderAntd({
   userAvatar,
   onLogout,
   onProfile,
+  onChangePassword,
   onSupport,
   onNotificationsClick,
   notificationCount = 0,
@@ -74,6 +76,7 @@ export function AppHeaderAntd({
           userAvatar={userAvatar}
           onLogout={onLogout}
           onProfile={onProfile}
+          onChangePassword={onChangePassword}
           onSupport={onSupport}
         />
       </Space>

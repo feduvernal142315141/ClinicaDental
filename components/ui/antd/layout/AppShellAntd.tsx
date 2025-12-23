@@ -1,11 +1,14 @@
 "use client";
 
 import { Layout, ConfigProvider, theme, App } from "antd";
+import { useState } from "react";
 import { useTheme } from "@/hooks/use-theme";
 import { useAppShell } from "@/hooks/use-app-shell";
+import { useAuth } from "@/contexts/auth-context";
 import { AppSider } from "./AppSider";
 import { AppHeaderAntd } from "./AppHeaderAntd";
 import { MobileHeaderAntd } from "./MobileHeaderAntd";
+import { ChangePasswordModal } from "@/components/doctors/ChangePasswordModal";
 
 const { Content } = Layout;
 
@@ -25,6 +28,8 @@ interface AppShellAntdProps {
  */
 export function AppShellAntd({ children }: AppShellAntdProps) {
   const { theme: currentTheme } = useTheme();
+  const { user } = useAuth();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const {
     sidebarCollapsed,
@@ -96,6 +101,7 @@ export function AppShellAntd({ children }: AppShellAntdProps) {
                 userEmail={userEmail}
                 onLogout={handleLogout}
                 onProfile={handleProfile}
+                onChangePassword={() => setChangePasswordOpen(true)}
                 onSupport={handleSupport}
                 showCollapseButton={false}
               />
@@ -114,6 +120,14 @@ export function AppShellAntd({ children }: AppShellAntdProps) {
             </Content>
           </Layout>
         </Layout>
+
+        {user?.id && (
+          <ChangePasswordModal
+            open={changePasswordOpen}
+            doctorId={user.id}
+            onClose={() => setChangePasswordOpen(false)}
+          />
+        )}
       </App>
     </ConfigProvider>
   );

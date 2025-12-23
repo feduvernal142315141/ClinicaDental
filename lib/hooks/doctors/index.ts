@@ -6,3 +6,4 @@
 
 export { useDoctors } from "./useDoctors";
 export { useDoctorAuth } from "./useDoctorAuth";
+export { useDoctorChangePassword } from "./useDoctorChangePassword";
