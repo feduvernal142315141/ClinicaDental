@@ -55,7 +55,7 @@ export interface DoctorListItem {
 export interface CreateDoctorRequest {
   name: string;
   email: string;
-  password: string;
+  password?: string;
   phone?: string;
   licenceNumber: string;
   specialty?: string;
@@ -112,4 +112,43 @@ export interface Pagination {
 export interface PaginatedDoctorsResponse {
   entities: Doctor[];
   pagination: Pagination;
+}
+
+/**
+ * Auth / Password types
+ */
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  token?: string;
+  refreshToken?: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
+/**
+ * Change password for authenticated user (/auth/change-password)
+ */
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+}
+
+/**
+ * Change doctor password via doctor endpoint (/doctor/change-password)
+ */
+export interface DoctorChangePasswordRequest {
+  doctorId: string;
+  oldPassword: string;
+  newPassword: string;
 }

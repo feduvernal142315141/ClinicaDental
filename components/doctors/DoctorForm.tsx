@@ -9,7 +9,6 @@ import { ProfessionalInfoFields } from "./ProfessionalInfoFields";
 import {
   FormActions,
   RoleStatusFields,
-  SecurityFields,
   AvatarUpload,
   DoctorScheduleFields,
 } from ".";
@@ -105,7 +104,6 @@ export function DoctorForm({
           <Col xs={24} sm={24} md={8} lg={8}>
             <Flex align="center" justify="center" className="w-full">
               {readOnly ? (
-                // Read-only mode: Show Avatar with image or default icon
                 <Avatar
                   size={280}
                   src={avatarUrl}
@@ -116,7 +114,6 @@ export function DoctorForm({
                   }}
                 />
               ) : (
-                // Edit/Create mode: Show AvatarUpload component
                 <AvatarUpload
                   size={280}
                   maxCount={1}
@@ -128,7 +125,6 @@ export function DoctorForm({
                     if (url) {
                       form.setFieldValue("avatarUrl", url);
                     } else {
-                      // If all files removed, clear avatarUrl
                       form.setFieldValue("avatarUrl", undefined);
                     }
                   }}
@@ -154,8 +150,6 @@ export function DoctorForm({
                   placeholder="Información adicional sobre el doctor..."
                 />
               </Form.Item>
-
-              <SecurityFields isEditing={isEdit} />
 
               <RoleStatusFields />
             </Flex>

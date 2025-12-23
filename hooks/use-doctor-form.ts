@@ -213,7 +213,6 @@ export function useDoctorForm({
           const createData: CreateDoctorRequest = {
             name: values.name,
             email: values.email,
-            password: values.password,
             phone: values.phone,
             licenceNumber: values.licenceNumber,
             specialty: values.specialty,
