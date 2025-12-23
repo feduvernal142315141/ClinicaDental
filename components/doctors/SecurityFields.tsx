@@ -1,6 +1,6 @@
 "use client";
 
-import { Form, Input, Col, Row } from "antd";
+import { Form, Input, Col, Row, Flex } from "antd";
 import { PasswordStrength } from "../auth/PasswordStrength";
 
 /**
@@ -22,8 +22,7 @@ export function SecurityFields({
 
   if (isChangePassword) {
     return (
-      <Row gutter={[16, 16]} className="w-full mt-2">
-        <Col xs={24} md={8}>
+      <Flex orientation="vertical" className="w-full mt-2">
           <Form.Item
             label="Contraseña actual"
             name="oldPassword"
@@ -36,9 +35,7 @@ export function SecurityFields({
           >
             <Input.Password placeholder="Contraseña actual" />
           </Form.Item>
-        </Col>
 
-        <Col xs={24} md={8}>
           <Form.Item
             label="Nueva contraseña"
             name="password"
@@ -58,9 +55,7 @@ export function SecurityFields({
           >
             <Input.Password placeholder="Mínimo 8 caracteres" />
           </Form.Item>
-        </Col>
 
-        <Col xs={24} md={8}>
           <Form.Item
             label="Confirmar Contraseña"
             name="confirmPassword"
@@ -84,8 +79,7 @@ export function SecurityFields({
           >
             <Input.Password placeholder="Repita la contraseña" />
           </Form.Item>
-        </Col>
-      </Row>
+      </Flex>
     );
   }
 

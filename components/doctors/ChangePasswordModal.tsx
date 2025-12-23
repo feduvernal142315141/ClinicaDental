@@ -1,7 +1,6 @@
 "use client";
 
 import { Form, Modal } from "antd";
-import { useEffect } from "react";
 import { useDoctorChangePassword } from "@/lib/hooks/doctors";
 import { SecurityFields } from "./SecurityFields";
 
@@ -18,12 +17,6 @@ export function ChangePasswordModal({
 }: ChangePasswordModalProps) {
   const [form] = Form.useForm();
   const { loading, changeDoctorPassword } = useDoctorChangePassword();
-
-  useEffect(() => {
-    if (!open) {
-      form.resetFields();
-    }
-  }, [open, form]);
 
   const handleOk = async () => {
     try {
@@ -46,10 +39,10 @@ export function ChangePasswordModal({
       open={open}
       onCancel={onClose}
       onOk={handleOk}
+      afterClose={() => form.resetFields()}
       okText="Cambiar"
       cancelText="Cancelar"
       confirmLoading={loading}
-      destroyOnHidden
     >
       <Form form={form} layout="vertical">
         <SecurityFields mode="changePassword" />
