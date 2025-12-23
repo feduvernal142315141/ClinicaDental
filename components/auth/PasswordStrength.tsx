@@ -94,13 +94,13 @@ export function PasswordStrength() {
               </div>
 
               {/* Requirements Checklist - Responsive Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                 {requirements.map((req, index) => {
                   const isMet = req.test(password);
                   return (
                     <div
                       key={index}
-                      className="flex items-center gap-2 text-xs transition-all duration-300 ease-in-out"
+                      className="flex items-start gap-2 text-xs transition-all duration-300 ease-in-out min-w-0"
                       style={{
                         color: isMet ? "#52c41a" : "#8c8c8c",
                         opacity: isMet ? 1 : 0.6,
@@ -108,16 +108,18 @@ export function PasswordStrength() {
                     >
                       {isMet ? (
                         <CheckCircleFilled
-                          className="transition-all duration-300 flex-shrink-0"
+                          className="transition-all duration-300 shrink-0"
                           style={{ fontSize: "14px", color: "#52c41a" }}
                         />
                       ) : (
                         <CloseCircleFilled
-                          className="transition-all duration-300 flex-shrink-0"
+                          className="transition-all duration-300 shrink-0"
                           style={{ fontSize: "14px", color: "#d9d9d9" }}
                         />
                       )}
-                      <span className="whitespace-nowrap">{req.label}</span>
+                      <span className="wrap-break-word leading-tight min-w-0">
+                        {req.label}
+                      </span>
                     </div>
                   );
                 })}
