@@ -33,7 +33,7 @@ export function DayScheduleRow({
     <Row
       gutter={[16, 8]}
       align="middle"
-      className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
+      className="p-3 border border-gray-200 dark:border-[#ccc3] rounded-lg hover:border-blue-300 hover:dark:border-blue-400 transition-colors"
     >
       {/* Hidden Form.Item to persist 'enabled' field in form state */}
       <Form.Item name={["schedule", dayKey, "enabled"]} hidden>
