@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "target": "ES6",
     "skipLibCheck": true,
@@ -19,9 +23,96 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ],
+      "@/components/appointments": [
+        "./components/features/appointments"
+      ],
+      "@/components/appointments/*": [
+        "./components/features/appointments/*"
+      ],
+      "@/components/auth": [
+        "./components/features/auth"
+      ],
+      "@/components/auth/*": [
+        "./components/features/auth/*"
+      ],
+      "@/components/campaign": [
+        "./components/features/campaign"
+      ],
+      "@/components/campaign/*": [
+        "./components/features/campaign/*"
+      ],
+      "@/components/dashboard": [
+        "./components/features/dashboard"
+      ],
+      "@/components/dashboard/*": [
+        "./components/features/dashboard/*"
+      ],
+      "@/components/doctors": [
+        "./components/features/doctors"
+      ],
+      "@/components/doctors/*": [
+        "./components/features/doctors/*"
+      ],
+      "@/components/odontogram": [
+        "./components/features/odontogram"
+      ],
+      "@/components/odontogram/*": [
+        "./components/features/odontogram/*"
+      ],
+      "@/components/patients": [
+        "./components/features/patients"
+      ],
+      "@/components/patients/*": [
+        "./components/features/patients/*"
+      ],
+      "@/components/settings": [
+        "./components/features/settings"
+      ],
+      "@/components/settings/*": [
+        "./components/features/settings/*"
+      ],
+      "@/components/template": [
+        "./components/features/template"
+      ],
+      "@/components/template/*": [
+        "./components/features/template/*"
+      ],
+      "@/components/doctors-old": [
+        "./components/legacy/doctors"
+      ],
+      "@/components/doctors-old/*": [
+        "./components/legacy/doctors/*"
+      ],
+      "@/components/auto-logout-warning-modal": [
+        "./components/app/auto-logout-warning-modal"
+      ],
+      "@/components/global-alert-dialog": [
+        "./components/app/global-alert-dialog"
+      ],
+      "@/components/global-loading-spinner": [
+        "./components/app/global-loading-spinner"
+      ],
+      "@/components/interceptors-context-initializer": [
+        "./components/app/interceptors-context-initializer"
+      ],
+      "@/components/interceptors-initializer": [
+        "./components/app/interceptors-initializer"
+      ],
+      "@/components/theme-provider": [
+        "./components/app/theme-provider"
+      ]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
