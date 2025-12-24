@@ -4,10 +4,7 @@ import dynamic from "next/dynamic";
 import { Spin } from "antd";
 
 const PatientsPageClient = dynamic(
-  () =>
-    import("@/components/patients/patients-page-client").then(
-      (mod) => mod.PatientsPageClient
-    ),
+  () => import("@/components/patients").then((mod) => mod.PatientsPageClient),
   {
     loading: () => (
       <div className="flex justify-center items-center h-64">

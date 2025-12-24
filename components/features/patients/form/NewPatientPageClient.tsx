@@ -2,24 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Patient } from "@/lib/entity/patients/patients";
 import { LazyLoadingFallback } from "@/components/ui/atomic/feedback/lazy-loading-fallback";
 
 const PatientForm = dynamic(
   () =>
-    import("@/components/patients/patient-form").then((mod) => mod.PatientForm),
+    import("@/components/patients/form/PatientForm").then(
+      (mod) => mod.PatientForm
+    ),
   { loading: () => <LazyLoadingFallback /> }
 );
 
-interface EditPatientPageClientProps {
-  patient: Patient;
-}
-
-export function EditPatientPageClient({ patient }: EditPatientPageClientProps) {
+export function NewPatientPageClient() {
   const router = useRouter();
 
   const handleSuccess = () => {
-    router.push(`/patients/${patient.id}`);
+    router.push("/patients");
   };
 
   const handleCancel = () => {
@@ -28,7 +25,7 @@ export function EditPatientPageClient({ patient }: EditPatientPageClientProps) {
 
   return (
     <PatientForm
-      patient={patient}
+      patient={null}
       onSuccess={handleSuccess}
       onCancel={handleCancel}
     />

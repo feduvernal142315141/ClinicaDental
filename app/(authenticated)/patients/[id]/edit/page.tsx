@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/atomic/layout/page-header";
-import { EditPatientPageClient } from "@/components/patients/edit-patient-page-client";
+import { EditPatientPageClient } from "@/components/patients";
 import { usePatientDetails } from "@/hooks/use-patient-details";
 
 export default async function EditPatientPage({

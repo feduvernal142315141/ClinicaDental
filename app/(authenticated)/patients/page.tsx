@@ -1,7 +1,7 @@
 "use client";
 
 import { Header } from "@/components/ui/atomic/layout/header";
-import { PatientsPageClient } from "@/components/patients/patients-page-client";
+import { PatientsPageClient } from "@/components/patients";
 
 export default function PatientsPage() {
   return (

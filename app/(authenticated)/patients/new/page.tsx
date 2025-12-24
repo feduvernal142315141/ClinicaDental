@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/ui/atomic/layout/page-header";
-import { NewPatientPageClient } from "@/components/patients/new-patient-page-client";
+import { NewPatientPageClient } from "@/components/patients";
 
 export default function NewPatientPage() {
   return (

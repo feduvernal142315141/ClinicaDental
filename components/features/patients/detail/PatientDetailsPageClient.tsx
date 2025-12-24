@@ -7,7 +7,7 @@ import { LazyLoadingFallback } from "@/components/ui/atomic/feedback/lazy-loadin
 
 const PatientDetails = dynamic(
   () =>
-    import("@/components/patients/patient-details").then(
+    import("@/components/patients/detail/PatientDetails").then(
       (mod) => mod.PatientDetails
     ),
   { loading: () => <LazyLoadingFallback /> }
