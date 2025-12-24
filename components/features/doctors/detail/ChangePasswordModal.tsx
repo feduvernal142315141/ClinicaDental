@@ -2,7 +2,7 @@
 
 import { Form, Modal } from "antd";
 import { useDoctorChangePassword } from "@/lib/hooks/doctors";
-import { SecurityFields } from "./SecurityFields";
+import { SecurityFields } from "../form/fields/SecurityFields";
 
 interface ChangePasswordModalProps {
   open: boolean;

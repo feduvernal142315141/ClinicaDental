@@ -5,23 +5,24 @@
  */
 
 // Main components
-export { DoctorsList } from "./DoctorsList";
-export { DoctorForm } from "./DoctorForm";
-export { DoctorDetail } from "./DoctorDetail";
+export { DoctorsList } from "./DoctorsPageContent/DoctorsList";
+export { DoctorForm } from "./form/DoctorForm";
+export { DoctorDetail } from "./detail/DoctorDetail";
+export { ChangePasswordModal } from "./detail/ChangePasswordModal";
 
 // Form field components
-export { BasicInfoFields } from "./BasicInfoFields";
-export { ProfessionalInfoFields } from "./ProfessionalInfoFields";
-export { SecurityFields } from "./SecurityFields";
-export { RoleStatusFields } from "./RoleStatusFields";
-export { FormActions } from "./FormActions";
+export { BasicInfoFields } from "./form/fields/BasicInfoFields";
+export { ProfessionalInfoFields } from "./form/fields/ProfessionalInfoFields";
+export { SecurityFields } from "./form/fields/SecurityFields";
+export { RoleStatusFields } from "./form/fields/RoleStatusFields";
+export { DoctorScheduleFields } from "./form/fields/DoctorScheduleFields";
+export { FormActions } from "./form/components/FormActions";
 export { PasswordStrength } from "../auth/PasswordStrength";
-export { AvatarUpload } from "./AvatarUpload";
-export { DoctorScheduleFields } from "./DoctorScheduleFields";
-export { DayScheduleRow } from "./DayScheduleRow";
-export { ScheduleSectionHeader } from "./ScheduleSectionHeader";
-export { WorkingHours } from "./WorkingHours";
-export { BreakTime } from "./BreakTime";
+export { AvatarUpload } from "./form/components/AvatarUpload";
+export { DayScheduleRow } from "./schedule/DayScheduleRow";
+export { ScheduleSectionHeader } from "./schedule/ScheduleSectionHeader";
+export { WorkingHours } from "./schedule/WorkingHours";
+export { BreakTime } from "./schedule/BreakTime";
 
 // Table configuration
-export { getDoctorsColumns } from "./doctors-table.config";
+export { getDoctorsColumns } from "./columns/doctors-table.config";

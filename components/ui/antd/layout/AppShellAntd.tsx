@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { AppSider } from "./AppSider";
 import { AppHeaderAntd } from "./AppHeaderAntd";
 import { MobileHeaderAntd } from "./MobileHeaderAntd";
-import { ChangePasswordModal } from "@/components/doctors/ChangePasswordModal";
+import { ChangePasswordModal } from "@/components/doctors";
 
 const { Content } = Layout;
 

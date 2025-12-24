@@ -4,16 +4,14 @@ import { Form, Divider, Input, Row, Col, Flex, Avatar } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { useDoctorForm } from "@/hooks/use-doctor-form";
 
-import { BasicInfoFields } from "./BasicInfoFields";
-import { ProfessionalInfoFields } from "./ProfessionalInfoFields";
-import {
-  FormActions,
-  RoleStatusFields,
-  AvatarUpload,
-  DoctorScheduleFields,
-} from ".";
+import { BasicInfoFields } from "./fields/BasicInfoFields";
+import { ProfessionalInfoFields } from "./fields/ProfessionalInfoFields";
+import { RoleStatusFields } from "./fields/RoleStatusFields";
+import { DoctorScheduleFields } from "./fields/DoctorScheduleFields";
+import { FormActions } from "./components/FormActions";
+import { AvatarUpload } from "./components/AvatarUpload";
 import type { Doctor } from "@/lib/entity/doctors";
-import { Card } from "../ui/antd/data-display/Card";
+import { Card } from "@/components/ui/antd";
 import { DEFAULT_WEEK_SCHEDULE } from "@/lib/entity/schedule";
 
 const { TextArea } = Input;

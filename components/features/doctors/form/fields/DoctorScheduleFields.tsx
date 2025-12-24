@@ -2,8 +2,8 @@
 
 import { Form, Col, Space } from "antd";
 import { DAYS_OF_WEEK } from "@/lib/entity/schedule";
-import { DayScheduleRow } from "./DayScheduleRow";
-import { ScheduleSectionHeader } from "./ScheduleSectionHeader";
+import { DayScheduleRow } from "../../schedule/DayScheduleRow";
+import { ScheduleSectionHeader } from "../../schedule/ScheduleSectionHeader";
 
 /**
  * DoctorScheduleFields Component

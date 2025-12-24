@@ -5,7 +5,7 @@ import { App } from "antd";
 import { DataTable, Card } from "@/components/ui/antd";
 import { useDoctors } from "@/lib/hooks/doctors";
 import { useDoctorsPage } from "@/hooks/use-doctors-page";
-import { getDoctorsColumns } from "./doctors-table.config";
+import { getDoctorsColumns } from "../columns/doctors-table.config";
 
 interface DoctorsListProps {
   /** Base path for navigation */
