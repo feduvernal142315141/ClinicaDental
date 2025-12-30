@@ -1,6 +1,7 @@
 "use client";
 
-import { Form, Space, Button } from "antd";
+import { Form, Space } from "antd";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import { SaveOutlined, CloseOutlined } from "@ant-design/icons";
 
 interface FormActionsProps {

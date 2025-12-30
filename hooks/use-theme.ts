@@ -19,6 +19,7 @@ export function useTheme() {
 
   useEffect(() => {
     setMounted(true);
+    setTheme('light');
   }, []);
 
   const toggleTheme = () => {

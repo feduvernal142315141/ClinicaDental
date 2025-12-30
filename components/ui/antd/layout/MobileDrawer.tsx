@@ -1,6 +1,7 @@
 "use client";
 
-import { Drawer, Button, Typography, Space } from "antd";
+import { Drawer, Typography, Space } from "antd";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import { CloseOutlined, MedicineBoxOutlined } from "@ant-design/icons";
 import { NavMenu, MenuItem } from "@/components/ui/antd/navigation/NavMenu";
 import { UserDropdown } from "@/components/ui/antd/navigation/UserDropdown";

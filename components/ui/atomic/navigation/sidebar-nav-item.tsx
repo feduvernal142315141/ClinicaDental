@@ -1,5 +1,6 @@
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 
 interface SidebarNavItemProps {
   icon: LucideIcon;
@@ -19,9 +20,12 @@ export function SidebarNavItem({
   isCollapsed = false,
 }: SidebarNavItemProps) {
   return (
-    <button
+    <Button
       onClick={onClick}
       title={isCollapsed ? label : undefined}
+      aria-label={isCollapsed ? label : undefined}
+      type="text"
+      block
       className={cn(
         "flex items-center text-sm font-medium rounded-lg",
         "transition-all duration-300 ease-in-out",
@@ -63,6 +67,6 @@ export function SidebarNavItem({
           />
         </svg>
       )}
-    </button>
+    </Button>
   );
 }

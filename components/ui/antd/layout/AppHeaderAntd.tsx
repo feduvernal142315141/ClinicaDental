@@ -1,6 +1,7 @@
 "use client";
 
-import { Layout, Button, Space, Badge } from "antd";
+import { Layout, Space, Badge } from "antd";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import {
   BellOutlined,
   MenuFoldOutlined,

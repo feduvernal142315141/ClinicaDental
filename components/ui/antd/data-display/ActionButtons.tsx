@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Dropdown, Space } from "antd";
+import { Dropdown, Space } from "antd";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import type { MenuProps } from "antd";
 import {
   MoreOutlined,

@@ -1,6 +1,7 @@
 "use client";
 
-import { Card, Progress, Button, Typography, Space } from "antd";
+import { Card, Progress, Typography, Space } from "antd";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import { CloudOutlined } from "@ant-design/icons";
 
 const { Text, Title } = Typography;

@@ -1,6 +1,7 @@
 "use client";
 
-import { Form, Button, Space, FormProps } from "antd";
+import { Form, Space, FormProps } from "antd";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import {
   SaveOutlined,
   CloseOutlined,

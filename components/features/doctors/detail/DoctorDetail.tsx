@@ -4,7 +4,8 @@ import { DoctorForm } from "../form/DoctorForm";
 import { SectionTitle } from "@/components/ui/antd";
 import { useDoctorsPage } from "@/hooks/use-doctors-page";
 import { useRouter } from "next/navigation";
-import { Button, Space } from "antd";
+import { Space } from "antd";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import { EditOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 
 interface DoctorDetailProps {

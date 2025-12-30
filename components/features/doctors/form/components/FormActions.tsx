@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Space } from "antd";
+import { Space } from "antd";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import { CloseOutlined, SaveOutlined } from "@ant-design/icons";
 
 /**

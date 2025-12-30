@@ -3,6 +3,7 @@
 import { useState, useEffect, ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 
 export interface CarouselItem {
   id: string | number;
@@ -73,8 +74,11 @@ export function Carousel({
       {/* Controles de navegación */}
       {showControls && items.length > 1 && (
         <>
-          <button
+          <Button
             onClick={goToPrevious}
+            type="button"
+            variant="ghost"
+            size="icon"
             className={cn(
               "absolute left-4 top-1/2 -translate-y-1/2 z-20",
               "bg-white/20 backdrop-blur-sm hover:bg-white/30",
@@ -84,9 +88,12 @@ export function Carousel({
             aria-label="Anterior"
           >
             <ChevronLeft className="h-6 w-6 text-white" />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={goToNext}
+            type="button"
+            variant="ghost"
+            size="icon"
             className={cn(
               "absolute right-4 top-1/2 -translate-y-1/2 z-20",
               "bg-white/20 backdrop-blur-sm hover:bg-white/30",
@@ -96,7 +103,7 @@ export function Carousel({
             aria-label="Siguiente"
           >
             <ChevronRight className="h-6 w-6 text-white" />
-          </button>
+          </Button>
         </>
       )}
 
@@ -104,11 +111,13 @@ export function Carousel({
       {showIndicators && items.length > 1 && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex space-x-2">
           {items.map((item, index) => (
-            <button
+            <Button
               key={item.id}
               onClick={() => goToSlide(index)}
+              type="text"
+              htmlType="button"
               className={cn(
-                "w-3 h-3 rounded-full transition-colors",
+                "w-3 h-3 min-w-0 p-0 rounded-full transition-colors",
                 index === currentIndex
                   ? activeIndicatorClassName || "bg-white"
                   : indicatorClassName || "bg-white/50"

@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Space, Input, Select } from "antd";
+import { Space, Input, Select } from "antd";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import {
   PlusOutlined,
   ReloadOutlined,

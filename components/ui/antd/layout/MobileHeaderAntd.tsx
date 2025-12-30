@@ -1,6 +1,7 @@
 "use client";
 
-import { Layout, Button, Typography, Space } from "antd";
+import { Layout, Typography, Space } from "antd";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import { MenuOutlined, MedicineBoxOutlined } from "@ant-design/icons";
 import { ThemeSwitch } from "@/components/ui/antd/feedback/ThemeSwitch";
 

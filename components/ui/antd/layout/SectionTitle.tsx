@@ -1,6 +1,7 @@
 "use client";
 
-import { Typography, Button, Space } from "antd";
+import { Typography, Space } from "antd";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import { PlusOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 
 const { Title } = Typography;

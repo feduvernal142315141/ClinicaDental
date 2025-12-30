@@ -4,6 +4,7 @@ import { Upload, Image, ConfigProvider } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useAvatarUpload } from "@/hooks/use-avatar-upload";
 import type { UploadFile } from "antd";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 
 interface AvatarUploadProps {
   /** Initial file list (for editing) */
@@ -91,14 +92,14 @@ export function AvatarUpload({
 
   // Upload button
   const uploadButton = (
-    <button
-      style={{ border: 0, background: "none" }}
-      type="button"
+    <Button
+      type="text"
+      htmlType="button"
       className="flex flex-col items-center justify-center w-full h-full"
     >
       <PlusOutlined className="text-2xl mb-2" />
       <div className="text-sm">Subir foto</div>
-    </button>
+    </Button>
   );
 
   return (
