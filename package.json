@@ -5,7 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev --turbopack",
-    "lint": "next lint",
+    "lint": "ESLINT_USE_FLAT_CONFIG=false next lint",
     "start": "next start"
   },
   "dependencies": {
@@ -78,6 +78,8 @@
     "@types/qs": "^6.14.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "15.4.10",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
