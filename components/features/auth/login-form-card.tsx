@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/atomic/data-display/card";
 import { Loader2 } from "lucide-react";
+import Link from "next/link";
 
 interface LoginFormCardProps {
   email: string;
@@ -109,6 +110,15 @@ export function LoginFormCard({
             )}
           </Button>
         </form>
+
+        <div className="text-center">
+          <Link
+            href="/forgot-password"
+            className="text-sm text-muted-foreground underline underline-offset-4"
+          >
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
       </CardContent>
     </Card>
   );
