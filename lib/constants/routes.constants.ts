@@ -13,6 +13,7 @@ export const PUBLIC_ROUTES = [
   "/register",
   "/forgot-password",
   "/reset-password",
+  "/validate-otp",
 ] as const;
 
 /**
@@ -23,6 +24,7 @@ export const AUTH_ROUTES = [
   "/register",
   "/forgot-password",
   "/reset-password",
+  "/validate-otp",
 ] as const;
 
 /**

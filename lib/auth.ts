@@ -1,58 +1,50 @@
-import { supabase } from "@/lib/supabaseClient"
+/**
+ * Este proyecto usa autenticación propia vía backend (OTP + JWT).
+ * Supabase queda fuera del flujo de auth.
+ */
 
-export async function authenticateUser(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
-  if (error) throw new Error(error.message)
-
-  const { data: clinicUser, error: clinicError } = await supabase
-    .from("clinic_users")
-    .select("clinic_id, role")
-    .eq("user_id", data.user?.id)
-    .single()
-
-  if (clinicError) throw new Error(clinicError.message)
-
-  return { ...data.user, ...clinicUser }
+export async function authenticateUser(): Promise<never> {
+  throw new Error("authenticateUser no aplica en el flujo OTP/JWT");
 }
 
-export async function registerUser({ email, password }: { email: string; password: string }) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  })
-  if (error) throw new Error(error.message)
-  return data.user
+export async function registerUser(): Promise<never> {
+  throw new Error("Registro no implementado para el flujo OTP/JWT");
 }
 
 export interface ClinicUser {
-  clinicId: string
-  role: string
+  clinicId: string;
+  role: string;
 }
 
 export interface AppUser {
-  id: string
-  email?: string
-  clinicId: string | null
-  roleId: string | null
-  roleName: string
+  id: string;
+  email?: string;
+  clinicId: string | null;
+  roleId: string | null;
+  roleName: string;
 }
 
-
 export interface RegisterData {
-  email: string
-  password: string
+  email: string;
+  password: string;
 }
 
 export interface AuthContextType {
-  user: AppUser | null
-  loading: boolean
-  login: (email: string, password: string) => Promise<void>
-  register: (data: RegisterData) => Promise<void>
-  logout: () => Promise<void>
-  authError: string | null 
+  user: AppUser | null;
+  loading: boolean;
+  /** Inicia login (envía OTP al correo) */
+  login: (email: string, password: string) => Promise<void>;
+  /** Completa login (valida OTP y crea sesión) */
+  completeOtpLogin: (
+    otpCode: string,
+    options?: {
+      /** Si es false, no navega (útil para probar estilos). */
+      redirect?: boolean;
+    }
+  ) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
+  logout: () => Promise<void>;
+  authError: string | null;
 }
 
 // Mock authentication functions - in production, replace with real API calls
@@ -80,16 +72,16 @@ export const mockUsers: User[] = [
     phone: "+1234567892",
     patientId: "P001",
   },
-]
+];
 
-export type UserRole = "admin" | "doctor" | "patient"
+export type UserRole = "admin" | "doctor" | "patient";
 
 export interface User {
-  id: string
-  email: string
-  name: string
-  role: UserRole
-  phone?: string
-  specialization?: string // For doctors
-  patientId?: string // For patients
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  phone?: string;
+  specialization?: string; // For doctors
+  patientId?: string; // For patients
 }

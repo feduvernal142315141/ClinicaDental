@@ -123,8 +123,40 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token?: string;
-  refreshToken?: string;
+  /** Solo visible en desarrollo según backend; en prod normalmente no viene */
+  otpCode?: string;
+  otpExpiresInSeconds: number;
+  /** ISO string */
+  otpExpiresAt: string;
+}
+
+export interface ValidateOtpRequest {
+  email: string;
+  otpCode: string;
+}
+
+export interface ValidateOtpResponse {
+  accessToken: string;
+  refreshToken: string;
+  /** ISO string */
+  accessTokenExpiresIn: string;
+  /** ISO string */
+  refreshTokenExpiresIn: string;
+  /** ISO string */
+  passwordExpirationDate: string;
+}
+
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+export interface RefreshTokenResponse {
+  accessToken: string;
+  refreshToken: string;
+  /** ISO string */
+  accessExpiresIn: string;
+  /** ISO string */
+  refreshExpiresIn: string;
 }
 
 export interface ForgotPasswordRequest {
@@ -132,8 +164,8 @@ export interface ForgotPasswordRequest {
 }
 
 export interface ResetPasswordRequest {
-  token: string;
-  newPassword: string;
+  code: string;
+  password: string;
 }
 
 /**

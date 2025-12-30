@@ -4,6 +4,10 @@ import { doctorAuthService } from "@/lib/services/doctors";
 import type {
   LoginRequest,
   LoginResponse,
+  ValidateOtpRequest,
+  ValidateOtpResponse,
+  RefreshTokenRequest,
+  RefreshTokenResponse,
   ForgotPasswordRequest,
   ResetPasswordRequest,
   ChangePasswordRequest,
@@ -26,7 +30,8 @@ export function useDoctorAuth() {
       setLoading(true);
       try {
         const response = await doctorAuthService.login(credentials);
-        message.success("Inicio de sesión exitoso");
+        // En este proyecto el login inicia el flujo OTP
+        message.success("Código enviado. Verifica tu correo");
         return response;
       } catch (error: any) {
         message.error(error.message || "Error al iniciar sesión");
@@ -39,20 +44,62 @@ export function useDoctorAuth() {
   );
 
   /**
+   * Validate OTP
+   */
+  const validateOtp = useCallback(
+    async (data: ValidateOtpRequest): Promise<ValidateOtpResponse> => {
+      setLoading(true);
+      try {
+        const response = await doctorAuthService.validateOtp(data);
+        message.success("OTP validado correctamente");
+        return response;
+      } catch (error: any) {
+        message.error(error.message || "Error al validar OTP");
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [message]
+  );
+
+  /**
+   * Refresh token
+   */
+  const refreshToken = useCallback(
+    async (data: RefreshTokenRequest): Promise<RefreshTokenResponse> => {
+      setLoading(true);
+      try {
+        const response = await doctorAuthService.refreshToken(data);
+        return response;
+      } catch (error: any) {
+        message.error(error.message || "Error al refrescar la sesión");
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [message]
+  );
+
+  /**
    * Logout doctor
    */
-  const logout = useCallback(async () => {
-    setLoading(true);
-    try {
-      await doctorAuthService.logout();
-      message.success("Sesión cerrada exitosamente");
-    } catch (error: any) {
-      message.error(error.message || "Error al cerrar sesión");
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [message]);
+  const logout = useCallback(
+    async (refreshTokenValue: string) => {
+      setLoading(true);
+      try {
+        await doctorAuthService.logout({ refreshToken: refreshTokenValue });
+        message.success("Sesión cerrada exitosamente");
+      } catch (error: any) {
+        message.error(error.message || "Error al cerrar sesión");
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [message]
+  );
 
   /**
    * Request password reset
@@ -137,6 +184,8 @@ export function useDoctorAuth() {
   return {
     loading,
     login,
+    validateOtp,
+    refreshToken,
     logout,
     forgotPassword,
     resetPassword,

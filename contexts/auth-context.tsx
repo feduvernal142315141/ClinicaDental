@@ -8,13 +8,21 @@ import {
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 import {
   AppUser,
   AuthContextType,
   RegisterData,
   registerUser,
 } from "@/lib/auth";
+import { doctorAuthService } from "@/lib/services/doctors";
+import {
+  clearOtpSession,
+  loadOtpSession,
+  saveOtpPassword,
+  saveOtpSession,
+} from "@/lib/auth/otp-session";
+import { getAccessToken } from "@/lib/auth/token-client";
+import { decodeJwtPayload } from "@/lib/auth/jwt";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -24,41 +32,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  type ClinicUserWithRole = {
-    clinic_id: string;
-    role_id: string;
-    clinic_roles: { name: string };
-  };
-
-  const hydrateUser = async (session: any | null) => {
-    try {
-      if (session?.user) {
-        const { data: clinicUser, error } = await supabase
-          .from("clinic_users")
-          .select("clinic_id, role_id, clinic_roles(name)")
-          .eq("user_id", session.user.id)
-          .single<ClinicUserWithRole>();
-
-        if (error) {
-          console.warn("Error loading clinic user data:", error);
-        }
-
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? undefined,
-          clinicId: clinicUser?.clinic_id ?? null,
-          roleId: clinicUser?.role_id ?? null,
-          roleName: clinicUser?.clinic_roles?.name ?? "admin",
-        });
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      console.error("Error hydrating user:", error);
+  const hydrateUserFromAccessToken = (accessToken: string | null) => {
+    if (!accessToken) {
       setUser(null);
-    } finally {
-      setLoading(false);
+      return;
     }
+
+    const payload = decodeJwtPayload(accessToken);
+    const email =
+      (payload?.email as string | undefined) ||
+      (payload?.username as string | undefined) ||
+      (payload?.sub as string | undefined);
+
+    const roleName =
+      (payload?.roleName as string | undefined) ||
+      (payload?.role as string | undefined) ||
+      "doctor";
+
+    // No tenemos clinicId/roleId garantizados en el JWT; se dejan null.
+    setUser({
+      id: String((payload?.userId as string | undefined) ?? "jwt"),
+      email,
+      clinicId: null,
+      roleId: null,
+      roleName,
+    });
   };
 
   useEffect(() => {
@@ -66,21 +64,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initAuth = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error("Error getting session:", error);
-          setLoading(false);
-          return;
-        }
-
-        if (!ignore) {
-          console.log(
-            "Session data:",
-            data.session ? "User logged in" : "No session"
-          );
-          await hydrateUser(data.session);
-        }
+        if (ignore) return;
+        const token = getAccessToken();
+        hydrateUserFromAccessToken(token);
+        setLoading(false);
       } catch (error) {
         console.error("Error initializing auth:", error);
         setLoading(false);
@@ -89,16 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initAuth();
 
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        console.log("Auth state changed:", _event);
-        await hydrateUser(session);
-      }
-    );
-
     return () => {
       ignore = true;
-      subscription.subscription.unsubscribe();
     };
   }, []);
 
@@ -106,24 +85,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setAuthError(null);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const otp = await doctorAuthService.login({ email, password });
+      saveOtpPassword(password);
+      saveOtpSession({
         email,
-        password,
+        otpExpiresAt: otp.otpExpiresAt,
+        otpExpiresInSeconds: otp.otpExpiresInSeconds,
       });
-      if (error || !data.user) {
-        setAuthError("Usuario o contraseña incorrectos");
-        setLoading(false);
-        return;
-      }
 
-      await hydrateUser({ user: data.user });
-
-      router.push("/dashboard");
+      router.push("/validate-otp");
       router.refresh();
     } catch (err) {
       setAuthError(
         err instanceof Error ? err.message : "Error de autenticación"
       );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const completeOtpLogin = async (
+    otpCode: string,
+    options?: {
+      redirect?: boolean;
+    }
+  ) => {
+    const shouldRedirect = options?.redirect !== false;
+    setLoading(true);
+    setAuthError(null);
+    try {
+      const session = loadOtpSession();
+      if (!session?.email) {
+        setAuthError("Sesión OTP no encontrada. Vuelve a iniciar sesión.");
+        return;
+      }
+
+      const tokens = await doctorAuthService.validateOtp({
+        email: session.email,
+        otpCode,
+      });
+
+      const res = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("No se pudo crear la sesión");
+      }
+
+      clearOtpSession();
+      hydrateUserFromAccessToken(tokens.accessToken);
+
+      if (shouldRedirect) {
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : "OTP inválido");
     } finally {
       setLoading(false);
     }
@@ -153,8 +176,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
       setUser(null);
+      clearOtpSession();
       router.push("/login");
       router.refresh();
     } catch (error) {
@@ -167,7 +194,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, register, loading, authError }}
+      value={{
+        user,
+        login,
+        completeOtpLogin,
+        logout,
+        register,
+        loading,
+        authError,
+      }}
     >
       {children}
     </AuthContext.Provider>

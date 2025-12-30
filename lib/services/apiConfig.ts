@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import { supabase } from "@/lib/supabaseClient";
+import { getAccessToken } from "@/lib/auth/token-client";
 
 // Tipos para los handlers que se pueden inyectar desde Redux u otros estados
 type InterceptorHandlers = {
@@ -47,18 +47,10 @@ apiInstance.interceptors.request.use(
     // Registrar actividad del usuario (resetea timer de inactividad)
     interceptorHandlers.onActivity?.();
 
-    try {
-      // Obtener el token de Supabase
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session?.access_token) {
-        // Inyectar el token en los headers
-        config.headers.Authorization = `Bearer ${session.access_token}`;
-      }
-    } catch (error) {
-      console.error("Error al obtener el token de autenticación:", error);
+    // Obtener el access token desde cookie (flujo OTP/JWT backend)
+    const accessToken = getAccessToken();
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
 
     return config;
@@ -118,7 +110,7 @@ apiInstance.interceptors.response.use(
 
     return response;
   },
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     // Desactivar indicador de carga
     interceptorHandlers.onLoadingEnd?.();
 
@@ -126,6 +118,37 @@ apiInstance.interceptors.response.use(
     if (error.response) {
       const status = error.response.status;
       const data = error.response.data as any;
+
+      // Intento de refresh una sola vez (si expira access token)
+      if (status === 401) {
+        const originalRequest = error.config as any;
+        const isRetry = originalRequest?._retry;
+        const url = String(originalRequest?.url ?? "");
+
+        const shouldTryRefresh =
+          !isRetry &&
+          !url.includes("/auth/login") &&
+          !url.includes("/auth/validate-otp") &&
+          !url.includes("/auth/refresh-token") &&
+          !url.includes("/api/auth/refresh");
+
+        if (shouldTryRefresh) {
+          try {
+            originalRequest._retry = true;
+            const refreshRes = await fetch("/api/auth/refresh", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+            });
+
+            if (refreshRes.ok) {
+              // Reintentar request original: el request interceptor tomará el nuevo token de cookie
+              return apiInstance(originalRequest);
+            }
+          } catch {
+            // Si falla, continuar flujo normal 401
+          }
+        }
+      }
 
       switch (status) {
         case 400:

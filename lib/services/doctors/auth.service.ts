@@ -2,6 +2,10 @@ import { serviceGet, servicePost } from "../baseService";
 import type {
   LoginRequest,
   LoginResponse,
+  ValidateOtpRequest,
+  ValidateOtpResponse,
+  RefreshTokenRequest,
+  RefreshTokenResponse,
   ForgotPasswordRequest,
   ResetPasswordRequest,
   ChangePasswordRequest,
@@ -30,11 +34,45 @@ async function login(credentials: LoginRequest): Promise<LoginResponse> {
 }
 
 /**
+ * Validate OTP
+ * POST /auth/validate-otp
+ */
+async function validateOtp(
+  data: ValidateOtpRequest
+): Promise<ValidateOtpResponse> {
+  const response = await servicePost<ValidateOtpRequest, ValidateOtpResponse>(
+    "/auth/validate-otp",
+    data
+  );
+  if (response?.data) {
+    return response.data;
+  }
+  throw new Error("Error al validar OTP");
+}
+
+/**
+ * Refresh token
+ * POST /auth/refresh-token
+ */
+async function refreshToken(
+  data: RefreshTokenRequest
+): Promise<RefreshTokenResponse> {
+  const response = await servicePost<RefreshTokenRequest, RefreshTokenResponse>(
+    "/auth/refresh-token",
+    data
+  );
+  if (response?.data) {
+    return response.data;
+  }
+  throw new Error("Error al refrescar la sesión");
+}
+
+/**
  * Logout doctor
  * POST /auth/logout
  */
-async function logout(): Promise<void> {
-  const response = await servicePost("/auth/logout", {});
+async function logout(data: { refreshToken: string }): Promise<void> {
+  const response = await servicePost("/auth/logout", data);
   if (!response?.data) {
     throw new Error("Error al cerrar sesión");
   }
@@ -88,6 +126,8 @@ async function verifyResetToken(token: string): Promise<boolean> {
 
 export const doctorAuthService = {
   login,
+  validateOtp,
+  refreshToken,
   logout,
   forgotPassword,
   resetPassword,
