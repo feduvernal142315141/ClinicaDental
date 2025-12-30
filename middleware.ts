@@ -1,30 +1,35 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/middleware";
+import { AUTH_COOKIE_NAMES } from "@/lib/auth/cookies";
 
 export async function middleware(request: NextRequest) {
-  const { supabase, response } = createClient(request);
+  const pathname = request.nextUrl.pathname;
 
-  // Refresh session if expired - required for Server Components
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const accessToken = request.cookies.get(AUTH_COOKIE_NAMES.accessToken)?.value;
+  const isAuthenticated = !!accessToken;
 
-  const isLoginPage = request.nextUrl.pathname === "/login";
-  const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
-  const isPublicRoute = request.nextUrl.pathname === "/" || isAuthRoute;
+  const isPublicRoute =
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
+    pathname === "/validate-otp";
 
-  if (!session && !isPublicRoute) {
-    const loginUrl = new URL("/login", request.url);
-    return NextResponse.redirect(loginUrl);
+  const isAuthRoute =
+    pathname === "/login" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
+    pathname === "/validate-otp";
+
+  if (!isAuthenticated && !isPublicRoute) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (session && (isLoginPage || request.nextUrl.pathname === "/")) {
-    const dashboardUrl = new URL("/dashboard", request.url);
-    return NextResponse.redirect(dashboardUrl);
+  if (isAuthenticated && (pathname === "/" || isAuthRoute)) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
