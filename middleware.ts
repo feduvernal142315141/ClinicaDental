@@ -8,7 +8,6 @@ import {
   isPublicRoute,
 } from "@/lib/constants/routes.constants";
 
-
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
@@ -30,8 +29,6 @@ export async function middleware(request: NextRequest) {
   }
   const isAuthenticated = !!accessToken;
 
-  // Rutas públicas y de auth basadas en constantes centralizadas.
-  // Nota: "/" se considera pública aunque no esté en PUBLIC_ROUTES.
   const isPublic = pathname === "/" || isPublicRoute(pathname);
   const isAuth = isAuthRoute(pathname);
 
