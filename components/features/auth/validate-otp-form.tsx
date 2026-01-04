@@ -176,7 +176,7 @@ export function ValidateOtpForm() {
 
       <Button
         variant="ghost"
-        className="w-full"
+        className="w-full text-black"
         onClick={() => router.push("/login")}
         disabled={loading || resendLoading}
       >
