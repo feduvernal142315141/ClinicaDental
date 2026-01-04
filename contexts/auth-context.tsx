@@ -8,12 +8,7 @@ import {
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import {
-  AppUser,
-  AuthContextType,
-  RegisterData,
-  registerUser,
-} from "@/lib/auth";
+import { AppUser, AuthContextType, RegisterData } from "@/lib/auth";
 import { doctorAuthService } from "@/lib/services/doctors";
 import {
   clearOtpSession,
@@ -23,6 +18,8 @@ import {
 } from "@/lib/auth/otp-session";
 import { getAccessToken } from "@/lib/auth/token-client";
 import { decodeJwtPayload } from "@/lib/auth/jwt";
+import { createAuthSession } from "@/lib/services/auth/session.service";
+import { clearAuthTokens, saveLoggedUser } from "@/lib/auth/token-storage";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -125,18 +122,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         otpCode,
       });
 
-      const res = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-        }),
+      await createAuthSession({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
       });
 
-      if (!res.ok) {
-        throw new Error("No se pudo crear la sesión");
-      }
+      saveLoggedUser(tokens);
 
       clearOtpSession();
       hydrateUserFromAccessToken(tokens.accessToken);
@@ -155,18 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (data: RegisterData) => {
     setLoading(true);
     try {
-      const newUser = await registerUser(data);
-
-      if (newUser) {
-        const mappedUser: AppUser = {
-          id: newUser.id,
-          email: newUser.email ?? undefined,
-          clinicId: null,
-          roleId: null,
-          roleName: "guest",
-        };
-        setUser(mappedUser);
-      }
+      void data;
+      setAuthError("Registro no implementado para el flujo OTP/JWT");
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : "Error en el registro");
     } finally {
@@ -182,12 +163,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       setUser(null);
       clearOtpSession();
+      clearAuthTokens();
       router.push("/login");
       router.refresh();
     } catch (error) {
       console.error("Error during logout:", error);
       // Aún así redirigir al login en caso de error
       setUser(null);
+      clearOtpSession();
+      clearAuthTokens();
       router.push("/login");
     }
   };

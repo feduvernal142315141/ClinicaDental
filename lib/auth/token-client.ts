@@ -11,5 +11,19 @@ function readCookie(name: string): string | null {
 }
 
 export function getAccessToken(): string | null {
-  return readCookie(AUTH_COOKIE_NAMES.accessToken);
+  const cookieToken = readCookie(AUTH_COOKIE_NAMES.accessToken);
+  if (cookieToken) return cookieToken;
+
+  if (typeof window === "undefined") return null;
+  try {
+    const loggedUserRaw = localStorage.getItem("loggedUser");
+    if (loggedUserRaw) {
+      const parsed = JSON.parse(loggedUserRaw) as { accessToken?: string };
+      if (parsed?.accessToken) return parsed.accessToken;
+    }
+
+    return localStorage.getItem(AUTH_COOKIE_NAMES.accessToken);
+  } catch {
+    return null;
+  }
 }
