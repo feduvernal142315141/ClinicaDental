@@ -29,6 +29,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // TODO: quitar normalizeRoleName cuando el backend sea consistente
+  const normalizeRoleName = (rawRole: unknown): string => {
+    if (typeof rawRole !== "string") return "doctor";
+    const normalized = rawRole.trim().toLowerCase();
+
+    if (normalized.includes("admin")) return "admin";
+    if (normalized.includes("doctor")) return "doctor";
+    if (normalized.includes("patient")) return "patient";
+
+    return "doctor";
+  };
+
   const hydrateUserFromAccessToken = (accessToken: string | null) => {
     if (!accessToken) {
       setUser(null);
@@ -41,14 +53,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (payload?.username as string | undefined) ||
       (payload?.sub as string | undefined);
 
-    const roleName =
+    const rawRole =
       (payload?.roleName as string | undefined) ||
       (payload?.role as string | undefined) ||
-      "doctor";
+      ((payload as any)?.rol as string | undefined);
+    const roleName = normalizeRoleName(rawRole);
 
-    // No tenemos clinicId/roleId garantizados en el JWT; se dejan null.
     setUser({
-      id: String((payload?.userId as string | undefined) ?? "jwt"),
+      id: String(
+        (payload?.userId as string | undefined) ??
+          ((payload as any)?.Id as string | undefined) ??
+          ((payload as any)?.id as string | undefined) ??
+          "jwt"
+      ),
       email,
       clinicId: null,
       roleId: null,
@@ -168,7 +185,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.refresh();
     } catch (error) {
       console.error("Error during logout:", error);
-      // Aún así redirigir al login en caso de error
       setUser(null);
       clearOtpSession();
       clearAuthTokens();

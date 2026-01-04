@@ -31,11 +31,11 @@ export interface MenuGroups {
 type UserRole = "admin" | "doctor" | "patient";
 
 export function useSidebarNavigation(userRole?: string) {
+  const normalizedRole = (userRole ?? "").trim().toLowerCase();
+
   const getMenuGroups = (): MenuGroups => {
-    // Support and Settings are now in the global header; remove from sidebar
     const secondaryItems: MenuItem[] = [];
 
-    // Settings sub-menu items
     const settingsChildren: MenuItem[] = [
       { path: "/settings/general", label: "Opciones Generales", icon: Sliders },
       {
@@ -48,7 +48,7 @@ export function useSidebarNavigation(userRole?: string) {
       { path: "/settings/integrations", label: "Integraciones", icon: Link },
     ];
 
-    switch (userRole as UserRole) {
+    switch (normalizedRole as UserRole) {
       case "admin":
         return {
           main: [
