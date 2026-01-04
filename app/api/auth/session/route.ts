@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { setAuthCookies } from "@/lib/auth/server/cookies";
 
 export async function POST(request: Request) {
@@ -15,12 +14,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const cookieStore = await cookies();
+  const response = NextResponse.json({ ok: true });
 
-  setAuthCookies(cookieStore, {
-    accessToken: body.accessToken,
-    refreshToken: body.refreshToken,
-  });
+  setAuthCookies(
+    response.cookies,
+    {
+      accessToken: body.accessToken,
+      refreshToken: body.refreshToken,
+    },
+    {
+      requestUrl: request.url,
+      forwardedProto: request.headers.get("x-forwarded-proto"),
+    }
+  );
 
-  return NextResponse.json({ ok: true });
+  return response;
 }

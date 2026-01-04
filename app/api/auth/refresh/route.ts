@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { readAuthCookies, setAuthCookies } from "@/lib/auth/server/cookies";
 import { refreshTokensWithBackend } from "@/lib/auth/server/backend-auth";
 
-export async function POST() {
+export async function POST(request: Request) {
   const cookieStore = await cookies();
   const { refreshToken, accessToken } = readAuthCookies(cookieStore);
 
@@ -33,7 +33,12 @@ export async function POST() {
     );
   }
 
-  setAuthCookies(cookieStore, refreshed.tokens);
+  const response = NextResponse.json({ ok: true });
 
-  return NextResponse.json({ ok: true });
+  setAuthCookies(response.cookies, refreshed.tokens, {
+    requestUrl: request.url,
+    forwardedProto: request.headers.get("x-forwarded-proto"),
+  });
+
+  return response;
 }

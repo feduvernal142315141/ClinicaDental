@@ -12,7 +12,7 @@ export async function POST() {
     await logoutWithBackend({ refreshToken, accessToken });
   }
 
-  clearAuthCookies(cookieStore);
-
-  return NextResponse.json({ ok: true });
+  const response = NextResponse.json({ ok: true });
+  clearAuthCookies(response.cookies);
+  return response;
 }
