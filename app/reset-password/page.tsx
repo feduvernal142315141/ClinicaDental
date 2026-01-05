@@ -1,5 +1,4 @@
-import { ResetPasswordForm } from "@/components/features/auth/reset-password-form";
-import { LoginHeroSection } from "@/components/features/auth/login-hero-section";
+import { ResetPasswordForm, LoginHeroSection } from "@/components/features/auth";
 
 export default function ResetPasswordPage() {
   return (

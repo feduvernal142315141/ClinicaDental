@@ -1,5 +1,4 @@
-import { ValidateOtpForm } from "@/components/features/auth/validate-otp-form";
-import { LoginHeroSection } from "@/components/features/auth/login-hero-section";
+import { ValidateOtpForm, LoginHeroSection } from "@/components/features/auth";
 
 export default function ValidateOtpPage() {
   return (

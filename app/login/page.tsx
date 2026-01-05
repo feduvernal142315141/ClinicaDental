@@ -1,4 +1,4 @@
-import { LoginForm } from "@/components/auth/login-form";
+import { LoginForm } from "@/components/features/auth";
 
 /**
  * LOGIN PAGE (SERVER COMPONENT)

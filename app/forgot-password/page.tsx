@@ -1,5 +1,4 @@
-import { ForgotPasswordForm } from "@/components/features/auth/forgot-password-form";
-import { LoginHeroSection } from "@/components/features/auth/login-hero-section";
+import { ForgotPasswordForm, LoginHeroSection} from "@/components/features/auth";
 
 export default function ForgotPasswordPage() {
   return (
