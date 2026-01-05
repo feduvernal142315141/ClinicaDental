@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/atomic/forms/label";
 import { Input } from "@/components/ui/atomic/forms/input";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { useDoctorAuth } from "@/lib/hooks/doctors/useDoctorAuth";
-import { AuthFormCard } from "./auth-form-card";
+import { AuthFormCard } from "../components/auth-form-card";
 
 export function ForgotPasswordForm() {
   const router = useRouter();
@@ -54,11 +54,7 @@ export function ForgotPasswordForm() {
           </div>
         )}
 
-        <Button
-          type="submit"
-          className="w-full"
-          loading={loading}
-        >
+        <Button type="submit" className="w-full" loading={loading}>
           {loading ? "Enviando..." : "Enviar instrucciones"}
         </Button>
       </form>

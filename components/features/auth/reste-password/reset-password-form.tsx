@@ -4,9 +4,9 @@ import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Form, Input as AntInput } from "antd";
-import { PasswordStrength } from "@/components/features/auth/PasswordStrength";
+import { PasswordStrength } from "@/components/ui/PasswordStrength";
 import { useDoctorAuth } from "@/lib/hooks/doctors/useDoctorAuth";
-import { AuthFormCard } from "./auth-form-card";
+import { AuthFormCard } from "../components/auth-form-card";
 
 function validatePassword(pwd: string): string | null {
   if (pwd.length < 8 || pwd.length > 20)

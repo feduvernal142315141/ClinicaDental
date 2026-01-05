@@ -8,7 +8,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/atomic/forms/input-otp";
-import { AuthFormCard } from "./auth-form-card";
+import { AuthFormCard } from "../components/auth-form-card";
 import {
   loadOtpPassword,
   loadOtpSession,

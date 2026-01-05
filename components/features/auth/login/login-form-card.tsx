@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Input } from "@/components/ui/atomic/forms/input";
 import { Label } from "@/components/ui/atomic/forms/label";
-import { AuthFormCard } from "./auth-form-card";
+import { AuthFormCard } from "../components/auth-form-card";
 import Link from "next/link";
 
 interface LoginFormCardProps {
