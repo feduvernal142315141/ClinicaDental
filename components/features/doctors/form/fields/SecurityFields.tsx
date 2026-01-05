@@ -1,7 +1,7 @@
 "use client";
 
 import { Form, Input, Col, Row, Flex } from "antd";
-import { PasswordStrength } from "@/components/auth/PasswordStrength";
+import { PasswordStrength } from "@/components/ui/PasswordStrength";
 
 /**
  * SecurityFields Component

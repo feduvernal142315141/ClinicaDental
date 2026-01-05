@@ -17,7 +17,7 @@ export { SecurityFields } from "./form/fields/SecurityFields";
 export { RoleStatusFields } from "./form/fields/RoleStatusFields";
 export { DoctorScheduleFields } from "./form/fields/DoctorScheduleFields";
 export { FormActions } from "./form/components/FormActions";
-export { PasswordStrength } from "../auth/PasswordStrength";
+export { PasswordStrength } from "../../ui/PasswordStrength";
 export { AvatarUpload } from "./form/components/AvatarUpload";
 export { DayScheduleRow } from "./schedule/DayScheduleRow";
 export { ScheduleSectionHeader } from "./schedule/ScheduleSectionHeader";
