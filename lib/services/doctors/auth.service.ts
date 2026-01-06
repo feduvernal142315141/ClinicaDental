@@ -1,4 +1,5 @@
 import { serviceGet, servicePost } from "../baseService";
+import { encryptPasswordForTransport } from "@/lib/auth/password-encryption";
 import type {
   LoginRequest,
   LoginResponse,
@@ -10,6 +11,15 @@ import type {
   ResetPasswordRequest,
   ChangePasswordRequest,
 } from "@/lib/entity/doctors";
+
+function isLoginResponse(data: unknown): data is LoginResponse {
+  const candidate = data as LoginResponse | null | undefined;
+  return (
+    !!candidate &&
+    typeof candidate.otpExpiresAt === "string" &&
+    typeof candidate.otpExpiresInSeconds === "number"
+  );
+}
 
 /**
  * DoctorAuthService
@@ -23,14 +33,33 @@ import type {
  * POST /auth/login
  */
 async function login(credentials: LoginRequest): Promise<LoginResponse> {
+  // const encryptedPassword = await encryptPasswordForTransport(
+  //   credentials.password
+  // );
+
   const response = await servicePost<LoginRequest, LoginResponse>(
     "/auth/login",
-    credentials
+    { ...credentials, password:  credentials.password }
   );
-  if (response?.data) {
-    return response.data;
+
+  const status = response?.status;
+  const data: any = response?.data;
+
+  if (!status) throw new Error("Network error during login");
+
+  if (status < 200 || status >= 300) {
+    throw new Error(data?.message || "Login failed");
   }
-  throw new Error("Error al iniciar sesión");
+
+  if (isLoginResponse(data)) {
+    return data;
+  }
+
+  if (isLoginResponse(data?.data)) {
+    return data.data;
+  }
+
+  throw new Error(data?.message || "Error al iniciar sesión");
 }
 
 /**
