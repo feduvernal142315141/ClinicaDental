@@ -25,6 +25,8 @@ interface DoctorFormProps {
   initialData?: Doctor;
   /** Read-only mode (for detail view) */
   readOnly?: boolean;
+  /** Show role & status section (default: true). Useful to hide in "My Profile". */
+  showRoleStatusFields?: boolean;
 }
 
 /**
@@ -48,6 +50,7 @@ export function DoctorForm({
   basePath = "/settings/doctors",
   initialData,
   readOnly = false,
+  showRoleStatusFields = true,
 }: DoctorFormProps) {
   const { form, isEdit, loading, handleSubmit, handleCancel, handleBack } =
     useDoctorForm({ doctorId, basePath, initialData });
@@ -149,7 +152,7 @@ export function DoctorForm({
                 />
               </Form.Item>
 
-              <RoleStatusFields />
+              {showRoleStatusFields ? <RoleStatusFields /> : null}
             </Flex>
           </Col>
         </Row>
