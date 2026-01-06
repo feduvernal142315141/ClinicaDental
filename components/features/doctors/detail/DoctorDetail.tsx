@@ -57,6 +57,7 @@ export function DoctorDetail({
             icon={<ArrowLeftOutlined />}
             onClick={handleBackToList}
             size="large"
+            variant="outline"
           >
             Atrás
           </Button>
