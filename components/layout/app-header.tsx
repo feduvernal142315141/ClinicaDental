@@ -38,7 +38,7 @@ export function AppHeader({ supportHref = "/support" }: AppHeaderProps) {
           userName={getUserName()}
           userEmail={user?.email || ""}
           onLogout={logout}
-          onProfile={() => router.push("/settings")}
+          onProfile={() => router.push("/settings/profile")}
           onSupport={() => router.push("/support")}
         />
       </div>
