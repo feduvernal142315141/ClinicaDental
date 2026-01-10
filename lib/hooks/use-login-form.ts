@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 
 export function useLoginForm() {
   const [email, setEmail] = useState("");

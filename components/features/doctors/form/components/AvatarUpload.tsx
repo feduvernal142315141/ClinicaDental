@@ -2,7 +2,7 @@
 
 import { Upload, Image, ConfigProvider } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { useAvatarUpload } from "@/hooks/use-avatar-upload";
+import { useAvatarUpload } from "@/lib/hooks/use-avatar-upload";
 import type { UploadFile } from "antd";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 

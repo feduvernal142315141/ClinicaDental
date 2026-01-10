@@ -15,7 +15,7 @@ import {
   saveOtpSession,
 } from "@/lib/auth/otp-session";
 import { doctorAuthService } from "@/lib/services/doctors";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/atomic/data-display/card";
 import { Combobox } from "@/components/ui/primitives/shadcn/combobox";
 import { Calendar } from "@/components/ui/primitives/shadcn/calendar";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 import {
   Popover,
   PopoverContent,

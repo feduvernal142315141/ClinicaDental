@@ -9,7 +9,7 @@
  * REFACTORED: Ahora usa el componente atómico AlertDialog
  */
 
-import { useAlerts } from "@/contexts/interceptor-context";
+import { useAlerts } from "@/lib/contexts/interceptor-context";
 import { AlertDialog } from "@/components/ui/atomic/feedback";
 
 export function GlobalAlertDialog() {

@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/atomic/forms/label";
 import type { Doctor } from "@/lib/doctors";
 import { DoctorScheduleForm } from "./DoctorScheduleForm";
 import { createDoctor, updateDoctor } from "@/lib/supabase/doctors";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 import TextArea from "@/components/ui/atomic/forms/textarea";
 
 const SPECIALTIES = [

@@ -1,6 +1,6 @@
 "use client";
 
-import { useLoginForm } from "@/hooks/use-login-form";
+import { useLoginForm } from "@/lib/hooks/use-login-form";
 import { LoginHeroSection } from "./login-hero-section";
 import { LoginFormCard } from "./login-form-card";
 

@@ -14,7 +14,7 @@ import type { Doctor } from "@/lib/doctors";
 import { doctorService } from "@/lib/doctors";
 import DoctorSchedule from "./DoctorSchedule";
 import { deleteDoctor } from "@/lib/supabase/doctors";
-import { useAlert } from "@/contexts/alert-context";
+import { useAlert } from "@/lib/contexts/alert-context";
 
 export default function DoctorCard({
   doctor,
@@ -25,18 +25,18 @@ export default function DoctorCard({
   onEdit: (d: Doctor) => void;
   reload: () => void;
 }) {
-
   const { showConfirm, showSuccess, showError } = useAlert();
 
   const handleDelete = () => {
     showConfirm({
       title: "¿Eliminar paciente?",
-      description: 
-      <>
-        Esta acción no se puede deshacer. Se eliminará permanentemente la
-        información del doctor <strong>{doctor.name}</strong> y todos sus datos
-        asociados.
-      </>,
+      description: (
+        <>
+          Esta acción no se puede deshacer. Se eliminará permanentemente la
+          información del doctor <strong>{doctor.name}</strong> y todos sus
+          datos asociados.
+        </>
+      ),
       onConfirm: async () => {
         try {
           await deleteDoctor(doctor.id);

@@ -2,9 +2,9 @@
 
 import { Layout, ConfigProvider, theme, App } from "antd";
 import { useState } from "react";
-import { useTheme } from "@/hooks/use-theme";
-import { useAppShell } from "@/hooks/use-app-shell";
-import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/lib/hooks/use-theme";
+import { useAppShell } from "@/lib/hooks/use-app-shell";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { AppSider } from "./AppSider";
 import { AppHeaderAntd } from "./AppHeaderAntd";
 import { MobileHeaderAntd } from "./MobileHeaderAntd";

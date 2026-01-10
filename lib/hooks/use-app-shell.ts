@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { useSidebarNavigation } from "./use-sidebar-navigation";
 import {
   isPublicRoute,

@@ -40,10 +40,10 @@ import {
   Phone,
   Mail,
 } from "lucide-react";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { Patient } from "@/lib/entity/patients/patients";
 import { supabase } from "@/lib/supabaseClient";
-import { useAlert } from "@/contexts/alert-context";
+import { useAlert } from "@/lib/contexts/alert-context";
 
 interface PatientListProps {
   onNewPatient: () => void;

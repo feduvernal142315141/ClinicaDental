@@ -25,7 +25,7 @@ import {
   updateClinicSettings,
   type ClinicSettings,
 } from "@/lib/clinic-settings";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/lib/hooks/use-toast";
 
 const currencies = [
   { value: "USD", label: "USD - Dólar Estadounidense" },

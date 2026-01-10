@@ -1,6 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/primitives/shadcn/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/primitives/shadcn/tabs";
 import { User, Shield } from "lucide-react";
 import {
   doctorService,
@@ -11,7 +16,7 @@ import {
 } from "@/lib/doctors";
 import DoctorsList from "./DoctorsList";
 import RolesPermissions from "./RolesPermissions";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { getDoctors } from "@/lib/supabase/doctors";
 
 export default function DoctorsRolesSettings() {

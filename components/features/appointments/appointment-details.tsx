@@ -1,51 +1,66 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/primitives/shadcn/button"
-import { Badge } from "@/components/ui/atomic/data-display/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/atomic/data-display/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/atomic/forms/select"
-import { useAuth } from "@/contexts/auth-context"
-import { Calendar, Clock, User, Stethoscope, FileText } from "lucide-react"
-import { Appointment } from "@/lib/entity/appointment/appointments"
-import { updateAppointmentStatus } from "@/lib/supabase/appointments"
+import { useState } from "react";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import { Badge } from "@/components/ui/atomic/data-display/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/atomic/data-display/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/atomic/forms/select";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { Calendar, Clock, User, Stethoscope, FileText } from "lucide-react";
+import { Appointment } from "@/lib/entity/appointment/appointments";
+import { updateAppointmentStatus } from "@/lib/supabase/appointments";
 
 interface AppointmentDetailsProps {
-  appointment: Appointment
-  onClose: () => void
-  onUpdate: () => void
+  appointment: Appointment;
+  onClose: () => void;
+  onUpdate: () => void;
 }
 
-export function AppointmentDetails({ appointment, onClose, onUpdate }: AppointmentDetailsProps) {
-  const { user } = useAuth()
-  const [loading, setLoading] = useState(false)
+export function AppointmentDetails({
+  appointment,
+  onClose,
+  onUpdate,
+}: AppointmentDetailsProps) {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
 
   const handleStatusUpdate = async (newStatus: Appointment["status"]) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      await updateAppointmentStatus(appointment.id, newStatus)
-      onUpdate()
+      await updateAppointmentStatus(appointment.id, newStatus);
+      onUpdate();
     } catch (error) {
-      console.error("Error updating appointment:", error)
+      console.error("Error updating appointment:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const getStatusColor = (status: Appointment["status"]) => {
     switch (status) {
       case "scheduled":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800";
       case "completed":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "cancelled":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       case "no-show":
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr + "T00:00:00").toLocaleDateString("es-ES", {
@@ -53,17 +68,20 @@ export function AppointmentDetails({ appointment, onClose, onUpdate }: Appointme
       year: "numeric",
       month: "long",
       day: "numeric",
-    })
-  }
+    });
+  };
 
-  const canUpdateStatus = user?.roleName === "admin" || user?.roleName === "doctor"
+  const canUpdateStatus =
+    user?.roleName === "admin" || user?.roleName === "doctor";
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Detalles de la Cita</CardTitle>
-          <Badge className={getStatusColor(appointment.status)}>{appointment.status}</Badge>
+          <Badge className={getStatusColor(appointment.status)}>
+            {appointment.status}
+          </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -73,7 +91,9 @@ export function AppointmentDetails({ appointment, onClose, onUpdate }: Appointme
               <Calendar className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="font-medium">Fecha</p>
-                <p className="text-sm text-muted-foreground">{formatDate(appointment.date)}</p>
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(appointment.date)}
+                </p>
               </div>
             </div>
 
@@ -93,7 +113,9 @@ export function AppointmentDetails({ appointment, onClose, onUpdate }: Appointme
               <User className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="font-medium">Paciente</p>
-                <p className="text-sm text-muted-foreground">{appointment.patientName}</p>
+                <p className="text-sm text-muted-foreground">
+                  {appointment.patientName}
+                </p>
               </div>
             </div>
 
@@ -101,7 +123,9 @@ export function AppointmentDetails({ appointment, onClose, onUpdate }: Appointme
               <Stethoscope className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="font-medium">Doctor</p>
-                <p className="text-sm text-muted-foreground">{appointment.doctorName}</p>
+                <p className="text-sm text-muted-foreground">
+                  {appointment.doctorName}
+                </p>
               </div>
             </div>
           </div>
@@ -118,7 +142,9 @@ export function AppointmentDetails({ appointment, onClose, onUpdate }: Appointme
         {appointment.notes && (
           <div className="space-y-2">
             <p className="font-medium">Notas:</p>
-            <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">{appointment.notes}</p>
+            <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+              {appointment.notes}
+            </p>
           </div>
         )}
 
@@ -126,7 +152,11 @@ export function AppointmentDetails({ appointment, onClose, onUpdate }: Appointme
           <div className="space-y-3">
             <p className="font-medium">Actualizar estado:</p>
             <div className="flex space-x-2">
-              <Select defaultValue={appointment.status} onValueChange={handleStatusUpdate} disabled={loading}>
+              <Select
+                defaultValue={appointment.status}
+                onValueChange={handleStatusUpdate}
+                disabled={loading}
+              >
                 <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
@@ -148,5 +178,5 @@ export function AppointmentDetails({ appointment, onClose, onUpdate }: Appointme
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

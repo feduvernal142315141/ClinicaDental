@@ -4,7 +4,7 @@ import { Layout } from "antd";
 import { MedicineBoxOutlined } from "@ant-design/icons";
 import { NavMenu, MenuItem } from "@/components/ui/antd/navigation/NavMenu";
 import { Text } from "@/components/ui/antd/typography/Text";
-import { useTheme } from "@/hooks/use-theme";
+import { useTheme } from "@/lib/hooks/use-theme";
 
 const { Sider } = Layout;
 

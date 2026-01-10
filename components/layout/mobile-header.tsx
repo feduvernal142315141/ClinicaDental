@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Menu, X } from "lucide-react";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { ThemeToggle } from "@/components/ui/atomic/controls/theme-toggle";
 
 interface MobileHeaderProps {

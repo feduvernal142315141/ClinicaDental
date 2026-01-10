@@ -4,7 +4,7 @@ import { useMemo, useEffect } from "react";
 import { App } from "antd";
 import { DataTable, Card } from "@/components/ui/antd";
 import { useDoctors } from "@/lib/hooks/doctors";
-import { useDoctorsPage } from "@/hooks/use-doctors-page";
+import { useDoctorsPage } from "@/lib/hooks/use-doctors-page";
 import { getDoctorsColumns } from "../columns/doctors-table.config";
 
 interface DoctorsListProps {

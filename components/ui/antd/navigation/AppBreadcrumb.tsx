@@ -3,7 +3,7 @@
 import { Breadcrumb as AntBreadcrumb } from "antd";
 import { HomeOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
-import { useBreadcrumb, BreadcrumbItem } from "@/hooks/use-breadcrumb";
+import { useBreadcrumb, BreadcrumbItem } from "@/lib/hooks/use-breadcrumb";
 import { createElement } from "react";
 
 interface AppBreadcrumbProps {

@@ -3,7 +3,7 @@
 import { SummaryCard } from "@/components/ui/atomic/data-display/summary-card";
 import { AppointmentForm } from "@/components/appointments/appointment-form";
 import { MiniCalendar } from "./MiniCalendar";
-import { useAppointmentFormSummary } from "@/hooks/use-appointment-form-summary";
+import { useAppointmentFormSummary } from "@/lib/hooks/use-appointment-form-summary";
 
 interface AppointmentFormWithSidebarProps {
   onSuccess: () => void;

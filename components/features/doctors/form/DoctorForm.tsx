@@ -2,7 +2,7 @@
 
 import { Form, Divider, Input, Row, Col, Flex, Avatar } from "antd";
 import { UserOutlined } from "@ant-design/icons";
-import { useDoctorForm } from "@/hooks/use-doctor-form";
+import { useDoctorForm } from "@/lib/hooks/use-doctor-form";
 
 import { BasicInfoFields } from "./fields/BasicInfoFields";
 import { ProfessionalInfoFields } from "./fields/ProfessionalInfoFields";

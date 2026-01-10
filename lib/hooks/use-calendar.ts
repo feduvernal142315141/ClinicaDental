@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { Appointment } from "@/lib/entity/appointment/appointments";
 import { getAppointmentsByDate } from "@/lib/supabase/appointments";
 import { toISODateString } from "@/lib/utils/appointment-utils";

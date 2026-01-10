@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/atomic/data-display/card";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 import {
   agreementOptions,
   genderOptions,

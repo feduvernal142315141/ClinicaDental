@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { DoctorForm } from "@/components/doctors";
 import { SectionTitle } from "@/components/ui/antd";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { loadLoggedUser } from "@/lib/auth/token-storage";
 
 function getLoggedUserDoctorId(fallbackId?: string | null): string | null {

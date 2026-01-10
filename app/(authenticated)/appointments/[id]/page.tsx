@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/atomic/layout/page-header";
 import { AppointmentDetailsPageClient } from "@/components/appointments/appointment-details-page-client";
-import { useAppointmentDetails } from "@/hooks/use-appointment-details";
+import { useAppointmentDetails } from "@/lib/hooks/use-appointment-details";
 
 export default async function AppointmentDetailsPage({
   params,

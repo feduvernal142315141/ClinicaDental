@@ -30,6 +30,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { useAlertDialog } from "./use-alert-dialog";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 
 // ============================================
 // TYPES
@@ -226,30 +227,52 @@ export function AlertDialog({
 
         {!hideFooter && finalActions.length > 0 && (
           <AlertDialogFooter className={footerClassName}>
-            {finalActions.map((action, index) => {
-              const isFirstAction = index === 0;
-              const Component =
-                isFirstAction && finalActions.length > 1
-                  ? AlertDialogCancel
-                  : AlertDialogAction;
+            {(() => {
+              const cancelIndex =
+                finalActions.length > 1
+                  ? finalActions.findIndex((a) => a.variant === "outline")
+                  : -1;
 
-              return (
-                <Component
-                  key={`action-${index}`}
-                  onClick={() => handleActionClick(action)}
-                  disabled={action.disabled}
-                  className={cn(
-                    action.variant === "destructive" &&
-                      "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-                    action.variant === "outline" &&
-                      "border-input bg-background hover:bg-accent hover:text-accent-foreground",
-                    action.className
-                  )}
-                >
-                  {action.label}
-                </Component>
-              );
-            })}
+              const mapToButtonProps = (variant?: ButtonVariant) => {
+                switch (variant) {
+                  case "outline":
+                  case "secondary":
+                    return { variant: "outline" as const };
+                  case "ghost":
+                  case "link":
+                    return { variant: "ghost" as const };
+                  case "destructive":
+                    return { variant: "default" as const, danger: true };
+                  case "default":
+                  default:
+                    return { variant: "default" as const };
+                }
+              };
+
+              return finalActions.map((action, index) => {
+                const isCancel = cancelIndex !== -1 && index === cancelIndex;
+                const Component = isCancel ? AlertDialogCancel : AlertDialogAction;
+
+                const buttonProps = mapToButtonProps(action.variant);
+
+                return (
+                  <Component
+                    key={`action-${action.label}-${index}`}
+                    asChild
+                    onClick={() => handleActionClick(action)}
+                    disabled={action.disabled}
+                  >
+                    <Button
+                      type="button"
+                      className={action.className}
+                      {...buttonProps}
+                    >
+                      {action.label}
+                    </Button>
+                  </Component>
+                );
+              });
+            })()}
           </AlertDialogFooter>
         )}
       </AlertDialogContent>

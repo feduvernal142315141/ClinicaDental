@@ -2,7 +2,7 @@
 
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/primitives/shadcn/button";
-import { useTheme } from "@/hooks/use-theme";
+import { useTheme } from "@/lib/hooks/use-theme";
 import { cn } from "@/lib/utils/utils";
 
 interface ThemeToggleProps {

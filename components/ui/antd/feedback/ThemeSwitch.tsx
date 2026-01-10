@@ -2,7 +2,7 @@
 
 import { Switch, Tooltip } from "antd";
 import { MoonOutlined, SunOutlined } from "@ant-design/icons";
-import { useTheme } from "@/hooks/use-theme";
+import { useTheme } from "@/lib/hooks/use-theme";
 
 interface ThemeSwitchProps {
   showLabel?: boolean;

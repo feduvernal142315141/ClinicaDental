@@ -6,7 +6,7 @@ import { Stethoscope, LifeBuoy } from "lucide-react";
 import Link from "next/link";
 import { HeaderActions } from "@/components/ui/atomic/navigation/header-actions";
 import { SidebarFooter } from "@/components/ui/atomic/navigation/sidebar-footer";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { useRouter } from "next/navigation";
 
 interface AppHeaderProps {

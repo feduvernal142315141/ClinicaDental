@@ -2,8 +2,8 @@
 
 import { cn } from "@/lib/utils/utils";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/auth-context";
-import { useSidebarNavigation } from "@/hooks/use-sidebar-navigation";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { useSidebarNavigation } from "@/lib/hooks/use-sidebar-navigation";
 import { ThemeToggle } from "@/components/ui/atomic/controls/theme-toggle";
 import { SidebarHeader } from "@/components/ui/atomic/navigation/sidebar-header";
 import { SidebarSection } from "@/components/ui/atomic/navigation/sidebar-section";

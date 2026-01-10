@@ -8,9 +8,9 @@ import {
 } from "@/components/ui/atomic/data-display/card";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Plus } from "lucide-react";
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { Appointment } from "@/lib/entity/appointment/appointments";
-import { useCalendar } from "@/hooks/use-calendar";
+import { useCalendar } from "@/lib/hooks/use-calendar";
 import { CalendarHeader } from "@/components/ui/atomic/data-display/calendar-header";
 import { CalendarGrid } from "@/components/ui/atomic/data-display/calendar-grid";
 import { AppointmentList } from "@/components/ui/atomic/data-display/appointment-list-item";
