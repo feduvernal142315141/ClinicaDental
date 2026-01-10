@@ -55,7 +55,7 @@ export function ForgotPasswordForm() {
         )}
 
         <Button type="submit" className="w-full" loading={loading}>
-          {loading ? "Enviando..." : "Enviar instrucciones"}
+          {loading ? "Enviando..." : "Enviar"}
         </Button>
       </form>
 
