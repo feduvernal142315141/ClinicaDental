@@ -251,7 +251,9 @@ export function AlertDialog({
 
               return finalActions.map((action, index) => {
                 const isCancel = cancelIndex !== -1 && index === cancelIndex;
-                const Component = isCancel ? AlertDialogCancel : AlertDialogAction;
+                const Component = isCancel
+                  ? AlertDialogCancel
+                  : AlertDialogAction;
 
                 const buttonProps = mapToButtonProps(action.variant);
 
