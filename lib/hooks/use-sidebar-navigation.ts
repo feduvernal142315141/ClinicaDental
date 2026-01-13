@@ -12,6 +12,7 @@ import {
   Sliders,
   UserCog,
   Bell,
+  Shield,
   Link,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
@@ -43,7 +44,8 @@ export function useSidebarNavigation(userRole?: string) {
         label: "Gestión de Pacientes",
         icon: Users,
       },
-      { path: "/settings/doctors", label: "Doctores y Roles", icon: UserCog },
+      { path: "/settings/doctors", label: "Doctores", icon: UserCog },
+      { path: "/settings/roles", label: "Roles", icon: Shield },
       { path: "/settings/notifications", label: "Notificaciones", icon: Bell },
       { path: "/settings/integrations", label: "Integraciones", icon: Link },
     ];

@@ -1,4 +1,4 @@
-import { serviceGet, servicePost } from "../baseService";
+import { serviceGet, servicePost, servicePut } from "../baseService";
 import type {
   Role,
   RoleListItem,
@@ -90,6 +90,21 @@ async function createRole(data: CreateRoleRequest): Promise<boolean> {
 }
 
 /**
+ * Update role
+ * PUT /roles/:id
+ */
+async function updateRole(id: string, data: CreateRoleRequest): Promise<boolean> {
+  const response = await servicePut<CreateRoleRequest, boolean>(
+    `${endpoint}/${id}`,
+    data
+  );
+  if (response?.data) {
+    return response.data;
+  }
+  throw new Error("Error al actualizar rol");
+}
+
+/**
  * Helper: Build filter string
  * Example: buildFilter('name', 'contains', 'Admin') => 'name,contains,Admin'
  */
@@ -125,4 +140,5 @@ export const rolesService = {
   getRoleById,
   getRoles,
   createRole,
+  updateRole,
 };

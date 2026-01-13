@@ -21,7 +21,7 @@ export interface Role {
   id: string;
   name: string;
   createAt: string;
-  permissions: string[]; // Array of permission IDs
+  permissions: string[]; // Encoded permissions (e.g. "role-3")
 }
 
 /**
@@ -45,7 +45,7 @@ export interface RoleListItem {
  */
 export interface CreateRoleRequest {
   roleName: string;
-  permissions?: string[]; // Array of permission IDs
+  permissions?: string[]; // Encoded permissions (e.g. "role-3")
 }
 
 /**

@@ -95,8 +95,13 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
     parent: "settings",
   },
   doctors: {
-    label: "Doctores y Roles",
+    label: "Doctores",
     icon: UserCog,
+    parent: "settings",
+  },
+  roles: {
+    label: "Roles",
+    icon: Shield,
     parent: "settings",
   },
   integrations: {

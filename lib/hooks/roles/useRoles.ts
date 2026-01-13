@@ -96,6 +96,29 @@ export function useRoles() {
     [message, fetchRoles]
   );
 
+  /**
+   * Update role
+   */
+  const updateRole = useCallback(
+    async (id: string, data: CreateRoleRequest) => {
+      setLoading(true);
+      try {
+        const success = await rolesService.updateRole(id, data);
+        if (success) {
+          message.success("Rol actualizado exitosamente");
+          await fetchRoles();
+        }
+        return success;
+      } catch (error: any) {
+        message.error(error.message || "Error al actualizar rol");
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [message, fetchRoles]
+  );
+
   return {
     loading,
     roles,
@@ -103,5 +126,6 @@ export function useRoles() {
     fetchRoles,
     getRoleById,
     createRole,
+    updateRole,
   };
 }

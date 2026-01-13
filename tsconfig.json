@@ -68,6 +68,12 @@
       "@/components/patients/*": [
         "./components/features/patients/*"
       ],
+      "@/components/roles": [
+        "./components/features/roles"
+      ],
+      "@/components/roles/*": [
+        "./components/features/roles/*"
+      ],
       "@/components/settings": [
         "./components/features/settings"
       ],
