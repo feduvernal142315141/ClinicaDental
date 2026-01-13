@@ -22,6 +22,8 @@ export interface AppUser {
   clinicId: string | null;
   roleId: string | null;
   roleName: string;
+  /** Optional permissions encoded as "module-value" bitmask strings (e.g. "role-3"). */
+  permissions?: string[];
 }
 
 export interface RegisterData {

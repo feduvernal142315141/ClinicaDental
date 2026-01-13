@@ -59,6 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ((payload as any)?.rol as string | undefined);
     const roleName = normalizeRoleName(rawRole);
 
+    const rawPermissions =
+      (payload?.permissions as unknown) ??
+      ((payload as any)?.Permissions as unknown) ??
+      ((payload as any)?.permisos as unknown);
+
+    const permissions = Array.isArray(rawPermissions)
+      ? rawPermissions.filter((p): p is string => typeof p === "string")
+      : undefined;
+
     setUser({
       id: String(
         (payload?.userId as string | undefined) ??
@@ -70,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clinicId: null,
       roleId: null,
       roleName,
+      permissions,
     });
   };
 
