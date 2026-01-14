@@ -37,46 +37,66 @@ export const PERMISSION_CATEGORIES = {
  * Available permissions
  */
 export const PERMISSIONS = {
-  USER: {
-    id: "user",
-    name: "Gestión de Usuarios",
-    description: "Gestión de usuarios del sistema",
-    category: PERMISSION_CATEGORIES.SETTINGS,
+  // Nota: este catálogo define qué módulos se renderizan en el selector.
+  // Debe estar alineado con los `name` que devuelve GET /permissions.
+  APPOINTMENTS: {
+    id: "appointments",
+    name: "Citas",
+    description: "Gestión de citas",
+    category: PERMISSION_CATEGORIES.APPOINTMENTS,
+  },
+  PATIENTS: {
+    id: "patients",
+    name: "Pacientes",
+    description: "Gestión de pacientes",
+    category: PERMISSION_CATEGORIES.PATIENTS,
+  },
+  PATIENT_MANAGEMENT: {
+    id: "patient_management",
+    name: "Administración de Pacientes",
+    description: "Operaciones administrativas de pacientes",
+    category: PERMISSION_CATEGORIES.PATIENTS,
+  },
+  DOCTOR: {
+    id: "doctor",
+    name: "Doctores",
+    description: "Gestión de doctores",
+    category: PERMISSION_CATEGORIES.DOCTORS,
   },
   ROLE: {
     id: "role",
-    name: "Gestión de Roles",
+    name: "Roles",
     description: "Gestión de roles y permisos",
     category: PERMISSION_CATEGORIES.SETTINGS,
-  },
-  FINANCIAL_INSTITUTION: {
-    id: "financial_institution",
-    name: "Instituciones Financieras",
-    description: "Gestión de instituciones financieras",
-    category: PERMISSION_CATEGORIES.SETTINGS,
-  },
-  ONLINE_CONSULTATION: {
-    id: "online_consultation",
-    name: "Consultas en Línea",
-    description: "Acceso a consultas en línea",
-    category: PERMISSION_CATEGORIES.APPOINTMENTS,
-  },
-  RESEND_STATEMENT: {
-    id: "resend_statement",
-    name: "Reenvío de Estados",
-    description: "Reenvío de estados de cuenta",
-    category: PERMISSION_CATEGORIES.SETTINGS,
-  },
-  REPORT: {
-    id: "report",
-    name: "Reportes",
-    description: "Generación y acceso a reportes",
-    category: PERMISSION_CATEGORIES.REPORTS,
   },
   CAMPAIGN: {
     id: "campaign",
     name: "Campañas",
     description: "Gestión de campañas",
+    category: PERMISSION_CATEGORIES.SETTINGS,
+  },
+  TEMPLATE: {
+    id: "template",
+    name: "Plantillas",
+    description: "Gestión de plantillas",
+    category: PERMISSION_CATEGORIES.SETTINGS,
+  },
+  GENERAL_OPTION: {
+    id: "general_option",
+    name: "Opciones Generales",
+    description: "Configuraciones generales",
+    category: PERMISSION_CATEGORIES.SETTINGS,
+  },
+  NOTIFICATION: {
+    id: "notification",
+    name: "Notificaciones",
+    description: "Gestión de notificaciones",
+    category: PERMISSION_CATEGORIES.SETTINGS,
+  },
+  INTEGRATION: {
+    id: "integration",
+    name: "Integraciones",
+    description: "Gestión de integraciones",
     category: PERMISSION_CATEGORIES.SETTINGS,
   },
 } as const;

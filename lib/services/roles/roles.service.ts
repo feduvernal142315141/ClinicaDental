@@ -1,4 +1,7 @@
-import { serviceGet, servicePost, servicePut } from "../baseService";
+import { serviceGet, servicePost } from "../baseService";
+import { permissionsService } from "../permissions";
+import { PermissionAction } from "@/lib/permissions/permission-actions";
+import { PERMISSIONS } from "@/lib/constants/roles.constants";
 import type {
   Role,
   RoleListItem,
@@ -6,6 +9,123 @@ import type {
   RolesQueryParams,
   PaginatedRolesResponse,
 } from "@/lib/entity/roles";
+
+type PermissionCatalogItem = {
+  id?: string;
+  permissionId?: string;
+  code?: string;
+  key?: string;
+  name?: string;
+  permissionName?: string;
+};
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuid(v: string): boolean {
+  return UUID_RE.test(v);
+}
+
+function isEncodedPermission(v: string): boolean {
+  // Expected: "moduleKey-actionsValue" (e.g. "role-15")
+  const idx = v.lastIndexOf("-");
+  if (idx <= 0) return false;
+  const moduleKey = v.slice(0, idx).trim();
+  const rawValue = v.slice(idx + 1).trim();
+  // Avoid treating UUIDs like encoded permissions (UUIDs contain '-' and may end with digits).
+  if (isUuid(v) || isUuid(moduleKey)) return false;
+  // Value must be decimal digits only (parseInt("7d...", 10) would wrongly return 7).
+  if (!/^\d+$/.test(rawValue)) return false;
+  if (!rawValue) return false;
+  const num = Number.parseInt(rawValue, 10);
+  return Number.isFinite(num) && !Number.isNaN(num);
+}
+
+function normalizeString(v: unknown): string {
+  if (typeof v !== "string") return "";
+  return v
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "_");
+}
+
+function normalizeCatalogItems(raw: any): PermissionCatalogItem[] {
+  if (!raw) return [];
+  const candidates = [raw, raw?.data, raw?.entities, raw?.content, raw?.items];
+  for (const c of candidates) {
+    if (Array.isArray(c)) return c as PermissionCatalogItem[];
+  }
+  return [];
+}
+
+function resolveModuleKeyFromCatalogItem(item: PermissionCatalogItem): string {
+  return item.code || item.key || item.name || item.permissionName || "";
+}
+
+function mapCandidateToFrontendModuleKey(candidate: string): string | null {
+  const c = normalizeString(candidate);
+  if (!c) return null;
+
+  // First, match by module id
+  const byId = Object.values(PERMISSIONS).find(
+    (p) => normalizeString(p.id) === c
+  );
+  if (byId) return byId.id;
+
+  // Then, match by display name
+  const byName = Object.values(PERMISSIONS).find(
+    (p) => normalizeString(p.name) === c
+  );
+  if (byName) return byName.id;
+
+  return null;
+}
+
+async function normalizeRolePermissions(raw: unknown): Promise<string[]> {
+  const arr = Array.isArray(raw) ? raw : [];
+  const strings = arr.filter((p): p is string => typeof p === "string");
+  if (!strings.length) return [];
+
+  // If already in the expected encoded format, keep as-is.
+  if (strings.every(isEncodedPermission)) return strings;
+
+  // If backend sends UUIDs, we can only assume an access level.
+  // Here we assume FULL access (ALL=15) for each permission id.
+  const uuids = strings.filter(isUuid);
+  const encoded = strings.filter(isEncodedPermission);
+
+  if (!uuids.length) {
+    // Unknown format: drop to avoid rendering misleading permissions.
+    return encoded;
+  }
+
+  let catalog: PermissionCatalogItem[] = [];
+  try {
+    const permissionsResponse = await permissionsService.getPermissions();
+    catalog = normalizeCatalogItems(permissionsResponse);
+  } catch {
+    // If catalog fetch fails, we can't map UUID -> moduleKey.
+    return encoded;
+  }
+
+  const byId = new Map<string, PermissionCatalogItem>();
+  for (const item of catalog) {
+    const id = (item.permissionId ?? item.id ?? "") as string;
+    if (id) byId.set(id, item);
+  }
+
+  const mapped: string[] = [];
+  for (const permissionId of uuids) {
+    const item = byId.get(permissionId);
+    if (!item) continue;
+    const candidate = resolveModuleKeyFromCatalogItem(item);
+    const moduleKey = mapCandidateToFrontendModuleKey(candidate);
+    if (!moduleKey) continue;
+    mapped.push(`${moduleKey}-${PermissionAction.ALL}`);
+  }
+
+  return [...encoded, ...mapped];
+}
 
 /**
  * RolesService
@@ -52,7 +172,11 @@ function buildQueryString(params?: RolesQueryParams): string {
 async function getRoleById(id: string): Promise<Role> {
   const response = await serviceGet<Role>(`${endpoint}/${id}`);
   if (response?.data) {
-    return response.data;
+    const role = response.data as Role;
+    return {
+      ...role,
+      permissions: await normalizeRolePermissions((role as any)?.permissions),
+    };
   }
   throw new Error("Error al cargar rol");
 }
@@ -83,25 +207,31 @@ async function createRole(data: CreateRoleRequest): Promise<boolean> {
     endpoint,
     data
   );
-  if (response?.data) {
-    return response.data;
+
+  if (response?.status >= 200 && response?.status < 300) {
+    return true;
   }
-  throw new Error("Error al crear rol");
+
+  const errorMessage =
+    (response?.data as any)?.message ||
+    (response?.data as any)?.details ||
+    "Error al crear rol";
+  throw new Error(errorMessage);
 }
 
 /**
  * Update role
  * PUT /roles/:id
  */
-async function updateRole(id: string, data: CreateRoleRequest): Promise<boolean> {
-  const response = await servicePut<CreateRoleRequest, boolean>(
-    `${endpoint}/${id}`,
-    data
-  );
-  if (response?.data) {
-    return response.data;
-  }
-  throw new Error("Error al actualizar rol");
+async function updateRole(
+  id: string,
+  data: CreateRoleRequest
+): Promise<boolean> {
+  return permissionsService.updateRolePermissions({
+    rolId: id,
+    roleName: data.roleName,
+    permissions: data.permissions ?? [],
+  });
 }
 
 /**

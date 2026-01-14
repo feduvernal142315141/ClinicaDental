@@ -63,16 +63,31 @@ export function PermissionsSelector({
   onChange,
   disabled,
 }: PermissionsSelectorProps) {
+  const normalizedValue = useMemo(() => {
+    if (!Array.isArray(value)) return [] as string[];
+    return value.filter((p): p is string => typeof p === "string");
+  }, [value]);
+
   const modules: PermissionModule[] = useMemo(() => {
     return Object.values(PERMISSIONS);
   }, []);
 
+  const knownModuleIds = useMemo(
+    () => new Set(modules.map((m) => m.id)),
+    [modules]
+  );
+
   const categories = useMemo(() => computeCategories(modules), [modules]);
 
-  const permissionsObj = useMemo<PermissionsObject>(
-    () => permissionsToObject(value),
-    [value]
-  );
+  const permissionsObj = useMemo<PermissionsObject>(() => {
+    const raw = permissionsToObject(normalizedValue);
+    const next: PermissionsObject = {};
+    for (const moduleId of knownModuleIds) {
+      const v = raw[moduleId];
+      if (typeof v === "number" && v > 0) next[moduleId] = v;
+    }
+    return next;
+  }, [normalizedValue, knownModuleIds]);
 
   const emit = useCallback(
     (next: PermissionsObject) => {

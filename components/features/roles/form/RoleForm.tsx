@@ -39,12 +39,12 @@ export function RoleForm({
       }}
     >
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           {isEdit && isSystem && (
             <Alert
               type="info"
               showIcon
-              message="Este rol es de sistema"
+              title="Este rol es de sistema"
               description="Algunos campos pueden estar restringidos."
             />
           )}

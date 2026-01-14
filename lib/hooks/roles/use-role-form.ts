@@ -21,15 +21,19 @@ export function useRoleForm({
 
   const { loading, getRoleById, createRole, updateRole } = useRoles();
 
-  // Load role when editing
+  // Keep form state consistent when switching between create/edit or changing roleId.
+  // This prevents stale permissions/name from a previous role from leaking into the next screen.
   useEffect(() => {
+    // Reset first so UI doesn't briefly show previous values.
+    form.resetFields();
+
     if (!isEdit || !roleId) return;
 
     getRoleById(roleId)
       .then((role: Role) => {
         form.setFieldsValue({
-          roleName: role.name,
-          permissions: role.permissions ?? [],
+          roleName: role?.name,
+          permissions: Array.isArray(role?.permissions) ? role.permissions : [],
         });
       })
       .catch((err) => {

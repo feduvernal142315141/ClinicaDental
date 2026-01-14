@@ -117,13 +117,16 @@ export const SYSTEM_ROLES = {
  * Permission types
  */
 export const PERMISSION_TYPES = {
-  USER: "user",
+  APPOINTMENTS: "appointments",
+  PATIENTS: "patients",
+  PATIENT_MANAGEMENT: "patient_management",
+  DOCTOR: "doctor",
   ROLE: "role",
-  FINANCIAL_INSTITUTION: "financial_institution",
-  ONLINE_CONSULTATION: "online_consultation",
-  RESEND_STATEMENT: "resend_statement",
-  REPORT: "report",
   CAMPAIGN: "campaign",
+  TEMPLATE: "template",
+  GENERAL_OPTION: "general_option",
+  NOTIFICATION: "notification",
+  INTEGRATION: "integration",
 } as const;
 
 export type PermissionType =
