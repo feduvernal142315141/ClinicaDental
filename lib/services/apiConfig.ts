@@ -50,7 +50,15 @@ apiInstance.interceptors.request.use(
     // Obtener el access token desde cookie (flujo OTP/JWT backend)
     const accessToken = getAccessToken();
     if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+      const headers: any = config.headers;
+      if (headers && typeof headers.set === "function") {
+        headers.set("Authorization", `Bearer ${accessToken}`);
+      } else {
+        config.headers = {
+          ...(headers ?? {}),
+          Authorization: `Bearer ${accessToken}`,
+        } as any;
+      }
     }
 
     return config;
