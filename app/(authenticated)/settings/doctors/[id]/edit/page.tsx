@@ -3,7 +3,7 @@
 import { use } from "react";
 import { DoctorForm } from "@/components/doctors";
 import { SectionTitle } from "@/components/ui/antd";
-import { useDoctorsPage } from "@/lib/hooks/use-doctors-page";
+import { useDoctorsPage } from "@/lib/hooks/doctors/use-doctors-page";
 
 interface PageProps {
   params: Promise<{ id: string }>;

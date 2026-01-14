@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { App, Input, Space } from "antd";
 import { Card, DataTable } from "@/components/ui/antd";
 import { useRoles } from "@/lib/hooks/roles/useRoles";
-import { useRolesPage } from "@/lib/hooks/use-roles-page";
+import { useRolesPage } from "@/lib/hooks/roles/use-roles-page";
 import { buildFilter } from "@/lib/services/roles";
 import { getRolesColumns } from "../table/roles-table.config";
 
@@ -54,7 +54,7 @@ export function RolesList({ basePath = "/settings/roles" }: RolesListProps) {
 
   return (
     <Card>
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <Input.Search
           placeholder="Buscar roles por nombre"
           allowClear

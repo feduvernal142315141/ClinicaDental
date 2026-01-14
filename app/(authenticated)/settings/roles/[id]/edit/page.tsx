@@ -3,7 +3,7 @@
 import { use } from "react";
 import { SectionTitle } from "@/components/ui/antd";
 import { RoleForm } from "@/components/roles";
-import { useRolesPage } from "@/lib/hooks/use-roles-page";
+import { useRolesPage } from "@/lib/hooks/roles/use-roles-page";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useEffect } from "react";
