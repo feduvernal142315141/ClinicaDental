@@ -28,6 +28,8 @@ export function FormActions({
   return (
     <Space>
       <Button
+        type="button"
+        htmlType="button"
         danger
         onClick={onCancel}
         size="large"
