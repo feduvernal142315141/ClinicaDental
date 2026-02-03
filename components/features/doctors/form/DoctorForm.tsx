@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Form, Divider, Input, Row, Col, Flex, Avatar } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { useDoctorForm } from "@/lib/hooks/doctors/use-doctor-form";
@@ -15,6 +16,29 @@ import { Card } from "@/components/ui/antd";
 import { DEFAULT_WEEK_SCHEDULE } from "@/lib/entity/schedule";
 
 const { TextArea } = Input;
+
+function useResponsiveAvatarSize() {
+  const [size, setSize] = useState(200);
+
+  useEffect(() => {
+    const updateSize = () => {
+      const width = window.innerWidth;
+      if (width < 768) {
+        setSize(200);
+      } else if (width < 1200) {
+        setSize(160);
+      } else {
+        setSize(220);
+      }
+    };
+
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+
+  return size;
+}
 
 interface DoctorFormProps {
   /** Doctor ID for editing (undefined for new doctor) */
@@ -55,10 +79,9 @@ export function DoctorForm({
   const { form, isEdit, loading, handleSubmit, handleCancel, handleBack } =
     useDoctorForm({ doctorId, basePath, initialData });
 
-  // Get avatar URL from form (for edit mode)
   const avatarUrl = Form.useWatch("avatarUrl", form);
+  const avatarSize = useResponsiveAvatarSize();
 
-  // Build initial file list for AvatarUpload
   const initialFileList =
     avatarUrl && isEdit
       ? [
@@ -78,7 +101,6 @@ export function DoctorForm({
       onFinish={handleSubmit}
       initialValues={{
         active: true,
-        // Always set default schedule, useEffect will override it when editing
         schedule: DEFAULT_WEEK_SCHEDULE,
       }}
       disabled={loading || readOnly}
@@ -101,12 +123,12 @@ export function DoctorForm({
               ]
         }
       >
-        <Row gutter={[16, 16]} justify="center" align="middle">
-          <Col xs={24} sm={24} md={8} lg={8}>
+        <Row gutter={[16, 24]} justify="center" align="middle">
+          <Col xs={24} sm={24} md={24} lg={8} xl={6}>
             <Flex align="center" justify="center" className="w-full">
               {readOnly ? (
                 <Avatar
-                  size={280}
+                  size={avatarSize}
                   src={avatarUrl}
                   icon={!avatarUrl ? <UserOutlined /> : undefined}
                   style={{
@@ -116,7 +138,7 @@ export function DoctorForm({
                 />
               ) : (
                 <AvatarUpload
-                  size={280}
+                  size={avatarSize}
                   maxCount={1}
                   listType="picture-circle"
                   initialFileList={initialFileList}
@@ -134,7 +156,7 @@ export function DoctorForm({
             </Flex>
           </Col>
 
-          <Col xs={24} sm={24} md={16} lg={16}>
+          <Col xs={24} sm={24} md={24} lg={16} xl={18}>
             <Flex justify={"space-between"} align={"start"} wrap={true}>
               <BasicInfoFields />
 
