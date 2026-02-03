@@ -19,6 +19,15 @@ type PermissionCatalogItem = {
   permissionName?: string;
 };
 
+/**
+ * Permission item as returned by the API when fetching a role by ID
+ */
+type RolePermissionItem = {
+  permissionId: string;
+  permissionName: string;
+  actionsValue: number;
+};
+
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -68,13 +77,13 @@ function mapCandidateToFrontendModuleKey(candidate: string): string | null {
 
   // First, match by module id
   const byId = Object.values(PERMISSIONS).find(
-    (p) => normalizeString(p.id) === c
+    (p) => normalizeString(p.id) === c,
   );
   if (byId) return byId.id;
 
   // Then, match by display name
   const byName = Object.values(PERMISSIONS).find(
-    (p) => normalizeString(p.name) === c
+    (p) => normalizeString(p.name) === c,
   );
   if (byName) return byName.id;
 
@@ -83,19 +92,45 @@ function mapCandidateToFrontendModuleKey(candidate: string): string | null {
 
 async function normalizeRolePermissions(raw: unknown): Promise<string[]> {
   const arr = Array.isArray(raw) ? raw : [];
+  if (!arr.length) return [];
+
+  const hasNewFormat = arr.some(
+    (item) =>
+      typeof item === "object" &&
+      item !== null &&
+      "permissionName" in item &&
+      "actionsValue" in item,
+  );
+
+  if (hasNewFormat) {
+    const mapped: string[] = [];
+    for (const item of arr as RolePermissionItem[]) {
+      if (
+        typeof item !== "object" ||
+        item === null ||
+        !item.permissionName ||
+        typeof item.actionsValue !== "number"
+      ) {
+        continue;
+      }
+      const moduleKey = mapCandidateToFrontendModuleKey(item.permissionName);
+      if (moduleKey) {
+        mapped.push(`${moduleKey}-${item.actionsValue}`);
+      }
+    }
+    return mapped;
+  }
+
+  // Legacy format handling: array of strings
   const strings = arr.filter((p): p is string => typeof p === "string");
   if (!strings.length) return [];
 
-  // If already in the expected encoded format, keep as-is.
   if (strings.every(isEncodedPermission)) return strings;
 
-  // If backend sends UUIDs, we can only assume an access level.
-  // Here we assume FULL access (ALL=15) for each permission id.
   const uuids = strings.filter(isUuid);
   const encoded = strings.filter(isEncodedPermission);
 
   if (!uuids.length) {
-    // Unknown format: drop to avoid rendering misleading permissions.
     return encoded;
   }
 
@@ -104,7 +139,6 @@ async function normalizeRolePermissions(raw: unknown): Promise<string[]> {
     const permissionsResponse = await permissionsService.getPermissions();
     catalog = normalizeCatalogItems(permissionsResponse);
   } catch {
-    // If catalog fetch fails, we can't map UUID -> moduleKey.
     return encoded;
   }
 
@@ -186,7 +220,7 @@ async function getRoleById(id: string): Promise<Role> {
  * GET /roles?page=0&pageSize=10&filters=...&orders=...
  */
 async function getRoles(
-  params?: RolesQueryParams
+  params?: RolesQueryParams,
 ): Promise<PaginatedRolesResponse> {
   const queryString = buildQueryString(params);
   const url = `${endpoint}${queryString ? `?${queryString}` : ""}`;
@@ -205,7 +239,7 @@ async function getRoles(
 async function createRole(data: CreateRoleRequest): Promise<boolean> {
   const response = await servicePost<CreateRoleRequest, boolean>(
     endpoint,
-    data
+    data,
   );
 
   if (response?.status >= 200 && response?.status < 300) {
@@ -225,7 +259,7 @@ async function createRole(data: CreateRoleRequest): Promise<boolean> {
  */
 async function updateRole(
   id: string,
-  data: CreateRoleRequest
+  data: CreateRoleRequest,
 ): Promise<boolean> {
   return permissionsService.updateRolePermissions({
     rolId: id,
@@ -241,7 +275,7 @@ async function updateRole(
 export function buildFilter(
   field: string,
   operator: string,
-  value: string | boolean | Date
+  value: string | boolean | Date,
 ): string {
   let formattedValue = String(value);
 
