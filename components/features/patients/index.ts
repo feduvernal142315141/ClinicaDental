@@ -10,6 +10,7 @@ export { PatientList } from "./PatientsPageContent/PatientList";
 
 // Detail
 export { PatientDetails } from "./detail/PatientDetails";
+export { PatientDetail } from "./detail/PatientDetail";
 export { PatientDetailsPageClient } from "./detail/PatientDetailsPageClient";
 
 // Form
