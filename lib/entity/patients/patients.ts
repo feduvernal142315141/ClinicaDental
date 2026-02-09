@@ -20,13 +20,11 @@ export interface PatientFormData {
 }
 
 export const genderOptions = [
-  { id: "1", label: "Masculino" },
-  { id: "2", label: "Femenino" },
-  { id: "3", label: "Otro" },
-  { id: "4", label: "Prefiero no decirlo" },
+  { value: "M", label: "Masculino" },
+  { value: "F", label: "Femenino" },
 ];
 
 export const agreementOptions = [
-  { id: "1", label: "Sí, acepto" },
-  { id: "2", label: "No, no acepto" },
+  { value: true, label: "Sí" },
+  { value: false, label: "No" },
 ];
