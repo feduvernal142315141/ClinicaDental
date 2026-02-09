@@ -1,28 +1,33 @@
-import { notFound } from "next/navigation";
-import { PageHeader } from "@/components/ui/atomic/layout/page-header";
-import { EditPatientPageClient } from "@/components/patients";
-import { usePatientDetails } from "@/lib/hooks/use-patient-details";
+"use client";
 
-export default async function EditPatientPage({
-  params,
-}: {
+import { use } from "react";
+import { PatientForm } from "@/components/patients";
+import { SectionTitle } from "@/components/ui/antd";
+import { usePatientsPage } from "@/lib/hooks/patients/use-patients-page";
+
+interface PageProps {
   params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const patient = await usePatientDetails(id);
+}
 
-  if (!patient) {
-    notFound();
-  }
+export default function EditPatientPage({ params }: PageProps) {
+  const { id } = use(params);
+  const { handleBackToList } = usePatientsPage({
+    basePath: "/patients",
+  });
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <>
+      <SectionTitle
         title="Editar Paciente"
-        description="Actualiza la información del paciente"
+        subtitle="Actualice la información del paciente en el sistema"
+        actionButton={{
+          label: "Atrás",
+          onClick: handleBackToList,
+          variant: "back",
+          type: "default",
+        }}
       />
-
-      <EditPatientPageClient patient={patient} />
-    </div>
+      <PatientForm patientId={id} basePath="/patients" />
+    </>
   );
 }

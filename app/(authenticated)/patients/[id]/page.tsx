@@ -1,28 +1,13 @@
-import { notFound } from "next/navigation";
-import { PageHeader } from "@/components/ui/atomic/layout/page-header";
-import { PatientDetailsPageClient } from "@/components/patients";
-import { usePatientDetails } from "@/lib/hooks/use-patient-details";
+"use client";
 
-export default async function PatientDetailsPage({
-  params,
-}: {
+import { use } from "react";
+import { PatientDetail } from "@/components/patients";
+
+interface PageProps {
   params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const patient = await usePatientDetails(id);
+}
 
-  if (!patient) {
-    notFound();
-  }
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Detalles del Paciente"
-        description="Información completa del paciente"
-      />
-
-      <PatientDetailsPageClient patient={patient} />
-    </div>
-  );
+export default function PatientDetailPage({ params }: PageProps) {
+  const { id } = use(params);
+  return <PatientDetail patientId={id} basePath="/patients" />;
 }

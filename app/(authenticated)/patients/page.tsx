@@ -1,20 +1,23 @@
 "use client";
 
-import { Header } from "@/components/ui/atomic/layout/header";
-import { PatientsPageClient } from "@/components/patients";
+import { PatientList } from "@/components/patients";
+import { SectionTitle } from "@/components/ui/antd";
+import { usePatientsPage } from "@/lib/hooks/patients/use-patients-page";
 
 export default function PatientsPage() {
-  return (
-    <div className="space-y-6">
-      <Header
-        level={1}
-        title="Pacientes"
-        description="Gestiona la información de tus pacientes"
-        showSearch
-        searchPlaceholder="Buscar pacientes..."
-      />
+  const { handleNewPatient } = usePatientsPage({ basePath: "/patients" });
 
-      <PatientsPageClient />
-    </div>
+  return (
+    <>
+      <SectionTitle
+        title="Gestión de Pacientes"
+        subtitle="Administre los pacientes del sistema"
+        actionButton={{
+          label: "Nuevo Paciente",
+          onClick: handleNewPatient,
+        }}
+      />
+      <PatientList basePath="/patients" />
+    </>
   );
 }

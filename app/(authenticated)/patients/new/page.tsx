@@ -1,15 +1,27 @@
-import { PageHeader } from "@/components/ui/atomic/layout/page-header";
-import { NewPatientPageClient } from "@/components/patients";
+"use client";
+
+import { PatientForm } from "@/components/patients";
+import { SectionTitle } from "@/components/ui/antd";
+import { usePatientsPage } from "@/lib/hooks/patients/use-patients-page";
 
 export default function NewPatientPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Nuevo Paciente"
-        description="Registra un nuevo paciente en el sistema"
-      />
+  const { handleBackToList } = usePatientsPage({
+    basePath: "/patients",
+  });
 
-      <NewPatientPageClient />
-    </div>
+  return (
+    <>
+      <SectionTitle
+        title="Nuevo Paciente"
+        subtitle="Registre un nuevo paciente en el sistema"
+        actionButton={{
+          label: "Atrás",
+          onClick: handleBackToList,
+          variant: "back",
+          type: "default",
+        }}
+      />
+      <PatientForm basePath="/patients" />
+    </>
   );
 }
