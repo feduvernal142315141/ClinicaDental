@@ -24,5 +24,8 @@ export {
 // Doctors Services (replaces manager-users)
 export * from "./doctors";
 
+// Patients Services
+export * from "./patients";
+
 // Types
 export type { ResponseEntity, ServiceResponse } from "../models/response";
