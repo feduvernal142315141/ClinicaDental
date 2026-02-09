@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { genderOptions, type Patient } from "@/lib/entity/patients/patients";
+import {
+  genderOptions,
+  genderDisplayOptions,
+  type Patient,
+  calculateAge,
+  formatDate,
+} from "@/lib/entity/patients";
 import {
   getAppointmentsByPatient,
   type Appointment,
 } from "@/lib/entity/appointment/appointments";
-import { calculateAge, formatDate } from "@/lib/entity/patients/patients-utils";
 import {
   Card,
   CardContent,
@@ -26,8 +31,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/atomic/data-display/table";
+import { SectionTitle } from "@/components/ui/antd";
 import {
-  ArrowLeft,
   Edit,
   User,
   Mail,
@@ -39,34 +44,65 @@ import {
   Circle,
   FileText,
 } from "lucide-react";
+import { usePatients, usePatientsPage } from "@/lib/hooks/patients";
 
-interface PatientDetailsProps {
-  patient: Patient;
-  onEdit: (patient: Patient) => void;
-  onClose: () => void;
+interface PatientDetailProps {
+  /** Patient ID */
+  patientId: string;
+  /** Base path for navigation */
+  basePath?: string;
 }
 
-export function PatientDetails({
-  patient,
-  onEdit,
-  onClose,
-}: PatientDetailsProps) {
+/**
+ * PatientDetail Component
+ *
+ * Displays complete information about a patient including
+ * personal data and appointment history.
+ */
+export function PatientDetail({
+  patientId,
+  basePath = "/patients",
+}: PatientDetailProps) {
+  const [patient, setPatient] = useState<Patient | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+
+  const { handleBackToList, handleEditPatient } = usePatientsPage({ basePath });
+  const { getPatientById } = usePatients();
 
   useEffect(() => {
-    if (patient.id) loadAppointments();
-  }, [patient.id]);
+    loadPatient();
+  }, [patientId]);
 
-  const loadAppointments = async () => {
+  useEffect(() => {
+    if (patient?.id) {
+      loadAppointments();
+    }
+  }, [patient?.id]);
+
+  const loadPatient = async () => {
     try {
       setLoading(true);
+      const data = await getPatientById(patientId);
+      setPatient(data);
+    } catch (error) {
+      console.error("Error loading patient:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAppointments = async () => {
+    if (!patient?.id) return;
+    try {
+      setAppointmentsLoading(true);
       const data = await getAppointmentsByPatient(patient.id);
       setAppointments(data);
     } catch (error) {
       console.error("Error loading appointments:", error);
     } finally {
-      setLoading(false);
+      setAppointmentsLoading(false);
     }
   };
 
@@ -100,6 +136,34 @@ export function PatientDetails({
     }
   };
 
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-2">Cargando paciente...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!patient) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">
+            <p className="text-muted-foreground">Paciente no encontrado</p>
+            <Button onClick={handleBackToList} className="mt-4">
+              Volver a la lista
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const upcomingAppointments = appointments.filter(
     (apt) =>
       new Date(`${apt.date}T${apt.time}`) > new Date() &&
@@ -113,19 +177,20 @@ export function PatientDetails({
   );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Volver
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold">Detalles del Paciente</h1>
-          <p className="text-muted-foreground">
-            Información completa e historial médico
-          </p>
-        </div>
-        <Button onClick={() => onEdit(patient)}>
+    <>
+      <SectionTitle
+        title="Detalles del Paciente"
+        subtitle="Información completa e historial médico"
+        actionButton={{
+          label: "Atrás",
+          onClick: handleBackToList,
+          variant: "back",
+          type: "default",
+        }}
+      />
+
+      <div className="flex justify-end mb-4">
+        <Button onClick={() => handleEditPatient(patientId)}>
           <Edit className="h-4 w-4 mr-2" /> Editar
         </Button>
       </div>
@@ -197,11 +262,9 @@ export function PatientDetails({
 
                 {patient.gender && (
                   <div className="flex items-center gap-3">
-                    {patient.gender.toLowerCase() === "masculino" ? (
+                    {patient.gender === "M" ? (
                       <User className="h-4 w-4 text-blue-600" />
-                    ) : genderOptions
-                        .find((g) => g.id.toLowerCase() === patient?.gender)
-                        ?.id.toLowerCase() === "2" ? (
+                    ) : patient.gender === "F" ? (
                       <UserRound className="h-4 w-4 text-pink-600" />
                     ) : (
                       <Circle className="h-4 w-4 text-gray-500" />
@@ -209,15 +272,14 @@ export function PatientDetails({
                     <div>
                       <p className="text-sm font-medium">Género</p>
                       <p className="text-sm text-muted-foreground">
-                        {genderOptions.find(
-                          (g) => g.id.toLowerCase() === patient?.gender,
-                        )?.label || "No especificado"}
+                        {genderOptions.find((g) => g.value === patient?.gender)
+                          ?.label || "No especificado"}
                       </p>
                     </div>
                   </div>
                 )}
 
-                {patient.agreement && (
+                {patient.agreement !== undefined && (
                   <div className="flex items-center gap-3">
                     <FileText className="h-4 w-4 text-green-600" />
                     <div>
@@ -307,7 +369,7 @@ export function PatientDetails({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {loading ? (
+              {appointmentsLoading ? (
                 <div className="flex items-center justify-center py-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                   <span className="ml-2">Cargando historial...</span>
@@ -360,6 +422,6 @@ export function PatientDetails({
           </Card>
         </div>
       </div>
-    </div>
+    </>
   );
 }
