@@ -20,9 +20,9 @@ import {
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Patient } from "@/lib/entity/patients/patients";
+import { type Patient } from "@/lib/entity/patients";
 import TextArea from "@/components/ui/atomic/forms/textarea";
-import { getPatients } from "@/lib/supabase/patients";
+import { patientsService } from "@/lib/services/patients";
 import { getDoctors } from "@/lib/supabase/doctors";
 import { FormSelect } from "@/components/ui/primitives/custom/FormSelect";
 import { Controller, useForm } from "react-hook-form";
@@ -66,9 +66,13 @@ export function AppointmentForm({ onSuccess, onCancel }: AppointmentFormProps) {
   useEffect(() => {
     const loadPatients = async () => {
       try {
-        if (!user?.clinicId) return;
-        const allPatients = await getPatients(user.clinicId);
-        setPatients(allPatients);
+        // Use the new API service (clinicId is derived from token)
+        const response = await patientsService.getPatients({
+          page: 0,
+          pageSize: 100,
+          filters: ["active:eq:true"],
+        });
+        setPatients(response.data);
       } catch (error) {
         console.error("Error loading patients:", error);
       } finally {
@@ -76,7 +80,7 @@ export function AppointmentForm({ onSuccess, onCancel }: AppointmentFormProps) {
       }
     };
     loadPatients();
-  }, [user?.clinicId]);
+  }, []);
 
   useEffect(() => {
     const loadDoctors = async () => {
@@ -100,7 +104,7 @@ export function AppointmentForm({ onSuccess, onCancel }: AppointmentFormProps) {
     console.log("date", date.toISOString().split("T")[0]);
     getAvailabilityByDoctor(
       formData.doctor_id,
-      date.toISOString().split("T")[0]
+      date.toISOString().split("T")[0],
     );
   }, [formData.doctor_id, formData.date]);
 
