@@ -11,7 +11,7 @@ import {
 import {
   getAppointmentsByPatient,
   type Appointment,
-} from "@/lib/entity/appointment/appointments";
+} from "@/lib/supabase/appointments";
 import {
   Card,
   CardContent,

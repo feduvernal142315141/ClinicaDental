@@ -5,7 +5,7 @@ import { genderOptions, type Patient } from "@/lib/entity/patients/patients";
 import {
   getAppointmentsByPatient,
   type Appointment,
-} from "@/lib/entity/appointment/appointments";
+} from "@/lib/supabase/appointments";
 import { calculateAge, formatDate } from "@/lib/entity/patients/patients-utils";
 import {
   Card,
