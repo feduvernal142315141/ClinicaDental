@@ -27,5 +27,8 @@ export * from "./doctors";
 // Patients Services
 export * from "./patients";
 
+// Appointments Services
+export * from "./appointments";
+
 // Types
 export type { ResponseEntity, ServiceResponse } from "../models/response";

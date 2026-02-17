@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SectionTitle } from "@/components/ui/antd";
 import { AppointmentForm } from "@/components/appointments";
@@ -8,14 +8,18 @@ import { useAppointmentsPage } from "@/lib/hooks/appointments";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 
-export default function NewAppointmentPage() {
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function EditAppointmentPage({ params }: PageProps) {
+  const { id } = use(params);
   const router = useRouter();
   const { can, isAdmin } = usePermission();
   const { handleBackToList } = useAppointmentsPage({ basePath: "/appointments" });
 
   useEffect(() => {
-    const allowed = isAdmin || can("appointments", PermissionAction.CREATE);
-
+    const allowed = isAdmin || can("appointments", PermissionAction.EDIT);
     if (!allowed) {
       router.replace("/dashboard");
     }
@@ -24,8 +28,8 @@ export default function NewAppointmentPage() {
   return (
     <>
       <SectionTitle
-        title="Nueva Cita"
-        subtitle="Programe una nueva cita en el sistema"
+        title="Editar Cita"
+        subtitle="Actualice la información de la cita"
         actionButton={{
           label: "Atrás",
           onClick: handleBackToList,
@@ -34,7 +38,7 @@ export default function NewAppointmentPage() {
         }}
       />
 
-      <AppointmentForm basePath="/appointments" />
+      <AppointmentForm appointmentId={id} basePath="/appointments" />
     </>
   );
 }
