@@ -15,6 +15,7 @@ export { PatientDetailsPageClient } from "./detail/PatientDetailsPageClient";
 
 // Form
 export { PatientForm } from "./form/PatientForm";
+export { PatientFormFields } from "./form/PatientFormFields";
 export { NewPatientPageClient } from "./form/NewPatientPageClient";
 export { EditPatientPageClient } from "./form/EditPatientPageClient";
 

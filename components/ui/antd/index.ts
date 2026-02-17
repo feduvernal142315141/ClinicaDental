@@ -26,6 +26,7 @@ export { SearchBox } from "./forms/SearchBox";
 export { FormInput } from "./forms/FormInput";
 export { FormSelect } from "./forms/FormSelect";
 export { FormSwitch } from "./forms/FormSwitch";
+export { FormTimePicker } from "./forms/FormTimePicker";
 export { FormContainer, FormSection } from "./forms/FormContainer";
 
 // Ant Design Feedback Components
