@@ -229,8 +229,12 @@ async function updateAppointmentStatus(
  * Endpoint: PATCH /appointments/{id}/cancel
  */
 async function cancelAppointment(id: string): Promise<boolean> {
+  if (!id) {
+    throw new Error("ID de cita requerido para cancelar");
+  }
+
   const response = (await apiInstance
-    .patch<boolean>(`${endpoint}/${id}/cancel`)
+    .patch<boolean>(`${endpoint}/${id}/cancel`, {})
     .catch((err) => err.response as unknown)) as
     | {
         status?: number;
