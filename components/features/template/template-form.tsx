@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Input } from "@/components/ui/atomic/forms/input";
 import { Label } from "@/components/ui/atomic/forms/label";
 import TextArea from "@/components/ui/atomic/forms/textarea";
-import { Plus, Info, Smartphone } from "lucide-react";
+import { Plus, Smartphone } from "lucide-react";
 import { Controller } from "react-hook-form";
 import { Combobox } from "@/components/ui/primitives/shadcn/combobox";
 import useTemplateForm from "@/components/template/hooks/useTemplateForm";
@@ -23,7 +23,6 @@ export function TemplateForm() {
     selectedType,
     control,
     errors,
-    handleSubmit,
     addVariable,
     updateVariableSample,
     updateVariableMediaSample,
@@ -149,7 +148,7 @@ export function TemplateForm() {
                           onChange={(e) =>
                             updateVariableMediaSample(
                               variable.id,
-                              e.target.value
+                              e.target.value,
                             )
                           }
                         />
@@ -221,7 +220,7 @@ export function TemplateForm() {
                             <p className="text-sm">
                               {replaceVariablesWithSamples(
                                 bodyText,
-                                variablesText
+                                variablesText,
                               ) || bodyText}
                             </p>
                           </div>

@@ -35,14 +35,14 @@ const schema = z.object({
 
 const replaceVariablesWithSamples = (
   text: string,
-  variables: TemplateVariable[]
+  variables: TemplateVariable[],
 ) => {
   let result = text;
   variables.forEach((v) => {
     if (v.sampleContent) {
       result = result.replace(
         new RegExp(`\\{\\{${v.id}\\}\\}`, "g"),
-        v.sampleContent
+        v.sampleContent,
       );
     }
   });
@@ -51,7 +51,7 @@ const replaceVariablesWithSamples = (
 
 // Validar y extraer placeholders del texto
 const validateAndExtractPlaceholders = (
-  text: string
+  text: string,
 ): {
   valid: boolean;
   error: string;
@@ -127,7 +127,7 @@ const validateAndExtractPlaceholders = (
     if (char === "{" || char === "}") {
       // Verificar si esta posición está dentro de un placeholder válido
       const isInValidPlaceholder = validPositions.some(
-        (pos) => i >= pos.start && i < pos.end
+        (pos) => i >= pos.start && i < pos.end,
       );
 
       if (!isInValidPlaceholder) {
@@ -157,7 +157,7 @@ const useTemplateForm = () => {
   const { user } = useAuth();
   const router = useRouter();
   const [bodyText, setBodyText] = React.useState(
-    "Hola {{1}}, tu cita está programada para el {{2}} a las {{3}}.\nPor favor confirma si podrás asistir."
+    "Hola {{1}}, tu cita está programada para el {{2}} a las {{3}}.\nPor favor confirma si podrás asistir.",
   );
 
   const [variablesText, setVariablesText] = React.useState<TemplateVariable[]>([
@@ -167,7 +167,7 @@ const useTemplateForm = () => {
   ]);
 
   // Variables específicas para el tipo Media
-  const [mediaBodyText, setMediaBodyText] = React.useState("Hola, {{1}}");
+  const [mediaBodyText] = React.useState("Hola, {{1}}");
 
   const [variablesMedia, setVariablesMedia] = React.useState<
     TemplateVariable[]
@@ -187,12 +187,11 @@ const useTemplateForm = () => {
         label: "Texto",
       },
     ],
-    []
+    [],
   );
 
   const {
     control,
-    handleSubmit,
     watch,
     formState: { errors, isSubmitting },
   } = useForm<TemplateFormData>({
@@ -226,9 +225,8 @@ const useTemplateForm = () => {
   }, []);
 
   const addVariableMedia = useCallback(() => {
-    let nextId: string;
     setVariablesMedia((prev) => {
-      nextId = (prev.length + 1).toString();
+      const nextId = (prev.length + 1).toString();
 
       return [
         ...prev,
@@ -239,16 +237,12 @@ const useTemplateForm = () => {
         },
       ];
     });
-
-    queueMicrotask(() => {
-      setMediaBodyText((bodyPrev) => `${bodyPrev}{{${nextId}}}`);
-    });
   }, []);
 
   const updateVariableSample = useCallback((id: string, value: string) => {
     setVariablesText((prev) => {
       return prev.map((v) =>
-        v.id === id ? { ...v, sampleContent: value } : v
+        v.id === id ? { ...v, sampleContent: value } : v,
       );
     });
   }, []);
@@ -256,7 +250,7 @@ const useTemplateForm = () => {
   const updateVariableMediaSample = useCallback((id: string, value: string) => {
     setVariablesMedia((prev) => {
       return prev.map((v) =>
-        v.id === id ? { ...v, sampleContent: value } : v
+        v.id === id ? { ...v, sampleContent: value } : v,
       );
     });
     setMediaVariable2(value);
@@ -299,19 +293,17 @@ const useTemplateForm = () => {
               placeholder: `{{${id}}}`,
               sampleContent: existingVar?.sampleContent || "",
             };
-          }
+          },
         );
         return newVariables;
       });
     },
-    []
+    [],
   );
 
   const onSubmit = useCallback(
     async (values: TemplateFormData) => {
       try {
-        let response;
-
         const variables: TemplateVariableRequest[] = variablesText.map((v) => {
           return {
             ...v,
@@ -319,7 +311,7 @@ const useTemplateForm = () => {
           };
         });
 
-        response = await serviceCreateTemplate({
+        const response = await serviceCreateTemplate({
           name: values.name,
           body: values.body,
           type: values.type,
@@ -334,7 +326,7 @@ const useTemplateForm = () => {
         console.error("Error saving campaign:", error);
       }
     },
-    [user?.clinicId, router]
+    [user?.clinicId, router],
   );
 
   // Watch del tipo para reactividad
@@ -350,7 +342,6 @@ const useTemplateForm = () => {
     selectedType,
     control,
     errors,
-    handleSubmit,
     addVariable,
     updateVariableSample,
     updateVariableMediaSample,
