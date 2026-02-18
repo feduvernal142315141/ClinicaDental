@@ -32,7 +32,6 @@ export function useAvatarUpload({
   initialFileList = [],
   maxSizeMB = 2,
   allowedFormats = ["image/jpeg", "image/png", "image/jpg"],
-  maxCount = 1,
   onFileListChange,
 }: UseAvatarUploadOptions = {}) {
   const [fileList, setFileList] = useState<UploadFile[]>(initialFileList);
@@ -60,7 +59,7 @@ export function useAvatarUpload({
       message.error(
         `Solo se permiten archivos: ${allowedFormats
           .map((f) => f.split("/")[1].toUpperCase())
-          .join(", ")}`
+          .join(", ")}`,
       );
       return false;
     }

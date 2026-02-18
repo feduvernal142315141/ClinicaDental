@@ -1,5 +1,4 @@
 import { serviceGet, servicePost } from "../baseService";
-import { encryptPasswordForTransport } from "@/lib/auth/password-encryption";
 import type {
   LoginRequest,
   LoginResponse,
@@ -39,7 +38,7 @@ async function login(credentials: LoginRequest): Promise<LoginResponse> {
 
   const response = await servicePost<LoginRequest, LoginResponse>(
     "/auth/login",
-    { ...credentials, password:  credentials.password }
+    { ...credentials, password: credentials.password },
   );
 
   const status = response?.status;
@@ -67,11 +66,11 @@ async function login(credentials: LoginRequest): Promise<LoginResponse> {
  * POST /auth/validate-otp
  */
 async function validateOtp(
-  data: ValidateOtpRequest
+  data: ValidateOtpRequest,
 ): Promise<ValidateOtpResponse> {
   const response = await servicePost<ValidateOtpRequest, ValidateOtpResponse>(
     "/auth/validate-otp",
-    data
+    data,
   );
   if (response?.data) {
     return response.data;
@@ -84,11 +83,11 @@ async function validateOtp(
  * POST /auth/refresh-token
  */
 async function refreshToken(
-  data: RefreshTokenRequest
+  data: RefreshTokenRequest,
 ): Promise<RefreshTokenResponse> {
   const response = await servicePost<RefreshTokenRequest, RefreshTokenResponse>(
     "/auth/refresh-token",
-    data
+    data,
   );
   if (response?.data) {
     return response.data;
@@ -148,7 +147,7 @@ async function verifyResetToken(token: string): Promise<boolean> {
   try {
     await serviceGet(`/auth/verify-token/${token}`);
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }

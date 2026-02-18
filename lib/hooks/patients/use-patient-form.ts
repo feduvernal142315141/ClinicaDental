@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Form, App } from "antd";
+import { Form } from "antd";
 import { usePatients } from "@/lib/hooks/patients";
 import type {
   CreatePatientRequest,
@@ -25,7 +25,6 @@ export function usePatientForm({
   initialData,
 }: UsePatientFormParams) {
   const router = useRouter();
-  const { message } = App.useApp();
   const [form] = Form.useForm();
 
   const isEdit = !!patientId;

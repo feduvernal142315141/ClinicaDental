@@ -17,7 +17,7 @@ export function createClient(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
+          cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value);
           });
           response = NextResponse.next({
@@ -28,7 +28,7 @@ export function createClient(request: NextRequest) {
           });
         },
       },
-    }
+    },
   );
 
   return { supabase, response };

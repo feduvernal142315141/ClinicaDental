@@ -8,7 +8,6 @@ import {
   BookImage,
   FileText,
   LayoutDashboard,
-  HelpCircle,
   Sliders,
   UserCog,
   Bell,

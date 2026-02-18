@@ -3,7 +3,6 @@
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import {
-  ROUTE_CONFIG,
   isDynamicSegment,
   getRouteLabel,
   getRouteIcon,

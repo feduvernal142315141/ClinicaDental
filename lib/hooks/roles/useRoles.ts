@@ -2,7 +2,6 @@ import { useState, useCallback } from "react";
 import { App } from "antd";
 import { rolesService } from "@/lib/services/roles";
 import type {
-  Role,
   RoleListItem,
   CreateRoleRequest,
   RolesQueryParams,
@@ -31,9 +30,8 @@ export function useRoles() {
     async (params?: RolesQueryParams) => {
       setLoading(true);
       try {
-        const response: PaginatedRolesResponse = await rolesService.getRoles(
-          params
-        );
+        const response: PaginatedRolesResponse =
+          await rolesService.getRoles(params);
 
         setRoles(response.entities);
         setPagination({
@@ -50,7 +48,7 @@ export function useRoles() {
         setLoading(false);
       }
     },
-    [message]
+    [message],
   );
 
   /**
@@ -69,7 +67,7 @@ export function useRoles() {
         setLoading(false);
       }
     },
-    [message]
+    [message],
   );
 
   /**
@@ -93,7 +91,7 @@ export function useRoles() {
         setLoading(false);
       }
     },
-    [message, fetchRoles]
+    [message, fetchRoles],
   );
 
   /**
@@ -116,7 +114,7 @@ export function useRoles() {
         setLoading(false);
       }
     },
-    [message, fetchRoles]
+    [message, fetchRoles],
   );
 
   return {

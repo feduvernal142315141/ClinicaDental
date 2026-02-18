@@ -4,7 +4,6 @@ import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { PERMISSIONS } from "@/lib/constants/roles.constants";
 import type {
   Role,
-  RoleListItem,
   CreateRoleRequest,
   RolesQueryParams,
   PaginatedRolesResponse,

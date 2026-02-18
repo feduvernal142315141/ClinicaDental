@@ -3,8 +3,6 @@ import type {
   RoleListItem,
   RoleFilter,
   RoleOrder,
-  FilterOperator,
-  OrderDirection,
 } from "@/lib/entity/roles";
 import { buildFilter, buildOrder } from "@/lib/services/roles";
 
@@ -61,7 +59,7 @@ export function getRoleColor(roleName: string): string {
  */
 export function buildFiltersArray(filters: RoleFilter[]): string[] {
   return filters.map((filter) =>
-    buildFilter(filter.field, filter.operator, filter.value)
+    buildFilter(filter.field, filter.operator, filter.value),
   );
 }
 
@@ -117,7 +115,7 @@ export function formatRoleDate(dateString: string): string {
  */
 export function sortRolesByName(
   roles: RoleListItem[],
-  direction: "asc" | "desc" = "asc"
+  direction: "asc" | "desc" = "asc",
 ): RoleListItem[] {
   return [...roles].sort((a, b) => {
     const comparison = a.name.localeCompare(b.name, "es");
@@ -130,7 +128,7 @@ export function sortRolesByName(
  */
 export function filterRolesBySearch(
   roles: RoleListItem[],
-  searchTerm: string
+  searchTerm: string,
 ): RoleListItem[] {
   if (!searchTerm) return roles;
 
