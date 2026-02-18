@@ -20,8 +20,6 @@ import { Users, UserPlus, UserX, AlertCircle } from "lucide-react";
 import { getPatientAnalytics } from "@/lib/analytics";
 import { useEffect, useState } from "react";
 
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
-
 export function PatientsSection() {
   const [analytics, setAnalytics] = useState(getPatientAnalytics());
 
@@ -70,7 +68,7 @@ export function PatientsSection() {
                 (analytics.newVsRecurring.new /
                   (analytics.newVsRecurring.new +
                     analytics.newVsRecurring.recurring)) *
-                  100
+                  100,
               )}%`,
               variant: "secondary",
             },
@@ -89,7 +87,7 @@ export function PatientsSection() {
                 (analytics.newVsRecurring.recurring /
                   (analytics.newVsRecurring.new +
                     analytics.newVsRecurring.recurring)) *
-                  100
+                  100,
               )}%`,
               variant: "secondary",
             },
@@ -203,7 +201,7 @@ export function PatientsSection() {
               key={index}
               title={patient.name}
               description={`Última visita: ${new Date(
-                patient.lastVisit
+                patient.lastVisit,
               ).toLocaleDateString()}`}
               badgeValue="Contactar"
               variant="error"

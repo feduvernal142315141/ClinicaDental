@@ -72,7 +72,7 @@ export function GeneralSettings() {
     try {
       const data = await getClinicSettings();
       setSettings(data);
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error",
         description: "No se pudieron cargar las configuraciones",
@@ -93,7 +93,7 @@ export function GeneralSettings() {
         title: "Configuración guardada",
         description: "Los cambios se han guardado correctamente",
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error",
         description: "No se pudieron guardar los cambios",
@@ -112,7 +112,7 @@ export function GeneralSettings() {
   const updateBusinessHours = (
     day: string,
     field: string,
-    value: string | boolean
+    value: string | boolean,
   ) => {
     if (!settings) return;
     setSettings({
@@ -129,7 +129,7 @@ export function GeneralSettings() {
 
   const updateAppointmentPolicies = (
     field: string,
-    value: number | boolean
+    value: number | boolean,
   ) => {
     if (!settings) return;
     setSettings({
@@ -346,7 +346,7 @@ export function GeneralSettings() {
                 onChange={(e) =>
                   updateAppointmentPolicies(
                     "minimumAdvanceTime",
-                    Number.parseInt(e.target.value) || 0
+                    Number.parseInt(e.target.value) || 0,
                   )
                 }
               />
@@ -363,7 +363,7 @@ export function GeneralSettings() {
                 onChange={(e) =>
                   updateAppointmentPolicies(
                     "cancellationLimit",
-                    Number.parseInt(e.target.value) || 0
+                    Number.parseInt(e.target.value) || 0,
                   )
                 }
               />
@@ -383,7 +383,7 @@ export function GeneralSettings() {
               onChange={(e) =>
                 updateAppointmentPolicies(
                   "standardDuration",
-                  Number.parseInt(e.target.value) || 30
+                  Number.parseInt(e.target.value) || 30,
                 )
               }
               className="w-32"
@@ -451,7 +451,7 @@ export function GeneralSettings() {
                   onChange={(e) =>
                     updateAppointmentPolicies(
                       "reminderTime",
-                      Number.parseInt(e.target.value) || 24
+                      Number.parseInt(e.target.value) || 24,
                     )
                   }
                   className="w-32"

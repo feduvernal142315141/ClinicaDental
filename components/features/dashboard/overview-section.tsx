@@ -1,14 +1,5 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/atomic/data-display/card";
-import { Badge } from "@/components/ui/atomic/data-display/badge";
-import { Progress } from "@/components/ui/atomic/data-display/progress";
 import { KpiCard, KpiGrid } from "@/components/ui/atomic/data-display/kpi-card";
 import { ProgressList } from "@/components/ui/atomic/data-display/progress-list-item";
 import { AlertCardGrid } from "@/components/ui/atomic/data-display/alert-card";
@@ -71,8 +62,8 @@ export function OverviewSection() {
               label: `Ocupación promedio: ${Math.round(
                 stats.doctors.occupancy.reduce(
                   (acc, doc) => acc + doc.percentage,
-                  0
-                ) / stats.doctors.occupancy.length
+                  0,
+                ) / stats.doctors.occupancy.length,
               )}%`,
               variant: "outline",
             },

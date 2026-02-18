@@ -1,7 +1,6 @@
 "use client";
 
 import { DoctorForm } from "../form/DoctorForm";
-import { SectionTitle } from "@/components/ui/antd";
 import { useDoctorsPage } from "@/lib/hooks/doctors/use-doctors-page";
 import { useRouter } from "next/navigation";
 import { Space } from "antd";

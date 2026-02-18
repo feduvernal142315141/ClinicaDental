@@ -32,7 +32,7 @@ function toggleActionValue(current: number, action: PermissionAction): number {
 
 function computeCategories(modules: PermissionModule[]): string[] {
   return Array.from(
-    new Set(modules.map((m) => m.category).filter(Boolean) as string[])
+    new Set(modules.map((m) => m.category).filter(Boolean) as string[]),
   );
 }
 
@@ -74,7 +74,7 @@ export function PermissionsSelector({
 
   const knownModuleIds = useMemo(
     () => new Set(modules.map((m) => m.id)),
-    [modules]
+    [modules],
   );
 
   const categories = useMemo(() => computeCategories(modules), [modules]);
@@ -93,7 +93,7 @@ export function PermissionsSelector({
     (next: PermissionsObject) => {
       onChange?.(objectToPermissions(next));
     },
-    [onChange]
+    [onChange],
   );
 
   const setModuleValue = useCallback(
@@ -103,7 +103,7 @@ export function PermissionsSelector({
       else delete next[moduleKey];
       emit(next);
     },
-    [permissionsObj, emit]
+    [permissionsObj, emit],
   );
 
   const setManyModulesValue = useCallback(
@@ -115,7 +115,7 @@ export function PermissionsSelector({
       }
       emit(next);
     },
-    [permissionsObj, emit]
+    [permissionsObj, emit],
   );
 
   const handleToggleAction = useCallback(
@@ -123,18 +123,7 @@ export function PermissionsSelector({
       const current = permissionsObj[moduleKey] ?? 0;
       setModuleValue(moduleKey, toggleActionValue(current, action));
     },
-    [permissionsObj, setModuleValue]
-  );
-
-  const handleToggleAllForModule = useCallback(
-    (moduleKey: string) => {
-      const current = permissionsObj[moduleKey] ?? 0;
-      setModuleValue(
-        moduleKey,
-        current === PermissionAction.ALL ? 0 : PermissionAction.ALL
-      );
-    },
-    [permissionsObj, setModuleValue]
+    [permissionsObj, setModuleValue],
   );
 
   const handleSelectAll = useCallback(() => {
@@ -183,7 +172,7 @@ export function PermissionsSelector({
         </Tooltip>
       );
     },
-    [permissionsObj]
+    [permissionsObj],
   );
 
   const renderModuleRow = useCallback(
@@ -207,7 +196,7 @@ export function PermissionsSelector({
                 onChange={(e) =>
                   setModuleValue(
                     mod.id,
-                    e.target.checked ? PermissionAction.ALL : 0
+                    e.target.checked ? PermissionAction.ALL : 0,
                   )
                 }
                 disabled={disabled}
@@ -247,7 +236,7 @@ export function PermissionsSelector({
       handleToggleAction,
       setModuleValue,
       getAccessLevelTag,
-    ]
+    ],
   );
 
   return (
@@ -300,7 +289,7 @@ export function PermissionsSelector({
                   onChange={(e) =>
                     setManyModulesValue(
                       moduleIds,
-                      e.target.checked ? PermissionAction.ALL : 0
+                      e.target.checked ? PermissionAction.ALL : 0,
                     )
                   }
                   disabled={disabled}

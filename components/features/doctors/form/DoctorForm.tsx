@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Form, Divider, Input, Row, Col, Flex, Avatar } from "antd";
+import { Form, Input, Row, Col, Flex, Avatar } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { useDoctorForm } from "@/lib/hooks/doctors/use-doctor-form";
 
@@ -76,8 +76,11 @@ export function DoctorForm({
   readOnly = false,
   showRoleStatusFields = true,
 }: DoctorFormProps) {
-  const { form, isEdit, loading, handleSubmit, handleCancel, handleBack } =
-    useDoctorForm({ doctorId, basePath, initialData });
+  const { form, isEdit, loading, handleSubmit, handleCancel } = useDoctorForm({
+    doctorId,
+    basePath,
+    initialData,
+  });
 
   const avatarUrl = Form.useWatch("avatarUrl", form);
   const avatarSize = useResponsiveAvatarSize();

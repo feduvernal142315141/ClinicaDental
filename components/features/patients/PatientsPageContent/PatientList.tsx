@@ -56,7 +56,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
             page: pagination.page,
             pageSize: pagination.pageSize,
           });
-        } catch (e) {
+        } catch (_e) {
           message.error("No se pudo eliminar el paciente");
         }
       },

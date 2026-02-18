@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useEffect } from "react";
-import { App } from "antd";
 import { DataTable, Card } from "@/components/ui/antd";
 import { useDoctors } from "@/lib/hooks/doctors";
 import { useDoctorsPage } from "@/lib/hooks/doctors/use-doctors-page";
@@ -23,11 +22,9 @@ interface DoctorsListProps {
 export function DoctorsList({
   basePath = "/settings/users",
 }: DoctorsListProps) {
-  const { modal, message } = App.useApp();
   const { handleViewDoctor, handleEditDoctor } = useDoctorsPage({ basePath });
 
-  const { doctors, loading, pagination, fetchDoctors, deleteDoctor } =
-    useDoctors();
+  const { doctors, loading, pagination, fetchDoctors } = useDoctors();
 
   // Load doctors on component mount
   useEffect(() => {
@@ -40,7 +37,7 @@ export function DoctorsList({
         onView: handleViewDoctor,
         onEdit: handleEditDoctor,
       }),
-    [handleViewDoctor, handleEditDoctor]
+    [handleViewDoctor, handleEditDoctor],
   );
 
   return (
