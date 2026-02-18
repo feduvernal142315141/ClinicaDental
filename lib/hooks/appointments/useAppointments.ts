@@ -22,6 +22,7 @@ export function useAppointments() {
 
   const fetchAppointments = useCallback(
     async (params?: AppointmentsQueryParams) => {
+      // TODO: Keep this flow for compatibility until backend exposes GET /appointments.
       setLoading(true);
       try {
         const response: PaginatedAppointmentsResponse =
@@ -51,6 +52,7 @@ export function useAppointments() {
 
   const getAppointmentById = useCallback(
     async (id: string) => {
+      // TODO: Keep this flow for compatibility until backend exposes GET /appointments/:id.
       setLoading(true);
       try {
         return await appointmentsService.getAppointmentById(id);

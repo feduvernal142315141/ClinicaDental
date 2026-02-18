@@ -21,6 +21,7 @@ import { Modal as CustomModal } from "@/components/ui/primitives/custom";
 import { FormActions } from "@/components/features/doctors/form/components/FormActions";
 import { PatientFormFields } from "@/components/features/patients/form/PatientFormFields";
 import { useAppointmentForm } from "@/lib/hooks/appointments";
+import type { AppointmentFormPrefill } from "@/lib/hooks/appointments/use-appointment-form";
 import type { Appointment } from "@/lib/entity/appointment";
 
 const DURATION_OPTIONS = [
@@ -42,6 +43,7 @@ interface AppointmentFormProps {
   appointmentId?: string;
   basePath?: string;
   initialData?: Appointment;
+  prefill?: AppointmentFormPrefill;
   readOnly?: boolean;
 }
 
@@ -59,6 +61,7 @@ export function AppointmentForm({
   appointmentId,
   basePath = "/appointments",
   initialData,
+  prefill,
   readOnly = false,
 }: AppointmentFormProps) {
   const [isCreatePatientModalOpen, setIsCreatePatientModalOpen] =
@@ -74,6 +77,7 @@ export function AppointmentForm({
     availabilityLoading,
     patientsOptions,
     doctorsOptions,
+    availableTimes,
     handleSubmit,
     handleCancel,
     createQuickPatient,
@@ -81,7 +85,34 @@ export function AppointmentForm({
     appointmentId,
     basePath,
     initialData,
+    prefill,
   });
+
+  const disabledTime = useCallback(() => {
+    if (!availableTimes.length) return {};
+
+    const availableHours = new Set<number>();
+    const availableMinutesByHour = new Map<number, Set<number>>();
+
+    for (const t of availableTimes) {
+      const [h, m] = t.split(":").map(Number);
+      availableHours.add(h);
+      if (!availableMinutesByHour.has(h)) availableMinutesByHour.set(h, new Set());
+      availableMinutesByHour.get(h)!.add(m);
+    }
+
+    const allHours = Array.from({ length: 24 }, (_, i) => i);
+    const disabledHours = () =>
+      allHours.filter((h) => !availableHours.has(h));
+
+    const disabledMinutes = (selectedHour: number) => {
+      const allowed = availableMinutesByHour.get(selectedHour);
+      if (!allowed) return Array.from({ length: 60 }, (_, i) => i);
+      return Array.from({ length: 60 }, (_, i) => i).filter((m) => !allowed.has(m));
+    };
+
+    return { disabledHours, disabledMinutes };
+  }, [availableTimes]);
 
   const openCreatePatientModal = useCallback(() => {
     setIsCreatePatientModalOpen(true);
@@ -237,6 +268,8 @@ export function AppointmentForm({
                 required
                 placeholder="Seleccione hora"
                 loading={availabilityLoading}
+                disabledTime={disabledTime}
+                hideDisabledOptions
               />
             </Col>
 

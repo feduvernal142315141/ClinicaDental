@@ -115,3 +115,24 @@ export interface PaginatedAppointmentsResponse {
 export interface AvailabilityResponse {
   availableTime: string[];
 }
+
+/**
+ * Availability slot for doctor/date exploration views.
+ */
+export interface AvailabilitySlot {
+  id: string;
+  doctorId: string;
+  doctorName?: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  interval: number; // minutes
+}
+
+/**
+ * Filters for availability exploration.
+ */
+export interface AvailabilityFilters {
+  doctorId?: string;
+  date?: string; // YYYY-MM-DD
+  interval?: number; // minutes
+}

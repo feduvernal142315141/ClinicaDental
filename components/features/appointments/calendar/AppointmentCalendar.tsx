@@ -1,115 +1,68 @@
 "use client";
 
 import { useCallback } from "react";
-import { Badge, Calendar, List, Spin, Tag, Tooltip, Typography } from "antd";
+import { Badge, Button, Calendar, List, Spin, Typography } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
-import {
-  ClockCircleOutlined,
-  UserOutlined,
-  MedicineBoxOutlined,
-} from "@ant-design/icons";
+import { CalendarOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import { Card } from "@/components/ui/antd";
 import { useAppointmentCalendar } from "@/lib/hooks/appointments/use-appointment-calendar";
-import type { Appointment, AppointmentStatus } from "@/lib/entity/appointment";
+import type { AvailabilitySlot } from "@/lib/entity/appointment";
 
 dayjs.locale("es");
 
 const { Text } = Typography;
 
 interface AppointmentCalendarProps {
-  /** Appointments to display on the calendar */
-  appointments: Appointment[];
+  /** Availability slots to display on the calendar */
+  slots: AvailabilitySlot[];
   /** Whether the data is loading */
   loading?: boolean;
-  /** Callback when an appointment is clicked */
-  onViewAppointment?: (id: string) => void;
+  /** Selected date (YYYY-MM-DD) */
+  selectedDate: string;
+  /** Callback when calendar date changes */
+  onDateChange: (date: string) => void;
+  /** Callback when user schedules a slot */
+  onScheduleSlot?: (slot: AvailabilitySlot) => void;
 }
 
-const STATUS_COLOR: Record<AppointmentStatus, string> = {
-  scheduled: "blue",
-  completed: "green",
-  cancelled: "red",
-  "no-show": "orange",
-};
-
-const STATUS_BADGE: Record<
-  AppointmentStatus,
-  "processing" | "success" | "error" | "warning"
-> = {
-  scheduled: "processing",
-  completed: "success",
-  cancelled: "error",
-  "no-show": "warning",
-};
-
-const STATUS_LABEL: Record<AppointmentStatus, string> = {
-  scheduled: "Programada",
-  completed: "Completada",
-  cancelled: "Cancelada",
-  "no-show": "No asistió",
-};
-
 /**
- * Calendar view for appointments.
- *
- * Shows a monthly calendar with appointment badges on each day.
- * Below the calendar, lists the appointments for the selected day.
+ * Calendar view for doctor availability slots.
  */
 export function AppointmentCalendar({
-  appointments,
+  slots,
   loading = false,
-  onViewAppointment,
+  selectedDate,
+  onDateChange,
+  onScheduleSlot,
 }: AppointmentCalendarProps) {
   const {
-    selectedDate,
-    appointmentsByDate,
-    selectedDateAppointments,
+    selectedDate: selectedDateValue,
+    slotsByDate,
+    selectedDateSlots,
     onSelectDate,
     onPanelChange,
-  } = useAppointmentCalendar({ appointments });
+  } = useAppointmentCalendar({
+    slots,
+    selectedDate,
+    onDateChange,
+  });
 
   const dateCellRender = useCallback(
     (date: Dayjs) => {
       const dateStr = date.format("YYYY-MM-DD");
-      const dayAppointments = appointmentsByDate.get(dateStr);
-      if (!dayAppointments?.length) return null;
-
-      // Group by status for badge counts
-      const statusCounts = dayAppointments.reduce(
-        (acc, apt) => {
-          acc[apt.status] = (acc[apt.status] || 0) + 1;
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
+      const daySlots = slotsByDate.get(dateStr);
+      if (!daySlots?.length) return null;
 
       return (
-        <ul className="m-0 list-none p-0">
-          {Object.entries(statusCounts).map(([status, count]) => (
-            <li key={status} className="mb-0.5">
-              <Tooltip
-                title={`${count} ${STATUS_LABEL[status as AppointmentStatus] || status}`}
-              >
-                <Badge
-                  status={
-                    STATUS_BADGE[status as AppointmentStatus] ?? "default"
-                  }
-                  text={
-                    <Text className="text-xs!">
-                      {count}{" "}
-                      {STATUS_LABEL[status as AppointmentStatus] ?? status}
-                    </Text>
-                  }
-                />
-              </Tooltip>
-            </li>
-          ))}
-        </ul>
+        <Badge
+          status="processing"
+          text={<Text className="text-xs!">{daySlots.length} disponibles</Text>}
+        />
       );
     },
-    [appointmentsByDate],
+    [slotsByDate],
   );
 
   const cellRender = useCallback(
@@ -122,7 +75,7 @@ export function AppointmentCalendar({
 
   return (
     <Card
-      title="Calendario de Citas"
+      title="Calendario de Disponibilidad"
       styles={{
         body: { padding: 0 },
       }}
@@ -130,7 +83,7 @@ export function AppointmentCalendar({
       <Spin spinning={loading}>
         <Calendar
           fullscreen={false}
-          value={selectedDate}
+          value={selectedDateValue}
           onSelect={onSelectDate}
           onPanelChange={onPanelChange}
           cellRender={cellRender}
@@ -139,47 +92,46 @@ export function AppointmentCalendar({
 
       <div className="border-t px-4 py-3">
         <Text strong className="mb-2 block">
-          {selectedDate.format("dddd, D [de] MMMM YYYY")}
+          {selectedDateValue.format("dddd, D [de] MMMM YYYY")}
         </Text>
 
-        {selectedDateAppointments.length === 0 ? (
+        {selectedDateSlots.length === 0 ? (
           <Text type="secondary" className="block py-2 text-center text-sm">
-            No hay citas para este día
+            No hay horarios disponibles para este día
           </Text>
         ) : (
           <List
             size="small"
-            dataSource={selectedDateAppointments}
-            renderItem={(apt) => (
+            dataSource={selectedDateSlots}
+            renderItem={(slot) => (
               <List.Item
-                className={
-                  onViewAppointment
-                    ? "cursor-pointer transition-colors hover:bg-gray-50"
-                    : ""
+                actions={
+                  onScheduleSlot
+                    ? [
+                        <Button
+                          key={`${slot.id}-schedule`}
+                          type="link"
+                          icon={<CalendarOutlined />}
+                          onClick={() => onScheduleSlot(slot)}
+                        >
+                          Agendar
+                        </Button>,
+                      ]
+                    : undefined
                 }
-                onClick={() => onViewAppointment?.(apt.id)}
               >
                 <List.Item.Meta
                   title={
                     <div className="flex items-center gap-2">
                       <ClockCircleOutlined className="text-gray-400" />
-                      <Text className="font-medium">{apt.time || "--:--"}</Text>
-                      <Tag color={STATUS_COLOR[apt.status]}>
-                        {STATUS_LABEL[apt.status]}
-                      </Tag>
+                      <Text className="font-medium">{slot.time || "--:--"}</Text>
                     </div>
                   }
                   description={
-                    <div className="flex flex-col gap-0.5 text-xs">
-                      <span>
-                        <UserOutlined className="mr-1" />
-                        {apt.patientName || "Sin paciente"}
-                      </span>
-                      <span>
-                        <MedicineBoxOutlined className="mr-1" />
-                        {apt.doctorName || "Sin doctor"}
-                        {apt.duration ? ` · ${apt.duration} min` : ""}
-                      </span>
+                    <div className="flex gap-1 text-xs">
+                      <span>{slot.doctorName || "Doctor seleccionado"}</span>
+                      <span>·</span>
+                      <span>{slot.interval} min</span>
                     </div>
                   }
                 />

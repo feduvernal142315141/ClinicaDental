@@ -29,10 +29,18 @@ export interface SelectOption {
   label: string;
 }
 
+export interface AppointmentFormPrefill {
+  doctorId?: string;
+  date?: string;
+  time?: string;
+  interval?: number;
+}
+
 interface UseAppointmentFormParams {
   appointmentId?: string;
   basePath?: string;
   initialData?: Appointment;
+  prefill?: AppointmentFormPrefill;
 }
 
 type CreateQuickPatientValues = Required<
@@ -49,6 +57,7 @@ export function useAppointmentForm({
   appointmentId,
   basePath = "/appointments",
   initialData,
+  prefill,
 }: UseAppointmentFormParams) {
   const router = useRouter();
   const [form] = Form.useForm<AppointmentFormValues>();
@@ -123,6 +132,28 @@ export function useAppointmentForm({
     });
   }, [isEdit, appointmentId, initialData, getAppointmentById, form]);
 
+  const applyPrefill = useCallback(() => {
+    if (isEdit || !prefill) return;
+
+    const values: Partial<AppointmentFormValues> = {};
+
+    if (prefill.doctorId) {
+      values.doctorId = prefill.doctorId;
+    }
+
+    if (prefill.date) {
+      values.date = normalizeDate(prefill.date);
+    }
+
+    if (prefill.time) {
+      values.time = prefill.time;
+    }
+
+    if (Object.keys(values).length > 0) {
+      form.setFieldsValue(values);
+    }
+  }, [form, isEdit, prefill]);
+
   useEffect(() => {
     loadCatalogs();
   }, [loadCatalogs]);
@@ -130,6 +161,10 @@ export function useAppointmentForm({
   useEffect(() => {
     loadAppointment();
   }, [loadAppointment]);
+
+  useEffect(() => {
+    applyPrefill();
+  }, [applyPrefill]);
 
   useEffect(() => {
     const run = async () => {

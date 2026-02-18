@@ -1,19 +1,23 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import dayjs, { type Dayjs } from "dayjs";
-import type { Appointment } from "@/lib/entity/appointment";
+import type { AvailabilitySlot } from "@/lib/entity/appointment";
 
 interface UseAppointmentCalendarParams {
-  /** Appointments to display — provided by the parent (e.g. from useAppointments) */
-  appointments: Appointment[];
+  /** Slots to display — provided by the parent from availability endpoint */
+  slots: AvailabilitySlot[];
+  /** Currently selected date in YYYY-MM-DD format */
+  selectedDate: string;
+  /** Callback to update selected date in parent */
+  onDateChange: (date: string) => void;
 }
 
 interface UseAppointmentCalendarReturn {
   /** Currently selected date */
   selectedDate: Dayjs;
-  /** Appointments grouped by date string for cell rendering */
-  appointmentsByDate: Map<string, Appointment[]>;
-  /** Appointments filtered for the selected date */
-  selectedDateAppointments: Appointment[];
+  /** Slots grouped by date string for cell rendering */
+  slotsByDate: Map<string, AvailabilitySlot[]>;
+  /** Slots filtered for the selected date */
+  selectedDateSlots: AvailabilitySlot[];
   /** Change the selected date */
   onSelectDate: (date: Dayjs) => void;
   /** Called when the calendar panel (month/year) changes */
@@ -21,45 +25,47 @@ interface UseAppointmentCalendarReturn {
 }
 
 /**
- * Hook that manages calendar selection state and derives
- * date-grouped views from the provided appointments list.
- *
- * It does NOT fetch data — the parent is responsible for supplying
- * the appointments array (Single Responsibility / Dependency Inversion).
+ * Hook that derives date-grouped availability views from slot data.
+ * Selection state lives in the parent, and this hook only adapts it for UI.
  */
 export function useAppointmentCalendar({
-  appointments,
+  slots,
+  selectedDate,
+  onDateChange,
 }: UseAppointmentCalendarParams): UseAppointmentCalendarReturn {
-  const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
+  const selectedDateValue = useMemo(
+    () => dayjs(selectedDate, "YYYY-MM-DD"),
+    [selectedDate],
+  );
 
-  const appointmentsByDate = useMemo(() => {
-    const map = new Map<string, Appointment[]>();
-    for (const apt of appointments) {
-      const key = apt.date?.split("T")[0]; // normalise "2026-02-17T…" → "2026-02-17"
+  const slotsByDate = useMemo(() => {
+    const map = new Map<string, AvailabilitySlot[]>();
+    for (const slot of slots) {
+      const key = slot.date?.split("T")[0];
       if (!key) continue;
       if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(apt);
+      map.get(key)!.push(slot);
     }
     return map;
-  }, [appointments]);
+  }, [slots]);
 
-  const selectedDateAppointments = useMemo(
-    () => appointmentsByDate.get(selectedDate.format("YYYY-MM-DD")) ?? [],
-    [appointmentsByDate, selectedDate],
+  const selectedDateSlots = useMemo(
+    () => slotsByDate.get(selectedDateValue.format("YYYY-MM-DD")) ?? [],
+    [slotsByDate, selectedDateValue],
   );
 
   const onSelectDate = useCallback((date: Dayjs) => {
-    setSelectedDate(date);
-  }, []);
+    onDateChange(date.format("YYYY-MM-DD"));
+  }, [onDateChange]);
 
   const onPanelChange = useCallback((date: Dayjs) => {
-    setSelectedDate(date);
-  }, []);
+    onDateChange(date.format("YYYY-MM-DD"));
+  }, [onDateChange]);
 
   return {
-    selectedDate,
-    appointmentsByDate,
-    selectedDateAppointments,
+    selectedDate: selectedDateValue,
+    slotsByDate,
+    selectedDateSlots,
     onSelectDate,
     onPanelChange,
   };

@@ -109,6 +109,7 @@ function normalizeAppointment(raw: unknown): Appointment {
 async function getAppointments(
   params?: AppointmentsQueryParams,
 ): Promise<PaginatedAppointmentsResponse> {
+  // TODO: Keep for compatibility. Backend currently does not expose this endpoint.
   const queryString = buildQueryString(params);
   const url = `${endpoint}${queryString ? `?${queryString}` : ""}`;
 
@@ -133,6 +134,7 @@ async function getAppointments(
 }
 
 async function getAppointmentById(id: string): Promise<Appointment> {
+  // TODO: Keep for compatibility. Backend currently does not expose this endpoint.
   const response = await serviceGet<Appointment>(`${endpoint}/${id}`);
 
   if (response?.status >= 200 && response?.status < 300 && response?.data) {
