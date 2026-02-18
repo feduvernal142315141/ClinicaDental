@@ -17,17 +17,19 @@ export default function NewAppointmentPage() {
 
   const prefill = useMemo<AppointmentFormPrefill | undefined>(() => {
     const doctorId = searchParams.get("doctorId") ?? undefined;
+    const patientId = searchParams.get("patientId") ?? undefined;
     const date = searchParams.get("date") ?? undefined;
     const time = searchParams.get("time") ?? undefined;
     const intervalRaw = searchParams.get("interval");
     const interval = intervalRaw ? Number(intervalRaw) : undefined;
 
-    if (!doctorId && !date && !time && interval === undefined) {
+    if (!doctorId && !patientId && !date && !time && interval === undefined) {
       return undefined;
     }
 
     return {
       doctorId,
+      patientId,
       date,
       time,
       interval: Number.isFinite(interval) ? interval : undefined,

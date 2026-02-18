@@ -31,6 +31,7 @@ export interface SelectOption {
 
 export interface AppointmentFormPrefill {
   doctorId?: string;
+  patientId?: string;
   date?: string;
   time?: string;
   interval?: number;
@@ -136,6 +137,10 @@ export function useAppointmentForm({
     if (isEdit || !prefill) return;
 
     const values: Partial<AppointmentFormValues> = {};
+
+    if (prefill.patientId) {
+      values.patientId = prefill.patientId;
+    }
 
     if (prefill.doctorId) {
       values.doctorId = prefill.doctorId;

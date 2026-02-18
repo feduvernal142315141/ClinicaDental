@@ -10,6 +10,7 @@ interface HandleNewAppointmentPrefilledParams {
   date: string;
   time: string;
   interval?: number;
+  patientId?: string;
 }
 
 export function useAppointmentsPage(options: UseAppointmentsPageOptions = {}) {
@@ -21,7 +22,7 @@ export function useAppointmentsPage(options: UseAppointmentsPageOptions = {}) {
   }, [router, basePath]);
 
   const handleNewAppointmentPrefilled = useCallback(
-    ({ doctorId, date, time, interval }: HandleNewAppointmentPrefilledParams) => {
+    ({ doctorId, date, time, interval, patientId }: HandleNewAppointmentPrefilledParams) => {
       const query = new URLSearchParams({
         doctorId,
         date,
@@ -30,6 +31,10 @@ export function useAppointmentsPage(options: UseAppointmentsPageOptions = {}) {
 
       if (interval !== undefined) {
         query.set("interval", String(interval));
+      }
+
+      if (patientId) {
+        query.set("patientId", patientId);
       }
 
       router.push(`${basePath}/new?${query.toString()}`);

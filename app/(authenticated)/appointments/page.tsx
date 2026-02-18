@@ -1,19 +1,22 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, Col, DatePicker, Row, Select } from "antd";
 import dayjs from "dayjs";
 import { SectionTitle, Card } from "@/components/ui/antd";
 import {
   AppointmentCalendar,
+  DoctorAppointmentsTimeline,
 } from "@/components/appointments";
 import {
   useAppointmentAvailability,
   useAppointmentsPage,
+  useDoctorAppointments,
 } from "@/lib/hooks/appointments";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
+import type { Appointment } from "@/lib/entity/appointment";
 
 const INTERVAL_OPTIONS = [
   { value: 15, label: "15 min" },
@@ -32,9 +35,10 @@ export default function AppointmentsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { can, isAdmin } = usePermission();
-  const { handleNewAppointment } = useAppointmentsPage({
-    basePath: "/appointments",
-  });
+  const { handleNewAppointment, handleNewAppointmentPrefilled } =
+    useAppointmentsPage({
+      basePath: "/appointments",
+    });
 
   const {
     selectedDoctorId,
@@ -44,7 +48,6 @@ export default function AppointmentsPage() {
     doctorsLoading,
     availabilityLoading,
     slots,
-    hasRequiredFilters,
     setSelectedDoctorId,
     setSelectedDate,
     setSelectedInterval,
@@ -53,6 +56,32 @@ export default function AppointmentsPage() {
     basePath: "/appointments",
     defaultInterval: 15,
   });
+
+  const {
+    appointments: doctorAppointments,
+    loading: appointmentsLoading,
+    cancelAppointment,
+  } = useDoctorAppointments({
+    doctorId: selectedDoctorId,
+    date: selectedDate,
+  });
+
+  const selectedDoctorName = useMemo(
+    () => doctorsOptions.find((d) => d.id === selectedDoctorId)?.name,
+    [doctorsOptions, selectedDoctorId],
+  );
+
+  const handleReschedule = useCallback(
+    (appointment: Appointment) => {
+      handleNewAppointmentPrefilled({
+        doctorId: appointment.doctorId ?? "",
+        patientId: appointment.patientId ?? appointment.patient_id ?? "",
+        date: appointment.date,
+        time: appointment.time,
+      });
+    },
+    [handleNewAppointmentPrefilled],
+  );
 
   useEffect(() => {
     const allowed =
@@ -145,13 +174,23 @@ export default function AppointmentsPage() {
       </Card>
 
       <Row className="mt-6" gutter={[24, 24]}>
-        <Col xs={24} xl={16}>
+        <Col xs={24} xl={12}>
           <AppointmentCalendar
             slots={slots}
             loading={availabilityLoading}
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
             onScheduleSlot={canCreate ? scheduleSlot : undefined}
+          />
+        </Col>
+        <Col xs={24} xl={12}>
+          <DoctorAppointmentsTimeline
+            appointments={doctorAppointments}
+            loading={appointmentsLoading}
+            selectedDate={selectedDate}
+            doctorName={selectedDoctorName}
+            onCancel={canCreate ? cancelAppointment : undefined}
+            onReschedule={canCreate ? handleReschedule : undefined}
           />
         </Col>
       </Row>
