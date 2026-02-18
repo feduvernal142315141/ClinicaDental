@@ -22,7 +22,13 @@ export function useAppointmentsPage(options: UseAppointmentsPageOptions = {}) {
   }, [router, basePath]);
 
   const handleNewAppointmentPrefilled = useCallback(
-    ({ doctorId, date, time, interval, patientId }: HandleNewAppointmentPrefilledParams) => {
+    ({
+      doctorId,
+      date,
+      time,
+      interval,
+      patientId,
+    }: HandleNewAppointmentPrefilledParams) => {
       const query = new URLSearchParams({
         doctorId,
         date,

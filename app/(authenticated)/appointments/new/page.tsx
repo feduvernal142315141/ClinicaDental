@@ -13,7 +13,9 @@ export default function NewAppointmentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { can, isAdmin } = usePermission();
-  const { handleBackToList } = useAppointmentsPage({ basePath: "/appointments" });
+  const { handleBackToList } = useAppointmentsPage({
+    basePath: "/appointments",
+  });
 
   const prefill = useMemo<AppointmentFormPrefill | undefined>(() => {
     const doctorId = searchParams.get("doctorId") ?? undefined;

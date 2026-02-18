@@ -45,7 +45,10 @@ interface UseAppointmentFormParams {
 }
 
 type CreateQuickPatientValues = Required<
-  Pick<CreatePatientRequest, "name" | "email" | "phone" | "dateOfBirth" | "gender">
+  Pick<
+    CreatePatientRequest,
+    "name" | "email" | "phone" | "dateOfBirth" | "gender"
+  >
 > &
   Pick<CreatePatientRequest, "address" | "agreement">;
 
@@ -117,7 +120,8 @@ export function useAppointmentForm({
     if (!isEdit || !appointmentId) return;
 
     const appointment =
-      initialData ?? (await getAppointmentById(appointmentId).catch(() => null));
+      initialData ??
+      (await getAppointmentById(appointmentId).catch(() => null));
 
     if (!appointment) return;
 
