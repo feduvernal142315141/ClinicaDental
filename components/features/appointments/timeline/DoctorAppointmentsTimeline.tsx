@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import {
-  Badge,
   Button,
   Empty,
   Space,
@@ -31,12 +30,32 @@ const { Text } = Typography;
 
 const STATUS_CONFIG: Record<
   AppointmentStatus,
-  { color: string; label: string; tagColor: string }
+  { color: string; label: string; tagColor: string; hex: string }
 > = {
-  scheduled: { color: "blue", label: "Agendada", tagColor: "processing" },
-  completed: { color: "green", label: "Completada", tagColor: "success" },
-  cancelled: { color: "red", label: "Cancelada", tagColor: "error" },
-  "no-show": { color: "orange", label: "No asistió", tagColor: "warning" },
+  scheduled: {
+    color: "blue",
+    label: "Agendada",
+    tagColor: "processing",
+    hex: "#1677ff",
+  },
+  completed: {
+    color: "green",
+    label: "Completada",
+    tagColor: "success",
+    hex: "#52c41a",
+  },
+  cancelled: {
+    color: "red",
+    label: "Cancelada",
+    tagColor: "error",
+    hex: "#ff4d4f",
+  },
+  "no-show": {
+    color: "orange",
+    label: "No asistió",
+    tagColor: "warning",
+    hex: "#faad14",
+  },
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -55,36 +74,38 @@ function buildTimelineItem(
   const config = STATUS_CONFIG[appointment.status] ?? STATUS_CONFIG.scheduled;
   const isScheduled = appointment.status === "scheduled";
 
-  const label = (
-    <Text className="text-xs text-gray-500">
-      {appointment.time || "--:--"}
-      {appointment.duration ? ` · ${appointment.duration} min` : ""}
-    </Text>
-  );
-
   const children = (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
+    <div className="pb-1">
+      {/* Cabecera: paciente + estado + hora */}
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         <UserOutlined className="text-gray-400" />
-        <Text className="font-medium">
-          {appointment.patientName ?? "Paciente sin nombre"}
+        <Text strong>{appointment.patientName ?? "Paciente sin nombre"}</Text>
+        <Tag color={config.tagColor} className="mx-0">
+          {config.label}
+        </Tag>
+        <Text type="secondary" className="text-xs">
+          <ClockCircleOutlined className="mr-1" />
+          {appointment.time || "--:--"}
+          {appointment.duration ? ` · ${appointment.duration} min` : ""}
         </Text>
-        <Tag color={config.tagColor}>{config.label}</Tag>
       </div>
 
-      <div className="flex items-center gap-2 text-xs text-gray-500">
-        <Badge color={config.color} />
-        <span>{TYPE_LABELS[appointment.type] ?? appointment.type}</span>
-        {appointment.reason && (
-          <>
-            <span>·</span>
-            <span className="truncate max-w-45">{appointment.reason}</span>
-          </>
-        )}
+      {/* Bloque detalle con borde lateral de color */}
+      <div
+        className="rounded border-l-4 bg-gray-50 px-3 py-2"
+        style={{ borderLeftColor: config.hex }}
+      >
+        <Text className="text-sm text-gray-600">
+          {TYPE_LABELS[appointment.type] ?? appointment.type}
+          {appointment.reason && (
+            <Text type="secondary"> · {appointment.reason}</Text>
+          )}
+        </Text>
       </div>
 
+      {/* Acciones */}
       {isScheduled && (onCancel || onReschedule) && (
-        <Space size="small" className="mt-1">
+        <Space size="middle" className="ml-1 mt-2">
           {onReschedule && (
             <Tooltip title="Reagendar cita">
               <Button
@@ -120,7 +141,6 @@ function buildTimelineItem(
     dot: isScheduled ? (
       <ClockCircleOutlined style={{ fontSize: 16 }} />
     ) : undefined,
-    label,
     children,
   };
 }
@@ -176,7 +196,7 @@ export function DoctorAppointmentsTimeline({
           />
         ) : (
           <div className="max-h-125 overflow-y-auto pr-2">
-            <Timeline mode="left" items={timelineItems} />
+            <Timeline items={timelineItems} />
           </div>
         )}
       </Spin>
