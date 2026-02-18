@@ -1,5 +1,10 @@
 # Copilot Instructions - front-clinic
 
+## 0) Required Context Files / Archivos de Contexto
+- Read `.github/copilot-context.md` before proposing changes.
+- Prefer reusable prompt templates in `.github/prompts/*.prompt.md`.
+- If code and docs conflict, treat current code as source of truth.
+
 ## 1) Project Identity / Identidad del Proyecto
 - This is a Next.js 15 App Router project with TypeScript (`strict: true`).
 - Este proyecto usa Ant Design + Tailwind CSS + Radix UI.
