@@ -1,6 +1,6 @@
 ---
 description: Corregir un bug puntual con alcance minimo y validacion clara.
-argumentHint: "<bug o sintoma> [ruta/feature]"
+argument-hint: "<bug o sintoma> [ruta/feature]"
 ---
 
 Actua como software engineer enfocado en bugfix de bajo riesgo.

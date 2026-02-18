@@ -1,6 +1,6 @@
 ---
 description: Refactorizar codigo existente con bajo riesgo, sin cambiar comportamiento funcional.
-argumentHint: "<modulo/ruta> [objetivo de refactor]"
+argument-hint: "<modulo/ruta> [objetivo de refactor]"
 ---
 
 Actua como software engineer senior enfocado en refactor seguro y incremental en este repo.

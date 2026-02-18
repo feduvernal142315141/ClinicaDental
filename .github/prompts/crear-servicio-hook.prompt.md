@@ -1,6 +1,6 @@
 ---
 description: Generar o ajustar capa entity + service + hook + barrel para una feature existente o nueva.
-argumentHint: "<feature> [operacion]"
+argument-hint: "<feature> [operacion]"
 ---
 
 Actua como software engineer orientado a arquitectura por capas de este proyecto.
