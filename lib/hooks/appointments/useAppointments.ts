@@ -151,6 +151,25 @@ export function useAppointments() {
     [message],
   );
 
+  const getDoctorAppointments = useCallback(
+    async (doctorId: string, date: string) => {
+      setLoading(true);
+      try {
+        return await appointmentsService.getDoctorAppointments(doctorId, date);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Error al cargar citas del doctor";
+        message.error(errorMessage);
+        return [];
+      } finally {
+        setLoading(false);
+      }
+    },
+    [message],
+  );
+
   const getDoctorAvailability = useCallback(
     async (doctorId: string, date: string, interval = 15) => {
       try {
@@ -181,6 +200,7 @@ export function useAppointments() {
     updateAppointment,
     updateAppointmentStatus,
     cancelAppointment,
+    getDoctorAppointments,
     getDoctorAvailability,
   };
 }

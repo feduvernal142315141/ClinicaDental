@@ -1,4 +1,8 @@
-import { serviceGet, servicePost, servicePut } from "@/lib/services/baseService";
+import {
+  serviceGet,
+  servicePost,
+  servicePut,
+} from "@/lib/services/baseService";
 import apiInstance from "@/lib/services/apiConfig";
 import type {
   Appointment,
@@ -40,7 +44,8 @@ function buildQueryString(params?: AppointmentsQueryParams): string {
 
   const queryParams = new URLSearchParams();
 
-  if (params.page !== undefined) queryParams.append("page", String(params.page));
+  if (params.page !== undefined)
+    queryParams.append("page", String(params.page));
   if (params.pageSize !== undefined)
     queryParams.append("pageSize", String(params.pageSize));
 
@@ -144,16 +149,18 @@ async function getAppointmentById(id: string): Promise<Appointment> {
   throw new Error(getErrorMessage(response, "Error al cargar la cita"));
 }
 
-async function createAppointment(data: CreateAppointmentRequest): Promise<string> {
+async function createAppointment(
+  data: CreateAppointmentRequest,
+): Promise<string> {
   const payload: CreateAppointmentRequest = {
     ...data,
     status: data.status ?? "scheduled",
   };
 
-  const response = await servicePost<CreateAppointmentRequest, string | Appointment>(
-    endpoint,
-    payload,
-  );
+  const response = await servicePost<
+    CreateAppointmentRequest,
+    string | Appointment
+  >(endpoint, payload);
 
   if (response?.status >= 200 && response?.status < 300 && response?.data) {
     if (typeof response.data === "string") return response.data;
@@ -171,10 +178,10 @@ async function updateAppointment(
   id: string,
   data: UpdateAppointmentRequest,
 ): Promise<boolean> {
-  const response = await servicePut<UpdateAppointmentRequest, boolean | Appointment>(
-    `${endpoint}/${id}`,
-    data,
-  );
+  const response = await servicePut<
+    UpdateAppointmentRequest,
+    boolean | Appointment
+  >(`${endpoint}/${id}`, data);
 
   if (response?.status >= 200 && response?.status < 300) {
     return true;
@@ -183,6 +190,11 @@ async function updateAppointment(
   throw new Error(getErrorMessage(response, "Error al actualizar cita"));
 }
 
+/**
+ * @deprecated El backend ya no expone PATCH /appointments/{id}/status genérico.
+ * Usar `cancelAppointment` directamente para cancelar citas.
+ * Se mantiene temporalmente por compatibilidad.
+ */
 async function updateAppointmentStatus(
   id: string,
   data: UpdateAppointmentStatusRequest,
@@ -206,11 +218,61 @@ async function updateAppointmentStatus(
     return true;
   }
 
-  throw new Error(getErrorMessage(response, "Error al cambiar estado de la cita"));
+  throw new Error(
+    getErrorMessage(response, "Error al cambiar estado de la cita"),
+  );
 }
 
+/**
+ * Cancela una cita cambiando su estado a 'cancelled'.
+ * Solo citas con estado 'scheduled' pueden ser canceladas.
+ * Endpoint: PATCH /appointments/{id}/cancel
+ */
 async function cancelAppointment(id: string): Promise<boolean> {
-  return updateAppointmentStatus(id, { status: "cancelled" });
+  const response = (await apiInstance
+    .patch<boolean>(`${endpoint}/${id}/cancel`)
+    .catch((err) => err.response as unknown)) as
+    | {
+        status?: number;
+        data?: unknown;
+        message?: string;
+      }
+    | undefined;
+
+  if (
+    response &&
+    typeof response.status === "number" &&
+    response.status >= 200 &&
+    response.status < 300
+  ) {
+    return true;
+  }
+
+  throw new Error(getErrorMessage(response, "Error al cancelar la cita"));
+}
+
+/**
+ * Obtiene las citas agendadas (no canceladas) de un doctor para una fecha específica.
+ * Incluye información del paciente, horario, duración, estado y tipo.
+ * Endpoint: GET /appointments/doctor/{doctorId}?date={YYYY-MM-DD}
+ */
+async function getDoctorAppointments(
+  doctorId: string,
+  date: string,
+): Promise<Appointment[]> {
+  const response = await serviceGet<Appointment[]>(
+    `${endpoint}/doctor/${doctorId}?date=${date}`,
+  );
+
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
+    const raw = response.data;
+    const items = Array.isArray(raw) ? raw : [];
+    return items.map((item) => normalizeAppointment(item));
+  }
+
+  throw new Error(
+    getErrorMessage(response, "Error al obtener citas del doctor"),
+  );
 }
 
 async function getDoctorAvailability(
@@ -238,8 +300,10 @@ export const appointmentsService = {
   getAppointmentById,
   createAppointment,
   updateAppointment,
+  /** @deprecated Usar cancelAppointment en su lugar */
   updateAppointmentStatus,
   cancelAppointment,
+  getDoctorAppointments,
   getDoctorAvailability,
 };
 
