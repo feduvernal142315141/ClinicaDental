@@ -1,6 +1,6 @@
 import { Header, HeaderProps } from "./header";
 
-export interface SectionHeaderProps extends Omit<HeaderProps, "level"> {}
+export type SectionHeaderProps = Omit<HeaderProps, "level">;
 
 /**
  * @deprecated Use Header component instead with level={2}

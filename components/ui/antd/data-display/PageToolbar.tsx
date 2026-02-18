@@ -1,12 +1,8 @@
 "use client";
 
-import { Space, Input, Select } from "antd";
+import { Space } from "antd";
 import { Button } from "@/components/ui/primitives/shadcn/button";
-import {
-  PlusOutlined,
-  ReloadOutlined,
-  FilterOutlined,
-} from "@ant-design/icons";
+import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { SearchBox } from "../forms/SearchBox";
 
 export interface PageToolbarProps {

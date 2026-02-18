@@ -1,6 +1,6 @@
 "use client";
 
-import { Typography, Space } from "antd";
+import { Typography } from "antd";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { PlusOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 

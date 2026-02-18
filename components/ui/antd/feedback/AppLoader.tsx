@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Spin, ConfigProvider, theme } from "antd";
-import { LoadingOutlined } from "@ant-design/icons";
 
 interface AppLoaderProps {
   children: React.ReactNode;
@@ -20,7 +19,7 @@ export function AppLoader({ children }: AppLoaderProps) {
   useEffect(() => {
     // Check for dark mode preference
     const darkModeMediaQuery = window.matchMedia(
-      "(prefers-color-scheme: dark)"
+      "(prefers-color-scheme: dark)",
     );
     const storedTheme = localStorage.getItem("theme");
 

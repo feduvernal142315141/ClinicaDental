@@ -1,6 +1,6 @@
 "use client";
 
-import { Dropdown, Avatar, Space, Typography } from "antd";
+import { Dropdown, Avatar, Typography } from "antd";
 import type { MenuProps } from "antd";
 import {
   UserOutlined,

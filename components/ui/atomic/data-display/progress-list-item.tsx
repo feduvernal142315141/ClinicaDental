@@ -102,7 +102,6 @@ export function ProgressListItem({
   value,
   showPercentage = true,
   valueText,
-  progressColor,
   progressHeight = "md",
   className,
   progressClassName,

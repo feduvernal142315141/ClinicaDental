@@ -1,9 +1,7 @@
 "use client";
 
 import { LogOut, User, LifeBuoy, Settings, ChevronDown } from "lucide-react";
-import { UserProfileCard } from "@/components/ui/atomic/data-display/user-profile-card";
 import { UserAvatar } from "@/components/ui/atomic/data-display/user-avatar";
-import { UserInfo } from "@/components/ui/atomic/data-display/user-info";
 import {
   DropdownMenu,
   DropdownMenuContent,

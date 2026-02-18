@@ -2,8 +2,6 @@ import * as React from "react";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { cn } from "@/lib/utils/utils";
 import { LucideIcon, Users } from "lucide-react";
-import { type VariantProps } from "class-variance-authority";
-import { badgeVariants } from "@/components/ui/atomic/data-display/badge";
 
 /**
  * DoctorListItem - Atomic component for displaying doctor information
@@ -85,7 +83,7 @@ export function DoctorListItem({
       className={cn(
         "flex items-center justify-between p-4 border rounded-lg",
         onClick && "cursor-pointer hover:bg-accent/50 transition-colors",
-        className
+        className,
       )}
       onClick={onClick}
     >

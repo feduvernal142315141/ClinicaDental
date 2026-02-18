@@ -1,13 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { ThemeToggle } from "@/components/ui/atomic/controls/theme-toggle";
-import {
-  LifeBuoy as HelpIcon,
-  Settings as SettingsIcon,
-  Bell,
-} from "lucide-react";
+import { Bell } from "lucide-react";
 
 interface HeaderActionsProps {
   supportHref?: string;
@@ -15,11 +10,7 @@ interface HeaderActionsProps {
   onNotificationsClick?: () => void;
 }
 
-export function HeaderActions({
-  supportHref = "/support",
-  settingsHref = "/settings",
-  onNotificationsClick,
-}: HeaderActionsProps) {
+export function HeaderActions({ onNotificationsClick }: HeaderActionsProps) {
   return (
     <div className="flex items-center gap-2">
       {/* <Link href={supportHref} className="inline-flex items-center">

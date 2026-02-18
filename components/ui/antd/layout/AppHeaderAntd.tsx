@@ -2,11 +2,7 @@
 
 import { Layout, Space, Badge } from "antd";
 import { Button } from "@/components/ui/primitives/shadcn/button";
-import {
-  BellOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-} from "@ant-design/icons";
+import { BellOutlined } from "@ant-design/icons";
 import { ThemeSwitch } from "@/components/ui/antd/feedback/ThemeSwitch";
 import { UserDropdown } from "@/components/ui/antd/navigation/UserDropdown";
 import { AppBreadcrumb } from "@/components/ui/antd/navigation/AppBreadcrumb";

@@ -1,6 +1,6 @@
 import { Header, HeaderProps } from "./header";
 
-export interface PageHeaderProps extends Omit<HeaderProps, "level" | "size"> {}
+export type PageHeaderProps = Omit<HeaderProps, "level" | "size">;
 
 /**
  * @deprecated Use Header component instead with level={1}

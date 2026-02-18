@@ -1,20 +1,12 @@
 "use client";
 
 import { SidebarSearch } from "@/components/ui/atomic/navigation/sidebar-search";
-import { ThemeToggle } from "@/components/ui/atomic/controls/theme-toggle";
-import { Stethoscope, LifeBuoy } from "lucide-react";
-import Link from "next/link";
 import { HeaderActions } from "@/components/ui/atomic/navigation/header-actions";
 import { SidebarFooter } from "@/components/ui/atomic/navigation/sidebar-footer";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useRouter } from "next/navigation";
 
-interface AppHeaderProps {
-  supportHref?: string;
-}
-
-export function AppHeader({ supportHref = "/support" }: AppHeaderProps) {
-  const themeToggle = <ThemeToggle variant="ghost" size="sm" />;
+export function AppHeader() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
