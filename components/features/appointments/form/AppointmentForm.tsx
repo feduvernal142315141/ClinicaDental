@@ -97,18 +97,20 @@ export function AppointmentForm({
     for (const t of availableTimes) {
       const [h, m] = t.split(":").map(Number);
       availableHours.add(h);
-      if (!availableMinutesByHour.has(h)) availableMinutesByHour.set(h, new Set());
+      if (!availableMinutesByHour.has(h))
+        availableMinutesByHour.set(h, new Set());
       availableMinutesByHour.get(h)!.add(m);
     }
 
     const allHours = Array.from({ length: 24 }, (_, i) => i);
-    const disabledHours = () =>
-      allHours.filter((h) => !availableHours.has(h));
+    const disabledHours = () => allHours.filter((h) => !availableHours.has(h));
 
     const disabledMinutes = (selectedHour: number) => {
       const allowed = availableMinutesByHour.get(selectedHour);
       if (!allowed) return Array.from({ length: 60 }, (_, i) => i);
-      return Array.from({ length: 60 }, (_, i) => i).filter((m) => !allowed.has(m));
+      return Array.from({ length: 60 }, (_, i) => i).filter(
+        (m) => !allowed.has(m),
+      );
     };
 
     return { disabledHours, disabledMinutes };
