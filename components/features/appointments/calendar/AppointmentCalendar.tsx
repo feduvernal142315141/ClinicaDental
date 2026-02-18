@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { Badge, Button, Calendar, List, Spin, Typography } from "antd";
+import { Badge, Button, Calendar, Spin, Typography } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
@@ -100,44 +100,35 @@ export function AppointmentCalendar({
             No hay horarios disponibles para este día
           </Text>
         ) : (
-          <List
-            size="small"
-            dataSource={selectedDateSlots}
-            renderItem={(slot) => (
-              <List.Item
-                actions={
-                  onScheduleSlot
-                    ? [
-                        <Button
-                          key={`${slot.id}-schedule`}
-                          type="link"
-                          icon={<CalendarOutlined />}
-                          onClick={() => onScheduleSlot(slot)}
-                        >
-                          Agendar
-                        </Button>,
-                      ]
-                    : undefined
-                }
+          <ul className="m-0 max-h-60 list-none overflow-y-auto p-0">
+            {selectedDateSlots.map((slot) => (
+              <li
+                key={slot.id}
+                className="flex items-center justify-between border-b border-gray-100 px-0 py-2 last:border-b-0"
               >
-                <List.Item.Meta
-                  title={
-                    <div className="flex items-center gap-2">
-                      <ClockCircleOutlined className="text-gray-400" />
-                      <Text className="font-medium">{slot.time || "--:--"}</Text>
-                    </div>
-                  }
-                  description={
-                    <div className="flex gap-1 text-xs">
-                      <span>{slot.doctorName || "Doctor seleccionado"}</span>
-                      <span>·</span>
-                      <span>{slot.interval} min</span>
-                    </div>
-                  }
-                />
-              </List.Item>
-            )}
-          />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <ClockCircleOutlined className="text-gray-400" />
+                    <Text className="font-medium">{slot.time || "--:--"}</Text>
+                  </div>
+                  <div className="mt-0.5 flex gap-1 text-xs text-gray-500">
+                    <span>{slot.doctorName || "Doctor seleccionado"}</span>
+                    <span>·</span>
+                    <span>{slot.interval} min</span>
+                  </div>
+                </div>
+                {onScheduleSlot && (
+                  <Button
+                    type="link"
+                    icon={<CalendarOutlined />}
+                    onClick={() => onScheduleSlot(slot)}
+                  >
+                    Agendar
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </Card>
