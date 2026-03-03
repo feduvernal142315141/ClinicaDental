@@ -5,13 +5,15 @@
  * Centraliza lógica repetida en calendar-view, appointment-details, patient-details
  */
 
+import dayjs, { type Dayjs } from "dayjs";
 import { Appointment } from "@/lib/entity/appointment/appointments";
+import type { WeekSchedule } from "@/lib/entity/schedule";
 
 /**
  * Obtiene las clases CSS para el badge de estado de appointment
  */
 export function getAppointmentStatusColor(
-  status: Appointment["status"]
+  status: Appointment["status"],
 ): string {
   switch (status) {
     case "scheduled":
@@ -31,7 +33,7 @@ export function getAppointmentStatusColor(
  * Obtiene el texto legible del estado de appointment
  */
 export function getAppointmentStatusText(
-  status: Appointment["status"]
+  status: Appointment["status"],
 ): string {
   switch (status) {
     case "scheduled":
@@ -89,4 +91,58 @@ export function isToday(date: Date): boolean {
     date.getMonth() === today.getMonth() &&
     date.getFullYear() === today.getFullYear()
   );
+}
+
+/**
+ * Mapping from dayjs day index (0=Sunday) to WeekSchedule keys.
+ */
+const DAY_INDEX_TO_KEY: Record<number, keyof WeekSchedule> = {
+  0: "sunday",
+  1: "monday",
+  2: "tuesday",
+  3: "wednesday",
+  4: "thursday",
+  5: "friday",
+  6: "saturday",
+};
+
+/**
+ * Construye una función `disabledDate` para DatePicker / Calendar de Ant Design
+ * basándose en el schedule semanal del doctor.
+ *
+ * Deshabilita:
+ *  - Fechas anteriores a hoy
+ *  - Días de la semana donde el doctor no trabaja (enabled === false)
+ *
+ * Si no se proporciona schedule, solo deshabilita fechas pasadas.
+ */
+export function buildDisabledDate(
+  schedule: WeekSchedule | Record<string, unknown> | undefined | null,
+): (current: Dayjs) => boolean {
+  return (current: Dayjs): boolean => {
+    if (!current) return false;
+
+    // Deshabilitar fechas anteriores a hoy
+    if (current.isBefore(dayjs(), "day")) {
+      return true;
+    }
+
+    // Si hay schedule, deshabilitar días donde el doctor no trabaja
+    if (schedule) {
+      const dayKey = DAY_INDEX_TO_KEY[current.day()];
+      if (dayKey) {
+        const daySchedule = (schedule as Record<string, unknown>)[dayKey];
+        if (
+          daySchedule &&
+          typeof daySchedule === "object" &&
+          "enabled" in daySchedule &&
+          (daySchedule as { enabled: boolean }).enabled === false
+        ) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
 }

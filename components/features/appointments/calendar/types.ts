@@ -1,3 +1,4 @@
+import type { Dayjs } from "dayjs";
 import type { AvailabilitySlot } from "@/lib/entity/appointment";
 
 /**
@@ -14,6 +15,8 @@ export interface AppointmentCalendarProps {
   onDateChange: (date: string) => void;
   /** Callback when user schedules a slot */
   onScheduleSlot?: (slot: AvailabilitySlot) => void;
+  /** Function to disable dates based on doctor availability / schedule */
+  disabledDate?: (current: Dayjs) => boolean;
 }
 
 /**

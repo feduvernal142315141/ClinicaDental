@@ -5,6 +5,7 @@ import { useAppointments } from "@/lib/hooks/appointments/useAppointments";
 import { usePatients } from "@/lib/hooks/patients";
 import { patientsService } from "@/lib/services/patients";
 import { doctorsService } from "@/lib/services/doctors";
+import { buildDisabledDate } from "@/lib/utils/appointment-utils";
 import type {
   Appointment,
   AppointmentType,
@@ -12,6 +13,7 @@ import type {
   UpdateAppointmentRequest,
 } from "@/lib/entity/appointment";
 import type { CreatePatientRequest } from "@/lib/entity/patients";
+import type { WeekSchedule } from "@/lib/entity/schedule";
 
 type AppointmentFormValues = {
   patientId: string;
@@ -84,9 +86,18 @@ export function useAppointmentForm({
   const [catalogsLoading, setCatalogsLoading] = useState(false);
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [doctorSchedule, setDoctorSchedule] = useState<
+    WeekSchedule | Record<string, unknown> | null
+  >(null);
 
   const watchedDoctorId = Form.useWatch("doctorId", form);
   const watchedDate = Form.useWatch("date", form);
+
+  /** Función para deshabilitar fechas en el DatePicker según el schedule del doctor */
+  const disabledDate = useMemo(
+    () => buildDisabledDate(doctorSchedule),
+    [doctorSchedule],
+  );
 
   const loadCatalogs = useCallback(async () => {
     setCatalogsLoading(true);
@@ -166,6 +177,33 @@ export function useAppointmentForm({
   useEffect(() => {
     loadCatalogs();
   }, [loadCatalogs]);
+
+  // Cargar schedule del doctor cuando cambia la selección
+  useEffect(() => {
+    if (!watchedDoctorId) {
+      setDoctorSchedule(null);
+      return;
+    }
+
+    let cancelled = false;
+    const loadSchedule = async () => {
+      try {
+        const doctor = await doctorsService.getDoctorById(watchedDoctorId);
+        if (!cancelled) {
+          setDoctorSchedule(
+            (doctor.schedule as WeekSchedule | Record<string, unknown>) ?? null,
+          );
+        }
+      } catch {
+        if (!cancelled) setDoctorSchedule(null);
+      }
+    };
+
+    loadSchedule();
+    return () => {
+      cancelled = true;
+    };
+  }, [watchedDoctorId]);
 
   useEffect(() => {
     loadAppointment();
@@ -295,6 +333,7 @@ export function useAppointmentForm({
     patientsOptions,
     doctorsOptions,
     availableTimes,
+    disabledDate,
     handleSubmit,
     handleCancel,
     handleBack,

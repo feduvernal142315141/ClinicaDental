@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import dayjs from "dayjs";
-import { App } from "antd";
+import dayjs, { type Dayjs } from "dayjs";
 import { doctorsService } from "@/lib/services/doctors";
 import { useAppointments } from "@/lib/hooks/appointments/useAppointments";
 import { useAppointmentsPage } from "@/lib/hooks/appointments/use-appointments-page";
+import { buildDisabledDate } from "@/lib/utils/appointment-utils";
 import type { AvailabilitySlot } from "@/lib/entity/appointment";
+import type { WeekSchedule } from "@/lib/entity/schedule";
 
 export interface AvailabilityDoctorOption {
   id: string;
@@ -23,7 +24,6 @@ export function useAppointmentAvailability({
   defaultDate,
   defaultInterval = 15,
 }: UseAppointmentAvailabilityParams = {}) {
-  const { message } = App.useApp();
   const { getDoctorAvailability } = useAppointments();
   const { handleNewAppointmentPrefilled } = useAppointmentsPage({ basePath });
 
@@ -31,15 +31,17 @@ export function useAppointmentAvailability({
   const [selectedDate, setSelectedDate] = useState<string>(
     defaultDate?.split("T")[0] ?? dayjs().format("YYYY-MM-DD"),
   );
-  const [selectedInterval, setSelectedInterval] = useState<number>(
-    defaultInterval,
-  );
-  const [doctorsOptions, setDoctorsOptions] = useState<AvailabilityDoctorOption[]>(
-    [],
-  );
+  const [selectedInterval, setSelectedInterval] =
+    useState<number>(defaultInterval);
+  const [doctorsOptions, setDoctorsOptions] = useState<
+    AvailabilityDoctorOption[]
+  >([]);
   const [doctorsLoading, setDoctorsLoading] = useState(false);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
+  const [doctorSchedule, setDoctorSchedule] = useState<
+    WeekSchedule | Record<string, unknown> | null
+  >(null);
 
   const hasRequiredFilters = useMemo(
     () => Boolean(selectedDoctorId && selectedDate),
@@ -54,26 +56,59 @@ export function useAppointmentAvailability({
   const loadDoctors = useCallback(async () => {
     setDoctorsLoading(true);
     try {
-      const response = await doctorsService.getDoctors({ page: 0, pageSize: 100 });
+      const response = await doctorsService.getDoctors({
+        page: 0,
+        pageSize: 100,
+      });
       const options = (response.entities ?? []).map((doctor) => ({
         id: doctor.id,
         name: doctor.name,
         label: `${doctor.name}${doctor.specialty ? ` - ${doctor.specialty}` : ""}`,
       }));
       setDoctorsOptions(options);
-    } catch (error) {
+    } catch {
       setDoctorsOptions([]);
-      const errorMessage =
-        error instanceof Error ? error.message : "Error al cargar doctores";
-      message.error(errorMessage);
     } finally {
       setDoctorsLoading(false);
     }
-  }, [message]);
+  }, []);
 
   useEffect(() => {
     loadDoctors();
   }, [loadDoctors]);
+
+  // Cargar schedule del doctor seleccionado
+  useEffect(() => {
+    if (!selectedDoctorId) {
+      setDoctorSchedule(null);
+      return;
+    }
+
+    let cancelled = false;
+    const loadSchedule = async () => {
+      try {
+        const doctor = await doctorsService.getDoctorById(selectedDoctorId);
+        if (!cancelled) {
+          setDoctorSchedule(
+            (doctor.schedule as WeekSchedule | Record<string, unknown>) ?? null,
+          );
+        }
+      } catch {
+        if (!cancelled) setDoctorSchedule(null);
+      }
+    };
+
+    loadSchedule();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDoctorId]);
+
+  /** Función para deshabilitar fechas en el calendario según el schedule del doctor */
+  const disabledDate = useMemo(
+    () => buildDisabledDate(doctorSchedule),
+    [doctorSchedule],
+  );
 
   useEffect(() => {
     const run = async () => {
@@ -138,6 +173,7 @@ export function useAppointmentAvailability({
     availabilityLoading,
     slots,
     hasRequiredFilters,
+    disabledDate,
     setSelectedDoctorId,
     setSelectedDate,
     setSelectedInterval,

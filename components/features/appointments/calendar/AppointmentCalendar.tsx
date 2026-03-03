@@ -24,6 +24,7 @@ export function AppointmentCalendar({
   selectedDate,
   onDateChange,
   onScheduleSlot,
+  disabledDate,
 }: AppointmentCalendarProps) {
   const {
     selectedDate: currentDate,
@@ -68,6 +69,7 @@ export function AppointmentCalendar({
           onSelect={onSelectDate}
           onPanelChange={onPanelChange}
           cellRender={cellRender}
+          disabledDate={disabledDate}
         />
       </Spin>
 

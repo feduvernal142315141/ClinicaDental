@@ -48,6 +48,7 @@ export default function AppointmentsPage() {
     doctorsLoading,
     availabilityLoading,
     slots,
+    disabledDate,
     setSelectedDoctorId,
     setSelectedDate,
     setSelectedInterval,
@@ -153,6 +154,7 @@ export default function AppointmentsPage() {
               style={{ width: "100%" }}
               format="DD/MM/YYYY"
               value={dayjs(selectedDate, "YYYY-MM-DD")}
+              disabledDate={disabledDate}
               onChange={(value) => {
                 setSelectedDate(
                   value?.format("YYYY-MM-DD") ?? dayjs().format("YYYY-MM-DD"),
@@ -181,6 +183,7 @@ export default function AppointmentsPage() {
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
             onScheduleSlot={canCreate ? scheduleSlot : undefined}
+            disabledDate={disabledDate}
           />
         </Col>
         <Col xs={24} xl={12}>

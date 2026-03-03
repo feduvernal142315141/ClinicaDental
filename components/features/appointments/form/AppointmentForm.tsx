@@ -78,6 +78,7 @@ export function AppointmentForm({
     patientsOptions,
     doctorsOptions,
     availableTimes,
+    disabledDate,
     handleSubmit,
     handleCancel,
     createQuickPatient,
@@ -259,6 +260,7 @@ export function AppointmentForm({
                   size="large"
                   style={{ width: "100%" }}
                   format="DD/MM/YYYY"
+                  disabledDate={disabledDate}
                 />
               </Form.Item>
             </Col>
