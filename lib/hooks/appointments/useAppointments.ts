@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { App } from "antd";
 import { appointmentsService } from "@/lib/services/appointments";
 import type {
   Appointment,
@@ -11,7 +10,6 @@ import type {
 } from "@/lib/entity/appointment";
 
 export function useAppointments() {
-  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [pagination, setPagination] = useState({
@@ -36,18 +34,13 @@ export function useAppointments() {
         });
 
         return response;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : "Error al cargar el listado de citas";
-        message.error(errorMessage);
+      } catch {
         return null;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   const getAppointmentById = useCallback(
@@ -57,15 +50,12 @@ export function useAppointments() {
       try {
         return await appointmentsService.getAppointmentById(id);
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Error al cargar la cita";
-        message.error(errorMessage);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   const createAppointment = useCallback(
@@ -73,18 +63,14 @@ export function useAppointments() {
       setLoading(true);
       try {
         const createdId = await appointmentsService.createAppointment(data);
-        message.success("Cita creada exitosamente");
         return createdId;
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Error al crear la cita";
-        message.error(errorMessage);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   const updateAppointment = useCallback(
@@ -92,20 +78,14 @@ export function useAppointments() {
       setLoading(true);
       try {
         const updated = await appointmentsService.updateAppointment(id, data);
-        message.success("Cita actualizada exitosamente");
         return updated;
       } catch (error) {
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : "Error al actualizar la cita";
-        message.error(errorMessage);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   const updateAppointmentStatus = useCallback(
@@ -116,20 +96,14 @@ export function useAppointments() {
           id,
           payload,
         );
-        message.success("Estado de cita actualizado exitosamente");
         return result;
       } catch (error) {
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : "Error al actualizar el estado de la cita";
-        message.error(errorMessage);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   const cancelAppointment = useCallback(
@@ -137,18 +111,14 @@ export function useAppointments() {
       setLoading(true);
       try {
         const result = await appointmentsService.cancelAppointment(id);
-        message.success("Cita cancelada exitosamente");
         return result;
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Error al cancelar la cita";
-        message.error(errorMessage);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   const getDoctorAppointments = useCallback(
@@ -156,18 +126,13 @@ export function useAppointments() {
       setLoading(true);
       try {
         return await appointmentsService.getDoctorAppointments(doctorId, date);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : "Error al cargar citas del doctor";
-        message.error(errorMessage);
+      } catch {
         return [];
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   const getDoctorAvailability = useCallback(
@@ -179,15 +144,10 @@ export function useAppointments() {
           interval,
         );
       } catch (error) {
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : "Error al cargar disponibilidad";
-        message.error(errorMessage);
         throw error;
       }
     },
-    [message],
+    [],
   );
 
   return {

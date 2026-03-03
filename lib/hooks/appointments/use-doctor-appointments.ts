@@ -16,7 +16,7 @@ export function useDoctorAppointments({
   doctorId,
   date,
 }: UseDoctorAppointmentsParams) {
-  const { message, modal } = App.useApp();
+  const { modal } = App.useApp();
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,17 +34,12 @@ export function useDoctorAppointments({
         date,
       );
       setAppointments(data);
-    } catch (error) {
+    } catch {
       setAppointments([]);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Error al cargar citas del doctor";
-      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [doctorId, date, message]);
+  }, [doctorId, date]);
 
   useEffect(() => {
     fetchAppointments();
@@ -61,19 +56,14 @@ export function useDoctorAppointments({
         onOk: async () => {
           try {
             await appointmentsService.cancelAppointment(appointment.id);
-            message.success("Cita cancelada exitosamente");
             await fetchAppointments();
-          } catch (error) {
-            const errorMessage =
-              error instanceof Error
-                ? error.message
-                : "Error al cancelar la cita";
-            message.error(errorMessage);
+          } catch {
+            // Error notification handled by interceptor (Sonner toast)
           }
         },
       });
     },
-    [modal, message, fetchAppointments],
+    [modal, fetchAppointments],
   );
 
   return {
