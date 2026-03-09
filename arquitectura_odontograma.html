@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistemas de Odontogramas Digitales</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Chosen Palette: Calm Harmony (Slate-50, Sky-600, Teal-500, Rose-500, Amber-400) -->
+    <!-- Application Structure Plan: La aplicación se organiza como un "Storytelling Dashboard". Comienza con una visión general técnica (SVG vs Canvas), profundiza en la anatomía y notación (FDI), y culmina en la UX clínica y tendencias futuras (IA). Se incluye un simulador de interacción para demostrar la teoría de segmentación dental mencionada en el reporte. -->
+    <!-- Visualization & Content Choices: 
+         1. Comparativa SVG/Canvas -> Meta: Comparar -> Gráfico de Radar para visualizar fortalezas relativas (NO SVG).
+         2. Notación FDI -> Meta: Organizar -> Tabla interactiva y lógica de cuadrantes.
+         3. Código de Colores Clínicos -> Meta: Informar -> Tarjetas interactivas con significado diagnóstico.
+         4. Simulador Dental -> Meta: Relaciones -> Implementación en Canvas para mostrar áreas interactivas.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin: auto; height: 350px; max-height: 400px; }
+        .dental-card { background: white; border-radius: 1rem; border: 1px solid #e2e8f0; transition: all 0.3s ease; }
+        .dental-card:hover { border-color: #0ea5e9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .nav-link { cursor: pointer; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: background 0.2s; }
+        .nav-link.active { background: #e0f2fe; color: #0284c7; font-weight: 600; }
+        canvas#mini-odontogram { background: #fff; border-radius: 0.5rem; cursor: pointer; width: 100%; height: 200px; }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-sky-600 rounded-lg flex items-center justify-center text-white font-bold">D</div>
+                <span class="text-xl font-extrabold tracking-tight">Odonto<span class="text-sky-600">Arch</span></span>
+            </div>
+            <div class="hidden md:flex gap-2 text-sm font-medium text-slate-500">
+                <span class="nav-link active" onclick="showSection('render')">Renderizado</span>
+                <span class="nav-link" onclick="showSection('anatomia')">Anatomía</span>
+                <span class="nav-link" onclick="showSection('estandares')">Estándares</span>
+                <span class="nav-link" onclick="showSection('futuro')">UX e IA</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 space-y-12">
+
+        <!-- INTRODUCCIÓN -->
+        <header class="max-w-3xl">
+            <h1 class="text-4xl font-extrabold text-slate-900 mb-4 leading-tight">Arquitectura de Sistemas de Odontogramas Digitales</h1>
+            <p class="text-lg text-slate-600">Análisis técnico sobre la implementación de interfaces de datos odontológicos, desde motores de renderizado hasta ergonomía clínica de alta precisión.</p>
+        </header>
+
+        <!-- SECCIÓN 1: RENDERIZADO -->
+        <section id="section-render" class="section-content">
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-slate-900">1. Fundamentos del Renderizado Gráfico</h2>
+                <p class="text-slate-600 mt-2">La elección entre SVG y Canvas determina la interactividad y el rendimiento del software. SVG destaca en interfaces táctiles y Canvas en exportación masiva de datos.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="dental-card p-6">
+                    <h3 class="font-bold mb-4 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-sky-500 rounded-full"></span>
+                        Análisis Comparativo Técnico
+                    </h3>
+                    <div class="chart-container">
+                        <canvas id="renderComparisonChart"></canvas>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="p-4 bg-sky-50 rounded-xl border border-sky-100">
+                        <h4 class="font-bold text-sky-900 text-sm uppercase">SVG (Modo Retenido)</h4>
+                        <p class="text-sm text-sky-800 mt-1">Ideal para la entrada de datos. Cada superficie dental es un objeto DOM interactivo. Soporte nativo para eventos táctiles.</p>
+                    </div>
+                    <div class="p-4 bg-slate-100 rounded-xl border border-slate-200">
+                        <h4 class="font-bold text-slate-900 text-sm uppercase">Canvas (Modo Inmediato)</h4>
+                        <p class="text-sm text-slate-800 mt-1">Superior en rendimiento para reportes de alta resolución y animaciones complejas de miles de elementos dentales.</p>
+                    </div>
+                    <div class="p-4 dental-card">
+                        <p class="text-xs text-slate-500 italic">"Muchos arquitectos optan por un modelo híbrido: SVG para la captura e interacción, y Canvas para la generación de archivos de imagen para almacenamiento."</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 2: ANATOMÍA Y SIMULADOR -->
+        <section id="section-anatomia" class="section-content hidden">
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-slate-900">2. Geometría y Segmentación Dental</h2>
+                <p class="text-slate-600 mt-2">Cada pieza dental se divide en 5 superficies críticas. El odontograma debe permitir el registro preciso en cada una según la terminología estándar.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-1 space-y-4">
+                    <div class="dental-card p-4">
+                        <h4 class="font-bold text-xs uppercase text-slate-400 mb-3 tracking-widest">Superficies Clave</h4>
+                        <ul class="text-sm space-y-2">
+                            <li class="flex justify-between border-b pb-1"><span>Mesial (M)</span> <span class="font-bold text-sky-600">Línea Media</span></li>
+                            <li class="flex justify-between border-b pb-1"><span>Distal (D)</span> <span class="font-bold text-sky-600">Posterior</span></li>
+                            <li class="flex justify-between border-b pb-1"><span>Oclusal (O)</span> <span class="font-bold text-sky-600">Masticación</span></li>
+                            <li class="flex justify-between border-b pb-1"><span>Vestibular (V)</span> <span class="font-bold text-sky-600">Externa</span></li>
+                            <li class="flex justify-between border-b pb-1"><span>Lingual (L)</span> <span class="font-bold text-sky-600">Interna</span></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 dental-card p-6 flex flex-col items-center">
+                    <h4 class="font-bold text-slate-900 mb-4">Interacción de "Dos Pasos": Demo de Segmentación</h4>
+                    <p class="text-xs text-slate-500 mb-4 text-center">Haga clic en una sección del molar para simular la selección de superficie.</p>
+                    <div class="w-full max-w-sm">
+                        <canvas id="mini-odontogram"></canvas>
+                    </div>
+                    <div id="selection-status" class="mt-4 px-4 py-2 bg-slate-100 rounded-full text-xs font-bold text-slate-600 uppercase">Esperando selección...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 3: ESTÁNDARES -->
+        <section id="section-estandares" class="section-content hidden">
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-slate-900">3. Notación FDI e Interoperabilidad</h2>
+                <p class="text-slate-600 mt-2">El sistema de la Federación Dental Internacional (ISO 3950) utiliza un código de dos dígitos ideal para estructuras de datos JSON.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="p-6 dental-card text-center">
+                    <div class="text-3xl font-black text-sky-600 mb-2">Q1</div>
+                    <p class="text-xs font-bold uppercase text-slate-400">Superior Derecho</p>
+                    <p class="text-sm mt-2 font-medium">Piezas 11 - 18</p>
+                </div>
+                <div class="p-6 dental-card text-center">
+                    <div class="text-3xl font-black text-sky-600 mb-2">Q2</div>
+                    <p class="text-xs font-bold uppercase text-slate-400">Superior Izquierdo</p>
+                    <p class="text-sm mt-2 font-medium">Piezas 21 - 28</p>
+                </div>
+                <div class="p-6 dental-card text-center">
+                    <div class="text-3xl font-black text-sky-600 mb-2">Q3</div>
+                    <p class="text-xs font-bold uppercase text-slate-400">Inferior Izquierdo</p>
+                    <p class="text-sm mt-2 font-medium">Piezas 31 - 38</p>
+                </div>
+                <div class="p-6 dental-card text-center">
+                    <div class="text-3xl font-black text-sky-600 mb-2">Q4</div>
+                    <p class="text-xs font-bold uppercase text-slate-400">Inferior Derecho</p>
+                    <p class="text-sm mt-2 font-medium">Piezas 41 - 48</p>
+                </div>
+            </div>
+
+            <div class="mt-8 dental-card p-6 bg-slate-900 text-white">
+                <h4 class="font-bold mb-4">Estructura de Datos Sugerida (JSON)</h4>
+                <pre class="text-xs md:text-sm text-teal-400 overflow-x-auto p-4 bg-slate-800 rounded-lg">
+{
+  "pieza_fdi": "16",
+  "caras": {
+    "vestibular": {"estado": "sano"},
+    "mesial": {"estado": "caries", "prioridad": "requerido"},
+    "oclusal": {"estado": "amalgama"}
+  }
+}
+                </pre>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 4: UX Y COLORES -->
+        <section id="section-futuro" class="section-content hidden">
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-slate-900">4. Ergonomía Clínica y Código de Colores</h2>
+                <p class="text-slate-600 mt-2">La jerarquía visual y el tamaño de los objetivos táctiles (mín. 44px) son críticos para dentistas con guantes.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="p-4 border-l-4 border-rose-500 bg-white shadow-sm rounded-r-lg">
+                    <h5 class="font-bold text-rose-600">ROJO</h5>
+                    <p class="text-xs text-slate-500 uppercase font-bold">Patología / Requerido</p>
+                    <p class="text-sm mt-1">Caries activas, extracciones indicadas, urgencias.</p>
+                </div>
+                <div class="p-4 border-l-4 border-sky-500 bg-white shadow-sm rounded-r-lg">
+                    <h5 class="font-bold text-sky-600">AZUL</h5>
+                    <p class="text-xs text-slate-500 uppercase font-bold">Existente / Completado</p>
+                    <p class="text-sm mt-1">Obturaciones, coronas o endodoncias ya realizadas.</p>
+                </div>
+                <div class="p-4 border-l-4 border-emerald-500 bg-white shadow-sm rounded-r-lg">
+                    <h5 class="font-bold text-emerald-600">VERDE</h5>
+                    <p class="text-xs text-slate-500 uppercase font-bold">Referido / Externo</p>
+                    <p class="text-sm mt-1">Tratamientos realizados por especialistas externos.</p>
+                </div>
+                <div class="p-4 border-l-4 border-amber-400 bg-white shadow-sm rounded-r-lg">
+                    <h5 class="font-bold text-amber-500">AMBAR</h5>
+                    <p class="text-xs text-slate-500 uppercase font-bold">Planificado</p>
+                    <p class="text-sm mt-1">Tratamientos en proceso o bajo presupuesto.</p>
+                </div>
+            </div>
+
+            <div class="mt-12 bg-sky-600 p-8 rounded-2xl text-white">
+                <div class="max-w-3xl">
+                    <h3 class="text-2xl font-bold mb-4">El Futuro: IA y Detección Automática</h3>
+                    <p class="text-sky-100 mb-6">La integración de modelos de visión por computadora permite la pre-anotación de odontogramas mediante radiografías panorámicas, reduciendo errores y tiempos de captura.</p>
+                    <div class="flex flex-wrap gap-4">
+                        <span class="px-4 py-2 bg-white/20 rounded-full text-xs font-bold">DIAGNÓSTICO 3D</span>
+                        <span class="px-4 py-2 bg-white/20 rounded-full text-xs font-bold">YOLO V8 INTEGRATION</span>
+                        <span class="px-4 py-2 bg-white/20 rounded-full text-xs font-bold">HCE INTEROPERABLE</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-slate-400 text-xs uppercase tracking-widest font-bold">Arquitectura de Odontogramas v1.0</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- NAVEGACIÓN ---
+        function showSection(id) {
+            document.querySelectorAll('.section-content').forEach(s => s.classList.add('hidden'));
+            document.getElementById('section-' + id).classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if(id === 'anatomia') initMiniOdontogram();
+        }
+
+        // --- GRÁFICO COMPARATIVO ---
+        const ctxRender = document.getElementById('renderComparisonChart').getContext('2d');
+        new Chart(ctxRender, {
+            type: 'radar',
+            data: {
+                labels: ['Interactividad', 'Rendimiento', 'Accesibilidad', 'Escalabilidad', 'Simplicidad Dev'],
+                datasets: [{
+                    label: 'SVG',
+                    data: [100, 70, 100, 100, 90],
+                    backgroundColor: 'rgba(14, 165, 233, 0.2)',
+                    borderColor: '#0ea5e9',
+                    pointBackgroundColor: '#0ea5e9'
+                }, {
+                    label: 'Canvas',
+                    data: [60, 100, 40, 70, 50],
+                    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+                    borderColor: '#64748b',
+                    pointBackgroundColor: '#64748b'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { r: { min: 0, max: 100, ticks: { display: false } } },
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        // --- SIMULADOR DE MOLAR (CANVAS) ---
+        function initMiniOdontogram() {
+            const canvas = document.getElementById('mini-odontogram');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const status = document.getElementById('selection-status');
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const size = 60;
+
+            const drawMolar = (selectedPart) => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#cbd5e1';
+
+                const parts = [
+                    { id: 'Oclusal', color: '#f8fafc', path: () => ctx.rect(centerX - size/2, centerY - size/2, size, size) },
+                    { id: 'Vestibular', color: '#f8fafc', path: () => {
+                        ctx.moveTo(centerX - size, centerY - size);
+                        ctx.lineTo(centerX + size, centerY - size);
+                        ctx.lineTo(centerX + size/2, centerY - size/2);
+                        ctx.lineTo(centerX - size/2, centerY - size/2);
+                        ctx.closePath();
+                    }},
+                    { id: 'Lingual', color: '#f8fafc', path: () => {
+                        ctx.moveTo(centerX - size, centerY + size);
+                        ctx.lineTo(centerX + size, centerY + size);
+                        ctx.lineTo(centerX + size/2, centerY + size/2);
+                        ctx.lineTo(centerX - size/2, centerY + size/2);
+                        ctx.closePath();
+                    }},
+                    { id: 'Mesial', color: '#f8fafc', path: () => {
+                        ctx.moveTo(centerX - size, centerY - size);
+                        ctx.lineTo(centerX - size, centerY + size);
+                        ctx.lineTo(centerX - size/2, centerY + size/2);
+                        ctx.lineTo(centerX - size/2, centerY - size/2);
+                        ctx.closePath();
+                    }},
+                    { id: 'Distal', color: '#f8fafc', path: () => {
+                        ctx.moveTo(centerX + size, centerY - size);
+                        ctx.lineTo(centerX + size, centerY + size);
+                        ctx.lineTo(centerX + size/2, centerY + size/2);
+                        ctx.lineTo(centerX + size/2, centerY - size/2);
+                        ctx.closePath();
+                    }}
+                ];
+
+                parts.forEach(p => {
+                    ctx.beginPath();
+                    p.path();
+                    ctx.fillStyle = (selectedPart === p.id) ? '#e0f2fe' : p.color;
+                    ctx.fill();
+                    ctx.stroke();
+                    if(selectedPart === p.id) {
+                        ctx.fillStyle = '#0369a1';
+                        ctx.font = 'bold 10px Inter';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(p.id.toUpperCase(), centerX, 20);
+                    }
+                });
+            };
+
+            canvas.onclick = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // Lógica simplificada de detección por cuadrantes para la demo
+                const dx = x - (canvas.width/2);
+                const dy = y - (canvas.height/2);
+                
+                let selected = 'Oclusal';
+                if (Math.abs(dx) < 30 && Math.abs(dy) < 30) selected = 'Oclusal';
+                else if (dy < -Math.abs(dx)) selected = 'Vestibular';
+                else if (dy > Math.abs(dx)) selected = 'Lingual';
+                else if (dx < -Math.abs(dy)) selected = 'Mesial';
+                else if (dx > Math.abs(dy)) selected = 'Distal';
+
+                status.innerText = "Seleccionado: " + selected;
+                status.className = "mt-4 px-4 py-2 bg-sky-100 rounded-full text-xs font-bold text-sky-600 uppercase transition-all scale-110";
+                setTimeout(() => status.classList.remove('scale-110'), 200);
+                drawMolar(selected);
+            };
+
+            drawMolar(null);
+        }
+    </script>
+</body>
+</html>
