@@ -1,29 +1,33 @@
-"use client"
+"use client";
 
-import { OdontogramLegend } from "./odontogramLeyend"
-import { ToothSVGMultiView } from "./tooth-svg-multi-view"
-import type { Tooth, ToothSurface } from "./types"
-import { useOdontogramStore } from "@/lib/odontogram/store"
+import { OdontogramLegend } from "./odontogramLeyend";
+import { ToothSVGMultiView } from "./tooth-svg-multi-view";
+import type { Tooth, ToothSurface } from "./types";
+import { useOdontogramStore } from "@/lib/odontogram/store";
 
 interface OdontogramGridProps {
-  teeth: Tooth[]
-  onSurfaceClick: (toothNumber: number, surface: ToothSurface) => void
-  onToothClick: (toothNumber: number) => void
+  teeth: Tooth[];
+  onSurfaceClick: (toothNumber: number, surface: ToothSurface) => void;
+  onToothClick: (toothNumber: number) => void;
 }
 
-export function OdontogramGrid({ teeth, onSurfaceClick, onToothClick }: OdontogramGridProps) {
-  const clinicalEvents = useOdontogramStore((state) => state.clinicalEvents)
+export function OdontogramGrid({
+  teeth,
+  onSurfaceClick,
+  onToothClick,
+}: OdontogramGridProps) {
+  const clinicalEvents = useOdontogramStore((state) => state.clinicalEvents);
 
-  const upperRight = [18, 17, 16, 15, 14, 13, 12, 11]
-  const upperLeft = [21, 22, 23, 24, 25, 26, 27, 28]
-  const lowerLeft = [31, 32, 33, 34, 35, 36, 37, 38]
-  const lowerRight = [48, 47, 46, 45, 44, 43, 42, 41]
+  const upperRight = [18, 17, 16, 15, 14, 13, 12, 11];
+  const upperLeft = [21, 22, 23, 24, 25, 26, 27, 28];
+  const lowerLeft = [31, 32, 33, 34, 35, 36, 37, 38];
+  const lowerRight = [48, 47, 46, 45, 44, 43, 42, 41];
 
   const getToothData = (num: number) => {
-    const tooth = teeth.find((t) => t.number === num)
-    if (!tooth) return undefined
+    const tooth = teeth.find((t) => t.number === num);
+    if (!tooth) return undefined;
 
-    const toothEvents = clinicalEvents.filter((e) => e.toothNumber === num)
+    const toothEvents = clinicalEvents.filter((e) => e.toothNumber === num);
 
     const surfaceTreatments = toothEvents
       .filter((e) => e.type === "plan" || e.type === "performed")
@@ -34,11 +38,14 @@ export function OdontogramGrid({ teeth, onSurfaceClick, onToothClick }: Odontogr
           type: e.notes?.split(":")[0] || "Tratamiento",
           category: "restaurador" as const,
           description: e.notes || "",
-          status: e.type === "performed" ? ("completed" as const) : ("planned" as const),
+          status:
+            e.type === "performed"
+              ? ("completed" as const)
+              : ("planned" as const),
           price: `$${e.cost || 0}`,
           date: e.createdAt,
         })),
-      )
+      );
 
     const surfaceConditions = toothEvents
       .filter((e) => e.type === "diagnosis")
@@ -46,47 +53,63 @@ export function OdontogramGrid({ teeth, onSurfaceClick, onToothClick }: Odontogr
         e.surfaces.map((surface) => ({
           id: e.id,
           surface,
-          condition: e.icdasScore && e.icdasScore > 0 ? ("caries" as const) : ("healthy" as const),
+          condition:
+            e.icdasScore && e.icdasScore > 0
+              ? ("caries" as const)
+              : ("healthy" as const),
           severity: e.severity || ("low" as const),
           notes: e.notes || "",
           diagnosedDate: e.createdAt,
         })),
-      )
+      );
 
     return {
       ...tooth,
       surfaceTreatments,
       surfaceConditions,
-    }
-  }
+    };
+  };
 
-  const renderToothRow = (toothNumbers: number[], view: "frontal" | "oclusal" | "lateral") => (
-    <div className="flex gap-1">
-      {toothNumbers.map((num) => {
-        const tooth = getToothData(num)
-        return (
-          <div
-            key={`${num}-${view}`}
-            className="w-14 h-16 cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => onToothClick(num)}
-          >
-            <ToothSVGMultiView
-              toothNumber={num}
-              view={view}
-              surfaceTreatments={tooth?.surfaceTreatments || []}
-              surfaceConditions={tooth?.surfaceConditions || []}
-              onSurfaceClick={(surface) => onSurfaceClick(num, surface)}
-            />
-          </div>
-        )
-      })}
-    </div>
-  )
+  const renderToothRow = (
+    toothNumbers: number[],
+    view: "frontal" | "oclusal" | "lateral",
+  ) => {
+    // La vista oclusal es cuadrada; frontal y lateral son más altas
+    const containerClass =
+      view === "oclusal"
+        ? "w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity"
+        : "w-12 h-16 cursor-pointer hover:opacity-80 transition-opacity";
+
+    return (
+      <div className="flex gap-0.5">
+        {toothNumbers.map((num) => {
+          const tooth = getToothData(num);
+          return (
+            <div
+              key={`${num}-${view}`}
+              className={containerClass}
+              onClick={() => onToothClick(num)}
+            >
+              <ToothSVGMultiView
+                toothNumber={num}
+                view={view}
+                surfaceTreatments={tooth?.surfaceTreatments || []}
+                surfaceConditions={tooth?.surfaceConditions || []}
+                onSurfaceClick={(surface) => onSurfaceClick(num, surface)}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8">
       <div className="space-y-2">
-        <div className="text-center text-sm font-medium text-muted-foreground mb-4">Arcada Superior</div>
+        <div className="text-center text-sm font-medium text-muted-foreground mb-4">
+          Arcada Superior
+        </div>
 
         {/* Vista Frontal Superior */}
         <div className="flex justify-center gap-4">
@@ -111,17 +134,17 @@ export function OdontogramGrid({ teeth, onSurfaceClick, onToothClick }: Odontogr
 
         {/* Números de dientes */}
         <div className="flex justify-center gap-4 text-xs text-center font-mono">
-          <div className="flex gap-1">
+          <div className="flex gap-0.5">
             {upperRight.map((num) => (
-              <div key={num} className="w-14">
+              <div key={num} className="w-12">
                 {num}
               </div>
             ))}
           </div>
           <div className="w-px" />
-          <div className="flex gap-1">
+          <div className="flex gap-0.5">
             {upperLeft.map((num) => (
-              <div key={num} className="w-14">
+              <div key={num} className="w-12">
                 {num}
               </div>
             ))}
@@ -132,7 +155,9 @@ export function OdontogramGrid({ teeth, onSurfaceClick, onToothClick }: Odontogr
       <div className="border-t-2 border-dashed border-border my-8" />
 
       <div className="space-y-2">
-        <div className="text-center text-sm font-medium text-muted-foreground mb-4">Arcada Inferior</div>
+        <div className="text-center text-sm font-medium text-muted-foreground mb-4">
+          Arcada Inferior
+        </div>
 
         {/* Vista Lateral Inferior */}
         <div className="flex justify-center gap-4">
@@ -157,17 +182,17 @@ export function OdontogramGrid({ teeth, onSurfaceClick, onToothClick }: Odontogr
 
         {/* Números de dientes */}
         <div className="flex justify-center gap-4 text-xs text-center font-mono">
-          <div className="flex gap-1">
+          <div className="flex gap-0.5">
             {lowerRight.map((num) => (
-              <div key={num} className="w-14">
+              <div key={num} className="w-12">
                 {num}
               </div>
             ))}
           </div>
           <div className="w-px" />
-          <div className="flex gap-1">
+          <div className="flex gap-0.5">
             {lowerLeft.map((num) => (
-              <div key={num} className="w-14">
+              <div key={num} className="w-12">
                 {num}
               </div>
             ))}
@@ -207,5 +232,5 @@ export function OdontogramGrid({ teeth, onSurfaceClick, onToothClick }: Odontogr
       </div> */}
       <OdontogramLegend />
     </div>
-  )
+  );
 }
