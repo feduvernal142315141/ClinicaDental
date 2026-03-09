@@ -109,6 +109,51 @@
       ],
       "@/components/theme-provider": [
         "./components/app/theme-provider"
+      ],
+      "@/components/ui/alert-dialog": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/badge": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/button": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/card": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/checkbox": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/dialog": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/dropdown-menu": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/input": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/label": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/scroll-area": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/select": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/sheet": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/slider": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/tabs": [
+        "./components/ui/index"
+      ],
+      "@/components/ui/textarea": [
+        "./components/ui/index"
       ]
     }
   },

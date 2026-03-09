@@ -6,9 +6,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/primitives/shadcn/tabs";
-import { Odontogram } from "@/components/odontogram/Odontogram";
+import type { Patient } from "@/lib/entity/patients";
+import { PatientOdontogramPanel } from "../detail/PatientOdontogramPanel";
 
-export function PatientTabs() {
+interface PatientTabsProps {
+  patient: Patient;
+}
+
+export function PatientTabs({ patient }: PatientTabsProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -27,7 +32,7 @@ export function PatientTabs() {
         <TabsContent value="general" className="space-y-4"></TabsContent>
 
         <TabsContent value="odontogram" className="space-y-4">
-          <Odontogram onChange={(data) => console.log("Odontograma:", data)} />
+          <PatientOdontogramPanel patient={patient} />
         </TabsContent>
       </Tabs>
     </div>

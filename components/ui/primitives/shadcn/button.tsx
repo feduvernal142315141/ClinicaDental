@@ -15,6 +15,8 @@ const buttonVariants = cva(
         default: "",
         outline: "",
         ghost: "",
+        destructive: "",
+        link: "",
       },
       size: {
         default: "h-10 px-4 py-2",
@@ -30,7 +32,7 @@ const buttonVariants = cva(
   }
 );
 
-type ShadcnVariant = "default" | "outline" | "ghost";
+type ShadcnVariant = "default" | "outline" | "ghost" | "destructive" | "link";
 type ShadcnSize = "default" | "sm" | "lg" | "icon";
 
 type HtmlButtonType = React.ButtonHTMLAttributes<HTMLButtonElement>["type"];
@@ -94,8 +96,12 @@ const Button = React.forwardRef<HTMLElement, ButtonProps>(
     const mappedTypeFromVariant: AntdButtonProps["type"] =
       shadcnVariant === "default"
         ? "primary"
+        : shadcnVariant === "destructive"
+        ? "primary"
         : shadcnVariant === "outline"
         ? "default"
+        : shadcnVariant === "link"
+        ? "link"
         : "text";
 
     const antdTypeFinal = antdTypeFromProp ?? mappedTypeFromVariant;
@@ -109,6 +115,7 @@ const Button = React.forwardRef<HTMLElement, ButtonProps>(
         size={antdSize}
         htmlType={htmlTypeFinal}
         shape={shape}
+        danger={props.danger ?? shadcnVariant === "destructive"}
         className={cn(
           buttonVariants({ variant: shadcnVariant, size: shadcnSize }),
           className

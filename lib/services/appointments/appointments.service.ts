@@ -279,6 +279,28 @@ async function getDoctorAppointments(
   );
 }
 
+/**
+ * Obtiene todas las citas de un paciente.
+ * Endpoint: GET /appointments/patient/{patientId}
+ */
+async function getPatientAppointments(
+  patientId: string,
+): Promise<Appointment[]> {
+  const response = await serviceGet<Appointment[]>(
+    `${endpoint}/patient/${patientId}`,
+  );
+
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
+    const raw = response.data;
+    const items = Array.isArray(raw) ? raw : [];
+    return items.map((item) => normalizeAppointment(item));
+  }
+
+  throw new Error(
+    getErrorMessage(response, "Error al obtener citas del paciente"),
+  );
+}
+
 async function getDoctorAvailability(
   doctorId: string,
   date: string,
@@ -308,6 +330,7 @@ export const appointmentsService = {
   updateAppointmentStatus,
   cancelAppointment,
   getDoctorAppointments,
+  getPatientAppointments,
   getDoctorAvailability,
 };
 
