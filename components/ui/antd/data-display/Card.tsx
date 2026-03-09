@@ -19,7 +19,7 @@ export interface CardProps extends Omit<AntCardProps, "title"> {
   /** Whether card is hoverable */
   hoverable?: boolean;
   /** Card size */
-  size?: "default" | "small";
+  size?: "medium" | "small";
   /** Additional CSS class */
   className?: string;
   /** Custom styles */
@@ -71,7 +71,7 @@ export function Card({
   loading = false,
   variant = "outlined",
   hoverable = false,
-  size = "default",
+  size = "medium",
   className,
   style,
   bodyStyle,

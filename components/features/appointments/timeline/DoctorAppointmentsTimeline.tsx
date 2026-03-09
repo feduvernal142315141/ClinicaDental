@@ -141,7 +141,7 @@ function buildTimelineItem(
     dot: isScheduled ? (
       <ClockCircleOutlined style={{ fontSize: 16 }} />
     ) : undefined,
-    children,
+    content: children,
   };
 }
 

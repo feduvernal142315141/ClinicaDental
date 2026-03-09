@@ -3,7 +3,7 @@
 import { Spin } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 
-type SpinSize = "small" | "default" | "large";
+type SpinSize = "small" | "medium" | "large";
 
 export interface LoadingSpinnerProps {
   /** Loading message to display */
@@ -42,7 +42,7 @@ export interface LoadingSpinnerProps {
  */
 export function LoadingSpinner({
   tip = "Cargando...",
-  size = "default",
+  size = "medium",
   className,
   fullPage = false,
   overlay = false,
@@ -59,7 +59,9 @@ export function LoadingSpinner({
 
   // Full page loading - use fullscreen mode for tip to work
   if (fullPage) {
-    return <Spin fullscreen indicator={antIcon} tip={tip} size={size} />;
+    return (
+      <Spin fullscreen indicator={antIcon} description={tip} size={size} />
+    );
   }
 
   // Overlay mode - wraps content (nested pattern, tip works here)
@@ -67,7 +69,7 @@ export function LoadingSpinner({
     return (
       <Spin
         indicator={antIcon}
-        tip={tip}
+        description={tip}
         size={size}
         spinning={true}
         className={className}
@@ -80,7 +82,7 @@ export function LoadingSpinner({
   // Simple inline spinner - wrap with empty div for tip to work (nested pattern)
   return (
     <div className={`flex items-center justify-center p-8 ${className || ""}`}>
-      <Spin indicator={antIcon} tip={tip} size={size}>
+      <Spin indicator={antIcon} description={tip} size={size}>
         <div style={{ padding: "50px" }} />
       </Spin>
     </div>

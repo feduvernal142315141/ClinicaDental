@@ -120,12 +120,7 @@ export default function AppointmentsPage() {
       />
 
       {noticeMessage && (
-        <Alert
-          type="warning"
-          showIcon
-          message={noticeMessage}
-          className="mb-6"
-        />
+        <Alert type="warning" showIcon title={noticeMessage} className="mb-6" />
       )}
 
       <Card title="Filtros de Disponibilidad" className="mb-6">
