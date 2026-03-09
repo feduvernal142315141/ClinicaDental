@@ -1,0 +1,5 @@
+export * from "./surface.types"
+export * from "./tooth.types"
+export * from "./treatment.types"
+export * from "./procedure.types"
+export * from "./clinical-event.types"
