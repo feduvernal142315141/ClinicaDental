@@ -3,6 +3,7 @@
 ## 0) Required Context Files / Archivos de Contexto
 - Read `.github/copilot-context.md` before proposing changes.
 - Prefer reusable prompt templates in `.github/prompts/*.prompt.md`.
+- Prefer project skills in `.github/skills/*` when the task matches a specialized workflow.
 - If code and docs conflict, treat current code as source of truth.
 
 ## 1) Project Identity / Identidad del Proyecto
