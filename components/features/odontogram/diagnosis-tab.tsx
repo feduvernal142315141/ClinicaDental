@@ -5,16 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  OdontogramCheckbox,
+  OdontogramInput,
+  OdontogramSelect,
+} from "@/components/odontogram/ui";
 import {
   AlertCircle,
   CheckCircle2,
@@ -582,20 +578,21 @@ export function DiagnosisTab({
                 ][]
               ).map(([lesion, label]) => (
                 <div key={lesion} className="flex items-center space-x-2">
-                  <Checkbox
+                  <OdontogramCheckbox
                     id={lesion}
                     checked={nonCariousLesions.includes(lesion)}
-                    onCheckedChange={() => {
+                    onChange={() => {
                       const newLesions = nonCariousLesions.includes(lesion)
                         ? nonCariousLesions.filter((l) => l !== lesion)
                         : [...nonCariousLesions, lesion];
                       setNonCariousLesions(newLesions);
                       saveDiagnosis({ nonCariousLesions: newLesions });
                     }}
-                  />
-                  <Label htmlFor={lesion} className="text-sm cursor-pointer">
-                    {getLesionIcon(lesion)} {label}
-                  </Label>
+                  >
+                    <span className="text-sm cursor-pointer">
+                      {getLesionIcon(lesion)} {label}
+                    </span>
+                  </OdontogramCheckbox>
                 </div>
               ))}
             </div>
@@ -603,7 +600,7 @@ export function DiagnosisTab({
               <Label htmlFor="surface-notes" className="text-xs mb-1 block">
                 Notas breves
               </Label>
-              <Input
+              <OdontogramInput
                 id="surface-notes"
                 value={surfaceNotes}
                 onChange={(e) => setSurfaceNotes(e.target.value)}
@@ -625,26 +622,19 @@ export function DiagnosisTab({
                 <Label htmlFor="pulpal-status" className="text-xs mb-2 block">
                   Estado pulpar
                 </Label>
-                <Select
+                <OdontogramSelect
                   value={pulpalStatus}
-                  onValueChange={handlePulpalStatusChange}
-                >
-                  <SelectTrigger id="pulpal-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(
-                      Object.entries(PULPAL_STATUS_LABELS) as [
-                        PulpalStatus,
-                        string,
-                      ][]
-                    ).map(([status, label]) => (
-                      <SelectItem key={status} value={status}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(value) => handlePulpalStatusChange(value)}
+                  options={(
+                    Object.entries(PULPAL_STATUS_LABELS) as [
+                      PulpalStatus,
+                      string,
+                    ][]
+                  ).map(([status, label]) => ({
+                    value: status,
+                    label,
+                  }))}
+                />
               </div>
               <div>
                 <Label
@@ -653,28 +643,21 @@ export function DiagnosisTab({
                 >
                   Estado periapical
                 </Label>
-                <Select
+                <OdontogramSelect
                   value={periapicalStatus}
-                  onValueChange={(value) =>
+                  onChange={(value) =>
                     setPeriapicalStatus(value as PeriapicalStatus)
                   }
-                >
-                  <SelectTrigger id="periapical-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(
-                      Object.entries(PERIAPICAL_STATUS_LABELS) as [
-                        PeriapicalStatus,
-                        string,
-                      ][]
-                    ).map(([status, label]) => (
-                      <SelectItem key={status} value={status}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={(
+                    Object.entries(PERIAPICAL_STATUS_LABELS) as [
+                      PeriapicalStatus,
+                      string,
+                    ][]
+                  ).map(([status, label]) => ({
+                    value: status,
+                    label,
+                  }))}
+                />
               </div>
             </div>
           </Card>
@@ -691,24 +674,20 @@ export function DiagnosisTab({
                     <Label className="text-xs">
                       {VITALITY_TEST_LABELS[test.type]}
                     </Label>
-                    <Select
+                    <OdontogramSelect
                       value={test.result}
-                      onValueChange={(value) =>
+                      onChange={(value) =>
                         handleVitalityTestChange(
                           test.type,
                           value as VitalityTestResult,
                         )
                       }
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="no-realizado">-</SelectItem>
-                        <SelectItem value="positivo">+</SelectItem>
-                        <SelectItem value="negativo">−</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      options={[
+                        { value: "no-realizado", label: "-" },
+                        { value: "positivo", label: "+" },
+                        { value: "negativo", label: "−" },
+                      ]}
+                    />
                   </div>
                 ))}
               </div>
@@ -717,12 +696,10 @@ export function DiagnosisTab({
                   <Label htmlFor="pain-score" className="text-xs mb-2 block">
                     Dolor (NRS 0-10)
                   </Label>
-                  <Input
+                  <OdontogramInput
                     id="pain-score"
                     type="number"
-                    min={0}
-                    max={10}
-                    value={painScore}
+                    value={String(painScore)}
                     onChange={(e) => setPainScore(Number(e.target.value))}
                     className="text-sm"
                   />
@@ -731,7 +708,7 @@ export function DiagnosisTab({
                   <Label htmlFor="general-notes" className="text-xs mb-2 block">
                     Notas generales
                   </Label>
-                  <Input
+                  <OdontogramInput
                     id="general-notes"
                     value={generalNotes}
                     onChange={(e) => setGeneralNotes(e.target.value)}

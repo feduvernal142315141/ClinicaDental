@@ -1,12 +1,11 @@
-"use client"
+"use client";
 
-import { useState, useMemo, useEffect } from "react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState, useMemo, useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { OdontogramInput, OdontogramSelect } from "@/components/odontogram/ui";
 import {
   Search,
   Plus,
@@ -19,7 +18,7 @@ import {
   Star,
   Package,
   CheckCircle2,
-} from "lucide-react"
+} from "lucide-react";
 import type {
   Tooth,
   ToothSurface,
@@ -31,8 +30,8 @@ import type {
   Currency,
   PatientRiskLevel,
   PulpalStatus,
-} from "./types"
-import type { ClinicalEventStatus } from "@/lib/odontogram/domain/odontogram/types/clinical-event.types"
+} from "./types";
+import type { ClinicalEventStatus } from "@/lib/odontogram/domain/odontogram/types/clinical-event.types";
 import {
   PROCEDURE_CATALOG,
   PROCEDURE_CATEGORIES,
@@ -41,30 +40,30 @@ import {
   PLAN_STATUS_LABELS,
   GLOBAL_STATUS_LABELS,
   PROCEDURE_TEMPLATES,
-} from "./types"
+} from "./types";
 
 interface PlanTabProps {
-  tooth: Tooth
-  selectedSurfaces: ToothSurface[]
-  diagnoses?: Map<ToothSurface, SurfaceDiagnosis>
-  pulpalStatus?: PulpalStatus
-  initialPlans?: ProcedurePlan[]
-  patientRisk?: PatientRiskLevel
-  onNavigateToTab?: (tab: string) => void
-  onPlansChange?: (plans: ProcedurePlan[]) => void
+  tooth: Tooth;
+  selectedSurfaces: ToothSurface[];
+  diagnoses?: Map<ToothSurface, SurfaceDiagnosis>;
+  pulpalStatus?: PulpalStatus;
+  initialPlans?: ProcedurePlan[];
+  patientRisk?: PatientRiskLevel;
+  onNavigateToTab?: (tab: string) => void;
+  onPlansChange?: (plans: ProcedurePlan[]) => void;
 }
 
 function getToothTypeName(toothNumber: number): string {
-  const lastDigit = toothNumber % 10
-  if (lastDigit === 1 || lastDigit === 2) return "Incisivo"
-  if (lastDigit === 3) return "Canino"
-  if (lastDigit === 4 || lastDigit === 5) return "Premolar"
-  if (lastDigit === 6 || lastDigit === 7 || lastDigit === 8) return "Molar"
-  return "Diente"
+  const lastDigit = toothNumber % 10;
+  if (lastDigit === 1 || lastDigit === 2) return "Incisivo";
+  if (lastDigit === 3) return "Canino";
+  if (lastDigit === 4 || lastDigit === 5) return "Premolar";
+  if (lastDigit === 6 || lastDigit === 7 || lastDigit === 8) return "Molar";
+  return "Diente";
 }
 
 function generateId(): string {
-  return `plan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  return `plan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
 export function PlanTab({
@@ -77,185 +76,210 @@ export function PlanTab({
   onNavigateToTab,
   onPlansChange,
 }: PlanTabProps) {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<ProcedureCategory | "all">("all")
-  const [plans, setPlans] = useState<ProcedurePlan[]>([])
-  const [currency, setCurrency] = useState<Currency>("USD")
-  const [exchangeRate] = useState(36.5)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<
+    ProcedureCategory | "all"
+  >("all");
+  const [plans, setPlans] = useState<ProcedurePlan[]>([]);
+  const [currency, setCurrency] = useState<Currency>("USD");
+  const [exchangeRate] = useState(36.5);
 
   useEffect(() => {
     if (initialPlans && initialPlans.length > 0 && plans.length === 0) {
-      
-      setPlans(initialPlans)
+      setPlans(initialPlans);
 
       if (typeof window !== "undefined") {
-        ;(window as any).__currentPlans = initialPlans
+        (window as any).__currentPlans = initialPlans;
       }
     }
-  }, [initialPlans])
+  }, [initialPlans]);
 
   const handlePlansUpdate = (newPlans: ProcedurePlan[]) => {
-    setPlans(newPlans)
+    setPlans(newPlans);
 
     if (typeof window !== "undefined") {
-      ;(window as any).__currentPlans = newPlans
+      (window as any).__currentPlans = newPlans;
     }
 
     if (onPlansChange) {
-      onPlansChange(newPlans)
+      onPlansChange(newPlans);
     }
-  }
+  };
 
   // Generar sugerencias inteligentes basadas en diagnósticos
   const suggestions = useMemo(() => {
-    const result: { procedure: ProcedureCatalogItem; reason: string; surfaces: ToothSurface[] }[] = []
+    const result: {
+      procedure: ProcedureCatalogItem;
+      reason: string;
+      surfaces: ToothSurface[];
+    }[] = [];
 
     // Sugerencia por estado pulpar
     if (pulpalStatus === "irreversible" || pulpalStatus === "necrosis") {
-      const endo = PROCEDURE_CATALOG.find((p) => p.id === "endo-unirradicular")
+      const endo = PROCEDURE_CATALOG.find((p) => p.id === "endo-unirradicular");
       if (endo) {
         result.push({
           procedure: endo,
           reason: `Estado pulpar ${pulpalStatus} detectado`,
           surfaces: [],
-        })
+        });
       }
-      const nucleo = PROCEDURE_CATALOG.find((p) => p.id === "nucleo")
+      const nucleo = PROCEDURE_CATALOG.find((p) => p.id === "nucleo");
       if (nucleo) {
         result.push({
           procedure: nucleo,
           reason: "Recomendado después de endodoncia",
           surfaces: [],
-        })
+        });
       }
-      const corona = PROCEDURE_CATALOG.find((p) => p.id === "corona-metal-ceramica")
+      const corona = PROCEDURE_CATALOG.find(
+        (p) => p.id === "corona-metal-ceramica",
+      );
       if (corona) {
         result.push({
           procedure: corona,
           reason: "Protección post-endodoncia",
           surfaces: [],
-        })
+        });
       }
     }
 
     // Sugerencias por ICDAS
     if (diagnoses) {
-      const diagnosesArray = Array.from(diagnoses.values())
+      const diagnosesArray = Array.from(diagnoses.values());
 
       // ICDAS 1-2: Sellante/Infiltración
-      const incipient = diagnosesArray.filter((d) => d.icdasScore >= 1 && d.icdasScore <= 2)
+      const incipient = diagnosesArray.filter(
+        (d) => d.icdasScore >= 1 && d.icdasScore <= 2,
+      );
       if (incipient.length > 0) {
-        const oclusales = incipient.filter((d) => d.surface === "oclusal")
+        const oclusales = incipient.filter((d) => d.surface === "oclusal");
         if (oclusales.length > 0) {
-          const sellante = PROCEDURE_CATALOG.find((p) => p.id === "sellante")
+          const sellante = PROCEDURE_CATALOG.find((p) => p.id === "sellante");
           if (sellante) {
             result.push({
               procedure: sellante,
               reason: "Caries incipiente ICDAS 1-2",
               surfaces: oclusales.map((d) => d.surface),
-            })
+            });
           }
         }
 
-        const proximales = incipient.filter((d) => d.surface === "mesial" || d.surface === "distal")
+        const proximales = incipient.filter(
+          (d) => d.surface === "mesial" || d.surface === "distal",
+        );
         if (proximales.length > 0) {
-          const infiltracion = PROCEDURE_CATALOG.find((p) => p.id === "infiltracion")
+          const infiltracion = PROCEDURE_CATALOG.find(
+            (p) => p.id === "infiltracion",
+          );
           if (infiltracion) {
             result.push({
               procedure: infiltracion,
               reason: "Caries proximal incipiente",
               surfaces: proximales.map((d) => d.surface),
-            })
+            });
           }
         }
       }
 
       // ICDAS 3-4: Resina
-      const moderate = diagnosesArray.filter((d) => d.icdasScore >= 3 && d.icdasScore <= 4)
+      const moderate = diagnosesArray.filter(
+        (d) => d.icdasScore >= 3 && d.icdasScore <= 4,
+      );
       if (moderate.length > 0) {
-        const resina = PROCEDURE_CATALOG.find((p) => p.id === "resina-simple")
+        const resina = PROCEDURE_CATALOG.find((p) => p.id === "resina-simple");
         if (resina) {
           result.push({
             procedure: resina,
             reason: "Caries con microcavitación ICDAS 3-4",
             surfaces: moderate.map((d) => d.surface),
-          })
+          });
         }
       }
 
       // ICDAS 5-6: Resina compleja/Onlay
-      const severe = diagnosesArray.filter((d) => d.icdasScore >= 5)
+      const severe = diagnosesArray.filter((d) => d.icdasScore >= 5);
       if (severe.length > 0) {
-        const resinaCompleja = PROCEDURE_CATALOG.find((p) => p.id === "resina-compleja")
+        const resinaCompleja = PROCEDURE_CATALOG.find(
+          (p) => p.id === "resina-compleja",
+        );
         if (resinaCompleja) {
           result.push({
             procedure: resinaCompleja,
             reason: "Caries con cavitación extensa ICDAS 5-6",
             surfaces: severe.map((d) => d.surface),
-          })
+          });
         }
 
         if (severe.length >= 3) {
-          const onlay = PROCEDURE_CATALOG.find((p) => p.id === "onlay")
+          const onlay = PROCEDURE_CATALOG.find((p) => p.id === "onlay");
           if (onlay) {
             result.push({
               procedure: onlay,
               reason: "Múltiples superficies afectadas",
               surfaces: severe.map((d) => d.surface),
-            })
+            });
           }
         }
       }
     }
 
-    return result
-  }, [diagnoses, pulpalStatus])
+    return result;
+  }, [diagnoses, pulpalStatus]);
 
   // Filtrar catálogo
   const filteredCatalog = useMemo(() => {
-    let filtered = PROCEDURE_CATALOG
+    let filtered = PROCEDURE_CATALOG;
 
     if (selectedCategory !== "all") {
-      filtered = filtered.filter((p) => p.category === selectedCategory)
+      filtered = filtered.filter((p) => p.category === selectedCategory);
     }
 
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(query) ||
           p.aliases?.some((a) => a.toLowerCase().includes(query)) ||
           p.code?.toLowerCase().includes(query),
-      )
+      );
     }
 
-    return filtered
-  }, [searchQuery, selectedCategory])
+    return filtered;
+  }, [searchQuery, selectedCategory]);
 
   // Calcular totales
   const totals = useMemo(() => {
-    const totalDuration = plans.reduce((sum, p) => sum + p.durationMin, 0)
-    const totalCost = plans.reduce((sum, p) => sum + p.cost, 0)
+    const totalDuration = plans.reduce((sum, p) => sum + p.durationMin, 0);
+    const totalCost = plans.reduce((sum, p) => sum + p.cost, 0);
     const byCategory = plans.reduce(
       (acc, p) => {
-        acc[p.category] = (acc[p.category] || 0) + p.cost
-        return acc
+        acc[p.category] = (acc[p.category] || 0) + p.cost;
+        return acc;
       },
       {} as Record<ProcedureCategory, number>,
-    )
+    );
 
-    return { totalDuration, totalCost, byCategory }
-  }, [plans])
+    return { totalDuration, totalCost, byCategory };
+  }, [plans]);
 
-  const handleAddProcedure = (procedure: ProcedureCatalogItem, suggestedSurfaces?: ToothSurface[]) => {
+  const handleAddProcedure = (
+    procedure: ProcedureCatalogItem,
+    suggestedSurfaces?: ToothSurface[],
+  ) => {
     const applicableSurfaces =
       suggestedSurfaces ||
-      (procedure.compatibleSurfaces ? selectedSurfaces.filter((s) => procedure.compatibleSurfaces?.includes(s)) : [])
+      (procedure.compatibleSurfaces
+        ? selectedSurfaces.filter((s) =>
+            procedure.compatibleSurfaces?.includes(s),
+          )
+        : []);
 
     const newPlan: ProcedurePlan = {
       id: generateId(),
       toothNumber: tooth.number,
-      surfaces: applicableSurfaces.length > 0 ? applicableSurfaces : selectedSurfaces,
+      surfaces:
+        applicableSurfaces.length > 0 ? applicableSurfaces : selectedSurfaces,
       procedureId: procedure.id,
       displayName: procedure.name,
       category: procedure.category,
@@ -266,17 +290,19 @@ export function PlanTab({
       cost: procedure.baseCost,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    }
+    };
 
-    handlePlansUpdate([...plans, newPlan])
-  }
+    handlePlansUpdate([...plans, newPlan]);
+  };
 
   const handleRemovePlan = (planId: string) => {
-    handlePlansUpdate(plans.filter((p) => p.id !== planId))
-  }
+    handlePlansUpdate(plans.filter((p) => p.id !== planId));
+  };
 
-  const handleUpdatePlan = (planId: string, updates: Partial<ProcedurePlan>) => {
-
+  const handleUpdatePlan = (
+    planId: string,
+    updates: Partial<ProcedurePlan>,
+  ) => {
     const updatedPlans = plans.map((p) =>
       p.id === planId
         ? {
@@ -285,39 +311,37 @@ export function PlanTab({
             updatedAt: new Date().toISOString(),
           }
         : p,
-    )
+    );
 
-    
+    handlePlansUpdate(updatedPlans);
 
-    handlePlansUpdate(updatedPlans)
-
-    
-    
     // Si se marca como "done", el tooth-modal creará el performed al guardar
     // Aquí solo actualizamos el estado local
-  }
+  };
 
   const handleDuplicatePlan = (planId: string) => {
-    const plan = plans.find((p) => p.id === planId)
+    const plan = plans.find((p) => p.id === planId);
     if (plan) {
       const newPlan: ProcedurePlan = {
         ...plan,
         id: generateId(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }
-      handlePlansUpdate([...plans, newPlan])
+      };
+      handlePlansUpdate([...plans, newPlan]);
     }
-  }
+  };
 
   const handleAddTemplate = (templateId: string) => {
-    const template = PROCEDURE_TEMPLATES.find((t) => t.id === templateId)
-    if (!template) return
+    const template = PROCEDURE_TEMPLATES.find((t) => t.id === templateId);
+    if (!template) return;
 
     const newPlans: ProcedurePlan[] = template.procedures
       .map((tp) => {
-        const procedure = PROCEDURE_CATALOG.find((p) => p.id === tp.procedureId)
-        if (!procedure) return null
+        const procedure = PROCEDURE_CATALOG.find(
+          (p) => p.id === tp.procedureId,
+        );
+        if (!procedure) return null;
 
         return {
           id: generateId(),
@@ -334,44 +358,52 @@ export function PlanTab({
           dependencies: tp.dependsOn,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        } as ProcedurePlan
+        } as ProcedurePlan;
       })
-      .filter(Boolean) as ProcedurePlan[]
+      .filter(Boolean) as ProcedurePlan[];
 
-    handlePlansUpdate([...plans, ...newPlans])
-  }
+    handlePlansUpdate([...plans, ...newPlans]);
+  };
 
   const formatCurrency = (amount: number) => {
     if (currency === "USD") {
-      return `$${amount.toFixed(2)}`
+      return `$${amount.toFixed(2)}`;
     }
-    return `C$${(amount * exchangeRate).toFixed(2)}`
-  }
+    return `C$${(amount * exchangeRate).toFixed(2)}`;
+  };
 
   const getRiskColor = (risk: PatientRiskLevel) => {
-    if (risk === "bajo") return "bg-green-100 text-green-800 border-green-300"
-    if (risk === "medio") return "bg-amber-100 text-amber-800 border-amber-300"
-    return "bg-red-100 text-red-800 border-red-300"
-  }
+    if (risk === "bajo") return "bg-green-100 text-green-800 border-green-300";
+    if (risk === "medio") return "bg-amber-100 text-amber-800 border-amber-300";
+    return "bg-red-100 text-red-800 border-red-300";
+  };
 
   const hasCoherenceIssue =
     (tooth.globalStatus === "absent" || tooth.globalStatus === "implant") &&
-    plans.some((p) => p.category === "restaurador")
+    plans.some((p) => p.category === "restaurador");
 
   if (selectedSurfaces.length === 0 && !diagnoses) {
     return (
       <Card className="p-8 text-center">
-        <p className="text-muted-foreground mb-4">Selecciona superficies o completa el diagnóstico primero</p>
+        <p className="text-muted-foreground mb-4">
+          Selecciona superficies o completa el diagnóstico primero
+        </p>
         <div className="flex gap-3 justify-center">
-          <Button variant="outline" onClick={() => onNavigateToTab?.("superficies")}>
+          <Button
+            variant="outline"
+            onClick={() => onNavigateToTab?.("superficies")}
+          >
             ← Superficies
           </Button>
-          <Button variant="outline" onClick={() => onNavigateToTab?.("diagnostico")}>
+          <Button
+            variant="outline"
+            onClick={() => onNavigateToTab?.("diagnostico")}
+          >
             ← Diagnóstico
           </Button>
         </div>
       </Card>
-    )
+    );
   }
 
   return (
@@ -381,7 +413,8 @@ export function PlanTab({
         <div>
           <h3 className="text-lg font-bold">Plan · Diente {tooth.number}</h3>
           <p className="text-sm text-muted-foreground">
-            {getToothTypeName(tooth.number)} · {selectedSurfaces.length} superficie
+            {getToothTypeName(tooth.number)} · {selectedSurfaces.length}{" "}
+            superficie
             {selectedSurfaces.length !== 1 ? "s" : ""}
           </p>
         </div>
@@ -392,15 +425,15 @@ export function PlanTab({
           <Badge variant="outline" className="bg-muted">
             {GLOBAL_STATUS_LABELS[tooth.globalStatus]}
           </Badge>
-          <Select value={currency} onValueChange={(v) => setCurrency(v as Currency)}>
-            <SelectTrigger className="w-24 h-7 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="USD">USD</SelectItem>
-              <SelectItem value="NIO">NIO</SelectItem>
-            </SelectContent>
-          </Select>
+          <OdontogramSelect
+            value={currency}
+            onChange={(v) => setCurrency(v as Currency)}
+            options={[
+              { value: "USD", label: "USD" },
+              { value: "NIO", label: "NIO" },
+            ]}
+            style={{ width: 96 }}
+          />
         </div>
       </div>
 
@@ -409,10 +442,13 @@ export function PlanTab({
           <div className="flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-red-600 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-red-900">Revisa el estado del diente</p>
+              <p className="text-sm font-medium text-red-900">
+                Revisa el estado del diente
+              </p>
               <p className="text-xs text-red-700">
-                El diente está marcado como {GLOBAL_STATUS_LABELS[tooth.globalStatus]} pero tienes procedimientos
-                restauradores planificados
+                El diente está marcado como{" "}
+                {GLOBAL_STATUS_LABELS[tooth.globalStatus]} pero tienes
+                procedimientos restauradores planificados
               </p>
             </div>
           </div>
@@ -426,28 +462,43 @@ export function PlanTab({
           {/* Sugerencias inteligentes */}
           {suggestions.length > 0 && (
             <Card className="p-4 shadow-sm">
-              <Label className="text-sm font-semibold mb-3 block">Sugerencias inteligentes</Label>
+              <Label className="text-sm font-semibold mb-3 block">
+                Sugerencias inteligentes
+              </Label>
               <div className="space-y-2">
                 {suggestions.map((suggestion, idx) => (
                   <div
                     key={idx}
                     className="p-3 rounded-lg border shadow-sm hover:shadow-md transition-shadow"
                     style={{
-                      borderColor: PROCEDURE_CATEGORY_COLORS[suggestion.procedure.category],
+                      borderColor:
+                        PROCEDURE_CATEGORY_COLORS[
+                          suggestion.procedure.category
+                        ],
                       backgroundColor: `${PROCEDURE_CATEGORY_COLORS[suggestion.procedure.category]}10`,
                     }}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <p className="text-sm font-medium">{suggestion.procedure.name}</p>
-                        <p className="text-xs text-muted-foreground">{suggestion.reason}</p>
+                        <p className="text-sm font-medium">
+                          {suggestion.procedure.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {suggestion.reason}
+                        </p>
                       </div>
                       <Badge
                         variant="outline"
                         className="text-xs"
                         style={{
-                          borderColor: PROCEDURE_CATEGORY_COLORS[suggestion.procedure.category],
-                          color: PROCEDURE_CATEGORY_COLORS[suggestion.procedure.category],
+                          borderColor:
+                            PROCEDURE_CATEGORY_COLORS[
+                              suggestion.procedure.category
+                            ],
+                          color:
+                            PROCEDURE_CATEGORY_COLORS[
+                              suggestion.procedure.category
+                            ],
                         }}
                       >
                         {PROCEDURE_CATEGORIES[suggestion.procedure.category]}
@@ -476,7 +527,12 @@ export function PlanTab({
                       <Button
                         size="sm"
                         className="flex-1 text-xs"
-                        onClick={() => handleAddProcedure(suggestion.procedure, suggestion.surfaces)}
+                        onClick={() =>
+                          handleAddProcedure(
+                            suggestion.procedure,
+                            suggestion.surfaces,
+                          )
+                        }
                       >
                         <Plus className="w-3 h-3 mr-1" />
                         Añadir
@@ -486,7 +542,12 @@ export function PlanTab({
                           size="sm"
                           variant="outline"
                           className="flex-1 text-xs bg-transparent"
-                          onClick={() => handleAddProcedure(suggestion.procedure, selectedSurfaces)}
+                          onClick={() =>
+                            handleAddProcedure(
+                              suggestion.procedure,
+                              selectedSurfaces,
+                            )
+                          }
                         >
                           <Plus className="w-3 h-3 mr-1" />A todas
                         </Button>
@@ -507,9 +568,14 @@ export function PlanTab({
               </Label>
               <div className="space-y-2">
                 {PROCEDURE_TEMPLATES.map((template) => (
-                  <div key={template.id} className="p-3 rounded-lg border bg-muted/30">
+                  <div
+                    key={template.id}
+                    className="p-3 rounded-lg border bg-muted/30"
+                  >
                     <p className="text-sm font-medium mb-1">{template.name}</p>
-                    <p className="text-xs text-muted-foreground mb-2">{template.description}</p>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {template.description}
+                    </p>
                     <Button
                       size="sm"
                       variant="outline"
@@ -527,12 +593,14 @@ export function PlanTab({
 
           {/* Buscador y catálogo */}
           <Card className="p-4 shadow-sm">
-            <Label className="text-sm font-semibold mb-3 block">Catálogo de procedimientos</Label>
+            <Label className="text-sm font-semibold mb-3 block">
+              Catálogo de procedimientos
+            </Label>
 
             {/* Buscador */}
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
+              <OdontogramInput
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Buscar procedimiento..."
@@ -549,7 +617,12 @@ export function PlanTab({
               >
                 Todos
               </Badge>
-              {(Object.entries(PROCEDURE_CATEGORIES) as [ProcedureCategory, string][]).map(([cat, label]) => (
+              {(
+                Object.entries(PROCEDURE_CATEGORIES) as [
+                  ProcedureCategory,
+                  string,
+                ][]
+              ).map(([cat, label]) => (
                 <Badge
                   key={cat}
                   variant={selectedCategory === cat ? "default" : "outline"}
@@ -575,15 +648,22 @@ export function PlanTab({
             {/* Lista de procedimientos */}
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {filteredCatalog.map((procedure) => (
-                <div key={procedure.id} className="p-2 rounded border hover:bg-muted/50 transition-colors">
+                <div
+                  key={procedure.id}
+                  className="p-2 rounded border hover:bg-muted/50 transition-colors"
+                >
                   <div className="flex items-start justify-between mb-1">
                     <div className="flex-1">
                       <p className="text-sm font-medium">{procedure.name}</p>
                       {procedure.description && (
-                        <p className="text-xs text-muted-foreground">{procedure.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {procedure.description}
+                        </p>
                       )}
                     </div>
-                    {procedure.isFavorite && <Star className="w-3 h-3 text-amber-500 fill-amber-500" />}
+                    {procedure.isFavorite && (
+                      <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                    )}
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
                     <span className="flex items-center gap-1">
@@ -610,7 +690,9 @@ export function PlanTab({
                         size="sm"
                         variant="outline"
                         className="flex-1 text-xs bg-transparent"
-                        onClick={() => handleAddProcedure(procedure, selectedSurfaces)}
+                        onClick={() =>
+                          handleAddProcedure(procedure, selectedSurfaces)
+                        }
                       >
                         <Plus className="w-3 h-3 mr-1" />A todas
                       </Button>
@@ -626,9 +708,16 @@ export function PlanTab({
         <div className="space-y-4">
           <Card className="p-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <Label className="text-sm font-semibold">Plan actual ({plans.length})</Label>
+              <Label className="text-sm font-semibold">
+                Plan actual ({plans.length})
+              </Label>
               {plans.length > 0 && (
-                <Button size="sm" variant="outline" onClick={() => handlePlansUpdate([])} className="text-xs">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handlePlansUpdate([])}
+                  className="text-xs"
+                >
                   <Trash2 className="w-3 h-3 mr-1" />
                   Limpiar todo
                 </Button>
@@ -638,7 +727,9 @@ export function PlanTab({
             {plans.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground border-2 border-dashed rounded-lg">
                 <p className="text-sm">No hay procedimientos en el plan</p>
-                <p className="text-xs mt-1">Añade procedimientos desde el catálogo o sugerencias</p>
+                <p className="text-xs mt-1">
+                  Añade procedimientos desde el catálogo o sugerencias
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -653,11 +744,17 @@ export function PlanTab({
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <p className="text-sm font-medium">{plan.displayName}</p>
+                        <p className="text-sm font-medium">
+                          {plan.displayName}
+                        </p>
                         {plan.surfaces.length > 0 && (
                           <div className="flex gap-1 mt-1">
                             {plan.surfaces.map((s) => (
-                              <Badge key={s} variant="outline" className="text-xs">
+                              <Badge
+                                key={s}
+                                variant="outline"
+                                className="text-xs"
+                              >
                                 {s.charAt(0).toUpperCase()}
                               </Badge>
                             ))}
@@ -666,7 +763,9 @@ export function PlanTab({
                         {plan.status === "done" && (
                           <div className="flex items-center gap-1 mt-1">
                             <CheckCircle2 className="w-3 h-3 text-blue-600" />
-                            <span className="text-xs text-blue-700">Movido a Realizado</span>
+                            <span className="text-xs text-blue-700">
+                              Movido a Realizado
+                            </span>
                           </div>
                         )}
                       </div>
@@ -693,46 +792,52 @@ export function PlanTab({
                     <div className="grid grid-cols-2 gap-2 mb-2">
                       <div>
                         <Label className="text-xs mb-1 block">Estado</Label>
-                        <Select
+                        <OdontogramSelect
                           value={plan.status}
-                          onValueChange={(v) => handleUpdatePlan(plan.id, { status: v as ClinicalEventStatus })}
-                        >
-                          <SelectTrigger className="h-7 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {(Object.entries(PLAN_STATUS_LABELS) as [ClinicalEventStatus, string][]).map(([status, label]) => (
-                              <SelectItem key={status} value={status}>
-                                {label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          onChange={(v) =>
+                            handleUpdatePlan(plan.id, {
+                              status: v as ClinicalEventStatus,
+                            })
+                          }
+                          options={(
+                            Object.entries(PLAN_STATUS_LABELS) as [
+                              ClinicalEventStatus,
+                              string,
+                            ][]
+                          ).map(([status, label]) => ({
+                            value: status,
+                            label,
+                          }))}
+                        />
                       </div>
                       <div>
                         <Label className="text-xs mb-1 block">Prioridad</Label>
-                        <Select
+                        <OdontogramSelect
                           value={plan.priority}
-                          onValueChange={(v) => handleUpdatePlan(plan.id, { priority: v as ProcedurePriority })}
-                        >
-                          <SelectTrigger className="h-7 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="alta">Alta</SelectItem>
-                            <SelectItem value="media">Media</SelectItem>
-                            <SelectItem value="baja">Baja</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          onChange={(v) =>
+                            handleUpdatePlan(plan.id, {
+                              priority: v as ProcedurePriority,
+                            })
+                          }
+                          options={[
+                            { value: "alta", label: "Alta" },
+                            { value: "media", label: "Media" },
+                            { value: "baja", label: "Baja" },
+                          ]}
+                        />
                       </div>
                     </div>
 
                     {plan.material && (
                       <div className="mb-2">
                         <Label className="text-xs mb-1 block">Material</Label>
-                        <Input
+                        <OdontogramInput
                           value={plan.material}
-                          onChange={(e) => handleUpdatePlan(plan.id, { material: e.target.value })}
+                          onChange={(e) =>
+                            handleUpdatePlan(plan.id, {
+                              material: e.target.value,
+                            })
+                          }
                           className="h-7 text-xs"
                         />
                       </div>
@@ -740,20 +845,30 @@ export function PlanTab({
 
                     <div className="grid grid-cols-2 gap-2 mb-2">
                       <div>
-                        <Label className="text-xs mb-1 block">Tiempo (min)</Label>
-                        <Input
+                        <Label className="text-xs mb-1 block">
+                          Tiempo (min)
+                        </Label>
+                        <OdontogramInput
                           type="number"
-                          value={plan.durationMin}
-                          onChange={(e) => handleUpdatePlan(plan.id, { durationMin: Number(e.target.value) })}
+                          value={String(plan.durationMin)}
+                          onChange={(e) =>
+                            handleUpdatePlan(plan.id, {
+                              durationMin: Number(e.target.value),
+                            })
+                          }
                           className="h-7 text-xs"
                         />
                       </div>
                       <div>
                         <Label className="text-xs mb-1 block">Costo</Label>
-                        <Input
+                        <OdontogramInput
                           type="number"
-                          value={plan.cost}
-                          onChange={(e) => handleUpdatePlan(plan.id, { cost: Number(e.target.value) })}
+                          value={String(plan.cost)}
+                          onChange={(e) =>
+                            handleUpdatePlan(plan.id, {
+                              cost: Number(e.target.value),
+                            })
+                          }
                           className="h-7 text-xs"
                         />
                       </div>
@@ -761,9 +876,11 @@ export function PlanTab({
 
                     <div>
                       <Label className="text-xs mb-1 block">Notas</Label>
-                      <Input
+                      <OdontogramInput
                         value={plan.notes || ""}
-                        onChange={(e) => handleUpdatePlan(plan.id, { notes: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdatePlan(plan.id, { notes: e.target.value })
+                        }
                         placeholder="Observaciones..."
                         className="h-7 text-xs"
                       />
@@ -772,7 +889,9 @@ export function PlanTab({
                     {plan.dependencies && plan.dependencies.length > 0 && (
                       <div className="mt-2 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 text-amber-600" />
-                        <span className="text-xs text-amber-700">Depende de otros procedimientos</span>
+                        <span className="text-xs text-amber-700">
+                          Depende de otros procedimientos
+                        </span>
                       </div>
                     )}
                   </div>
@@ -784,7 +903,9 @@ export function PlanTab({
           {/* Totales */}
           {plans.length > 0 && (
             <Card className="p-4 shadow-sm bg-muted/30">
-              <Label className="text-sm font-semibold mb-3 block">Totales</Label>
+              <Label className="text-sm font-semibold mb-3 block">
+                Totales
+              </Label>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm flex items-center gap-2">
@@ -792,7 +913,8 @@ export function PlanTab({
                     Tiempo total
                   </span>
                   <span className="text-sm font-medium">
-                    {totals.totalDuration} min ({Math.ceil(totals.totalDuration / 60)} sesiones aprox.)
+                    {totals.totalDuration} min (
+                    {Math.ceil(totals.totalDuration / 60)} sesiones aprox.)
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -800,19 +922,31 @@ export function PlanTab({
                     <DollarSign className="w-4 h-4" />
                     Costo total
                   </span>
-                  <span className="text-lg font-bold">{formatCurrency(totals.totalCost)}</span>
+                  <span className="text-lg font-bold">
+                    {formatCurrency(totals.totalCost)}
+                  </span>
                 </div>
 
                 {Object.keys(totals.byCategory).length > 0 && (
                   <div className="pt-2 border-t">
                     <Label className="text-xs mb-2 block">Por categoría</Label>
                     <div className="space-y-1">
-                      {(Object.entries(totals.byCategory) as [ProcedureCategory, number][]).map(([cat, cost]) => (
-                        <div key={cat} className="flex items-center justify-between text-xs">
+                      {(
+                        Object.entries(totals.byCategory) as [
+                          ProcedureCategory,
+                          number,
+                        ][]
+                      ).map(([cat, cost]) => (
+                        <div
+                          key={cat}
+                          className="flex items-center justify-between text-xs"
+                        >
                           <span className="flex items-center gap-2">
                             <div
                               className="w-2 h-2 rounded-full"
-                              style={{ backgroundColor: PROCEDURE_CATEGORY_COLORS[cat] }}
+                              style={{
+                                backgroundColor: PROCEDURE_CATEGORY_COLORS[cat],
+                              }}
                             />
                             {PROCEDURE_CATEGORIES[cat]}
                           </span>
@@ -825,7 +959,11 @@ export function PlanTab({
               </div>
 
               <div className="flex gap-2 mt-4">
-                <Button size="sm" variant="outline" className="flex-1 text-xs bg-transparent">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 text-xs bg-transparent"
+                >
                   <Calendar className="w-3 h-3 mr-1" />
                   Programar
                 </Button>
@@ -838,5 +976,5 @@ export function PlanTab({
         </div>
       </div>
     </div>
-  )
+  );
 }

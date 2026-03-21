@@ -1,25 +1,13 @@
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  OdontogramModal,
+  OdontogramTabs,
+  odontogramConfirm,
+} from "@/components/odontogram/ui";
+import type { OdontogramTabItem } from "@/components/odontogram/ui";
 import type {
   Tooth,
   ToothGlobalStatus,
@@ -109,7 +97,7 @@ export function ToothModal({
   } = useOdontogramStore();
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  // confirmación de cierre sin guardar se maneja con odontogramConfirm
   const [tempGlobalStatus, setTempGlobalStatus] =
     useState<ToothGlobalStatus>("healthy");
   const [activeTab, setActiveTab] = useState("superficies");
@@ -312,16 +300,20 @@ export function ToothModal({
 
   const handleClose = () => {
     if (hasUnsavedChanges) {
-      setShowConfirmDialog(true);
+      odontogramConfirm({
+        title: "¿Cerrar sin guardar?",
+        description: `Tienes cambios sin guardar en el diente ${tooth.number}. Si cierras ahora, se perderán estos cambios.`,
+        okText: "Cerrar sin guardar",
+        cancelText: "Volver",
+        danger: true,
+        onOk: () => {
+          setHasUnsavedChanges(false);
+          onClose();
+        },
+      });
     } else {
       onClose();
     }
-  };
-
-  const handleConfirmClose = () => {
-    setShowConfirmDialog(false);
-    setHasUnsavedChanges(false);
-    onClose();
   };
 
   const handleSave = () => {
@@ -579,211 +571,162 @@ export function ToothModal({
     setHasUnsavedChanges(true);
   };
 
+  const tabItems: OdontogramTabItem[] = [
+    {
+      key: "superficies",
+      label: "Superficies",
+      children: (
+        <SurfacesTab
+          tooth={tooth}
+          initialSurfaces={selectedSurfaces}
+          initialSurfaceStates={initialSurfaceStates}
+          onNavigateToTab={handleNavigateToTab}
+          onSurfacesChange={setSelectedSurfaces}
+          onSurfaceStatesChange={handleSurfaceStatesChange}
+        />
+      ),
+    },
+    {
+      key: "diagnostico",
+      label: "Diagnóstico (ICDAS)",
+      children: (
+        <DiagnosisTab
+          tooth={tooth}
+          selectedSurfaces={selectedSurfaces}
+          initialDiagnoses={diagnoses}
+          initialPulpalStatus={pulpalStatus}
+          onNavigateToTab={handleNavigateToTab}
+          onDiagnosesChange={handleDiagnosesChange}
+          onPulpalStatusChange={handlePulpalStatusChange}
+        />
+      ),
+    },
+    {
+      key: "plan",
+      label: "Plan",
+      children: (
+        <PlanTab
+          tooth={tooth}
+          selectedSurfaces={selectedSurfaces}
+          diagnoses={diagnoses}
+          pulpalStatus={pulpalStatus}
+          initialPlans={plans}
+          onNavigateToTab={handleNavigateToTab}
+          onPlansChange={handlePlansChange}
+        />
+      ),
+    },
+    {
+      key: "realizado",
+      label: "Realizado",
+      children: (
+        <PerformedTab
+          tooth={tooth}
+          selectedSurfaces={selectedSurfaces}
+          plans={plans}
+          onNavigateToTab={handleNavigateToTab}
+        />
+      ),
+    },
+    {
+      key: "perio",
+      label: "Perio",
+      children: (
+        <div className="p-12 border-2 border-dashed rounded-lg text-center text-muted-foreground">
+          <p className="text-base">Contenido de Perio (próximamente)</p>
+        </div>
+      ),
+    },
+    {
+      key: "historial",
+      label: "Historial",
+      children: (
+        <div className="p-12 border-2 border-dashed rounded-lg text-center text-muted-foreground">
+          <p className="text-base">Contenido de Historial (próximamente)</p>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="!max-w-[1400px] w-[95vw] max-h-[95vh] h-[95vh] flex flex-col p-6 gap-3">
-          <DialogHeader className="space-y-1 pb-2 border-b">
-            <DialogTitle className="text-2xl font-bold">
-              Diente {tooth.number}
-            </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              {getToothDescription(tooth.number)}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2 pb-3 border-b">
-            <p className="text-xs font-semibold text-muted-foreground">
-              Estado Global del Diente
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(GLOBAL_STATUS_LABELS) as ToothGlobalStatus[]).map(
-                (status) => {
-                  const isSelected = tempGlobalStatus === status;
-                  return (
-                    <Badge
-                      key={status}
-                      variant={isSelected ? "default" : "outline"}
-                      className="cursor-pointer px-3 py-1 text-xs font-medium transition-all hover:scale-105"
-                      style={
-                        isSelected
-                          ? {
-                              backgroundColor: GLOBAL_STATUS_COLORS[status],
-                              borderColor: GLOBAL_STATUS_COLORS[status],
-                              color: "white",
-                            }
-                          : {
-                              borderColor: GLOBAL_STATUS_COLORS[status],
-                              color: GLOBAL_STATUS_COLORS[status],
-                            }
-                      }
-                      onClick={() => handleStatusClick(status)}
-                    >
-                      {GLOBAL_STATUS_LABELS[status]}
-                    </Badge>
-                  );
-                },
-              )}
-            </div>
-            {hasUnsavedChanges && (
-              <p className="text-xs text-amber-600 font-semibold">
-                ⚠️ Tienes cambios sin guardar
-              </p>
-            )}
-          </div>
-
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="flex-1 flex flex-col min-h-0"
+    <OdontogramModal
+      open={isOpen}
+      onClose={handleClose}
+      title={`Diente ${tooth.number}`}
+      description={getToothDescription(tooth.number)}
+      footer={
+        <div className="flex justify-between items-center gap-4 pt-3 border-t">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            className="px-6 py-2 text-sm bg-transparent"
           >
-            <TabsList className="flex flex-wrap justify-start gap-1 h-auto p-1 bg-muted rounded-md">
-              <TabsTrigger
-                value="superficies"
-                className="text-sm px-4 py-2 flex-shrink-0"
-              >
-                Superficies
-              </TabsTrigger>
-              <TabsTrigger
-                value="diagnostico"
-                className="text-sm px-4 py-2 flex-shrink-0"
-              >
-                Diagnóstico (ICDAS)
-              </TabsTrigger>
-              <TabsTrigger
-                value="plan"
-                className="text-sm px-4 py-2 flex-shrink-0"
-              >
-                Plan
-              </TabsTrigger>
-              <TabsTrigger
-                value="realizado"
-                className="text-sm px-4 py-2 flex-shrink-0"
-              >
-                Realizado
-              </TabsTrigger>
-              <TabsTrigger
-                value="perio"
-                className="text-sm px-4 py-2 flex-shrink-0"
-              >
-                Perio
-              </TabsTrigger>
-              <TabsTrigger
-                value="historial"
-                className="text-sm px-4 py-2 flex-shrink-0"
-              >
-                Historial
-              </TabsTrigger>
-            </TabsList>
-
-            <div className="flex-1 overflow-y-auto mt-3">
-              <TabsContent value="superficies" className="mt-0 h-full">
-                <SurfacesTab
-                  tooth={tooth}
-                  initialSurfaces={selectedSurfaces}
-                  initialSurfaceStates={initialSurfaceStates}
-                  onNavigateToTab={handleNavigateToTab}
-                  onSurfacesChange={setSelectedSurfaces}
-                  onSurfaceStatesChange={handleSurfaceStatesChange}
-                />
-              </TabsContent>
-
-              <TabsContent value="diagnostico" className="mt-0 h-full">
-                <DiagnosisTab
-                  tooth={tooth}
-                  selectedSurfaces={selectedSurfaces}
-                  initialDiagnoses={diagnoses}
-                  initialPulpalStatus={pulpalStatus}
-                  onNavigateToTab={handleNavigateToTab}
-                  onDiagnosesChange={handleDiagnosesChange}
-                  onPulpalStatusChange={handlePulpalStatusChange}
-                />
-              </TabsContent>
-
-              <TabsContent value="plan" className="mt-0 h-full">
-                <PlanTab
-                  tooth={tooth}
-                  selectedSurfaces={selectedSurfaces}
-                  diagnoses={diagnoses}
-                  pulpalStatus={pulpalStatus}
-                  initialPlans={plans}
-                  onNavigateToTab={handleNavigateToTab}
-                  onPlansChange={handlePlansChange}
-                />
-              </TabsContent>
-
-              <TabsContent value="realizado" className="mt-0 h-full">
-                <PerformedTab
-                  tooth={tooth}
-                  selectedSurfaces={selectedSurfaces}
-                  plans={plans}
-                  onNavigateToTab={handleNavigateToTab}
-                />
-              </TabsContent>
-
-              <TabsContent value="perio" className="mt-0">
-                <div className="p-12 border-2 border-dashed rounded-lg text-center text-muted-foreground">
-                  <p className="text-base">Contenido de Perio (próximamente)</p>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="historial" className="mt-0">
-                <div className="p-12 border-2 border-dashed rounded-lg text-center text-muted-foreground">
-                  <p className="text-base">
-                    Contenido de Historial (próximamente)
-                  </p>
-                </div>
-              </TabsContent>
-            </div>
-          </Tabs>
-
-          <div className="flex justify-between items-center gap-4 pt-3 border-t">
+            Cancelar
+          </Button>
+          <div className="flex gap-3">
             <Button
-              variant="outline"
-              onClick={handleClose}
-              className="px-6 py-2 text-sm bg-transparent"
+              variant="default"
+              onClick={handleSaveAndClose}
+              className="px-6 py-2 text-sm"
             >
-              Cancelar
+              Guardar
             </Button>
-            <div className="flex gap-3">
-              <Button
-                variant="default"
-                onClick={handleSaveAndClose}
-                className="px-6 py-2 text-sm"
-              >
-                Guardar
-              </Button>
-              <Button
-                variant="default"
-                onClick={handleApplyAndNext}
-                className="px-6 py-2 text-sm"
-              >
-                Aplicar y seguir →
-              </Button>
-            </div>
+            <Button
+              variant="default"
+              onClick={handleApplyAndNext}
+              className="px-6 py-2 text-sm"
+            >
+              Aplicar y seguir →
+            </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      }
+    >
+      <div className="space-y-2 pb-3 border-b">
+        <p className="text-xs font-semibold text-muted-foreground">
+          Estado Global del Diente
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(GLOBAL_STATUS_LABELS) as ToothGlobalStatus[]).map(
+            (status) => {
+              const isSelected = tempGlobalStatus === status;
+              return (
+                <Badge
+                  key={status}
+                  variant={isSelected ? "default" : "outline"}
+                  className="cursor-pointer px-3 py-1 text-xs font-medium transition-all hover:scale-105"
+                  style={
+                    isSelected
+                      ? {
+                          backgroundColor: GLOBAL_STATUS_COLORS[status],
+                          borderColor: GLOBAL_STATUS_COLORS[status],
+                          color: "white",
+                        }
+                      : {
+                          borderColor: GLOBAL_STATUS_COLORS[status],
+                          color: GLOBAL_STATUS_COLORS[status],
+                        }
+                  }
+                  onClick={() => handleStatusClick(status)}
+                >
+                  {GLOBAL_STATUS_LABELS[status]}
+                </Badge>
+              );
+            },
+          )}
+        </div>
+        {hasUnsavedChanges && (
+          <p className="text-xs text-amber-600 font-semibold">
+            ⚠️ Tienes cambios sin guardar
+          </p>
+        )}
+      </div>
 
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Cerrar sin guardar?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tienes cambios sin guardar en el diente {tooth.number}. Si cierras
-              ahora, se perderán estos cambios.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowConfirmDialog(false)}>
-              Volver
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmClose}>
-              Cerrar sin guardar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+      <OdontogramTabs
+        items={tabItems}
+        activeKey={activeTab}
+        onChange={setActiveTab}
+      />
+    </OdontogramModal>
   );
 }
