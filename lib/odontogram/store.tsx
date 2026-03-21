@@ -22,7 +22,7 @@ import type {
 import { OdontogramColorService } from "@/lib/odontogram/domain/odontogram/services/OdontogramColorService";
 
 export interface OdontogramSnapshotMetadata {
-  version: 1;
+  version: number;
   patientId: string;
   clinicId?: string;
   authorId?: string;

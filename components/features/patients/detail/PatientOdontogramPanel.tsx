@@ -4,10 +4,11 @@ import { useMemo } from "react";
 import { App } from "antd";
 import {
   OdontogramModule,
-  createLocalStorageOdontogramAdapter,
+  createApiOdontogramAdapter,
 } from "@/lib/odontogram";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
+import { useAuth } from "@/lib/contexts/auth-context";
 
 interface PatientOdontogramPanelProps {
   patient: {
@@ -22,16 +23,19 @@ export function PatientOdontogramPanel({
 }: PatientOdontogramPanelProps) {
   const { message } = App.useApp();
   const { can, isAdmin } = usePermission();
+  const { user } = useAuth();
+
+  const clinicId = patient.clinicId ?? patient.clinic_id ?? "";
 
   const adapter = useMemo(
     () =>
-      createLocalStorageOdontogramAdapter({
-        namespace: "front-clinic-odontogram",
+      createApiOdontogramAdapter({
+        authorId: user?.id ?? "",
+        clinicId,
       }),
-    [],
+    [user?.id, clinicId],
   );
 
-  const clinicId = patient.clinicId ?? patient.clinic_id;
   const readOnly = !(isAdmin || can("patients", PermissionAction.EDIT));
 
   return (

@@ -2,12 +2,13 @@
  * Exports centralizados de los servicios
  */
 
-// Servicios base (GET, POST, PUT, DELETE)
+// Servicios base (GET, POST, PUT, DELETE, PATCH)
 export {
   serviceGet,
   servicePost,
   servicePut,
   serviceDelete,
+  servicePatch,
 } from "./baseService";
 
 // Instancia de Axios y configuración de interceptores
@@ -29,6 +30,9 @@ export * from "./patients";
 
 // Appointments Services
 export * from "./appointments";
+
+// Odontogram & Treatment-Plan Services
+export * from "./odontogram";
 
 // Types
 export type { ResponseEntity, ServiceResponse } from "../models/response";

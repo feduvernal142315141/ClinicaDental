@@ -46,3 +46,14 @@ export const servicePut = async <T = any, R = any>(url: string, data: T): Servic
         })
 }
 
+export const servicePatch = async <T = any, R = any>(url: string, data?: T): ServiceResponse<R> => {
+    return apiInstance
+        .patch<ResponseEntity<R>>(url, data)
+        .then((response) => {
+            return response
+        })
+        .catch((err) => {
+            return err.response
+        })
+}
+

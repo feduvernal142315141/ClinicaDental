@@ -1,5 +1,6 @@
 export { OdontogramModule } from "./OdontogramModule";
-export { createLocalStorageOdontogramAdapter } from "./adapters";
+export { createLocalStorageOdontogramAdapter, createApiOdontogramAdapter } from "./adapters";
+export type { ApiOdontogramAdapterOptions } from "./adapters";
 export type {
   OdontogramAdapter,
   OdontogramModuleProps,
