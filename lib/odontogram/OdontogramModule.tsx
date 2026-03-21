@@ -13,6 +13,7 @@ function OdontogramModuleRuntime({
   patientId,
   clinicId,
   adapter,
+  showHeader = true,
   initialTab,
   onChange,
   onError,
@@ -104,7 +105,7 @@ function OdontogramModuleRuntime({
           {loadError}
         </div>
       ) : null}
-      <OdontogramModuleView initialTab={initialTab} />
+      <OdontogramModuleView initialTab={initialTab} showHeader={showHeader} />
     </div>
   );
 }
@@ -114,6 +115,7 @@ export function OdontogramModule({
   clinicId,
   adapter,
   readOnly = false,
+  showHeader = true,
   initialTab = "odontogram",
   onChange,
   onError,
@@ -129,6 +131,7 @@ export function OdontogramModule({
         patientId={patientId}
         clinicId={clinicId}
         adapter={adapter}
+        showHeader={showHeader}
         initialTab={initialTab}
         onChange={onChange}
         onError={onError}

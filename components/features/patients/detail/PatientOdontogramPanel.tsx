@@ -2,10 +2,7 @@
 
 import { useMemo } from "react";
 import { App } from "antd";
-import {
-  OdontogramModule,
-  createApiOdontogramAdapter,
-} from "@/lib/odontogram";
+import { OdontogramModule, createApiOdontogramAdapter } from "@/lib/odontogram";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useAuth } from "@/lib/contexts/auth-context";
@@ -44,6 +41,7 @@ export function PatientOdontogramPanel({
       clinicId={clinicId}
       adapter={adapter}
       readOnly={readOnly}
+      showHeader={false}
       initialTab="odontogram"
       onError={() => {
         message.error("No se pudo sincronizar el odontograma del paciente");

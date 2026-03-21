@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useRef } from "react";
 import { createStore, type StoreApi } from "zustand/vanilla";
 import { useStore } from "zustand";
 import type {
@@ -56,6 +50,8 @@ export interface OdontogramModuleProps {
   clinicId?: string;
   adapter: OdontogramAdapter;
   readOnly?: boolean;
+  /** Muestra el header del módulo (título + acciones). Default: true. Usar false en modo embebido. */
+  showHeader?: boolean;
   initialTab?: "odontogram" | "diagnosis" | "plans" | "performed";
   onChange?: (snapshot: OdontogramSnapshot) => void;
   onError?: (error: unknown) => void;
