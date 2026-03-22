@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   OdontogramModal,
   OdontogramTabs,
-  odontogramConfirm,
+  useOdontogramConfirm,
 } from "@/components/odontogram/ui";
 import type { OdontogramTabItem } from "@/components/odontogram/ui";
 import type {
@@ -95,6 +95,7 @@ export function ToothModal({
     updateClinicalEvent,
     clinicalEvents,
   } = useOdontogramStore();
+  const odontogramConfirm = useOdontogramConfirm();
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   // confirmación de cierre sin guardar se maneja con odontogramConfirm

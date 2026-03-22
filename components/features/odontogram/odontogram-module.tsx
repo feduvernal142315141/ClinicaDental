@@ -1,17 +1,18 @@
 "use client";
 
+import { useState } from "react";
+import { Button } from "antd";
 import { OdontogramGrid } from "./odontogram-grid";
 import { ToothModal } from "./tooth-modal";
 import {
   OdontogramTabs,
-  odontogramConfirm,
+  useOdontogramConfirm,
   OdontogramTabLabel,
   OdontogramEventCard,
   OdontogramEmptyState,
 } from "@/components/odontogram/ui";
 import type { OdontogramTabItem } from "@/components/odontogram/ui";
-import { Button } from "@/components/ui/button";
-import { RotateCcw } from "lucide-react";
+import { RedoOutlined } from "@ant-design/icons";
 import {
   useOdontogramModule,
   useEventFormatting,
@@ -38,6 +39,7 @@ export function OdontogramModule({
     handlers,
   } = useOdontogramModule();
   const readOnly = useOdontogramStore((state) => state.readOnly);
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   const {
     getEventTagColor,
@@ -45,6 +47,7 @@ export function OdontogramModule({
     formatEventDate,
     getEventDisplayName,
   } = useEventFormatting();
+  const odontogramConfirm = useOdontogramConfirm();
 
   const {
     diagnosis: diagnosisEvents,
@@ -142,28 +145,23 @@ export function OdontogramModule({
               Sistema de gestión dental profesional
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={readOnly}
-            onClick={handleClearAll}
-          >
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Limpiar Todo
-          </Button>
+          {activeTab === "odontogram" && (
+            <Button
+              icon={<RedoOutlined />}
+              disabled={readOnly}
+              onClick={handleClearAll}
+            >
+              Limpiar Todo
+            </Button>
+          )}
         </div>
       )}
 
-      {!showHeader && !readOnly && (
-        <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={handleClearAll}>
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Limpiar Todo
-          </Button>
-        </div>
-      )}
-
-      <OdontogramTabs items={tabItems} defaultActiveKey={initialTab} />
+      <OdontogramTabs
+        items={tabItems}
+        defaultActiveKey={initialTab}
+        onChange={(key) => setActiveTab(key as typeof initialTab)}
+      />
 
       <ToothModal
         tooth={currentTooth}

@@ -4,7 +4,7 @@ export type { OdontogramModalProps } from "./OdontogramModal";
 export { OdontogramTabs } from "./OdontogramTabs";
 export type { OdontogramTabsProps, OdontogramTabItem } from "./OdontogramTabs";
 
-export { odontogramConfirm } from "./OdontogramConfirm";
+export { odontogramConfirm, useOdontogramConfirm } from "./OdontogramConfirm";
 export type { OdontogramConfirmOptions } from "./OdontogramConfirm";
 
 export { OdontogramSelect } from "./OdontogramSelect";
