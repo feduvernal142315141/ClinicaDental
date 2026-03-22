@@ -598,3 +598,8 @@ export const useOdontogramStore = ((selector?: Selector<unknown>) => {
 useOdontogramStore.getState = () => getActiveStoreApi().getState();
 useOdontogramStore.subscribe = (...args) =>
   getActiveStoreApi().subscribe(...args);
+
+/** Imperative clear-all for host components outside the provider tree. */
+export function clearOdontogram() {
+  getActiveStoreApi().getState().clearAll();
+}

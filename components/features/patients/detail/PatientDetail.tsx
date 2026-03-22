@@ -17,15 +17,9 @@ import {
   CardTitle,
 } from "@/components/ui/atomic/data-display/card";
 import { KpiCard } from "@/components/ui/atomic/data-display/kpi-card";
-import { Button } from "@/components/ui/primitives/shadcn/button";
+import { Button as AntButton, Modal, Tabs, Typography } from "antd";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { Separator } from "@/components/ui/primitives/shadcn/separator";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/primitives/shadcn/tabs";
 import {
   Table,
   TableBody,
@@ -34,9 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/atomic/data-display/table";
-import { SectionTitle } from "@/components/ui/antd";
 import {
-  Edit,
   User,
   Mail,
   Phone,
@@ -47,7 +39,15 @@ import {
   Circle,
   FileText,
 } from "lucide-react";
+import {
+  EditOutlined,
+  ArrowLeftOutlined,
+  RedoOutlined,
+} from "@ant-design/icons";
 import { usePatients, usePatientsPage } from "@/lib/hooks/patients";
+import { usePermission } from "@/lib/hooks/use-permission";
+import { PermissionAction } from "@/lib/permissions/permission-actions";
+import { clearOdontogram } from "@/lib/odontogram";
 import { PatientOdontogramPanel } from "./PatientOdontogramPanel";
 
 interface PatientDetailProps {
@@ -63,9 +63,24 @@ export function PatientDetail({
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+  const [activePatientTab, setActivePatientTab] = useState("general");
 
   const { handleBackToList, handleEditPatient } = usePatientsPage({ basePath });
   const { getPatientById } = usePatients();
+  const { can, isAdmin } = usePermission();
+  const canEditPatient = isAdmin || can("patients", PermissionAction.EDIT);
+
+  const handleClearOdontogram = () => {
+    Modal.confirm({
+      title: "¿Estás seguro?",
+      content:
+        "Esta acción eliminará todos los datos del odontograma, incluyendo diagnósticos, planes y eventos clínicos. Esta acción no se puede deshacer.",
+      okText: "Sí, limpiar todo",
+      cancelText: "Cancelar",
+      okButtonProps: { danger: true },
+      onOk: clearOdontogram,
+    });
+  };
 
   useEffect(() => {
     void loadPatient();
@@ -152,9 +167,9 @@ export function PatientDetail({
         <CardContent className="p-6">
           <div className="text-center">
             <p className="text-muted-foreground">Paciente no encontrado</p>
-            <Button onClick={handleBackToList} className="mt-4">
+            <AntButton onClick={handleBackToList} className="mt-4">
               Volver a la lista
-            </Button>
+            </AntButton>
           </div>
         </CardContent>
       </Card>
@@ -175,269 +190,306 @@ export function PatientDetail({
 
   return (
     <div className="space-y-6">
-      <SectionTitle
-        title="Detalles del Paciente"
-        subtitle="Información completa e historial médico"
-        actionButton={{
-          label: "Atrás",
-          onClick: handleBackToList,
-          variant: "back",
-          type: "default",
-        }}
-      />
-
-      <div className="mb-4 flex justify-end">
-        <Button onClick={() => handleEditPatient(patientId)}>
-          <Edit className="mr-2 h-4 w-4" /> Editar
-        </Button>
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex-1">
+          <Typography.Title level={2} className="!mb-1">
+            Detalles del Paciente
+          </Typography.Title>
+          <p className="text-gray-500 text-sm mt-1">
+            Información completa e historial médico
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <AntButton
+            icon={<ArrowLeftOutlined />}
+            size="large"
+            onClick={handleBackToList}
+          >
+            Atrás
+          </AntButton>
+          <AntButton
+            type="primary"
+            icon={<EditOutlined />}
+            size="large"
+            onClick={() => handleEditPatient(patientId)}
+          >
+            Editar
+          </AntButton>
+          {activePatientTab === "odontogram" && canEditPatient && (
+            <AntButton
+              icon={<RedoOutlined />}
+              size="large"
+              onClick={handleClearOdontogram}
+            >
+              Limpiar Todo
+            </AntButton>
+          )}
+        </div>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="general">Datos personales</TabsTrigger>
-          <TabsTrigger value="odontogram">Odontograma</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general" className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" /> Información Personal
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold">{patient.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      ID: {patient.id}
-                    </p>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium">Edad</p>
-                        <p className="text-sm text-muted-foreground">
-                          {calculateAge(patient.dateOfBirth).years} años y{" "}
-                          {calculateAge(patient.dateOfBirth).months} meses
-                        </p>
-                      </div>
-                    </div>
-
-                    {patient.email && (
-                      <div className="flex items-center gap-3">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
+      <Tabs
+        activeKey={activePatientTab}
+        onChange={setActivePatientTab}
+        items={[
+          {
+            key: "general",
+            label: "Datos personales",
+            children: (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                  <div className="lg:col-span-1">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <User className="h-5 w-5" /> Información Personal
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
                         <div>
-                          <p className="text-sm font-medium">Email</p>
+                          <h3 className="text-lg font-semibold">
+                            {patient.name}
+                          </h3>
                           <p className="text-sm text-muted-foreground">
-                            {patient.email}
+                            ID: {patient.id}
                           </p>
                         </div>
-                      </div>
-                    )}
 
-                    {patient.phone && (
-                      <div className="flex items-center gap-3">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm font-medium">Teléfono</p>
-                          <p className="text-sm text-muted-foreground">
-                            {patient.phone}
-                          </p>
-                        </div>
-                      </div>
-                    )}
+                        <Separator />
 
-                    <div className="flex items-center gap-3">
-                      <Activity className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium">Fecha de Registro</p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatDate(patient.createAt)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {patient.gender && (
-                      <div className="flex items-center gap-3">
-                        {patient.gender === "M" ? (
-                          <User className="h-4 w-4 text-blue-600" />
-                        ) : patient.gender === "F" ? (
-                          <UserRound className="h-4 w-4 text-pink-600" />
-                        ) : (
-                          <Circle className="h-4 w-4 text-gray-500" />
-                        )}
-                        <div>
-                          <p className="text-sm font-medium">Género</p>
-                          <p className="text-sm text-muted-foreground">
-                            {genderOptions.find(
-                              (gender) => gender.value === patient.gender,
-                            )?.label || "No especificado"}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {patient.agreement !== undefined && (
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-4 w-4 text-green-600" />
-                        <div>
-                          <p className="text-sm font-medium">Convenio</p>
-                          <p className="text-sm text-muted-foreground">
-                            {patient.agreement ? "Sí, acepto" : "No, no acepto"}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="mt-6 grid grid-cols-2 gap-4">
-                <KpiCard
-                  title="Próximas Citas"
-                  value={upcomingAppointments.length}
-                  icon={Calendar}
-                  iconColor="text-blue-600"
-                />
-                <KpiCard
-                  title="Completadas"
-                  value={
-                    appointments.filter(
-                      (appointment) => appointment.status === "completed",
-                    ).length
-                  }
-                  icon={Activity}
-                  iconColor="text-green-600"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-6 lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="h-5 w-5" /> Próximas Citas
-                  </CardTitle>
-                  <CardDescription>
-                    {upcomingAppointments.length} cita
-                    {upcomingAppointments.length !== 1 ? "s" : ""} programada
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {upcomingAppointments.length === 0 ? (
-                    <p className="py-4 text-center text-muted-foreground">
-                      No hay citas próximas programadas
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {upcomingAppointments.map((appointment) => (
-                        <div
-                          key={appointment.id}
-                          className="flex items-center justify-between rounded-lg border p-3"
-                        >
-                          <div>
-                            <p className="font-medium">
-                              Dr. {appointment.doctorName}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {formatDate(appointment.date)} a las{" "}
-                              {appointment.time}
-                            </p>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">Edad</p>
+                              <p className="text-sm text-muted-foreground">
+                                {calculateAge(patient.dateOfBirth).years} años y{" "}
+                                {calculateAge(patient.dateOfBirth).months} meses
+                              </p>
+                            </div>
                           </div>
-                          <Badge className={getStatusColor(appointment.status)}>
-                            {getStatusText(appointment.status)}
-                          </Badge>
+
+                          {patient.email && (
+                            <div className="flex items-center gap-3">
+                              <Mail className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <p className="text-sm font-medium">Email</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {patient.email}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {patient.phone && (
+                            <div className="flex items-center gap-3">
+                              <Phone className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <p className="text-sm font-medium">Teléfono</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {patient.phone}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-3">
+                            <Activity className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">
+                                Fecha de Registro
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {formatDate(patient.createAt)}
+                              </p>
+                            </div>
+                          </div>
+
+                          {patient.gender && (
+                            <div className="flex items-center gap-3">
+                              {patient.gender === "M" ? (
+                                <User className="h-4 w-4 text-blue-600" />
+                              ) : patient.gender === "F" ? (
+                                <UserRound className="h-4 w-4 text-pink-600" />
+                              ) : (
+                                <Circle className="h-4 w-4 text-gray-500" />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium">Género</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {genderOptions.find(
+                                    (gender) => gender.value === patient.gender,
+                                  )?.label || "No especificado"}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {patient.agreement !== undefined && (
+                            <div className="flex items-center gap-3">
+                              <FileText className="h-4 w-4 text-green-600" />
+                              <div>
+                                <p className="text-sm font-medium">Convenio</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {patient.agreement
+                                    ? "Sí, acepto"
+                                    : "No, no acepto"}
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                      </CardContent>
+                    </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5" /> Historial de Citas
-                  </CardTitle>
-                  <CardDescription>
-                    {pastAppointments.length} cita
-                    {pastAppointments.length !== 1 ? "s" : ""} anteriores
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {appointmentsLoading ? (
-                    <div className="flex items-center justify-center py-4">
-                      <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
-                      <span className="ml-2">Cargando historial...</span>
+                    <div className="mt-6 grid grid-cols-2 gap-4">
+                      <KpiCard
+                        title="Próximas Citas"
+                        value={upcomingAppointments.length}
+                        icon={Calendar}
+                        iconColor="text-blue-600"
+                      />
+                      <KpiCard
+                        title="Completadas"
+                        value={
+                          appointments.filter(
+                            (appointment) => appointment.status === "completed",
+                          ).length
+                        }
+                        icon={Activity}
+                        iconColor="text-green-600"
+                      />
                     </div>
-                  ) : pastAppointments.length === 0 ? (
-                    <p className="py-4 text-center text-muted-foreground">
-                      No hay historial de citas
-                    </p>
-                  ) : (
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Fecha</TableHead>
-                            <TableHead>Hora</TableHead>
-                            <TableHead>Doctor</TableHead>
-                            <TableHead>Motivo</TableHead>
-                            <TableHead>Estado</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {pastAppointments
-                            .sort(
-                              (left, right) =>
-                                new Date(
-                                  `${right.date}T${right.time}`,
-                                ).getTime() -
-                                new Date(`${left.date}T${left.time}`).getTime(),
-                            )
-                            .map((appointment) => (
-                              <TableRow key={appointment.id}>
-                                <TableCell>
-                                  {formatDate(appointment.date)}
-                                </TableCell>
-                                <TableCell>{appointment.time}</TableCell>
-                                <TableCell>
-                                  Dr. {appointment.doctorName}
-                                </TableCell>
-                                <TableCell>
-                                  {appointment.reason || "-"}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge
-                                    className={getStatusColor(
-                                      appointment.status,
-                                    )}
-                                  >
-                                    {getStatusText(appointment.status)}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
+                  </div>
+
+                  <div className="space-y-6 lg:col-span-2">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Clock className="h-5 w-5" /> Próximas Citas
+                        </CardTitle>
+                        <CardDescription>
+                          {upcomingAppointments.length} cita
+                          {upcomingAppointments.length !== 1 ? "s" : ""}{" "}
+                          programada
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {upcomingAppointments.length === 0 ? (
+                          <p className="py-4 text-center text-muted-foreground">
+                            No hay citas próximas programadas
+                          </p>
+                        ) : (
+                          <div className="space-y-3">
+                            {upcomingAppointments.map((appointment) => (
+                              <div
+                                key={appointment.id}
+                                className="flex items-center justify-between rounded-lg border p-3"
+                              >
+                                <div>
+                                  <p className="font-medium">
+                                    Dr. {appointment.doctorName}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {formatDate(appointment.date)} a las{" "}
+                                    {appointment.time}
+                                  </p>
+                                </div>
+                                <Badge
+                                  className={getStatusColor(appointment.status)}
+                                >
+                                  {getStatusText(appointment.status)}
+                                </Badge>
+                              </div>
                             ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </TabsContent>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
 
-        <TabsContent value="odontogram">
-          <PatientOdontogramPanel patient={patient} />
-        </TabsContent>
-      </Tabs>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Activity className="h-5 w-5" /> Historial de Citas
+                        </CardTitle>
+                        <CardDescription>
+                          {pastAppointments.length} cita
+                          {pastAppointments.length !== 1 ? "s" : ""} anteriores
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {appointmentsLoading ? (
+                          <div className="flex items-center justify-center py-4">
+                            <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
+                            <span className="ml-2">Cargando historial...</span>
+                          </div>
+                        ) : pastAppointments.length === 0 ? (
+                          <p className="py-4 text-center text-muted-foreground">
+                            No hay historial de citas
+                          </p>
+                        ) : (
+                          <div className="rounded-md border">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Fecha</TableHead>
+                                  <TableHead>Hora</TableHead>
+                                  <TableHead>Doctor</TableHead>
+                                  <TableHead>Motivo</TableHead>
+                                  <TableHead>Estado</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {pastAppointments
+                                  .sort(
+                                    (left, right) =>
+                                      new Date(
+                                        `${right.date}T${right.time}`,
+                                      ).getTime() -
+                                      new Date(
+                                        `${left.date}T${left.time}`,
+                                      ).getTime(),
+                                  )
+                                  .map((appointment) => (
+                                    <TableRow key={appointment.id}>
+                                      <TableCell>
+                                        {formatDate(appointment.date)}
+                                      </TableCell>
+                                      <TableCell>{appointment.time}</TableCell>
+                                      <TableCell>
+                                        Dr. {appointment.doctorName}
+                                      </TableCell>
+                                      <TableCell>
+                                        {appointment.reason || "-"}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge
+                                          className={getStatusColor(
+                                            appointment.status,
+                                          )}
+                                        >
+                                          {getStatusText(appointment.status)}
+                                        </Badge>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </div>
+            ),
+          },
+          {
+            key: "odontogram",
+            label: "Odontograma",
+            children: <PatientOdontogramPanel patient={patient} />,
+          },
+        ]}
+      />
     </div>
   );
 }
