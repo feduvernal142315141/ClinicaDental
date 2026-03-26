@@ -1,74 +1,65 @@
 # Copilot Instructions - front-clinic
 
-## 0) Required Context Files / Archivos de Contexto
-- Read `.github/copilot-context.md` before proposing changes.
-- Prefer reusable prompt templates in `.github/prompts/*.prompt.md`.
-- Prefer project skills in `.github/skills/*` when the task matches a specialized workflow.
-- If code and docs conflict, treat current code as source of truth.
+## Evidence Policy
+- Derive rules from the current repository, not from generic frontend templates.
+- Read `package.json`, `next.config.mjs`, `tsconfig.json`, and the nearest implementation files before proposing changes.
+- Prefer current code over docs when they conflict.
+- Treat `README.md` as non-authoritative until it is replaced with real project guidance.
+- Prefer the reusable assets in `.github/instructions/*`, `.github/prompts/*`, and `.github/skills/*` when they match the task.
 
-## 1) Project Identity / Identidad del Proyecto
-- This is a Next.js 15 App Router project with TypeScript (`strict: true`).
-- Este proyecto usa Ant Design + Tailwind CSS + Radix UI.
-- HTTP/API access is implemented through Axios service layers in `lib/services`.
-- Build currently ignores TypeScript and ESLint errors in `next.config.mjs`; still write type-safe and lint-friendly code.
+## Verified Repository Snapshot
+- App Router is the active routing model: routes live under `app/*` and no `pages/*` tree is present.
+- `app/layout.tsx` is a server layout that delegates providers and shell composition to `components/layout/root-client.tsx`.
+- Route handlers exist under `app/api/auth/*`.
+- The stack is Next.js 15, React 18, and TypeScript with `strict: true`.
+- The package manager is Yarn 1 (`packageManager` plus `yarn.lock`).
+- Ant Design is registered through `@ant-design/nextjs-registry` in `components/layout/root-client.tsx`.
+- Ant Design is wrapped locally in `components/ui/antd/*`, while other areas also use `components/ui/atomic/*` and `components/ui/primitives/shadcn/*`.
+- Frontend HTTP access is centered on Axios via `lib/services/apiConfig.ts` and `lib/services/baseService.ts`.
+- No active repo-wide i18n library was detected in the current codebase.
+- No Jest, Vitest, Playwright, or Cypress setup was detected.
+- `next.config.mjs` currently ignores TypeScript and ESLint build errors; still write type-safe, lint-friendly code.
 
-## 2) Real Architecture / Arquitectura Real
-- Protected pages: `app/(authenticated)`
-- Domain UI: `components/features/<feature>`
-- Domain hooks: `lib/hooks/<feature>`
-- API/service layer: `lib/services/<feature>`
-- Types/entities: `lib/entity/*`
-- Shared UI wrappers: `components/ui/antd` and `components/ui/atomic`
-- Internal feature modules may expose their own isolated domain layer under `lib/<feature>`.
-- Current internal module example: odontogram uses `lib/odontogram` for state, adapters and module API.
+## Architecture Guardrails
+- Use App Router conventions only. Do not propose Pages Router files or patterns unless the repo changes first.
+- Preserve the rendering model of the touched files. Many pages and most UI files are already client components, while layouts like `app/layout.tsx` and `app/(authenticated)/layout.tsx` remain server components.
+- Keep route handlers in `app/api/*`.
+- Reuse the local structure of the touched feature. This repo is mixed:
+  - feature UI commonly lives in `components/features/*`
+  - services live in `lib/services/*`
+  - typed entities live in `lib/entity/*`
+  - hooks may be centralized in `lib/hooks/*` or colocated inside a feature folder
+- Do not move remote access directly into UI code when the feature already uses a service, adapter, hook, or route-handler boundary.
+- Keep changes compatibility-first. Preserve route behavior, exported contracts, and current provider composition unless a change is explicitly required.
 
-## 3) Required Conventions / Convenciones Obligatorias
+## UI Guardrails
+- Reuse `components/ui/antd/*` wrappers before introducing raw Ant Design in AntD-based areas.
+- If the touched feature already uses `components/ui/atomic/*` or `components/ui/primitives/shadcn/*`, stay consistent with that feature instead of mixing UI vocabularies arbitrarily.
+- Preserve the shell and provider patterns anchored by `components/layout/root-client.tsx` and `components/ui/antd/layout/AppShellAntd.tsx`.
+- Keep user-facing copy in Spanish unless the surrounding screen already uses another language.
+- Preserve the feature's current empty, loading, and feedback patterns.
+
+## Data, Typing, and Compatibility
 - Prefer alias imports with `@/...`.
-- Prefer public module exports (barrels) when available.
-- Do not use `components/legacy/*` for new code.
-- Ignore transpiled legacy auth artifacts in `components/features/auth/**/dist/*`.
-- Reuse existing wrappers/hooks before creating new abstractions.
-- Do not propose monorepo or runtime microfrontend changes unless explicitly requested.
+- Prefer typed contracts in `lib/entity/*` and extend them before adding new `any`.
+- Use `serviceGet`, `servicePost`, `servicePut`, `serviceDelete`, and `servicePatch` from `lib/services/baseService.ts` when working in the existing service layer.
+- Preserve the interceptor and notification assumptions implemented in `lib/services/apiConfig.ts`.
+- Do not invent repo-wide i18n files, locale folders, or translation hooks that are not present.
+- Where existing contracts expect them, keep date strings as `YYYY-MM-DD` and time strings as `HH:mm`.
 
-## 4) Domain Rules / Reglas de Dominio
-- `doctor` endpoints represent system users (not only clinical doctors).
-- Date format: `YYYY-MM-DD`.
-- Time format: `HH:mm`.
-- Permissions must use `usePermission` + `PermissionAction`.
-- User-facing UI text must remain in Spanish.
+## Critical Shared Workflows
+- Permissions should use `usePermission` and `PermissionAction`.
+- Auth is OTP + JWT, with refresh routed through `/api/auth/refresh` and cookie helpers under `lib/auth/server/*`.
+- The odontogram is an embedded module with an adapter-first boundary:
+  - public module API in `lib/odontogram/*`
+  - specialized module UI in `components/features/odontogram/*`
+  - host integration in wrappers such as `components/features/patients/detail/PatientOdontogramPanel.tsx`
+- Do not leak host-only services, contexts, routing, or page shell concerns into `lib/odontogram/*`.
 
-## 5) Auth and Session / Autenticacion y Sesion
-- Auth flow is OTP + JWT.
-- Session/token flow combines Next route handlers (`/api/auth/*`), cookies, and localStorage helpers.
-- Respect existing token/cookie helpers in `lib/auth/*` and `lib/auth/server/*`.
-
-## 6) Odontogram Module / Modulo Odontograma
-- Source of truth is now inside this repo, not in an external monorepo package.
-- Public module entrypoints live in `lib/odontogram/index.ts` and `lib/odontogram/OdontogramModule.tsx`.
-- Specialized odontogram UI lives in `components/features/odontogram/*`.
-- Module state and persistence must stay adapter-first:
-  - state/store in `lib/odontogram/store.tsx`
-  - persistence adapters in `lib/odontogram/adapters/*`
-- The odontogram module must not import host-only concerns such as:
-  - `lib/services/*`
-  - `lib/contexts/*`
-  - routing/navigation from app pages
-  - page/layout shell components
-- Host integration with patients must happen through wrapper components such as `components/features/patients/detail/PatientOdontogramPanel.tsx`.
-- Do not reintroduce hardcoded context values like `current-user` or `current-visit`; author/visit context must come from props, metadata or adapters.
-
-## 7) Environment / Entorno
-- `NEXT_PUBLIC_API_URL`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_AUTH_DEBUG`
-
-## 8) Standard Commands / Comandos Estandar
-- `npm run dev`
-- `npm run lint`
-- `npm run build`
-
-## 9) Output Style / Estilo de Salida
-- UI copy and user-facing text should be in Spanish.
-- Technical symbols, code identifiers, and API naming stay in English.
-- Avoid introducing new `any`; keep typings explicit and aligned with `lib/entity`.
+## Validation
+- Preferred commands:
+  - `yarn dev`
+  - `yarn lint`
+  - `yarn build`
+- Equivalent `npm run dev`, `npm run lint`, and `npm run build` commands are acceptable when contributors use npm.
+- Because no automated test runner is currently configured, do not claim automated coverage unless you also add the tooling explicitly.
