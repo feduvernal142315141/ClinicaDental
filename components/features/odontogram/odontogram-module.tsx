@@ -21,7 +21,12 @@ import { useOdontogramStore } from "@/lib/odontogram/store";
 import type { ClinicalEvent } from "@/components/odontogram/types";
 
 interface OdontogramModuleProps {
-  initialTab?: "odontogram" | "diagnosis" | "plans" | "performed";
+  initialTab?:
+    | "odontogram"
+    | "suggestions"
+    | "diagnosis"
+    | "plans"
+    | "performed";
   showHeader?: boolean;
 }
 
@@ -31,7 +36,6 @@ export function OdontogramModule({
 }: OdontogramModuleProps) {
   const {
     teeth,
-    selectedTooth,
     selectedSurface,
     isModalOpen,
     currentTooth,
@@ -50,6 +54,7 @@ export function OdontogramModule({
   const odontogramConfirm = useOdontogramConfirm();
 
   const {
+    suggestions: suggestionEvents,
     diagnosis: diagnosisEvents,
     plan: planEvents,
     performed: performedEvents,
@@ -97,6 +102,20 @@ export function OdontogramModule({
           onSurfaceClick={handlers.handleSurfaceClick}
           onToothClick={handlers.handleToothClick}
         />
+      ),
+    },
+    {
+      key: "suggestions",
+      label: (
+        <OdontogramTabLabel
+          label="Sugerencias"
+          count={suggestionEvents.length}
+        />
+      ),
+      children: (
+        <div className="space-y-4">
+          {renderEventList(suggestionEvents, "No hay sugerencias activas")}
+        </div>
       ),
     },
     {
@@ -173,7 +192,6 @@ export function OdontogramModule({
         onDeleteCondition={handlers.deleteSurfaceCondition}
         onCompleteTreatment={handlers.completeTreatment}
         onDeleteTreatment={handlers.deleteTreatment}
-        onApplyAndNext={handlers.handleApplyAndNext}
         initialSurfaces={selectedSurface ? [selectedSurface] : undefined}
       />
     </div>

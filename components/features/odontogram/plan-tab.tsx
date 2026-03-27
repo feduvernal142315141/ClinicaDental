@@ -85,21 +85,11 @@ export function PlanTab({
   const [exchangeRate] = useState(36.5);
 
   useEffect(() => {
-    if (initialPlans && initialPlans.length > 0 && plans.length === 0) {
-      setPlans(initialPlans);
-
-      if (typeof window !== "undefined") {
-        (window as any).__currentPlans = initialPlans;
-      }
-    }
+    setPlans(initialPlans ?? []);
   }, [initialPlans]);
 
   const handlePlansUpdate = (newPlans: ProcedurePlan[]) => {
     setPlans(newPlans);
-
-    if (typeof window !== "undefined") {
-      (window as any).__currentPlans = newPlans;
-    }
 
     if (onPlansChange) {
       onPlansChange(newPlans);
@@ -562,7 +552,7 @@ export function PlanTab({
           {/* Plantillas */}
           {PROCEDURE_TEMPLATES.length > 0 && (
             <Card className="p-4 shadow-sm">
-              <Label className="text-sm font-semibold mb-3 block flex items-center gap-2">
+              <Label className="mb-3 flex items-center gap-2 text-sm font-semibold">
                 <Package className="w-4 h-4" />
                 Plantillas
               </Label>

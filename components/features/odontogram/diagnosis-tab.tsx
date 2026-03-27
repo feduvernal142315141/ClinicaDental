@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type {
   Tooth,
+  ToothDiagnosis,
   ToothSurface,
   SurfaceDiagnosis,
   ICDASScore,
@@ -49,11 +50,11 @@ interface DiagnosisTabProps {
   tooth: Tooth;
   selectedSurfaces: ToothSurface[];
   initialDiagnoses?: Map<ToothSurface, SurfaceDiagnosis>;
-  initialPulpalStatus?: PulpalStatus;
+  initialToothDiagnosis?: ToothDiagnosis;
   patientRisk?: PatientRiskLevel;
   onNavigateToTab?: (tab: string) => void;
   onDiagnosesChange?: (diagnoses: Map<ToothSurface, SurfaceDiagnosis>) => void;
-  onPulpalStatusChange?: (status: PulpalStatus) => void;
+  onToothDiagnosisChange?: (diagnosis: ToothDiagnosis) => void;
 }
 
 function getToothTypeName(toothNumber: number): string {
@@ -88,11 +89,11 @@ export function DiagnosisTab({
   tooth,
   selectedSurfaces,
   initialDiagnoses,
-  initialPulpalStatus,
+  initialToothDiagnosis,
   patientRisk = "medio",
   onNavigateToTab,
   onDiagnosesChange,
-  onPulpalStatusChange,
+  onToothDiagnosisChange,
 }: DiagnosisTabProps) {
   const [activeSurface, setActiveSurface] = useState<ToothSurface | null>(
     selectedSurfaces.length > 0 ? selectedSurfaces[0] : null,
@@ -123,6 +124,37 @@ export function DiagnosisTab({
   const [painScore, setPainScore] = useState<number>(0);
   const [generalNotes, setGeneralNotes] = useState("");
 
+  const buildToothDiagnosisRecord = (
+    nextDiagnoses: Map<ToothSurface, SurfaceDiagnosis>,
+    overrides?: Partial<ToothDiagnosis>,
+  ): ToothDiagnosis => ({
+    toothNumber: tooth.number,
+    surfaceDiagnoses: Array.from(nextDiagnoses.values()),
+    pulpalStatus: overrides?.pulpalStatus ?? pulpalStatus,
+    periapicalStatus: overrides?.periapicalStatus ?? periapicalStatus,
+    vitalityTests: overrides?.vitalityTests ?? vitalityTests,
+    painScore: overrides?.painScore ?? painScore,
+    generalNotes: overrides?.generalNotes ?? generalNotes,
+    attachments: overrides?.attachments ?? initialToothDiagnosis?.attachments,
+    evidenceRefs:
+      overrides?.evidenceRefs ?? initialToothDiagnosis?.evidenceRefs ?? [],
+    completionState: overrides?.completionState ?? "draft",
+    diagnosedDate:
+      overrides?.diagnosedDate ??
+      initialToothDiagnosis?.diagnosedDate ??
+      new Date().toISOString(),
+    diagnosedBy: overrides?.diagnosedBy ?? initialToothDiagnosis?.diagnosedBy,
+    updatedAt: new Date().toISOString(),
+  });
+
+  const emitToothDiagnosisChange = (
+    nextDiagnoses: Map<ToothSurface, SurfaceDiagnosis>,
+    overrides?: Partial<ToothDiagnosis>,
+  ) => {
+    if (!onToothDiagnosisChange) return;
+    onToothDiagnosisChange(buildToothDiagnosisRecord(nextDiagnoses, overrides));
+  };
+
   useEffect(() => {
     if (initialDiagnoses && initialDiagnoses.size > 0) {
       setSurfaceDiagnoses(new Map(initialDiagnoses));
@@ -138,13 +170,27 @@ export function DiagnosisTab({
         }
       }
     }
-  }, []);
+  }, [activeSurface, initialDiagnoses]);
 
   useEffect(() => {
-    if (initialPulpalStatus) {
-      setPulpalStatus(initialPulpalStatus);
-    }
-  }, []);
+    if (!initialToothDiagnosis) return;
+
+    setPulpalStatus(initialToothDiagnosis.pulpalStatus || "normal");
+    setPeriapicalStatus(initialToothDiagnosis.periapicalStatus || "normal");
+    setVitalityTests(
+      initialToothDiagnosis.vitalityTests?.length > 0
+        ? initialToothDiagnosis.vitalityTests
+        : [
+            { type: "frio", result: "no-realizado" },
+            { type: "calor", result: "no-realizado" },
+            { type: "ept", result: "no-realizado" },
+            { type: "percusion", result: "no-realizado" },
+            { type: "palpacion", result: "no-realizado" },
+          ],
+    );
+    setPainScore(initialToothDiagnosis.painScore ?? 0);
+    setGeneralNotes(initialToothDiagnosis.generalNotes || "");
+  }, [initialToothDiagnosis]);
 
   const loadSurfaceDiagnosis = (surface: ToothSurface) => {
     const diagnosis = surfaceDiagnoses.get(surface);
@@ -192,23 +238,16 @@ export function DiagnosisTab({
     newMap.set(activeSurface, diagnosis);
     setSurfaceDiagnoses(newMap);
 
-    if (typeof window !== "undefined") {
-      (window as any).__currentDiagnoses = newMap;
-    }
-
     if (onDiagnosesChange) {
       onDiagnosesChange(newMap);
     }
+
+    emitToothDiagnosisChange(newMap);
   };
 
   const handlePulpalStatusChange = (status: PulpalStatus) => {
     setPulpalStatus(status);
-    if (typeof window !== "undefined") {
-      (window as any).__currentPulpalStatus = status;
-    }
-    if (onPulpalStatusChange) {
-      onPulpalStatusChange(status);
-    }
+    emitToothDiagnosisChange(surfaceDiagnoses, { pulpalStatus: status });
   };
 
   const handleSurfaceChange = (surface: ToothSurface) => {
@@ -238,13 +277,11 @@ export function DiagnosisTab({
     });
     setSurfaceDiagnoses(newMap);
 
-    if (typeof window !== "undefined") {
-      (window as any).__currentDiagnoses = newMap;
-    }
-
     if (onDiagnosesChange) {
       onDiagnosesChange(newMap);
     }
+
+    emitToothDiagnosisChange(newMap);
   };
 
   const handleCopyToAdjacent = () => {
@@ -270,25 +307,21 @@ export function DiagnosisTab({
     if (onDiagnosesChange) {
       onDiagnosesChange(newMap);
     }
-  };
 
-  const handleToggleLesion = (lesion: NonCariousLesion) => {
-    setNonCariousLesions((prev) => {
-      if (prev.includes(lesion)) {
-        return prev.filter((l) => l !== lesion);
-      } else {
-        return [...prev, lesion];
-      }
-    });
+    emitToothDiagnosisChange(newMap);
   };
 
   const handleVitalityTestChange = (
     type: VitalityTestType,
     result: VitalityTestResult,
   ) => {
-    setVitalityTests((prev) =>
-      prev.map((test) => (test.type === type ? { ...test, result } : test)),
-    );
+    setVitalityTests((prev) => {
+      const nextTests = prev.map((test) =>
+        test.type === type ? { ...test, result } : test,
+      );
+      emitToothDiagnosisChange(surfaceDiagnoses, { vitalityTests: nextTests });
+      return nextTests;
+    });
   };
 
   const getRiskColor = (risk: PatientRiskLevel) => {
@@ -645,9 +678,13 @@ export function DiagnosisTab({
                 </Label>
                 <OdontogramSelect
                   value={periapicalStatus}
-                  onChange={(value) =>
-                    setPeriapicalStatus(value as PeriapicalStatus)
-                  }
+                  onChange={(value) => {
+                    const nextStatus = value as PeriapicalStatus;
+                    setPeriapicalStatus(nextStatus);
+                    emitToothDiagnosisChange(surfaceDiagnoses, {
+                      periapicalStatus: nextStatus,
+                    });
+                  }}
                   options={(
                     Object.entries(PERIAPICAL_STATUS_LABELS) as [
                       PeriapicalStatus,
@@ -700,7 +737,13 @@ export function DiagnosisTab({
                     id="pain-score"
                     type="number"
                     value={String(painScore)}
-                    onChange={(e) => setPainScore(Number(e.target.value))}
+                    onChange={(e) => {
+                      const nextPainScore = Number(e.target.value);
+                      setPainScore(nextPainScore);
+                      emitToothDiagnosisChange(surfaceDiagnoses, {
+                        painScore: nextPainScore,
+                      });
+                    }}
                     className="text-sm"
                   />
                 </div>
@@ -711,7 +754,13 @@ export function DiagnosisTab({
                   <OdontogramInput
                     id="general-notes"
                     value={generalNotes}
-                    onChange={(e) => setGeneralNotes(e.target.value)}
+                    onChange={(e) => {
+                      const nextGeneralNotes = e.target.value;
+                      setGeneralNotes(nextGeneralNotes);
+                      emitToothDiagnosisChange(surfaceDiagnoses, {
+                        generalNotes: nextGeneralNotes,
+                      });
+                    }}
                     placeholder="Observaciones..."
                     className="text-sm"
                   />
@@ -808,7 +857,7 @@ export function DiagnosisTab({
                 pulpalStatus === "necrosis") && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg shadow-sm">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                    <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-sm font-medium text-red-900">
                         Endodoncia requerida
@@ -828,7 +877,7 @@ export function DiagnosisTab({
               ) && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg shadow-sm">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                    <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-sm font-medium text-red-900">
                         Restauración extensa / Onlay / Endo
@@ -847,7 +896,7 @@ export function DiagnosisTab({
               ) && (
                 <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg shadow-sm">
                   <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                    <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-sm font-medium text-orange-900">
                         Resina (Plan)
@@ -866,7 +915,7 @@ export function DiagnosisTab({
               ) && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg shadow-sm">
                   <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <Info className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-sm font-medium text-amber-900">
                         Infiltración / Sellante
@@ -885,7 +934,7 @@ export function DiagnosisTab({
               ) && (
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg shadow-sm">
                   <div className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-sm font-medium text-green-900">
                         Superficies sanas
@@ -917,7 +966,7 @@ export function DiagnosisTab({
               {([0, 1, 2, 3, 4, 5, 6] as ICDASScore[]).map((score) => (
                 <div key={score} className="flex items-center gap-2">
                   <div
-                    className="w-4 h-4 rounded flex-shrink-0"
+                    className="w-4 h-4 rounded shrink-0"
                     style={{ backgroundColor: getICDASColor(score) }}
                   />
                   <span className="text-xs">{ICDAS_LABELS[score]}</span>

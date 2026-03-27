@@ -1,7 +1,9 @@
-import { useState, useMemo } from "react"
-import { useOdontogramStore } from "@/lib/odontogram/store"
-import type { ToothSurface, ClinicalEvent } from "@/lib/odontogram/domain/odontogram/types"
-import { useToothNavigation } from "./useToothNavigation"
+import { useState, useMemo } from "react";
+import { useOdontogramStore } from "@/lib/odontogram/store";
+import type {
+  ClinicalEvent,
+  ToothSurface,
+} from "@/lib/odontogram/domain/odontogram/types";
 
 export function useOdontogramModule() {
   const {
@@ -17,63 +19,60 @@ export function useOdontogramModule() {
     deleteClinicalEvent,
     getTooth,
     clearAll,
-  } = useOdontogramStore()
+  } = useOdontogramStore();
 
-  const { getNextToothInArch } = useToothNavigation()
-
-  const [selectedTooth, setSelectedTooth] = useState<number | null>(null)
-  const [selectedSurface, setSelectedSurface] = useState<ToothSurface | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
+  const [selectedSurface, setSelectedSurface] = useState<ToothSurface | null>(
+    null,
+  );
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleToothClick = (toothNumber: number) => {
-    setSelectedTooth(toothNumber)
-    setSelectedSurface(null)
-    setIsModalOpen(true)
-  }
+    setSelectedTooth(toothNumber);
+    setSelectedSurface(null);
+    setIsModalOpen(true);
+  };
 
   const handleSurfaceClick = (toothNumber: number, surface: ToothSurface) => {
-    setSelectedTooth(toothNumber)
-    setSelectedSurface(surface)
-    setIsModalOpen(true)
-  }
-
-  const handleApplyAndNext = () => {
-    if (selectedTooth) {
-      const nextTooth = getNextToothInArch(selectedTooth)
-      if (nextTooth) {
-        setSelectedTooth(nextTooth)
-        setSelectedSurface(null)
-      }
-    }
-  }
+    setSelectedTooth(toothNumber);
+    setSelectedSurface(surface);
+    setIsModalOpen(true);
+  };
 
   const handleEventClick = (event: ClinicalEvent) => {
-    setSelectedTooth(event.toothNumber)
-    setSelectedSurface(event.surfaces.length > 0 ? event.surfaces[0] : null)
-    setIsModalOpen(true)
-  }
+    setSelectedTooth(event.toothNumber);
+    setSelectedSurface(event.surfaces.length > 0 ? event.surfaces[0] : null);
+    setIsModalOpen(true);
+  };
 
   const handleCloseModal = () => {
-    setIsModalOpen(false)
-    setSelectedSurface(null)
-  }
+    setIsModalOpen(false);
+    setSelectedSurface(null);
+  };
 
   const handleClearAll = () => {
-    clearAll()
-    setIsModalOpen(false)
-    setSelectedTooth(null)
-    setSelectedSurface(null)
-  }
+    clearAll();
+    setIsModalOpen(false);
+    setSelectedTooth(null);
+    setSelectedSurface(null);
+  };
 
-  const currentTooth = selectedTooth ? getTooth(selectedTooth) || null : null
+  const currentTooth = selectedTooth ? getTooth(selectedTooth) || null : null;
 
   const eventsByType = useMemo(() => {
+    const suggestionEvents = clinicalEvents.filter(
+      (e) => e.type === "diagnosis" && e.automationHints?.suggestPlan,
+    );
+
     return {
       diagnosis: clinicalEvents.filter((e) => e.type === "diagnosis"),
-      plan: clinicalEvents.filter((e) => e.type === "plan"),
+      suggestions: suggestionEvents,
+      plan: clinicalEvents.filter(
+        (e) => e.type === "plan" && e.status !== "canceled",
+      ),
       performed: clinicalEvents.filter((e) => e.type === "performed"),
-    }
-  }, [clinicalEvents])
+    };
+  }, [clinicalEvents]);
 
   return {
     teeth,
@@ -86,7 +85,6 @@ export function useOdontogramModule() {
     handlers: {
       handleToothClick,
       handleSurfaceClick,
-      handleApplyAndNext,
       handleEventClick,
       handleCloseModal,
       handleClearAll,
@@ -99,5 +97,5 @@ export function useOdontogramModule() {
       updateClinicalEvent,
       deleteClinicalEvent,
     },
-  }
+  };
 }
