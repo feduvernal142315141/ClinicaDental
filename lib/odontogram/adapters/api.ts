@@ -44,14 +44,16 @@ export function createApiOdontogramAdapter(
       }
 
       // Parse the JSON string stored in `state`.
-      const { teeth, clinicalEvents } = JSON.parse(response.state) as {
+      const parsedState = JSON.parse(response.state) as {
+        schemaVersion?: number;
         teeth: OdontogramSnapshot["teeth"];
         clinicalEvents: OdontogramSnapshot["clinicalEvents"];
       };
 
       const snapshot: OdontogramSnapshot = {
-        teeth,
-        clinicalEvents,
+        schemaVersion: parsedState.schemaVersion ?? 1,
+        teeth: parsedState.teeth,
+        clinicalEvents: parsedState.clinicalEvents,
         treatmentPlans: [], // treatment plans live in their own API table
         metadata: {
           version: response.version,
@@ -68,6 +70,7 @@ export function createApiOdontogramAdapter(
 
     async save(patientId, snapshot, clinicId) {
       const state = JSON.stringify({
+        schemaVersion: snapshot.schemaVersion,
         teeth: snapshot.teeth,
         clinicalEvents: snapshot.clinicalEvents,
       });
@@ -90,6 +93,7 @@ export function createApiOdontogramAdapter(
       });
 
       const state = JSON.stringify({
+        schemaVersion: empty.schemaVersion,
         teeth: empty.teeth,
         clinicalEvents: empty.clinicalEvents,
       });

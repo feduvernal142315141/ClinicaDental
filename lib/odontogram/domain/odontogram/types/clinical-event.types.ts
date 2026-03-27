@@ -1,5 +1,17 @@
-import type { ToothSurface, ICDASScore } from "./surface.types"
-import type { ProcedureCategory, ProcedurePriority } from "./procedure.types"
+import type {
+  ToothSurface,
+  ICDASScore,
+  SurfaceDiagnosis,
+  SurfaceRef,
+} from "./surface.types";
+import type { ProcedureCategory, ProcedurePriority } from "./procedure.types";
+import type {
+  EvidenceRef,
+  PeriapicalStatus,
+  PulpalStatus,
+  ToothGlobalStatus,
+  VitalityTest,
+} from "./tooth.types";
 
 export type ClinicalEventType =
   | "diagnosis"
@@ -9,30 +21,71 @@ export type ClinicalEventType =
   | "prosthesis"
   | "endo"
   | "implante"
-  | "ausente"
+  | "ausente";
 
-export type ClinicalEventStatus = "open" | "plan" | "in_progress" | "done" | "canceled" | "observation"
+export type ClinicalEventStatus =
+  | "open"
+  | "plan"
+  | "in_progress"
+  | "done"
+  | "canceled"
+  | "observation";
+
+export type ClinicalEventDiagnosisKind =
+  | "surface-finding"
+  | "tooth-diagnostic"
+  | "workflow-note";
+
+export interface ClinicalEventDiagnosisPayload {
+  surfaceDiagnosis?: Partial<SurfaceDiagnosis>;
+  pulpalStatus?: PulpalStatus;
+  periapicalStatus?: PeriapicalStatus;
+  vitalityTests?: VitalityTest[];
+  painScore?: number;
+  generalNotes?: string;
+  evidenceRefs?: EvidenceRef[];
+}
+
+export interface ClinicalEventVisualState {
+  affectsOdontogram: boolean;
+  colorKey?: string;
+  symbolKey?: string;
+  priorityKey?: string;
+}
+
+export interface ClinicalEventAutomationHints {
+  suggestPlan?: boolean;
+  autoCreatePlan?: boolean;
+  updateGlobalStatusTo?: ToothGlobalStatus;
+  urgencyLevel?: "none" | "low" | "medium" | "high" | "emergency";
+}
 
 export interface ClinicalEvent {
-  id: string
-  visitId?: string
-  toothNumber: number
-  surfaces: ToothSurface[]
-  level?: "tooth" | "surface"
-  type: ClinicalEventType
-  status: ClinicalEventStatus
-  severity?: ICDASScore
-  icdasScore?: ICDASScore
-  material?: string
-  priority?: ProcedurePriority
-  notes?: string
-  attachments?: string[]
-  procedureId?: string
-  procedureName?: string
-  category?: ProcedureCategory
-  durationMin?: number
-  cost?: number
-  createdAt: string
-  updatedAt: string
-  authorId?: string
+  id: string;
+  schemaVersion?: number;
+  visitId?: string;
+  toothNumber: number;
+  surfaces: ToothSurface[];
+  surfacesV2?: SurfaceRef[];
+  level?: "tooth" | "surface";
+  type: ClinicalEventType;
+  status: ClinicalEventStatus;
+  diagnosisKind?: ClinicalEventDiagnosisKind;
+  diagnosisPayload?: ClinicalEventDiagnosisPayload;
+  visualState?: ClinicalEventVisualState;
+  automationHints?: ClinicalEventAutomationHints;
+  severity?: ICDASScore;
+  icdasScore?: ICDASScore;
+  material?: string;
+  priority?: ProcedurePriority;
+  notes?: string;
+  attachments?: string[];
+  procedureId?: string;
+  procedureName?: string;
+  category?: ProcedureCategory;
+  durationMin?: number;
+  cost?: number;
+  createdAt: string;
+  updatedAt: string;
+  authorId?: string;
 }

@@ -6,14 +6,19 @@ import { useStore } from "zustand";
 import type {
   ClinicalEvent,
   ClinicalEventType,
+  PerformedProcedure,
   SurfaceCondition,
   SurfaceTreatment,
   Tooth,
+  ToothDiagnosis,
   ToothGlobalStatus,
   ToothSurface,
   TreatmentPlan,
+  VitalityTest,
 } from "@/components/odontogram/types";
 import { OdontogramColorService } from "@/lib/odontogram/domain/odontogram/services/OdontogramColorService";
+
+export const ODONTOGRAM_SCHEMA_VERSION = 2;
 
 export interface OdontogramSnapshotMetadata {
   version: number;
@@ -25,6 +30,7 @@ export interface OdontogramSnapshotMetadata {
 }
 
 export interface OdontogramSnapshot {
+  schemaVersion: number;
   teeth: Tooth[];
   clinicalEvents: ClinicalEvent[];
   treatmentPlans: TreatmentPlan[];
@@ -52,7 +58,12 @@ export interface OdontogramModuleProps {
   readOnly?: boolean;
   /** Muestra el header del módulo (título + acciones). Default: true. Usar false en modo embebido. */
   showHeader?: boolean;
-  initialTab?: "odontogram" | "diagnosis" | "plans" | "performed";
+  initialTab?:
+    | "odontogram"
+    | "suggestions"
+    | "diagnosis"
+    | "plans"
+    | "performed";
   onChange?: (snapshot: OdontogramSnapshot) => void;
   onError?: (error: unknown) => void;
 }
@@ -64,6 +75,10 @@ interface OdontogramState extends OdontogramSnapshot {
   updateToothGlobalStatus: (
     toothNumber: number,
     status: ToothGlobalStatus,
+  ) => void;
+  updateToothDiagnosis: (
+    toothNumber: number,
+    diagnosis?: ToothDiagnosis,
   ) => void;
   addSurfaceTreatment: (
     toothNumber: number,
@@ -79,6 +94,10 @@ interface OdontogramState extends OdontogramSnapshot {
   addClinicalEvent: (
     event: Omit<ClinicalEvent, "id" | "createdAt" | "updatedAt">,
   ) => string;
+  persistPerformedProcedures: (
+    toothNumber: number,
+    performed: PerformedProcedure[],
+  ) => void;
   updateClinicalEvent: (
     eventId: string,
     updates: Partial<ClinicalEvent>,
@@ -111,6 +130,229 @@ let activeStoreApi: OdontogramStoreApi | null = null;
 
 const nowIso = () => new Date().toISOString();
 
+const getDefaultVitalityTests = (): VitalityTest[] => [
+  { type: "frio", result: "no-realizado" },
+  { type: "calor", result: "no-realizado" },
+  { type: "ept", result: "no-realizado" },
+  { type: "percusion", result: "no-realizado" },
+  { type: "palpacion", result: "no-realizado" },
+];
+
+const createEmptyDiagnosisRecord = (toothNumber: number): ToothDiagnosis => ({
+  toothNumber,
+  surfaceDiagnoses: [],
+  vitalityTests: getDefaultVitalityTests(),
+  diagnosedDate: nowIso(),
+  updatedAt: nowIso(),
+  completionState: "draft",
+});
+
+const dateToEpoch = (isoDate?: string): number => {
+  if (!isoDate) return 0;
+  const date = new Date(isoDate);
+  const epoch = date.getTime();
+  return Number.isNaN(epoch) ? 0 : epoch;
+};
+
+const pickPreferredEvent = (
+  events: ClinicalEvent[],
+  preferredVisitId?: string,
+): ClinicalEvent | undefined => {
+  if (events.length === 0) return undefined;
+
+  const sorted = [...events].sort((a, b) => {
+    const aVisitScore =
+      preferredVisitId && a.visitId === preferredVisitId ? 1 : 0;
+    const bVisitScore =
+      preferredVisitId && b.visitId === preferredVisitId ? 1 : 0;
+
+    if (aVisitScore !== bVisitScore) {
+      return bVisitScore - aVisitScore;
+    }
+
+    return (
+      dateToEpoch(b.updatedAt || b.createdAt) -
+      dateToEpoch(a.updatedAt || a.createdAt)
+    );
+  });
+
+  return sorted[0];
+};
+
+const syncToothDiagnosisInTeeth = ({
+  teeth,
+  clinicalEvents,
+  toothNumber,
+  preferredVisitId,
+}: {
+  teeth: Tooth[];
+  clinicalEvents: ClinicalEvent[];
+  toothNumber: number;
+  preferredVisitId?: string;
+}): Tooth[] =>
+  teeth.map((tooth) => {
+    if (tooth.number !== toothNumber) {
+      return tooth;
+    }
+
+    const toothEvents = clinicalEvents.filter(
+      (event) => event.toothNumber === toothNumber,
+    );
+
+    return {
+      ...tooth,
+      diagnosis: normalizeToothDiagnosis(
+        tooth.number,
+        tooth.diagnosis,
+        toothEvents,
+        preferredVisitId,
+      ),
+    };
+  });
+
+const normalizeToothDiagnosis = (
+  toothNumber: number,
+  diagnosis?: ToothDiagnosis,
+  toothEvents: ClinicalEvent[] = [],
+  preferredVisitId?: string,
+): ToothDiagnosis | undefined => {
+  const baseDiagnosis = diagnosis
+    ? {
+        ...diagnosis,
+        toothNumber,
+        vitalityTests:
+          diagnosis.vitalityTests?.length > 0
+            ? diagnosis.vitalityTests
+            : getDefaultVitalityTests(),
+        surfaceDiagnoses: diagnosis.surfaceDiagnoses ?? [],
+        evidenceRefs: diagnosis.evidenceRefs ?? [],
+        completionState: diagnosis.completionState ?? "draft",
+        updatedAt: diagnosis.updatedAt ?? diagnosis.diagnosedDate ?? nowIso(),
+      }
+    : undefined;
+
+  const surfaceDiagnoses = new Map<
+    string,
+    ToothDiagnosis["surfaceDiagnoses"][0]
+  >();
+
+  baseDiagnosis?.surfaceDiagnoses.forEach((surfaceDiagnosis) => {
+    surfaceDiagnoses.set(surfaceDiagnosis.surface, surfaceDiagnosis);
+  });
+
+  const diagnosisSurfaceEvents = toothEvents.filter(
+    (event) =>
+      event.type === "diagnosis" &&
+      event.surfaces.length > 0 &&
+      event.status !== "canceled",
+  );
+
+  const eventsBySurface = new Map<ToothSurface, ClinicalEvent[]>();
+  diagnosisSurfaceEvents.forEach((event) => {
+    event.surfaces.forEach((surface) => {
+      const current = eventsBySurface.get(surface) ?? [];
+      eventsBySurface.set(surface, [...current, event]);
+    });
+  });
+
+  eventsBySurface.forEach((events, surface) => {
+    const event = pickPreferredEvent(events, preferredVisitId);
+    if (!event) return;
+
+    const payloadDiagnosis = event.diagnosisPayload?.surfaceDiagnosis;
+    surfaceDiagnoses.set(surface, {
+      surface,
+      surfaceRef: payloadDiagnosis?.surfaceRef,
+      icdasScore: event.icdasScore ?? 0,
+      cariesType: payloadDiagnosis?.cariesType,
+      cariesActivity: payloadDiagnosis?.cariesActivity,
+      nonCariousLesions: payloadDiagnosis?.nonCariousLesions ?? [],
+      findingKind: payloadDiagnosis?.findingKind,
+      visualImpact:
+        payloadDiagnosis?.visualImpact ??
+        (event.visualState?.affectsOdontogram ? "surface" : "none"),
+      notes: payloadDiagnosis?.notes ?? event.notes,
+      lastUpdate: event.updatedAt,
+    });
+  });
+
+  const toothDiagnosisEvent = pickPreferredEvent(
+    toothEvents.filter(
+      (event) =>
+        event.type === "diagnosis" &&
+        event.level === "tooth" &&
+        event.diagnosisKind === "tooth-diagnostic" &&
+        event.status !== "canceled",
+    ),
+    preferredVisitId,
+  );
+
+  const legacyEndoEvent = pickPreferredEvent(
+    toothEvents.filter((event) => event.type === "endo"),
+    preferredVisitId,
+  );
+  const legacyPulpalStatus =
+    legacyEndoEvent?.notes?.match(/Estado pulpar: (\w+)/)?.[1];
+
+  const result =
+    baseDiagnosis ??
+    (surfaceDiagnoses.size > 0 || toothDiagnosisEvent || legacyEndoEvent
+      ? createEmptyDiagnosisRecord(toothNumber)
+      : undefined);
+
+  if (!result) {
+    return undefined;
+  }
+
+  result.surfaceDiagnoses = Array.from(surfaceDiagnoses.values());
+  result.pulpalStatus =
+    toothDiagnosisEvent?.diagnosisPayload?.pulpalStatus ??
+    result.pulpalStatus ??
+    (legacyPulpalStatus as ToothDiagnosis["pulpalStatus"] | undefined);
+  result.periapicalStatus =
+    toothDiagnosisEvent?.diagnosisPayload?.periapicalStatus ??
+    result.periapicalStatus;
+  result.vitalityTests = toothDiagnosisEvent?.diagnosisPayload?.vitalityTests
+    ?.length
+    ? toothDiagnosisEvent.diagnosisPayload.vitalityTests
+    : result.vitalityTests;
+  result.painScore =
+    toothDiagnosisEvent?.diagnosisPayload?.painScore ?? result.painScore;
+  result.generalNotes =
+    toothDiagnosisEvent?.diagnosisPayload?.generalNotes ?? result.generalNotes;
+  result.evidenceRefs =
+    toothDiagnosisEvent?.diagnosisPayload?.evidenceRefs ??
+    result.evidenceRefs ??
+    [];
+  result.updatedAt =
+    toothDiagnosisEvent?.updatedAt ?? result.updatedAt ?? nowIso();
+
+  return result;
+};
+
+const normalizeClinicalEvent = (event: ClinicalEvent): ClinicalEvent => ({
+  ...event,
+  schemaVersion: event.schemaVersion ?? ODONTOGRAM_SCHEMA_VERSION,
+});
+
+const normalizeTooth = (
+  tooth: Tooth,
+  clinicalEvents: ClinicalEvent[],
+): Tooth => {
+  const toothEvents = clinicalEvents.filter(
+    (event) => event.toothNumber === tooth.number,
+  );
+
+  return {
+    ...tooth,
+    diagnosis: normalizeToothDiagnosis(
+      tooth.number,
+      tooth.diagnosis,
+      toothEvents,
+    ),
+  };
+};
+
 const initializeTeeth = (): Tooth[] => {
   const allTeeth: Tooth[] = [];
 
@@ -137,6 +379,7 @@ export const createEmptySnapshot = ({
   patientId: string;
   clinicId?: string;
 }): OdontogramSnapshot => ({
+  schemaVersion: ODONTOGRAM_SCHEMA_VERSION,
   teeth: initializeTeeth(),
   clinicalEvents: [],
   treatmentPlans: [],
@@ -159,12 +402,22 @@ const normalizeSnapshot = (
     return fallback;
   }
 
+  const normalizedEvents = (snapshot.clinicalEvents ?? []).map(
+    normalizeClinicalEvent,
+  );
+  const normalizedTeethSource = snapshot.teeth?.length
+    ? snapshot.teeth
+    : fallback.teeth;
+
   return {
-    teeth: snapshot.teeth?.length ? snapshot.teeth : fallback.teeth,
-    clinicalEvents: snapshot.clinicalEvents ?? [],
+    schemaVersion: snapshot.schemaVersion ?? ODONTOGRAM_SCHEMA_VERSION,
+    teeth: normalizedTeethSource.map((tooth) =>
+      normalizeTooth(tooth, normalizedEvents),
+    ),
+    clinicalEvents: normalizedEvents,
     treatmentPlans: snapshot.treatmentPlans ?? [],
     metadata: {
-      version: 1,
+      version: snapshot.metadata?.version ?? 1,
       patientId,
       clinicId,
       authorId: snapshot.metadata?.authorId,
@@ -175,6 +428,7 @@ const normalizeSnapshot = (
 };
 
 const buildSnapshot = (state: OdontogramState): OdontogramSnapshot => ({
+  schemaVersion: state.schemaVersion,
   teeth: state.teeth,
   clinicalEvents: state.clinicalEvents,
   treatmentPlans: state.treatmentPlans,
@@ -210,6 +464,79 @@ const createOdontogramStore = ({
     },
     setReadOnly: (nextReadOnly) => {
       set({ readOnly: nextReadOnly });
+    },
+    updateToothDiagnosis: (toothNumber, diagnosis) => {
+      if (get().readOnly) return;
+
+      set((state) => ({
+        teeth: state.teeth.map((tooth) =>
+          tooth.number === toothNumber
+            ? {
+                ...tooth,
+                diagnosis,
+                history: [
+                  ...tooth.history,
+                  {
+                    id: crypto.randomUUID(),
+                    date: nowIso(),
+                    action: "Diagnóstico de pieza actualizado",
+                    description: diagnosis
+                      ? "Se actualizó el diagnóstico estructurado del diente"
+                      : "Se eliminó el diagnóstico estructurado del diente",
+                  },
+                ],
+              }
+            : tooth,
+        ),
+      }));
+
+      const toothEvent = get()
+        .clinicalEvents.filter(
+          (event) =>
+            event.type === "diagnosis" &&
+            event.level === "tooth" &&
+            event.toothNumber === toothNumber &&
+            event.diagnosisKind === "tooth-diagnostic",
+        )
+        .sort((a, b) => dateToEpoch(b.updatedAt) - dateToEpoch(a.updatedAt))[0];
+
+      if (!diagnosis) {
+        if (toothEvent) {
+          get().deleteClinicalEvent(toothEvent.id);
+        }
+        return;
+      }
+
+      const toothDiagnosisPayload = {
+        schemaVersion: ODONTOGRAM_SCHEMA_VERSION,
+        diagnosisKind: "tooth-diagnostic" as const,
+        diagnosisPayload: {
+          pulpalStatus: diagnosis.pulpalStatus,
+          periapicalStatus: diagnosis.periapicalStatus,
+          vitalityTests: diagnosis.vitalityTests,
+          painScore: diagnosis.painScore,
+          generalNotes: diagnosis.generalNotes,
+          evidenceRefs: diagnosis.evidenceRefs,
+        },
+        visualState: {
+          affectsOdontogram: false,
+          priorityKey: "tooth-diagnostic",
+        },
+        notes: diagnosis.generalNotes,
+        status: "open" as const,
+      };
+
+      if (toothEvent) {
+        get().updateClinicalEvent(toothEvent.id, toothDiagnosisPayload);
+      } else {
+        get().addClinicalEvent({
+          toothNumber,
+          surfaces: [],
+          level: "tooth",
+          type: "diagnosis",
+          ...toothDiagnosisPayload,
+        });
+      }
     },
     updateToothGlobalStatus: (toothNumber, status) => {
       if (get().readOnly) return;
@@ -434,40 +761,195 @@ const createOdontogramStore = ({
 
       const newEvent: ClinicalEvent = {
         ...event,
+        schemaVersion: event.schemaVersion ?? ODONTOGRAM_SCHEMA_VERSION,
         id: crypto.randomUUID(),
         createdAt: nowIso(),
         updatedAt: nowIso(),
       };
 
-      set((state) => ({
-        clinicalEvents: [...state.clinicalEvents, newEvent],
-      }));
+      set((state) => {
+        const updatedEvents = [...state.clinicalEvents, newEvent];
+
+        return {
+          clinicalEvents: updatedEvents,
+          teeth: syncToothDiagnosisInTeeth({
+            teeth: state.teeth,
+            clinicalEvents: updatedEvents,
+            toothNumber: newEvent.toothNumber,
+            preferredVisitId: state.metadata.visitId,
+          }),
+        };
+      });
 
       return newEvent.id;
+    },
+    persistPerformedProcedures: (toothNumber, performed) => {
+      if (get().readOnly) return;
+
+      set((state) => {
+        const currentToothEvents = state.clinicalEvents.filter(
+          (event) => event.toothNumber === toothNumber,
+        );
+
+        const performedEvents = currentToothEvents.filter(
+          (event) => event.type === "performed",
+        );
+
+        const nonPerformedEvents = state.clinicalEvents.filter(
+          (event) =>
+            !(event.toothNumber === toothNumber && event.type === "performed"),
+        );
+
+        const existingPerformedById = new Map(
+          performedEvents.map((event) => [event.id, event]),
+        );
+
+        const now = nowIso();
+
+        const nextPerformedEvents: ClinicalEvent[] = performed.map((item) => {
+          const existingEvent = existingPerformedById.get(item.id);
+
+          return {
+            ...(existingEvent ?? {
+              id: item.id,
+              createdAt: now,
+            }),
+            schemaVersion: ODONTOGRAM_SCHEMA_VERSION,
+            visitId: item.visitId ?? state.metadata.visitId,
+            toothNumber,
+            surfaces: item.surfaces,
+            level:
+              item.surfaces.length > 0
+                ? ("surface" as const)
+                : ("tooth" as const),
+            type: "performed",
+            status:
+              item.status === "in_progress"
+                ? "in_progress"
+                : item.status === "canceled"
+                  ? "canceled"
+                  : "done",
+            procedureId: item.procedureId,
+            procedureName:
+              item.adHocName ||
+              existingEvent?.procedureName ||
+              (item.procedureId
+                ? `Procedimiento ${item.procedureId}`
+                : "Procedimiento"),
+            durationMin: item.durationMin,
+            attachments: item.attachments,
+            notes: item.notes,
+            authorId: item.operatorId,
+            visualState: {
+              affectsOdontogram: true,
+              priorityKey: "completed",
+              symbolKey: "restoration",
+            },
+            updatedAt: now,
+          } as ClinicalEvent;
+        });
+
+        const donePlanIds = new Set(
+          performed
+            .filter((item) => item.status === "done" && item.fromPlanId)
+            .map((item) => item.fromPlanId as string),
+        );
+
+        const updatedNonPerformedEvents = nonPerformedEvents.map((event) => {
+          if (event.type === "plan" && donePlanIds.has(event.id)) {
+            return {
+              ...event,
+              status: "done" as const,
+              updatedAt: now,
+            };
+          }
+
+          return event;
+        });
+
+        const updatedEvents = [
+          ...updatedNonPerformedEvents,
+          ...nextPerformedEvents,
+        ];
+
+        return {
+          clinicalEvents: updatedEvents,
+          teeth: syncToothDiagnosisInTeeth({
+            teeth: state.teeth,
+            clinicalEvents: updatedEvents,
+            toothNumber,
+            preferredVisitId: state.metadata.visitId,
+          }),
+        };
+      });
     },
     updateClinicalEvent: (eventId, updates) => {
       if (get().readOnly) return;
 
-      set((state) => ({
-        clinicalEvents: state.clinicalEvents.map((event) =>
-          event.id === eventId
-            ? {
-                ...event,
-                ...updates,
-                updatedAt: nowIso(),
-              }
-            : event,
-        ),
-      }));
+      set((state) => {
+        const currentEvent = state.clinicalEvents.find(
+          (event) => event.id === eventId,
+        );
+        if (!currentEvent) {
+          return {} as Partial<OdontogramState>;
+        }
+
+        const nextEvent: ClinicalEvent = {
+          ...currentEvent,
+          ...updates,
+          updatedAt: nowIso(),
+        };
+
+        const updatedEvents = state.clinicalEvents.map((event) =>
+          event.id === eventId ? nextEvent : event,
+        );
+
+        const targetToothNumbers = new Set<number>([
+          currentEvent.toothNumber,
+          nextEvent.toothNumber,
+        ]);
+
+        let nextTeeth = state.teeth;
+        targetToothNumbers.forEach((toothNumber) => {
+          nextTeeth = syncToothDiagnosisInTeeth({
+            teeth: nextTeeth,
+            clinicalEvents: updatedEvents,
+            toothNumber,
+            preferredVisitId: state.metadata.visitId,
+          });
+        });
+
+        return {
+          clinicalEvents: updatedEvents,
+          teeth: nextTeeth,
+        };
+      });
     },
     deleteClinicalEvent: (eventId) => {
       if (get().readOnly) return;
 
-      set((state) => ({
-        clinicalEvents: state.clinicalEvents.filter(
+      set((state) => {
+        const currentEvent = state.clinicalEvents.find(
+          (event) => event.id === eventId,
+        );
+        if (!currentEvent) {
+          return {} as Partial<OdontogramState>;
+        }
+
+        const updatedEvents = state.clinicalEvents.filter(
           (event) => event.id !== eventId,
-        ),
-      }));
+        );
+
+        return {
+          clinicalEvents: updatedEvents,
+          teeth: syncToothDiagnosisInTeeth({
+            teeth: state.teeth,
+            clinicalEvents: updatedEvents,
+            toothNumber: currentEvent.toothNumber,
+            preferredVisitId: state.metadata.visitId,
+          }),
+        };
+      });
     },
     createTreatmentPlan: (plan) => {
       if (get().readOnly) return;
