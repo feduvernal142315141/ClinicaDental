@@ -85,6 +85,12 @@ export interface ClinicalEvent {
   category?: ProcedureCategory;
   durationMin?: number;
   cost?: number;
+  /** Service catalog reference for pricing and traceability */
+  serviceId?: string;
+  serviceCode?: string;
+  serviceName?: string;
+  /** Cost snapshot from the service catalog at event creation time */
+  serviceCost?: number;
   createdAt: string;
   updatedAt: string;
   authorId?: string;

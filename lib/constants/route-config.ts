@@ -13,6 +13,7 @@ import {
   UserCog,
   Sliders,
   Link,
+  Briefcase,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -107,6 +108,11 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
   integrations: {
     label: "Integraciones",
     icon: Link,
+    parent: "settings",
+  },
+  services: {
+    label: "Servicios",
+    icon: Briefcase,
     parent: "settings",
   },
 

@@ -16,6 +16,7 @@ export interface ActionItem {
   label: string;
   icon?: React.ReactNode;
   danger?: boolean;
+  success?: boolean;
   disabled?: boolean;
   onClick: () => void;
 }
@@ -129,6 +130,7 @@ export function ActionButtons({
     icon: action.icon,
     danger: action.danger,
     disabled: action.disabled,
+    style: action.success ? { color: "#52c41a" } : undefined,
     onClick: () => action.onClick(),
   }));
 

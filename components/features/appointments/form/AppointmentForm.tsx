@@ -35,7 +35,7 @@ const TYPE_OPTIONS = [
   { value: "consultation", label: "Consulta" },
   { value: "control", label: "Control" },
   { value: "emergency", label: "Emergencia" },
-  { value: "follow-up", label: "Seguimiento" },
+  { value: "follow_up", label: "Seguimiento" },
   { value: "routine", label: "Rutina" },
 ];
 
@@ -77,6 +77,7 @@ export function AppointmentForm({
     availabilityLoading,
     patientsOptions,
     doctorsOptions,
+    servicesOptions,
     availableTimes,
     disabledDate,
     handleSubmit,
@@ -303,6 +304,23 @@ export function AppointmentForm({
                   placeholder="Seleccione tipo"
                   size="large"
                   options={TYPE_OPTIONS}
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={12}>
+              <Form.Item name="serviceId" label="Servicio">
+                <Select
+                  placeholder="Seleccione servicio (opcional)"
+                  size="large"
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  loading={catalogsLoading}
+                  options={servicesOptions.map((option) => ({
+                    value: option.id,
+                    label: option.label,
+                  }))}
                 />
               </Form.Item>
             </Col>

@@ -99,6 +99,12 @@ export const PERMISSIONS = {
     description: "Gestión de integraciones",
     category: PERMISSION_CATEGORIES.SETTINGS,
   },
+  SERVICE: {
+    id: "service",
+    name: "Servicios",
+    description: "Gestión de servicios clínicos",
+    category: PERMISSION_CATEGORIES.SETTINGS,
+  },
 } as const;
 
 /**

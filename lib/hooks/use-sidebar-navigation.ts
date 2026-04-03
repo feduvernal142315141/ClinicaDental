@@ -13,6 +13,7 @@ import {
   Bell,
   Shield,
   Link,
+  Briefcase,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -47,6 +48,7 @@ export function useSidebarNavigation(userRole?: string) {
       { path: "/settings/roles", label: "Roles", icon: Shield },
       { path: "/settings/notifications", label: "Notificaciones", icon: Bell },
       { path: "/settings/integrations", label: "Integraciones", icon: Link },
+      { path: "/settings/services", label: "Servicios", icon: Briefcase },
     ];
 
     switch (normalizedRole as UserRole) {

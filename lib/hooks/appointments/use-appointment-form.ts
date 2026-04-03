@@ -5,6 +5,7 @@ import { useAppointments } from "@/lib/hooks/appointments/useAppointments";
 import { usePatients } from "@/lib/hooks/patients";
 import { patientsService } from "@/lib/services/patients";
 import { doctorsService } from "@/lib/services/doctors";
+import { servicesService } from "@/lib/services/services";
 import { buildDisabledDate } from "@/lib/utils/appointment-utils";
 import type {
   Appointment,
@@ -24,6 +25,7 @@ type AppointmentFormValues = {
   type: AppointmentType;
   reason?: string;
   notes?: string;
+  serviceId?: string;
 };
 
 export interface SelectOption {
@@ -83,6 +85,7 @@ export function useAppointmentForm({
 
   const [patientsOptions, setPatientsOptions] = useState<SelectOption[]>([]);
   const [doctorsOptions, setDoctorsOptions] = useState<SelectOption[]>([]);
+  const [servicesOptions, setServicesOptions] = useState<SelectOption[]>([]);
   const [catalogsLoading, setCatalogsLoading] = useState(false);
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
@@ -102,10 +105,12 @@ export function useAppointmentForm({
   const loadCatalogs = useCallback(async () => {
     setCatalogsLoading(true);
     try {
-      const [patientsResponse, doctorsResponse] = await Promise.all([
-        patientsService.getPatients({ page: 0, pageSize: 100 }),
-        doctorsService.getDoctors({ page: 0, pageSize: 100 }),
-      ]);
+      const [patientsResponse, doctorsResponse, servicesResponse] =
+        await Promise.all([
+          patientsService.getPatients({ page: 0, pageSize: 100 }),
+          doctorsService.getDoctors({ page: 0, pageSize: 100 }),
+          servicesService.getServices({ page: 0, pageSize: 200 }),
+        ]);
 
       const patientItems = (patientsResponse.entities ?? []).map((item) => ({
         id: item.id,
@@ -117,11 +122,20 @@ export function useAppointmentForm({
         label: `${item.name}${item.specialty ? ` - ${item.specialty}` : ""}`,
       }));
 
+      const serviceItems = (servicesResponse.entities ?? [])
+        .filter((item) => item.active)
+        .map((item) => ({
+          id: item.id,
+          label: `${item.code} - ${item.name}`,
+        }));
+
       setPatientsOptions(patientItems);
       setDoctorsOptions(doctorItems);
+      setServicesOptions(serviceItems);
     } catch {
       setPatientsOptions([]);
       setDoctorsOptions([]);
+      setServicesOptions([]);
     } finally {
       setCatalogsLoading(false);
     }
@@ -145,6 +159,7 @@ export function useAppointmentForm({
       type: appointment.type,
       reason: appointment.reason,
       notes: appointment.notes,
+      serviceId: appointment.serviceId,
     });
   }, [isEdit, appointmentId, initialData, getAppointmentById, form]);
 
@@ -245,6 +260,7 @@ export function useAppointmentForm({
         type: values.type,
         reason: values.reason,
         notes: values.notes,
+        ...(values.serviceId ? { serviceId: values.serviceId } : {}),
       };
 
       if (isEdit && appointmentId) {
@@ -332,6 +348,7 @@ export function useAppointmentForm({
     availabilityLoading,
     patientsOptions,
     doctorsOptions,
+    servicesOptions,
     availableTimes,
     disabledDate,
     handleSubmit,

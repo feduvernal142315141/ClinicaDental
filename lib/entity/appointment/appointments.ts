@@ -14,7 +14,7 @@ export type AppointmentType =
   | "consultation"
   | "control"
   | "emergency"
-  | "follow-up"
+  | "follow_up"
   | "routine";
 
 /**
@@ -35,6 +35,12 @@ export interface Appointment {
   doctorId?: string;
   doctorName?: string;
   clinicId?: string;
+
+  /** Service snapshot (populated by backend when serviceId was provided at creation) */
+  serviceId?: string;
+  serviceCode?: string;
+  serviceName?: string;
+  serviceCost?: number;
 
   // Backward compatibility with legacy payloads
   patient_id?: string;
@@ -57,6 +63,8 @@ export interface CreateAppointmentRequest {
   status?: AppointmentStatus;
   notes?: string;
   reason?: string;
+  /** Optional: links the appointment to a clinic service */
+  serviceId?: string;
 }
 
 /**

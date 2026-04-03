@@ -127,6 +127,7 @@ export const PERMISSION_TYPES = {
   GENERAL_OPTION: "general_option",
   NOTIFICATION: "notification",
   INTEGRATION: "integration",
+  SERVICE: "service",
 } as const;
 
 export type PermissionType =

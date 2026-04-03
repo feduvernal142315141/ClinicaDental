@@ -62,7 +62,7 @@ const TYPE_LABELS: Record<string, string> = {
   consultation: "Consulta",
   control: "Control",
   emergency: "Emergencia",
-  "follow-up": "Seguimiento",
+  follow_up: "Seguimiento",
   routine: "Rutina",
 };
 

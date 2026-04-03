@@ -1,0 +1,193 @@
+import {
+  serviceGet,
+  servicePost,
+  servicePut,
+  servicePatch,
+} from "../baseService";
+import type {
+  Service,
+  ServiceListItem,
+  CreateServiceRequest,
+  UpdateServiceRequest,
+  ServicesQueryParams,
+  PaginatedServicesResponse,
+} from "@/lib/entity/services";
+
+/**
+ * ServicesService
+ *
+ * Service for managing clinic service catalog (CRUD)
+ * Base endpoint: /api/v1/services
+ */
+const endpoint = "/services";
+
+/**
+ * Build query string from params
+ */
+function buildQueryString(params?: ServicesQueryParams): string {
+  if (!params) return "";
+
+  const queryParams = new URLSearchParams();
+
+  if (params.page !== undefined)
+    queryParams.append("page", params.page.toString());
+  if (params.pageSize !== undefined)
+    queryParams.append("pageSize", params.pageSize.toString());
+
+  if (params.filters && params.filters.length > 0) {
+    params.filters.forEach((filter) => {
+      queryParams.append("filters", filter);
+    });
+  }
+
+  if (params.orders && params.orders.length > 0) {
+    params.orders.forEach((order) => {
+      queryParams.append("orders", order);
+    });
+  }
+
+  return queryParams.toString();
+}
+
+/**
+ * Get paginated list of services
+ * GET /api/v1/services?page=0&pageSize=10&filters=...&orders=...
+ */
+async function getServices(
+  params?: ServicesQueryParams,
+): Promise<PaginatedServicesResponse> {
+  const queryString = buildQueryString(params);
+  const url = `${endpoint}${queryString ? `?${queryString}` : ""}`;
+
+  const response = await serviceGet<PaginatedServicesResponse>(url);
+  if (response?.data) {
+    return response.data;
+  }
+  throw new Error("Error al cargar servicios");
+}
+
+/**
+ * Get service by ID
+ * GET /api/v1/services/:id
+ */
+async function getServiceById(id: string): Promise<Service> {
+  const response = await serviceGet<Service>(`${endpoint}/${id}`);
+  if (response?.data) {
+    return response.data;
+  }
+  throw new Error("Error al cargar servicio");
+}
+
+/**
+ * Create new service
+ * POST /api/v1/services
+ */
+async function createService(data: CreateServiceRequest): Promise<boolean> {
+  const response = await servicePost<CreateServiceRequest, boolean>(
+    endpoint,
+    data,
+  );
+
+  if (response?.status >= 200 && response?.status < 300) {
+    return true;
+  }
+
+  const errorMessage =
+    (response?.data as any)?.message ||
+    (response?.data as any)?.details ||
+    "Error al crear servicio";
+  throw new Error(errorMessage);
+}
+
+/**
+ * Update service
+ * PUT /api/v1/services (id goes in body, not URL)
+ */
+async function updateService(
+  id: string,
+  data: Omit<UpdateServiceRequest, "id">,
+): Promise<boolean> {
+  const response = await servicePut<UpdateServiceRequest, boolean>(endpoint, {
+    ...data,
+    id,
+  });
+
+  if (response?.status >= 200 && response?.status < 300) {
+    return true;
+  }
+
+  const errorMessage =
+    (response?.data as any)?.message ||
+    (response?.data as any)?.details ||
+    "Error al actualizar servicio";
+  throw new Error(errorMessage);
+}
+
+/**
+ * Toggle service status (activate/inactivate)
+ * PATCH /api/v1/services/:id/toggle-status
+ */
+async function toggleServiceStatus(id: string): Promise<boolean> {
+  const response = await servicePatch(`${endpoint}/${id}/toggle-status`);
+
+  if (response?.status >= 200 && response?.status < 300) {
+    return true;
+  }
+
+  const errorMessage =
+    (response?.data as any)?.message ||
+    (response?.data as any)?.details ||
+    "Error al cambiar estado del servicio";
+  throw new Error(errorMessage);
+}
+
+/**
+ * Get active services enabled for odontogram (for selectors).
+ * Uses backend filter format: field__OP__value
+ */
+async function getActiveOdontogramServices(): Promise<ServiceListItem[]> {
+  const filters = [
+    buildFilter("active", "EQ", true),
+    buildFilter("odontogramEnabled", "EQ", true),
+  ];
+  const response = await getServices({ filters });
+  return response.entities;
+}
+
+/**
+ * Helper: Build filter string (services backend format)
+ * Example: buildFilter('name', 'CONTAINS', 'Limpieza') => 'name__CONTAINS__Limpieza'
+ */
+export function buildFilter(
+  field: string,
+  operator: string,
+  value: string | boolean | Date,
+): string {
+  let formattedValue = String(value);
+
+  if (value instanceof Date) {
+    formattedValue = value.toISOString().split("T")[0];
+  }
+
+  return `${field}__${operator}__${formattedValue}`;
+}
+
+/**
+ * Helper: Build order string
+ * Example: buildOrder('name', 'asc') => 'name,asc'
+ */
+export function buildOrder(field: string, direction: "asc" | "desc"): string {
+  return `${field},${direction}`;
+}
+
+/**
+ * Exported service object
+ */
+export const servicesService = {
+  getServices,
+  getServiceById,
+  createService,
+  updateService,
+  toggleServiceStatus,
+  getActiveOdontogramServices,
+};
