@@ -9,3 +9,6 @@ export { AppointmentDetail } from "./detail/AppointmentDetail";
 export { DoctorAppointmentsTimeline } from "./timeline/DoctorAppointmentsTimeline";
 export { getAppointmentsColumns } from "./columns/appointments-table.config";
 export { getAvailabilityColumns } from "./columns/appointments-table.config";
+
+// Scheduler (v2)
+export * from "./scheduler";
