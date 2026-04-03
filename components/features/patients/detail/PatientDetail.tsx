@@ -49,6 +49,7 @@ import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { clearOdontogram } from "@/lib/odontogram";
 import { PatientOdontogramPanel } from "./PatientOdontogramPanel";
+import { ClinicalHistoryPanel } from "@/components/features/clinical-history";
 
 interface PatientDetailProps {
   patientId: string;
@@ -69,6 +70,10 @@ export function PatientDetail({
   const { getPatientById } = usePatients();
   const { can, isAdmin } = usePermission();
   const canEditPatient = isAdmin || can("patients", PermissionAction.EDIT);
+  const canAccessClinicalHistory =
+    isAdmin ||
+    can("clinical_history", PermissionAction.CREATE) ||
+    can("clinical_history", PermissionAction.EDIT);
 
   const handleClearOdontogram = () => {
     Modal.confirm({
@@ -488,6 +493,22 @@ export function PatientDetail({
             label: "Odontograma",
             children: <PatientOdontogramPanel patient={patient} />,
           },
+          ...(canAccessClinicalHistory
+            ? [
+                {
+                  key: "clinical-history",
+                  label: "Historia clínica",
+                  children: (
+                    <ClinicalHistoryPanel
+                      patientId={patientId}
+                      onNavigateToOdontogram={() =>
+                        setActivePatientTab("odontogram")
+                      }
+                    />
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
     </div>

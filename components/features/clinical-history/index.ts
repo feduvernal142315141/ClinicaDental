@@ -1,0 +1,1 @@
+export { ClinicalHistoryPanel } from "./ClinicalHistoryPanel";
