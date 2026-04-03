@@ -28,6 +28,7 @@ export const SYSTEM_ROLE_NAMES = {
 export const PERMISSION_CATEGORIES = {
   APPOINTMENTS: "appointments",
   PATIENTS: "patients",
+  CLINICAL: "clinical",
   DOCTORS: "doctors",
   SETTINGS: "settings",
   REPORTS: "reports",
@@ -104,6 +105,12 @@ export const PERMISSIONS = {
     name: "Servicios",
     description: "Gestión de servicios clínicos",
     category: PERMISSION_CATEGORIES.SETTINGS,
+  },
+  CLINICAL_HISTORY: {
+    id: "clinical_history",
+    name: "Historia Clínica",
+    description: "Gestión de historia clínica",
+    category: PERMISSION_CATEGORIES.CLINICAL,
   },
 } as const;
 
