@@ -182,7 +182,7 @@ export function AppointmentForm({
             <Alert
               type="info"
               showIcon
-              message="Cargando información para el formulario..."
+              title="Cargando información para el formulario..."
               className="mb-4"
             />
           )}
