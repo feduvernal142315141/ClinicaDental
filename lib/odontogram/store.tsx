@@ -330,10 +330,89 @@ const normalizeToothDiagnosis = (
   return result;
 };
 
-const normalizeClinicalEvent = (event: ClinicalEvent): ClinicalEvent => ({
-  ...event,
-  schemaVersion: event.schemaVersion ?? ODONTOGRAM_SCHEMA_VERSION,
-});
+const normalizeClinicalEvent = (event: ClinicalEvent): ClinicalEvent => {
+  const normalizedEvent: ClinicalEvent = {
+    ...event,
+    schemaVersion: event.schemaVersion ?? ODONTOGRAM_SCHEMA_VERSION,
+  };
+
+  if (normalizedEvent.visualState) {
+    return normalizedEvent;
+  }
+
+  const statusFromNotes = normalizedEvent.notes
+    ?.replace("Estado global:", "")
+    .trim();
+
+  if (
+    normalizedEvent.type === "diagnosis" &&
+    normalizedEvent.level === "tooth" &&
+    statusFromNotes
+  ) {
+    if (statusFromNotes === "healthy") {
+      return {
+        ...normalizedEvent,
+        visualState: {
+          affectsOdontogram: false,
+          priorityKey: "healthy",
+          colorKey: "healthy",
+        },
+      };
+    }
+
+    if (statusFromNotes === "crown") {
+      return {
+        ...normalizedEvent,
+        visualState: {
+          affectsOdontogram: true,
+          priorityKey: "crown",
+          colorKey: "crown",
+          symbolKey: "crown",
+        },
+      };
+    }
+
+    if (statusFromNotes === "absent") {
+      return {
+        ...normalizedEvent,
+        visualState: {
+          affectsOdontogram: true,
+          priorityKey: "absent",
+          colorKey: "absent",
+          symbolKey: "extraction",
+        },
+      };
+    }
+
+    if (statusFromNotes === "implant") {
+      return {
+        ...normalizedEvent,
+        visualState: {
+          affectsOdontogram: true,
+          priorityKey: "implant",
+          colorKey: "implant",
+          symbolKey: "implant",
+        },
+      };
+    }
+  }
+
+  if (
+    normalizedEvent.type === "plan" &&
+    normalizedEvent.level === "tooth" &&
+    normalizedEvent.surfaces.length === 0
+  ) {
+    return {
+      ...normalizedEvent,
+      visualState: {
+        affectsOdontogram: false,
+        priorityKey: "support-only",
+      },
+    };
+  }
+
+  return normalizedEvent;
+};
 
 const normalizeTooth = (
   tooth: Tooth,
@@ -541,25 +620,48 @@ const createOdontogramStore = ({
     updateToothGlobalStatus: (toothNumber, status) => {
       if (get().readOnly) return;
 
-      set((state) => ({
-        teeth: state.teeth.map((tooth) =>
-          tooth.number === toothNumber
-            ? {
-                ...tooth,
-                globalStatus: status,
-                history: [
-                  ...tooth.history,
-                  {
-                    id: crypto.randomUUID(),
-                    date: nowIso(),
-                    action: "Estado Global Actualizado",
-                    description: `Estado cambiado a: ${status}`,
-                  },
-                ],
-              }
-            : tooth,
-        ),
-      }));
+      const currentTooth = get().getTooth(toothNumber);
+      const previousStatus = currentTooth?.globalStatus;
+
+      const legacyStatusEvents = get().clinicalEvents.filter(
+        (event) =>
+          event.toothNumber === toothNumber &&
+          event.level === "tooth" &&
+          (event.type === "ausente" ||
+            event.type === "implante" ||
+            (event.type === "diagnosis" &&
+              event.notes?.startsWith("Estado global:"))),
+      );
+
+      legacyStatusEvents.forEach((event) => {
+        get().deleteClinicalEvent(event.id);
+      });
+
+      if (previousStatus !== status) {
+        set((state) => ({
+          teeth: state.teeth.map((tooth) =>
+            tooth.number === toothNumber
+              ? {
+                  ...tooth,
+                  globalStatus: status,
+                  history: [
+                    ...tooth.history,
+                    {
+                      id: crypto.randomUUID(),
+                      date: nowIso(),
+                      action: "Estado Global Actualizado",
+                      description: `Estado cambiado a: ${status}`,
+                    },
+                  ],
+                }
+              : tooth,
+          ),
+        }));
+      }
+
+      if (status === "healthy") {
+        return;
+      }
 
       const eventType: ClinicalEventType =
         status === "absent"
@@ -577,6 +679,33 @@ const createOdontogramStore = ({
         status: "observation",
         authorId: get().metadata.authorId,
         notes: `Estado global: ${status}`,
+        visualState:
+          status === "crown"
+            ? {
+                affectsOdontogram: true,
+                priorityKey: "crown",
+                colorKey: "crown",
+                symbolKey: "crown",
+              }
+            : status === "absent"
+              ? {
+                  affectsOdontogram: true,
+                  priorityKey: "absent",
+                  colorKey: "absent",
+                  symbolKey: "extraction",
+                }
+              : status === "implant"
+                ? {
+                    affectsOdontogram: true,
+                    priorityKey: "implant",
+                    colorKey: "implant",
+                    symbolKey: "implant",
+                  }
+                : {
+                    affectsOdontogram: false,
+                    priorityKey: "healthy",
+                    colorKey: "healthy",
+                  },
       });
     },
     addSurfaceTreatment: (toothNumber, treatment) => {

@@ -26,6 +26,7 @@ export type ClinicalEventType =
 export type ClinicalEventStatus =
   | "open"
   | "plan"
+  | "scheduled"
   | "in_progress"
   | "done"
   | "canceled"
