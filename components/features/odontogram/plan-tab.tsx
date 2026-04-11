@@ -18,6 +18,7 @@ import {
   Star,
   Package,
   CheckCircle2,
+  Play,
 } from "lucide-react";
 import type {
   Tooth,
@@ -40,7 +41,9 @@ import {
   PLAN_STATUS_LABELS,
   GLOBAL_STATUS_LABELS,
   PROCEDURE_TEMPLATES,
+  TreatmentSuggestionService,
 } from "./types";
+import { useOdontogramServices } from "@/lib/odontogram/application/hooks/useOdontogramServices";
 
 interface PlanTabProps {
   tooth: Tooth;
@@ -51,6 +54,7 @@ interface PlanTabProps {
   patientRisk?: PatientRiskLevel;
   onNavigateToTab?: (tab: string) => void;
   onPlansChange?: (plans: ProcedurePlan[]) => void;
+  onSchedulePlans?: (plans: ProcedurePlan[]) => void;
 }
 
 function getToothTypeName(toothNumber: number): string {
@@ -75,7 +79,9 @@ export function PlanTab({
   patientRisk = "medio",
   onNavigateToTab,
   onPlansChange,
+  onSchedulePlans,
 }: PlanTabProps) {
+  const { catalog: serviceCatalog } = useOdontogramServices();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<
     ProcedureCategory | "all"
@@ -98,128 +104,16 @@ export function PlanTab({
 
   // Generar sugerencias inteligentes basadas en diagnósticos
   const suggestions = useMemo(() => {
-    const result: {
-      procedure: ProcedureCatalogItem;
-      reason: string;
-      surfaces: ToothSurface[];
-    }[] = [];
-
-    // Sugerencia por estado pulpar
-    if (pulpalStatus === "irreversible" || pulpalStatus === "necrosis") {
-      const endo = PROCEDURE_CATALOG.find((p) => p.id === "endo-unirradicular");
-      if (endo) {
-        result.push({
-          procedure: endo,
-          reason: `Estado pulpar ${pulpalStatus} detectado`,
-          surfaces: [],
-        });
-      }
-      const nucleo = PROCEDURE_CATALOG.find((p) => p.id === "nucleo");
-      if (nucleo) {
-        result.push({
-          procedure: nucleo,
-          reason: "Recomendado después de endodoncia",
-          surfaces: [],
-        });
-      }
-      const corona = PROCEDURE_CATALOG.find(
-        (p) => p.id === "corona-metal-ceramica",
-      );
-      if (corona) {
-        result.push({
-          procedure: corona,
-          reason: "Protección post-endodoncia",
-          surfaces: [],
-        });
-      }
-    }
-
-    // Sugerencias por ICDAS
-    if (diagnoses) {
-      const diagnosesArray = Array.from(diagnoses.values());
-
-      // ICDAS 1-2: Sellante/Infiltración
-      const incipient = diagnosesArray.filter(
-        (d) => d.icdasScore >= 1 && d.icdasScore <= 2,
-      );
-      if (incipient.length > 0) {
-        const oclusales = incipient.filter((d) => d.surface === "oclusal");
-        if (oclusales.length > 0) {
-          const sellante = PROCEDURE_CATALOG.find((p) => p.id === "sellante");
-          if (sellante) {
-            result.push({
-              procedure: sellante,
-              reason: "Caries incipiente ICDAS 1-2",
-              surfaces: oclusales.map((d) => d.surface),
-            });
-          }
-        }
-
-        const proximales = incipient.filter(
-          (d) => d.surface === "mesial" || d.surface === "distal",
-        );
-        if (proximales.length > 0) {
-          const infiltracion = PROCEDURE_CATALOG.find(
-            (p) => p.id === "infiltracion",
-          );
-          if (infiltracion) {
-            result.push({
-              procedure: infiltracion,
-              reason: "Caries proximal incipiente",
-              surfaces: proximales.map((d) => d.surface),
-            });
-          }
-        }
-      }
-
-      // ICDAS 3-4: Resina
-      const moderate = diagnosesArray.filter(
-        (d) => d.icdasScore >= 3 && d.icdasScore <= 4,
-      );
-      if (moderate.length > 0) {
-        const resina = PROCEDURE_CATALOG.find((p) => p.id === "resina-simple");
-        if (resina) {
-          result.push({
-            procedure: resina,
-            reason: "Caries con microcavitación ICDAS 3-4",
-            surfaces: moderate.map((d) => d.surface),
-          });
-        }
-      }
-
-      // ICDAS 5-6: Resina compleja/Onlay
-      const severe = diagnosesArray.filter((d) => d.icdasScore >= 5);
-      if (severe.length > 0) {
-        const resinaCompleja = PROCEDURE_CATALOG.find(
-          (p) => p.id === "resina-compleja",
-        );
-        if (resinaCompleja) {
-          result.push({
-            procedure: resinaCompleja,
-            reason: "Caries con cavitación extensa ICDAS 5-6",
-            surfaces: severe.map((d) => d.surface),
-          });
-        }
-
-        if (severe.length >= 3) {
-          const onlay = PROCEDURE_CATALOG.find((p) => p.id === "onlay");
-          if (onlay) {
-            result.push({
-              procedure: onlay,
-              reason: "Múltiples superficies afectadas",
-              surfaces: severe.map((d) => d.surface),
-            });
-          }
-        }
-      }
-    }
-
-    return result;
-  }, [diagnoses, pulpalStatus]);
+    return TreatmentSuggestionService.generateSuggestions(
+      diagnoses,
+      pulpalStatus,
+      serviceCatalog,
+    );
+  }, [diagnoses, pulpalStatus, serviceCatalog]);
 
   // Filtrar catálogo
   const filteredCatalog = useMemo(() => {
-    let filtered = PROCEDURE_CATALOG;
+    let filtered = serviceCatalog;
 
     if (selectedCategory !== "all") {
       filtered = filtered.filter((p) => p.category === selectedCategory);
@@ -230,13 +124,13 @@ export function PlanTab({
       filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(query) ||
-          p.aliases?.some((a) => a.toLowerCase().includes(query)) ||
+          p.aliases?.some((a: string) => a.toLowerCase().includes(query)) ||
           p.code?.toLowerCase().includes(query),
       );
     }
 
     return filtered;
-  }, [searchQuery, selectedCategory]);
+  }, [searchQuery, selectedCategory, serviceCatalog]);
 
   // Calcular totales
   const totals = useMemo(() => {
@@ -328,9 +222,9 @@ export function PlanTab({
 
     const newPlans: ProcedurePlan[] = template.procedures
       .map((tp) => {
-        const procedure = PROCEDURE_CATALOG.find(
-          (p) => p.id === tp.procedureId,
-        );
+        const procedure =
+          serviceCatalog.find((p) => p.id === tp.procedureId) ??
+          PROCEDURE_CATALOG.find((p) => p.id === tp.procedureId);
         if (!procedure) return null;
 
         return {
@@ -953,12 +847,32 @@ export function PlanTab({
                   size="sm"
                   variant="outline"
                   className="flex-1 text-xs bg-transparent"
+                  onClick={() => onSchedulePlans?.(plans)}
                 >
                   <Calendar className="w-3 h-3 mr-1" />
                   Programar
                 </Button>
-                <Button size="sm" variant="default" className="flex-1 text-xs">
-                  Generar PDF
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="flex-1 text-xs"
+                  onClick={() => {
+                    const now = new Date().toISOString();
+                    const updatedPlans = plans.map((p) =>
+                      p.status === "plan"
+                        ? {
+                            ...p,
+                            status: "in_progress" as ClinicalEventStatus,
+                            appointmentAt: now,
+                            updatedAt: now,
+                          }
+                        : p,
+                    );
+                    handlePlansUpdate(updatedPlans);
+                  }}
+                >
+                  <Play className="w-3 h-3 mr-1" />
+                  Realizar ahora
                 </Button>
               </div>
             </Card>

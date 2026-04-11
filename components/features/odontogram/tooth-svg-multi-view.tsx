@@ -8,6 +8,8 @@ import { getToothType } from "./tooth-svg-definitions";
 import { ToothSymbolService } from "@/lib/odontogram/domain/odontogram/services/ToothSymbolService";
 import { toothSquarePaths } from "./tooth-square-paths";
 import type { ToothViewPaths, SurfacePath } from "./tooth-square-paths";
+// TEMPORAL: Prueba pieza 18 con SVG preliminar — eliminar tras validación
+import { Tooth18FrontalView, Tooth18OclusalView } from "./tooth-18-preview";
 
 interface ToothSVGMultiViewProps {
   toothNumber: number;
@@ -66,6 +68,26 @@ function _ToothSVGMultiView({
     if (!isClient) return null;
     return ToothSymbolService.getToothSymbol(toothNumber, clinicalEvents);
   }, [toothNumber, clinicalEvents, isClient]);
+
+  // TEMPORAL: Pieza 18 usa SVG preliminar para vistas frontal y oclusal
+  if (toothNumber === 18 && view === "frontal") {
+    return (
+      <Tooth18FrontalView
+        surfaceColors={surfaceColors}
+        onSurfaceClick={onSurfaceClick}
+        symbol={toothSymbol}
+      />
+    );
+  }
+  if (toothNumber === 18 && view === "oclusal") {
+    return (
+      <Tooth18OclusalView
+        surfaceColors={surfaceColors}
+        onSurfaceClick={onSurfaceClick}
+        symbol={toothSymbol}
+      />
+    );
+  }
 
   const toothType = getToothType(toothNumber);
   const paths = toothSquarePaths[toothType];

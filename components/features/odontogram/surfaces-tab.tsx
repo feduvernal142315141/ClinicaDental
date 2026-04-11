@@ -101,9 +101,16 @@ export function SurfacesTab({
     setSelectedSurfaces(initialStates);
     isInitialized.current = tooth.number;
     pendingInit.current = true;
+
+    // Re-arm pendingInit on cleanup so React 18 StrictMode double-mount
+    // doesn't propagate stale empty state to the parent.
+    return () => {
+      pendingInit.current = true;
+    };
   }, [
     tooth.number,
     initialSurfaces,
+    initialSurfaceStates,
     tooth.surfaceTreatments,
     tooth.surfaceConditions,
   ]);

@@ -34,14 +34,8 @@ export function OdontogramModule({
   initialTab = "odontogram",
   showHeader = true,
 }: OdontogramModuleProps) {
-  const {
-    teeth,
-    selectedSurface,
-    isModalOpen,
-    currentTooth,
-    eventsByType,
-    handlers,
-  } = useOdontogramModule();
+  const { teeth, isModalOpen, currentTooth, eventsByType, handlers } =
+    useOdontogramModule();
   const readOnly = useOdontogramStore((state) => state.readOnly);
   const [activeTab, setActiveTab] = useState(initialTab);
 
@@ -192,7 +186,6 @@ export function OdontogramModule({
         onDeleteCondition={handlers.deleteSurfaceCondition}
         onCompleteTreatment={handlers.completeTreatment}
         onDeleteTreatment={handlers.deleteTreatment}
-        initialSurfaces={selectedSurface ? [selectedSurface] : undefined}
       />
     </div>
   );
