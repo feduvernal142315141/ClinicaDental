@@ -7,6 +7,7 @@ import type {
   CreateServiceRequest,
   OdontogramSymbolMode,
   ServiceType,
+  ServiceCategory,
 } from "@/lib/entity/services";
 
 interface UseServiceFormParams {
@@ -19,6 +20,7 @@ export type ServiceFormValues = {
   name: string;
   description?: string;
   type: ServiceType;
+  category?: ServiceCategory;
   cost: number;
   odontogramEnabled: boolean;
   odontogramSymbolMode: OdontogramSymbolMode;
@@ -64,6 +66,7 @@ export function useServiceForm({
           name: service.name,
           description: service.description,
           type: service.type,
+          category: service.category,
           cost: service.cost,
           odontogramEnabled: service.odontogramEnabled,
           odontogramSymbolMode: service.odontogramSymbolMode,
@@ -101,6 +104,7 @@ export function useServiceForm({
         name: values.name,
         description: values.description,
         type: values.type,
+        category: values.category,
         cost: values.cost,
         odontogramEnabled: values.odontogramEnabled,
         odontogramSymbolMode: mode,

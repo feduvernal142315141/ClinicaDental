@@ -15,6 +15,19 @@ export type ServiceType = "TREATMENT" | "PROCEDURE" | "PRODUCT" | "ADVANCE";
 export type OdontogramSymbolMode = "NONE" | "ASSET" | "TEXT" | "MANUAL";
 
 /**
+ * Dental service category for odontogram integration
+ */
+export type ServiceCategory =
+  | "RESTAURADOR"
+  | "ENDODONCIA"
+  | "PROTESIS"
+  | "IMPLANTE"
+  | "PREVENTIVO"
+  | "PERIODONCIA"
+  | "ESTETICO"
+  | "CIRUGIA";
+
+/**
  * Service entity - Full representation
  */
 export interface Service {
@@ -24,6 +37,7 @@ export interface Service {
   name: string;
   description?: string;
   type: ServiceType;
+  category?: ServiceCategory;
   cost: number;
   odontogramEnabled: boolean;
   odontogramSymbolMode: OdontogramSymbolMode;
@@ -47,6 +61,7 @@ export interface ServiceListItem {
   code: string;
   name: string;
   type: ServiceType;
+  category?: ServiceCategory;
   cost: number;
   odontogramEnabled: boolean;
   odontogramSymbolMode?: OdontogramSymbolMode;
@@ -65,6 +80,7 @@ export interface CreateServiceRequest {
   name: string;
   description?: string;
   type: ServiceType;
+  category?: ServiceCategory;
   cost: number;
   odontogramEnabled: boolean;
   odontogramSymbolMode: OdontogramSymbolMode;
@@ -134,4 +150,18 @@ export const SYMBOL_MODE_LABELS: Record<OdontogramSymbolMode, string> = {
   ASSET: "Imagen",
   TEXT: "Texto",
   MANUAL: "Manual",
+};
+
+/**
+ * Service category labels (Spanish)
+ */
+export const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
+  RESTAURADOR: "Restaurador",
+  ENDODONCIA: "Endodoncia",
+  PROTESIS: "Prótesis",
+  IMPLANTE: "Implante",
+  PREVENTIVO: "Preventivo",
+  PERIODONCIA: "Periodoncia",
+  ESTETICO: "Estético",
+  CIRUGIA: "Cirugía",
 };

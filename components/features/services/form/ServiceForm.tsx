@@ -17,8 +17,16 @@ import {
 } from "antd";
 import { AvatarUpload } from "@/components/features/doctors";
 import { FormActions } from "@/components/features/doctors/form/components/FormActions";
-import { SERVICE_TYPE_LABELS, SYMBOL_MODE_LABELS } from "@/lib/entity/services";
-import type { ServiceType, OdontogramSymbolMode } from "@/lib/entity/services";
+import {
+  SERVICE_TYPE_LABELS,
+  SYMBOL_MODE_LABELS,
+  SERVICE_CATEGORY_LABELS,
+} from "@/lib/entity/services";
+import type {
+  ServiceType,
+  OdontogramSymbolMode,
+  ServiceCategory,
+} from "@/lib/entity/services";
 
 interface ServiceFormProps {
   serviceId?: string;
@@ -31,6 +39,10 @@ const SERVICE_TYPE_OPTIONS = (
 
 const SYMBOL_MODE_OPTIONS = (
   Object.entries(SYMBOL_MODE_LABELS) as [OdontogramSymbolMode, string][]
+).map(([value, label]) => ({ value, label }));
+
+const SERVICE_CATEGORY_OPTIONS = (
+  Object.entries(SERVICE_CATEGORY_LABELS) as [ServiceCategory, string][]
 ).map(([value, label]) => ({ value, label }));
 
 export function ServiceForm({
@@ -150,6 +162,18 @@ export function ServiceForm({
               />
             </Form.Item>
           </div>
+
+          <Form.Item
+            label="Categoría odontograma"
+            name="category"
+            tooltip="Categoría clínica para sugerencias inteligentes en el odontograma"
+          >
+            <Select
+              options={SERVICE_CATEGORY_OPTIONS}
+              placeholder="Seleccione categoría"
+              allowClear
+            />
+          </Form.Item>
 
           <Divider>Configuración de Odontograma</Divider>
 

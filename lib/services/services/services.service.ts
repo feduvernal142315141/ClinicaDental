@@ -147,8 +147,8 @@ async function toggleServiceStatus(id: string): Promise<boolean> {
  */
 async function getActiveOdontogramServices(): Promise<ServiceListItem[]> {
   const filters = [
-    buildFilter("active", "EQ", true),
-    buildFilter("odontogramEnabled", "EQ", true),
+    buildFilter("active", "EQ", true, "AND"),
+    buildFilter("odontogramEnabled", "EQ", true, "AND"),
   ];
   const response = await getServices({ filters });
   return response.entities;
@@ -156,12 +156,13 @@ async function getActiveOdontogramServices(): Promise<ServiceListItem[]> {
 
 /**
  * Helper: Build filter string (services backend format)
- * Example: buildFilter('name', 'CONTAINS', 'Limpieza') => 'name__CONTAINS__Limpieza'
+ * Example: buildFilter('name', 'CONTAINS', 'Limpieza') => 'name__CONTAINS__Limpieza__AND'
  */
 export function buildFilter(
   field: string,
   operator: string,
   value: string | boolean | Date,
+  concat: "AND" | "OR" = "AND",
 ): string {
   let formattedValue = String(value);
 
@@ -169,7 +170,7 @@ export function buildFilter(
     formattedValue = value.toISOString().split("T")[0];
   }
 
-  return `${field}__${operator}__${formattedValue}`;
+  return `${field}__${operator}__${formattedValue}__${concat}`;
 }
 
 /**
