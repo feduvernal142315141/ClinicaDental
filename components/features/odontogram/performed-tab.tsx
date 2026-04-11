@@ -1,56 +1,29 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import {
-  OdontogramInput,
-  OdontogramTextArea,
-  OdontogramSelect,
-  OdontogramCheckbox,
-} from "@/components/odontogram/ui";
-import {
-  Play,
-  Pause,
-  Clock,
-  Upload,
-  Trash2,
-  CheckCircle2,
-  Plus,
-  Save,
-  ArrowRight,
-  Undo2,
-} from "lucide-react";
+import { OdontogramCheckbox } from "@/components/odontogram/ui";
+import { Clock, CheckCircle2 } from "lucide-react";
 import type {
   Tooth,
   ToothSurface,
   ProcedurePlan,
   PerformedProcedure,
-  PerformedStatus,
-  PerformedOutcome,
-  MaterialUsed,
   PatientRiskLevel,
-  ProcedureCatalogItem,
 } from "./types";
-import {
-  GLOBAL_STATUS_LABELS,
-  PLAN_STATUS_LABELS,
-  PROCEDURE_CATALOG,
-  PROCEDURE_PROTOCOLS,
-} from "./types";
-import { useOdontogramStore } from "@/lib/odontogram/store";
+import { GLOBAL_STATUS_LABELS, PLAN_STATUS_LABELS } from "./types";
 
 interface PerformedTabProps {
   tooth: Tooth;
   selectedSurfaces: ToothSurface[];
   plans?: ProcedurePlan[];
   patientRisk?: PatientRiskLevel;
-  visitId?: string;
-  operatorId?: string;
   onNavigateToTab?: (tab: string) => void;
   onSave?: (performed: PerformedProcedure[]) => void;
+  onPlansChange?: (plans: ProcedurePlan[]) => void;
 }
 
 function getToothTypeName(toothNumber: number): string {
@@ -62,95 +35,48 @@ function getToothTypeName(toothNumber: number): string {
   return "Diente";
 }
 
-function generateId(): string {
-  return `performed-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
 export function PerformedTab({
   tooth,
   selectedSurfaces,
   plans = [],
   patientRisk = "medio",
-  visitId,
-  operatorId,
   onNavigateToTab,
-  onSave,
+  onPlansChange,
 }: PerformedTabProps) {
-  const { clinicalEvents } = useOdontogramStore();
-
   const [selectedPlanIds, setSelectedPlanIds] = useState<Set<string>>(
     new Set(),
   );
-  const [isAdHoc, setIsAdHoc] = useState(false);
-  const [selectedAdHocProcedure, setSelectedAdHocProcedure] =
-    useState<ProcedureCatalogItem | null>(null);
-  const [activePerformedId, setActivePerformedId] = useState<string | null>(
-    null,
-  );
-
-  const performedFromStore = useMemo(() => {
-    const performedEvents = clinicalEvents.filter((e) => {
-      const matches = e.toothNumber === tooth.number && e.type === "performed";
-      if (matches) {
-        console.log("Evento 'performed' encontrado:", {
-          id: e.id,
-          procedureName: e.procedureName,
-          notes: e.notes,
-          surfaces: e.surfaces,
-          status: e.status,
-        });
-      }
-      return matches;
-    });
-
-    const mapped = performedEvents.map((event) => ({
-      id: event.id,
-      visitId: event.visitId,
-      toothNumber: event.toothNumber,
-      surfaces: event.surfaces,
-      procedureId: event.procedureId || "",
-      fromPlanId: event.id,
-      status: "done" as PerformedStatus,
-      materials: [],
-      durationMin: event.durationMin || 0,
-      timer: { totalMinutes: event.durationMin || 0 },
-      attachments: [],
-      outcome: "ok" as PerformedOutcome,
-      operatorId: event.authorId,
-      notes: event.notes,
-      createdAt: event.createdAt,
-      updatedAt: event.updatedAt,
-    }));
-
-    return mapped;
-  }, [clinicalEvents, tooth.number]);
-
-  const [performed, setPerformed] = useState<PerformedProcedure[]>([]);
-
-  useEffect(() => {
-    if (performedFromStore.length > 0) {
-      setPerformed(performedFromStore);
-
-      if (!activePerformedId) {
-        setActivePerformedId(performedFromStore[0].id);
-      }
-    } else if (performedFromStore.length === 0 && performed.length > 0) {
-      setPerformed([]);
-      setActivePerformedId(null);
-    }
-  }, [performedFromStore, activePerformedId]);
 
   const pendingPlans = useMemo(() => {
     return plans.filter(
       (p) =>
         p.toothNumber === tooth.number &&
-        (p.status === "plan" || p.status === "in_progress"),
+        (p.status === "plan" ||
+          p.status === "in_progress" ||
+          p.status === "scheduled"),
     );
   }, [plans, tooth.number]);
 
-  const activePerformed = useMemo(() => {
-    return performed.find((p) => p.id === activePerformedId);
-  }, [performed, activePerformedId]);
+  const donePlans = useMemo(() => {
+    return plans.filter(
+      (p) => p.toothNumber === tooth.number && p.status === "done",
+    );
+  }, [plans, tooth.number]);
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const scheduledToday = useMemo(() => {
+    return pendingPlans.filter(
+      (p) => p.status === "scheduled" && p.appointmentAt?.startsWith(today),
+    );
+  }, [pendingPlans, today]);
+
+  const readyNow = useMemo(() => {
+    return pendingPlans.filter(
+      (p) =>
+        p.status === "in_progress" || (p.status === "plan" && !p.appointmentAt),
+    );
+  }, [pendingPlans]);
 
   const handleSelectPlan = (planId: string) => {
     setSelectedPlanIds((prev) => {
@@ -165,186 +91,22 @@ export function PerformedTab({
   };
 
   const handleMarkAsPerformed = () => {
-    const selectedPlans = pendingPlans.filter((p) => selectedPlanIds.has(p.id));
+    if (!onPlansChange) return;
 
-    const newPerformed: PerformedProcedure[] = selectedPlans.map((plan) => {
-      const protocolSteps = PROCEDURE_PROTOCOLS[plan.procedureId] || [];
-
-      return {
-        id: generateId(),
-        visitId,
-        toothNumber: tooth.number,
-        surfaces: plan.surfaces,
-        procedureId: plan.procedureId,
-        fromPlanId: plan.id,
-        status: "done",
-        materials: [],
-        durationMin: plan.durationMin,
-        timer: { totalMinutes: 0 },
-        attachments: [],
-        outcome: "ok",
-        operatorId,
-        protocol: {
-          procedureId: plan.procedureId,
-          steps: protocolSteps.map((step, idx) => ({
-            id: `step-${idx}`,
-            name: step,
-            completed: false,
-          })),
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    });
-
-    setPerformed((prev) => [...prev, ...newPerformed]);
-    if (newPerformed.length > 0) {
-      setActivePerformedId(newPerformed[0].id);
-    }
+    const updatedPlans = plans.map((p) =>
+      selectedPlanIds.has(p.id) ? { ...p, status: "done" as const } : p,
+    );
+    onPlansChange(updatedPlans);
     setSelectedPlanIds(new Set());
   };
 
-  const handleAddAdHoc = () => {
-    if (!selectedAdHocProcedure) return;
+  const handleUndoPlan = (planId: string) => {
+    if (!onPlansChange) return;
 
-    const protocolSteps = PROCEDURE_PROTOCOLS[selectedAdHocProcedure.id] || [];
-
-    const newPerformed: PerformedProcedure = {
-      id: generateId(),
-      visitId,
-      toothNumber: tooth.number,
-      surfaces: selectedSurfaces,
-      adHocName: selectedAdHocProcedure.name,
-      procedureId: selectedAdHocProcedure.id,
-      status: "done",
-      materials: [],
-      durationMin: selectedAdHocProcedure.estimatedDuration,
-      timer: { totalMinutes: 0 },
-      attachments: [],
-      outcome: "ok",
-      operatorId,
-      protocol: {
-        procedureId: selectedAdHocProcedure.id,
-        steps: protocolSteps.map((step, idx) => ({
-          id: `step-${idx}`,
-          name: step,
-          completed: false,
-        })),
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    setPerformed((prev) => [...prev, newPerformed]);
-    setActivePerformedId(newPerformed.id);
-    setIsAdHoc(false);
-    setSelectedAdHocProcedure(null);
-  };
-
-  const handleUpdatePerformed = (
-    id: string,
-    updates: Partial<PerformedProcedure>,
-  ) => {
-    setPerformed((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              ...updates,
-              updatedAt: new Date().toISOString(),
-            }
-          : p,
-      ),
+    const updatedPlans = plans.map((p) =>
+      p.id === planId ? { ...p, status: "plan" as const } : p,
     );
-  };
-
-  const handleToggleProtocolStep = (performedId: string, stepId: string) => {
-    setPerformed((prev) =>
-      prev.map((p) => {
-        if (p.id !== performedId || !p.protocol) return p;
-
-        return {
-          ...p,
-          protocol: {
-            ...p.protocol,
-            steps: p.protocol.steps.map((step) =>
-              step.id === stepId
-                ? { ...step, completed: !step.completed }
-                : step,
-            ),
-          },
-          updatedAt: new Date().toISOString(),
-        };
-      }),
-    );
-  };
-
-  const handleAddMaterial = (performedId: string) => {
-    const newMaterial: MaterialUsed = {
-      brand: "",
-      shade: "",
-      lot: "",
-      expiration: "",
-    };
-
-    handleUpdatePerformed(performedId, {
-      materials: [...(activePerformed?.materials || []), newMaterial],
-    });
-  };
-
-  const handleUpdateMaterial = (
-    performedId: string,
-    index: number,
-    updates: Partial<MaterialUsed>,
-  ) => {
-    const materials = [...(activePerformed?.materials || [])];
-    materials[index] = { ...materials[index], ...updates };
-    handleUpdatePerformed(performedId, { materials });
-  };
-
-  const handleRemoveMaterial = (performedId: string, index: number) => {
-    const materials = [...(activePerformed?.materials || [])];
-    materials.splice(index, 1);
-    handleUpdatePerformed(performedId, { materials });
-  };
-
-  const handleStartTimer = (performedId: string) => {
-    handleUpdatePerformed(performedId, {
-      timer: {
-        startedAt: new Date().toISOString(),
-        totalMinutes: activePerformed?.timer?.totalMinutes || 0,
-      },
-    });
-  };
-
-  const handleStopTimer = (performedId: string) => {
-    if (!activePerformed?.timer?.startedAt) return;
-
-    const startTime = new Date(activePerformed.timer.startedAt).getTime();
-    const endTime = new Date().getTime();
-    const elapsedMinutes = Math.round((endTime - startTime) / 60000);
-
-    handleUpdatePerformed(performedId, {
-      timer: {
-        stoppedAt: new Date().toISOString(),
-        totalMinutes:
-          (activePerformed.timer.totalMinutes || 0) + elapsedMinutes,
-      },
-      durationMin: (activePerformed.timer.totalMinutes || 0) + elapsedMinutes,
-    });
-  };
-
-  const handleSave = () => {
-    if (onSave) {
-      onSave(performed);
-    }
-  };
-
-  const handleRemovePerformed = (id: string) => {
-    setPerformed((prev) => prev.filter((p) => p.id !== id));
-    if (activePerformedId === id) {
-      setActivePerformedId(null);
-    }
+    onPlansChange(updatedPlans);
   };
 
   const getRiskColor = (risk: PatientRiskLevel) => {
@@ -353,16 +115,11 @@ export function PerformedTab({
     return "bg-red-100 text-red-800 border-red-300";
   };
 
-  const getStatusColor = (status: PerformedStatus) => {
-    if (status === "done") return "bg-blue-100 text-blue-800 border-blue-300";
-    if (status === "in_progress")
-      return "bg-purple-100 text-purple-800 border-purple-300";
-    if (status === "partial")
-      return "bg-amber-100 text-amber-800 border-amber-300";
-    return "bg-gray-100 text-gray-800 border-gray-300";
-  };
-
-  if (selectedSurfaces.length === 0 && pendingPlans.length === 0) {
+  if (
+    selectedSurfaces.length === 0 &&
+    pendingPlans.length === 0 &&
+    donePlans.length === 0
+  ) {
     return (
       <Card className="p-8 text-center">
         <p className="text-muted-foreground mb-4">
@@ -408,20 +165,20 @@ export function PerformedTab({
       </div>
 
       {/* Panel principal: dos columnas */}
-      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-4">
-        {/* Columna izquierda: Selección y protocolos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Columna izquierda: Planes pendientes */}
         <div className="space-y-4">
-          {/* Planes pendientes */}
-          {pendingPlans.length > 0 && (
-            <Card className="p-4 shadow-sm">
+          {/* Programados para hoy */}
+          {scheduledToday.length > 0 && (
+            <Card className="p-4 shadow-sm border-l-4 border-l-amber-400">
               <Label className="text-sm font-semibold mb-3 block">
-                Planes pendientes ({pendingPlans.length})
+                📅 Programados para hoy ({scheduledToday.length})
               </Label>
               <div className="space-y-2 mb-3">
-                {pendingPlans.map((plan) => (
+                {scheduledToday.map((plan) => (
                   <div
                     key={plan.id}
-                    className="flex items-start gap-2 p-2 rounded border hover:bg-muted/50 cursor-pointer"
+                    className="flex items-start gap-2 p-2 rounded border border-amber-200 bg-amber-50/50 hover:bg-amber-100/50 cursor-pointer"
                     onClick={() => handleSelectPlan(plan.id)}
                   >
                     <OdontogramCheckbox
@@ -445,12 +202,20 @@ export function PerformedTab({
                       )}
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 mx-auto" />
+                          <Clock className="w-3 h-3" />
                           {plan.durationMin} min
                         </span>
-                        <Badge variant="outline" className="text-xs">
-                          {PLAN_STATUS_LABELS[plan.status]}
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-amber-100 text-amber-800 border-amber-300"
+                        >
+                          Programado
                         </Badge>
+                        {plan.appointmentAt && (
+                          <span className="text-xs">
+                            {plan.appointmentAt.split("T")[1]?.substring(0, 5)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -459,153 +224,42 @@ export function PerformedTab({
               <Button
                 size="sm"
                 className="w-full"
-                disabled={selectedPlanIds.size === 0}
+                disabled={
+                  scheduledToday.filter((p) => selectedPlanIds.has(p.id))
+                    .length === 0
+                }
                 onClick={handleMarkAsPerformed}
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
-                Marcar como realizado ({selectedPlanIds.size})
+                Marcar como realizado (
+                {scheduledToday.filter((p) => selectedPlanIds.has(p.id)).length}
+                )
               </Button>
             </Card>
           )}
 
-          {/* Ad-hoc */}
-          <Card className="p-4 shadow-sm">
-            <Label className="text-sm font-semibold mb-3 block">
-              Procedimiento Ad-hoc
-            </Label>
-            <p className="text-xs text-muted-foreground mb-3">
-              Registra algo no planificado
-            </p>
-
-            {!isAdHoc ? (
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full bg-transparent"
-                onClick={() => setIsAdHoc(true)}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Añadir procedimiento
-              </Button>
-            ) : (
-              <div className="space-y-3">
-                <OdontogramSelect
-                  value={selectedAdHocProcedure?.id || ""}
-                  onChange={(id) => {
-                    const proc = PROCEDURE_CATALOG.find((p) => p.id === id);
-                    setSelectedAdHocProcedure(proc || null);
-                  }}
-                  options={PROCEDURE_CATALOG.map((proc) => ({
-                    value: proc.id,
-                    label: proc.name,
-                  }))}
-                  placeholder="Selecciona procedimiento..."
-                />
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 bg-transparent"
-                    onClick={() => setIsAdHoc(false)}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    disabled={!selectedAdHocProcedure}
-                    onClick={handleAddAdHoc}
-                  >
-                    Añadir
-                  </Button>
-                </div>
-              </div>
-            )}
-          </Card>
-
-          {/* Protocolo dinámico */}
-          {activePerformed?.protocol && (
-            <Card className="p-4 shadow-sm">
+          {/* Para realizar ahora */}
+          {readyNow.length > 0 && (
+            <Card className="p-4 shadow-sm border-l-4 border-l-blue-400">
               <Label className="text-sm font-semibold mb-3 block">
-                Protocolo
+                ⚡ Para realizar ahora ({readyNow.length})
               </Label>
-              <div className="space-y-2">
-                {activePerformed.protocol.steps.map((step) => (
-                  <div key={step.id} className="flex items-center gap-2">
-                    <OdontogramCheckbox
-                      checked={step.completed}
-                      onChange={() =>
-                        handleToggleProtocolStep(activePerformed.id, step.id)
-                      }
-                    />
-                    <span
-                      className={`text-sm ${step.completed ? "line-through text-muted-foreground" : ""}`}
-                    >
-                      {step.name}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 pt-3 border-t">
-                <p className="text-xs text-muted-foreground">
-                  Completados:{" "}
-                  {
-                    activePerformed.protocol.steps.filter((s) => s.completed)
-                      .length
-                  }{" "}
-                  / {activePerformed.protocol.steps.length}
-                </p>
-              </div>
-            </Card>
-          )}
-        </div>
-
-        {/* Columna derecha: Detalle del acto */}
-        <div className="space-y-4">
-          {performed.length === 0 ? (
-            <Card className="p-8 text-center border-2 border-dashed">
-              <p className="text-sm text-muted-foreground">
-                No hay procedimientos realizados
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Marca planes como realizados o añade procedimientos ad-hoc
-              </p>
-            </Card>
-          ) : (
-            <>
-              {/* Selector de procedimiento activo */}
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {performed.map((p) => (
-                  <Button
-                    key={p.id}
-                    size="sm"
-                    variant={activePerformedId === p.id ? "default" : "outline"}
-                    onClick={() => setActivePerformedId(p.id)}
-                    className="flex-shrink-0"
+              <div className="space-y-2 mb-3">
+                {readyNow.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className="flex items-start gap-2 p-2 rounded border border-blue-200 bg-blue-50/50 hover:bg-blue-100/50 cursor-pointer"
+                    onClick={() => handleSelectPlan(plan.id)}
                   >
-                    {p.adHocName ||
-                      PROCEDURE_CATALOG.find(
-                        (proc) => proc.id === p.procedureId,
-                      )?.name ||
-                      "Procedimiento"}
-                  </Button>
-                ))}
-              </div>
-
-              {/* Detalle del procedimiento activo */}
-              {activePerformed && (
-                <Card className="p-4 shadow-sm">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h4 className="text-base font-semibold">
-                        {activePerformed.adHocName ||
-                          PROCEDURE_CATALOG.find(
-                            (p) => p.id === activePerformed.procedureId,
-                          )?.name}
-                      </h4>
-                      {activePerformed.surfaces.length > 0 && (
+                    <OdontogramCheckbox
+                      checked={selectedPlanIds.has(plan.id)}
+                      onChange={() => handleSelectPlan(plan.id)}
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{plan.displayName}</p>
+                      {plan.surfaces.length > 0 && (
                         <div className="flex gap-1 mt-1">
-                          {activePerformed.surfaces.map((s) => (
+                          {plan.surfaces.map((s) => (
                             <Badge
                               key={s}
                               variant="outline"
@@ -616,311 +270,176 @@ export function PerformedTab({
                           ))}
                         </div>
                       )}
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {plan.durationMin} min
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-blue-100 text-blue-800 border-blue-300"
+                        >
+                          {PLAN_STATUS_LABELS[plan.status]}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Button
+                size="sm"
+                className="w-full"
+                disabled={
+                  readyNow.filter((p) => selectedPlanIds.has(p.id)).length === 0
+                }
+                onClick={handleMarkAsPerformed}
+              >
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Marcar como realizado (
+                {readyNow.filter((p) => selectedPlanIds.has(p.id)).length})
+              </Button>
+            </Card>
+          )}
+
+          {/* Otros planes pendientes */}
+          {pendingPlans.length > 0 &&
+            scheduledToday.length === 0 &&
+            readyNow.length === 0 && (
+              <Card className="p-4 shadow-sm">
+                <Label className="text-sm font-semibold mb-3 block">
+                  Planes pendientes ({pendingPlans.length})
+                </Label>
+                <div className="space-y-2 mb-3">
+                  {pendingPlans.map((plan) => (
+                    <div
+                      key={plan.id}
+                      className="flex items-start gap-2 p-2 rounded border hover:bg-muted/50 cursor-pointer"
+                      onClick={() => handleSelectPlan(plan.id)}
+                    >
+                      <OdontogramCheckbox
+                        checked={selectedPlanIds.has(plan.id)}
+                        onChange={() => handleSelectPlan(plan.id)}
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">
+                          {plan.displayName}
+                        </p>
+                        {plan.surfaces.length > 0 && (
+                          <div className="flex gap-1 mt-1">
+                            {plan.surfaces.map((s) => (
+                              <Badge
+                                key={s}
+                                variant="outline"
+                                className="text-xs"
+                              >
+                                {s.charAt(0).toUpperCase()}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {plan.durationMin} min
+                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            {PLAN_STATUS_LABELS[plan.status]}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  disabled={selectedPlanIds.size === 0}
+                  onClick={handleMarkAsPerformed}
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Marcar como realizado ({selectedPlanIds.size})
+                </Button>
+              </Card>
+            )}
+
+          {pendingPlans.length === 0 && (
+            <Card className="p-6 text-center border-2 border-dashed">
+              <p className="text-sm text-muted-foreground">
+                No hay planes pendientes
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => onNavigateToTab?.("plan")}
+              >
+                ← Ir a Plan
+              </Button>
+            </Card>
+          )}
+        </div>
+
+        {/* Columna derecha: Procedimientos realizados */}
+        <div className="space-y-4">
+          <Card className="p-4 shadow-sm border-l-4 border-l-green-400">
+            <Label className="text-sm font-semibold mb-3 block">
+              ✅ Procedimientos realizados ({donePlans.length})
+            </Label>
+            {donePlans.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Marca planes como realizados para verlos aquí
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {donePlans.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className="flex items-start gap-2 p-2 rounded border border-green-200 bg-green-50/50"
+                  >
+                    <CheckCircle2 className="w-4 h-4 mt-0.5 text-green-600 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{plan.displayName}</p>
+                      {plan.surfaces.length > 0 && (
+                        <div className="flex gap-1 mt-1">
+                          {plan.surfaces.map((s) => (
+                            <Badge
+                              key={s}
+                              variant="outline"
+                              className="text-xs"
+                            >
+                              {s.charAt(0).toUpperCase()}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {plan.durationMin} min
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-green-100 text-green-800 border-green-300"
+                        >
+                          Realizado
+                        </Badge>
+                      </div>
                     </div>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleRemovePerformed(activePerformed.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => handleUndoPlan(plan.id)}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      Deshacer
                     </Button>
                   </div>
-
-                  <div className="space-y-4">
-                    {/* Estado */}
-                    <div>
-                      <Label className="text-sm mb-2 block">Estado</Label>
-                      <OdontogramSelect
-                        value={activePerformed.status}
-                        onChange={(v) =>
-                          handleUpdatePerformed(activePerformed.id, {
-                            status: v as PerformedStatus,
-                          })
-                        }
-                        options={[
-                          { value: "hecho", label: "Hecho" },
-                          { value: "en-curso", label: "En curso" },
-                          { value: "parcial", label: "Parcial" },
-                          { value: "cancelado", label: "Cancelado" },
-                        ]}
-                      />
-                    </div>
-
-                    {/* Timer */}
-                    <div>
-                      <Label className="text-sm mb-2 block">Tiempo</Label>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 p-3 rounded border bg-muted/30 text-center">
-                          <p className="text-2xl font-bold">
-                            {activePerformed.timer?.totalMinutes || 0}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            minutos
-                          </p>
-                        </div>
-                        {!activePerformed.timer?.startedAt ||
-                        activePerformed.timer?.stoppedAt ? (
-                          <Button
-                            size="sm"
-                            onClick={() => handleStartTimer(activePerformed.id)}
-                          >
-                            <Play className="w-4 h-4 mr-1" />
-                            Iniciar
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleStopTimer(activePerformed.id)}
-                          >
-                            <Pause className="w-4 h-4 mr-1" />
-                            Detener
-                          </Button>
-                        )}
-                      </div>
-                      <OdontogramInput
-                        type="number"
-                        value={activePerformed.durationMin}
-                        onChange={(e) =>
-                          handleUpdatePerformed(activePerformed.id, {
-                            durationMin: Number(e.target.value),
-                          })
-                        }
-                        placeholder="O ingresa manualmente..."
-                        className="mt-2 text-sm"
-                      />
-                    </div>
-
-                    {/* Materiales */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-sm">Materiales</Label>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleAddMaterial(activePerformed.id)}
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Añadir
-                        </Button>
-                      </div>
-                      <div className="space-y-3">
-                        {activePerformed.materials.map((material, idx) => (
-                          <div
-                            key={idx}
-                            className="p-3 rounded border bg-muted/20"
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <Label className="text-xs">
-                                Material {idx + 1}
-                              </Label>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0"
-                                onClick={() =>
-                                  handleRemoveMaterial(activePerformed.id, idx)
-                                }
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <Label className="text-xs mb-1 block">
-                                  Marca
-                                </Label>
-                                <OdontogramInput
-                                  value={material.brand}
-                                  onChange={(e) =>
-                                    handleUpdateMaterial(
-                                      activePerformed.id,
-                                      idx,
-                                      { brand: e.target.value },
-                                    )
-                                  }
-                                  placeholder="Ej. 3M Filtek"
-                                  className="text-xs h-8"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-xs mb-1 block">
-                                  Sombra/Color
-                                </Label>
-                                <OdontogramInput
-                                  value={material.shade || ""}
-                                  onChange={(e) =>
-                                    handleUpdateMaterial(
-                                      activePerformed.id,
-                                      idx,
-                                      { shade: e.target.value },
-                                    )
-                                  }
-                                  placeholder="Ej. A2"
-                                  className="text-xs h-8"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-xs mb-1 block">
-                                  Lote
-                                </Label>
-                                <OdontogramInput
-                                  value={material.lot || ""}
-                                  onChange={(e) =>
-                                    handleUpdateMaterial(
-                                      activePerformed.id,
-                                      idx,
-                                      { lot: e.target.value },
-                                    )
-                                  }
-                                  placeholder="Número de lote"
-                                  className="text-xs h-8"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-xs mb-1 block">
-                                  Caducidad
-                                </Label>
-                                <OdontogramInput
-                                  type="date"
-                                  value={material.expiration || ""}
-                                  onChange={(e) =>
-                                    handleUpdateMaterial(
-                                      activePerformed.id,
-                                      idx,
-                                      { expiration: e.target.value },
-                                    )
-                                  }
-                                  className="text-xs h-8"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Resultado */}
-                    <div>
-                      <Label className="text-sm mb-2 block">Resultado</Label>
-                      <OdontogramSelect
-                        value={activePerformed.outcome}
-                        onChange={(v) =>
-                          handleUpdatePerformed(activePerformed.id, {
-                            outcome: v as PerformedOutcome,
-                          })
-                        }
-                        options={[
-                          { value: "ok", label: "Satisfactorio" },
-                          { value: "complicacion", label: "Complicación" },
-                        ]}
-                      />
-                    </div>
-
-                    {/* Notas clínicas */}
-                    <div>
-                      <Label className="text-sm mb-2 block">
-                        Notas clínicas
-                      </Label>
-                      <OdontogramTextArea
-                        value={activePerformed.notes || ""}
-                        onChange={(e) =>
-                          handleUpdatePerformed(activePerformed.id, {
-                            notes: e.target.value,
-                          })
-                        }
-                        placeholder="Observaciones del procedimiento..."
-                        className="text-sm min-h-20"
-                      />
-                    </div>
-
-                    {/* Recomendaciones */}
-                    <div>
-                      <Label className="text-sm mb-2 block">
-                        Recomendaciones
-                      </Label>
-                      <OdontogramInput
-                        value={activePerformed.recommendation || ""}
-                        onChange={(e) =>
-                          handleUpdatePerformed(activePerformed.id, {
-                            recommendation: e.target.value,
-                          })
-                        }
-                        placeholder="Indicaciones post-tratamiento..."
-                        className="text-sm"
-                      />
-                    </div>
-
-                    {/* Adjuntos */}
-                    <div>
-                      <Label className="text-sm mb-2 block">
-                        Evidencia (Rx/Fotos)
-                      </Label>
-                      <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-muted/30 transition-colors cursor-pointer">
-                        <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">
-                          Arrastra archivos aquí o haz clic para subir
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Fotos, Rx, documentos
-                        </p>
-                      </div>
-                      {activePerformed.attachments.length > 0 && (
-                        <div className="mt-2 flex gap-2">
-                          {activePerformed.attachments.map((att, idx) => (
-                            <div
-                              key={idx}
-                              className="w-16 h-16 rounded border bg-muted flex items-center justify-center"
-                            >
-                              <span className="text-xs">📎</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Firma */}
-                    <div>
-                      <Label className="text-sm mb-2 block">Operador</Label>
-                      <OdontogramInput
-                        value={activePerformed.operatorId || ""}
-                        onChange={(e) =>
-                          handleUpdatePerformed(activePerformed.id, {
-                            operatorId: e.target.value,
-                          })
-                        }
-                        placeholder="ID o nombre del operador"
-                        className="text-sm"
-                      />
-                    </div>
-                  </div>
-                </Card>
-              )}
-            </>
-          )}
+                ))}
+              </div>
+            )}
+          </Card>
         </div>
       </div>
-
-      {/* Footer con botones */}
-      {performed.length > 0 && (
-        <div className="flex justify-between items-center gap-4 pt-4 border-t">
-          <Button variant="outline" onClick={() => setPerformed([])}>
-            <Undo2 className="w-4 h-4 mr-2" />
-            Deshacer todo
-          </Button>
-          <div className="flex gap-3">
-            <Button variant="default" onClick={handleSave}>
-              <Save className="w-4 h-4 mr-2" />
-              Guardar
-            </Button>
-            <Button variant="default" onClick={handleSave}>
-              Guardar y siguiente diente
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

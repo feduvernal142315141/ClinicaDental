@@ -33,6 +33,7 @@ import { SurfacesTab } from "./surfaces-tab";
 import { DiagnosisTab } from "./diagnosis-tab";
 import { PlanTab } from "./plan-tab";
 import { PerformedTab } from "./performed-tab";
+import { SchedulePlanModal } from "./schedule-plan-modal";
 import { useOdontogramStore } from "@/lib/odontogram/store";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services";
 
@@ -55,7 +56,6 @@ interface ToothModalProps {
   onDeleteCondition?: (toothNumber: number, conditionId: string) => void;
   onCompleteTreatment?: (toothNumber: number, treatmentId: string) => void;
   onDeleteTreatment?: (toothNumber: number, treatmentId: string) => void;
-  initialSurfaces?: ToothSurface[];
 }
 
 function getToothDescription(toothNumber: number): string {
@@ -115,16 +115,52 @@ function buildSurfaceDiagnosisNotes(diagnosis: SurfaceDiagnosis): string {
   return parts.join(" · ");
 }
 
+function buildPlanVisualState(plan: ProcedurePlan) {
+  const affectsOdontogram = plan.surfaces.length > 0;
+
+  if (!affectsOdontogram) {
+    return {
+      affectsOdontogram: false,
+      priorityKey: "support-only",
+    };
+  }
+
+  if (plan.status === "done") {
+    return {
+      affectsOdontogram: true,
+      priorityKey: "completed",
+      symbolKey:
+        plan.category === "protesis"
+          ? "crown"
+          : plan.category === "preventivo"
+            ? "preventive"
+            : "restoration",
+    };
+  }
+
+  return {
+    affectsOdontogram: true,
+    priorityKey: plan.priority === "alta" ? "planned-urgent" : "planned",
+  };
+}
+
 function hasMeaningfulToothDiagnosis(diagnosis?: ToothDiagnosis): boolean {
   if (!diagnosis) return false;
 
+  const hasSurfaceFindings = diagnosis.surfaceDiagnoses.some(
+    (surfaceDiagnosis) =>
+      surfaceDiagnosis.icdasScore > 0 ||
+      surfaceDiagnosis.nonCariousLesions.length > 0 ||
+      Boolean(surfaceDiagnosis.notes?.trim()),
+  );
+
   return Boolean(
-    diagnosis.surfaceDiagnoses.length > 0 ||
-    diagnosis.pulpalStatus ||
-    diagnosis.periapicalStatus ||
-    diagnosis.generalNotes ||
+    hasSurfaceFindings ||
+    (diagnosis.pulpalStatus && diagnosis.pulpalStatus !== "normal") ||
+    (diagnosis.periapicalStatus && diagnosis.periapicalStatus !== "normal") ||
+    diagnosis.generalNotes?.trim() ||
     diagnosis.evidenceRefs?.length ||
-    diagnosis.painScore ||
+    (typeof diagnosis.painScore === "number" && diagnosis.painScore > 0) ||
     diagnosis.vitalityTests.some((test) => test.result !== "no-realizado"),
   );
 }
@@ -134,7 +170,6 @@ export function ToothModal({
   isOpen,
   onClose,
   onUpdateGlobalStatus,
-  initialSurfaces,
 }: ToothModalProps) {
   const {
     addClinicalEvent,
@@ -162,10 +197,57 @@ export function ToothModal({
   const [toothDiagnosis, setToothDiagnosis] = useState<ToothDiagnosis>();
   const [plans, setPlans] = useState<ProcedurePlan[]>([]);
   const [saveErrors, setSaveErrors] = useState<string[]>([]);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [schedulePlans, setSchedulePlans] = useState<ProcedurePlan[]>([]);
   const surfaceStatesRef = useRef<SurfaceState[]>([]);
   const handleSurfaceStatesChange = useCallback((states: SurfaceState[]) => {
     surfaceStatesRef.current = states;
   }, []);
+
+  const filterDiagnosesForSelectedSurfaces = useCallback(
+    (surfaces: ToothSurface[], source: Map<ToothSurface, SurfaceDiagnosis>) => {
+      const allowedSurfaces = new Set(surfaces);
+      return new Map(
+        Array.from(source.entries()).filter(([surface]) =>
+          allowedSurfaces.has(surface),
+        ),
+      );
+    },
+    [],
+  );
+
+  const prunePlansForSelectedSurfaces = useCallback(
+    (surfaces: ToothSurface[], source: ProcedurePlan[]) => {
+      const allowedSurfaces = new Set(surfaces);
+
+      return source.flatMap((plan) => {
+        if (plan.surfaces.length === 0) {
+          return [plan];
+        }
+
+        const filteredSurfaces = plan.surfaces.filter((surface) =>
+          allowedSurfaces.has(surface),
+        );
+
+        if (filteredSurfaces.length === 0) {
+          return [];
+        }
+
+        if (filteredSurfaces.length === plan.surfaces.length) {
+          return [plan];
+        }
+
+        return [
+          {
+            ...plan,
+            surfaces: filteredSurfaces,
+            updatedAt: new Date().toISOString(),
+          },
+        ];
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     if (isOpen && tooth) {
@@ -201,7 +283,6 @@ export function ToothModal({
       tooth.diagnosis?.surfaceDiagnoses.forEach((diagnosis) => {
         surfacesWithEvents.add(diagnosis.surface);
       });
-      initialSurfaces?.forEach((surface) => surfacesWithEvents.add(surface));
       const loadedSurfaces = Array.from(surfacesWithEvents);
       console.log("Superficies extraídas de eventos:", loadedSurfaces);
 
@@ -316,9 +397,9 @@ export function ToothModal({
           : undefined,
       );
 
-      // Cargar planes
+      // Cargar planes (todos los status, no solo "plan")
       const loadedPlans: ProcedurePlan[] = events
-        .filter((e) => e.type === "plan" && e.status === "plan")
+        .filter((e) => e.type === "plan")
         .map((event) => ({
           id: event.id,
           toothNumber: tooth.number,
@@ -326,7 +407,7 @@ export function ToothModal({
           procedureId: event.procedureId || "custom",
           displayName: event.procedureName || event.notes || "Procedimiento",
           category: event.category || "restaurador",
-          status: "plan",
+          status: event.status as ProcedurePlan["status"],
           priority: event.priority || "media",
           material: event.material,
           durationMin: event.durationMin || 30,
@@ -339,7 +420,7 @@ export function ToothModal({
 
       setPlans(loadedPlans);
     }
-  }, [isOpen, tooth, getToothEvents, clinicalEvents.length, initialSurfaces]);
+  }, [isOpen, tooth, getToothEvents, clinicalEvents.length]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -365,12 +446,37 @@ export function ToothModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, activeTab]);
 
+  const handleSurfacesChange = useCallback(
+    (nextSurfaces: ToothSurface[]) => {
+      if (!tooth) return;
+
+      const sameSelection =
+        nextSurfaces.length === selectedSurfaces.length &&
+        nextSurfaces.every(
+          (surface, index) => surface === selectedSurfaces[index],
+        );
+
+      if (sameSelection) {
+        return;
+      }
+
+      // Only update surface selection. Diagnoses and plans are preserved
+      // in their Maps/arrays and filtered at save time, avoiding data loss
+      // from transient empty propagations (e.g. React StrictMode double-mount).
+      setSelectedSurfaces(nextSurfaces);
+      setHasUnsavedChanges(true);
+      setSaveErrors([]);
+    },
+    [selectedSurfaces, tooth],
+  );
+
   if (!tooth) return null;
 
   const handleStatusClick = (status: ToothGlobalStatus) => {
     if (status !== tempGlobalStatus) {
       setTempGlobalStatus(status);
       setHasUnsavedChanges(true);
+      setSaveErrors([]);
     }
   };
 
@@ -398,10 +504,13 @@ export function ToothModal({
   ): string[] => {
     const errors: string[] = [];
     const effectiveStatus = tempGlobalStatus;
+    const diagnosesToValidate = Array.from(currentDiagnoses.entries())
+      .filter(([surface]) => selectedSurfaces.includes(surface))
+      .map(([, diagnosis]) => diagnosis);
 
     if (
       (effectiveStatus === "absent" || effectiveStatus === "implant") &&
-      Array.from(currentDiagnoses.values()).some(
+      diagnosesToValidate.some(
         (diagnosis) =>
           diagnosis.icdasScore > 0 || diagnosis.nonCariousLesions.length > 0,
       )
@@ -411,7 +520,7 @@ export function ToothModal({
       );
     }
 
-    Array.from(currentDiagnoses.values()).forEach((diagnosis) => {
+    diagnosesToValidate.forEach((diagnosis) => {
       if (diagnosis.icdasScore >= 5) {
         if (!diagnosis.cariesType) {
           errors.push(
@@ -473,11 +582,22 @@ export function ToothModal({
     console.log("plans (state):", JSON.parse(JSON.stringify(plans)));
     console.log("toothDiagnosis (state):", toothDiagnosis);
 
-    if (hasUnsavedChanges && tempGlobalStatus !== tooth.globalStatus) {
-      onUpdateGlobalStatus(tooth.number, tempGlobalStatus);
+    onUpdateGlobalStatus(tooth.number, tempGlobalStatus);
+
+    const currentDiagnoses = filterDiagnosesForSelectedSurfaces(
+      selectedSurfaces,
+      diagnoses,
+    );
+    const currentPlans = prunePlansForSelectedSurfaces(selectedSurfaces, plans);
+
+    if (currentDiagnoses.size !== diagnoses.size) {
+      setDiagnoses(currentDiagnoses);
     }
 
-    const currentDiagnoses: Map<ToothSurface, SurfaceDiagnosis> = diagnoses;
+    if (currentPlans.length !== plans.length) {
+      setPlans(currentPlans);
+    }
+
     const currentToothDiagnosis = toothDiagnosis
       ? {
           ...toothDiagnosis,
@@ -685,8 +805,24 @@ export function ToothModal({
       }
     });
 
-    const currentPlans = plans;
-    if (currentPlans && currentPlans.length > 0) {
+    const existingPlanEvents = getToothEvents(tooth.number).filter(
+      (event) => event.type === "plan",
+    );
+
+    existingPlanEvents.forEach((event) => {
+      const stillExists = currentPlans.some(
+        (plan) =>
+          event.procedureId === plan.procedureId &&
+          event.surfaces.length === plan.surfaces.length &&
+          event.surfaces.every((surface) => plan.surfaces.includes(surface)),
+      );
+
+      if (!stillExists) {
+        deleteClinicalEvent(event.id);
+      }
+    });
+
+    if (currentPlans.length > 0) {
       currentPlans.forEach((plan: ProcedurePlan) => {
         const existingPlanEvent = getToothEvents(tooth.number).find(
           (e) =>
@@ -696,6 +832,9 @@ export function ToothModal({
             e.surfaces.every((s) => plan.surfaces.includes(s)),
         );
 
+        const eventNotes = plan.notes?.trim() ? plan.notes : plan.displayName;
+        const visualState = buildPlanVisualState(plan);
+
         if (existingPlanEvent) {
           updateClinicalEvent(existingPlanEvent.id, {
             status: plan.status,
@@ -703,7 +842,8 @@ export function ToothModal({
             material: plan.material,
             durationMin: plan.durationMin,
             cost: plan.cost,
-            notes: `${plan.displayName}${plan.notes ? `: ${plan.notes}` : ""}`,
+            notes: eventNotes,
+            visualState,
           });
         } else {
           addClinicalEvent({
@@ -719,7 +859,8 @@ export function ToothModal({
             material: plan.material,
             durationMin: plan.durationMin,
             cost: plan.cost,
-            notes: `${plan.displayName}${plan.notes ? `: ${plan.notes}` : ""}`,
+            notes: eventNotes,
+            visualState,
           });
         }
       });
@@ -753,6 +894,33 @@ export function ToothModal({
       }
     } else if (existingEndoEvent) {
       deleteClinicalEvent(existingEndoEvent.id);
+    }
+
+    // Resolver diagnósticos de superficies cuyos planes están "done"
+    const donePlans = currentPlans.filter((p) => p.status === "done");
+    if (donePlans.length > 0) {
+      const doneSurfaces = new Set<string>();
+      donePlans.forEach((plan) => {
+        plan.surfaces.forEach((s) => doneSurfaces.add(s));
+      });
+
+      doneSurfaces.forEach((surface) => {
+        const diagEvent = getToothEvents(tooth.number).find(
+          (e) =>
+            e.type === "diagnosis" &&
+            e.surfaces.includes(surface as ToothSurface) &&
+            e.status !== "done",
+        );
+        if (diagEvent) {
+          updateClinicalEvent(diagEvent.id, {
+            status: "done",
+            visualState: {
+              affectsOdontogram: false,
+              priorityKey: "support-only",
+            },
+          });
+        }
+      });
     }
 
     // Verificación post-guardado
@@ -813,16 +981,19 @@ export function ToothModal({
   ) => {
     setDiagnoses(newDiagnoses);
     setHasUnsavedChanges(true);
+    setSaveErrors([]);
   };
 
   const handleToothDiagnosisChange = (nextDiagnosis: ToothDiagnosis) => {
     setToothDiagnosis(nextDiagnosis);
     setHasUnsavedChanges(true);
+    setSaveErrors([]);
   };
 
   const handlePlansChange = (newPlans: ProcedurePlan[]) => {
     setPlans(newPlans);
     setHasUnsavedChanges(true);
+    setSaveErrors([]);
   };
 
   const handlePerformedSave = (performed: PerformedProcedure[]) => {
@@ -830,6 +1001,7 @@ export function ToothModal({
 
     persistPerformedProcedures(tooth.number, performed);
 
+    setSaveErrors([]);
     setHasUnsavedChanges(false);
   };
 
@@ -843,7 +1015,7 @@ export function ToothModal({
           initialSurfaces={selectedSurfaces}
           initialSurfaceStates={initialSurfaceStates}
           onNavigateToTab={handleNavigateToTab}
-          onSurfacesChange={setSelectedSurfaces}
+          onSurfacesChange={handleSurfacesChange}
           onSurfaceStatesChange={handleSurfaceStatesChange}
         />
       ),
@@ -875,6 +1047,10 @@ export function ToothModal({
           initialPlans={plans}
           onNavigateToTab={handleNavigateToTab}
           onPlansChange={handlePlansChange}
+          onSchedulePlans={(p) => {
+            setSchedulePlans(p);
+            setScheduleModalOpen(true);
+          }}
         />
       ),
     },
@@ -888,6 +1064,7 @@ export function ToothModal({
           plans={plans}
           onNavigateToTab={handleNavigateToTab}
           onSave={handlePerformedSave}
+          onPlansChange={handlePlansChange}
         />
       ),
     },
@@ -912,91 +1089,103 @@ export function ToothModal({
   ];
 
   return (
-    <OdontogramModal
-      open={isOpen}
-      onClose={handleClose}
-      title={`Diente ${tooth.number}`}
-      description={getToothDescription(tooth.number)}
-      footer={
-        <div className="flex justify-between items-center gap-4 pt-3 border-t">
-          <Button
-            variant="outline"
-            onClick={handleClose}
-            className="px-6 py-2 text-sm bg-transparent"
-          >
-            Cancelar
-          </Button>
-          <div className="flex gap-3">
+    <>
+      <OdontogramModal
+        open={isOpen}
+        onClose={handleClose}
+        title={`Diente ${tooth.number}`}
+        description={getToothDescription(tooth.number)}
+        footer={
+          <div className="flex justify-between items-center gap-4 pt-3 border-t">
             <Button
-              variant="default"
-              onClick={handleSaveAndClose}
-              className="px-6 py-2 text-sm"
+              variant="outline"
+              onClick={handleClose}
+              className="px-6 py-2 text-sm bg-transparent"
             >
-              Guardar
+              Cancelar
             </Button>
-            <Button
-              variant="default"
-              onClick={handleSaveAndContinue}
-              className="px-6 py-2 text-sm"
-            >
-              {getContinueLabel()} →
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                variant="default"
+                onClick={handleSaveAndClose}
+                className="px-6 py-2 text-sm"
+              >
+                Guardar
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleSaveAndContinue}
+                className="px-6 py-2 text-sm"
+              >
+                {getContinueLabel()} →
+              </Button>
+            </div>
           </div>
-        </div>
-      }
-    >
-      <div className="space-y-2 pb-3 border-b">
-        <p className="text-xs font-semibold text-muted-foreground">
-          Estado Global del Diente
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {(Object.keys(GLOBAL_STATUS_LABELS) as ToothGlobalStatus[]).map(
-            (status) => {
-              const isSelected = tempGlobalStatus === status;
-              return (
-                <Badge
-                  key={status}
-                  variant={isSelected ? "default" : "outline"}
-                  className="cursor-pointer px-3 py-1 text-xs font-medium transition-all hover:scale-105"
-                  style={
-                    isSelected
-                      ? {
-                          backgroundColor: GLOBAL_STATUS_COLORS[status],
-                          borderColor: GLOBAL_STATUS_COLORS[status],
-                          color: "white",
-                        }
-                      : {
-                          borderColor: GLOBAL_STATUS_COLORS[status],
-                          color: GLOBAL_STATUS_COLORS[status],
-                        }
-                  }
-                  onClick={() => handleStatusClick(status)}
-                >
-                  {GLOBAL_STATUS_LABELS[status]}
-                </Badge>
-              );
-            },
+        }
+      >
+        <div className="space-y-2 pb-3 border-b">
+          <p className="text-xs font-semibold text-muted-foreground">
+            Estado Global del Diente
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(GLOBAL_STATUS_LABELS) as ToothGlobalStatus[]).map(
+              (status) => {
+                const isSelected = tempGlobalStatus === status;
+                return (
+                  <Badge
+                    key={status}
+                    variant={isSelected ? "default" : "outline"}
+                    className="cursor-pointer px-3 py-1 text-xs font-medium transition-all hover:scale-105"
+                    style={
+                      isSelected
+                        ? {
+                            backgroundColor: GLOBAL_STATUS_COLORS[status],
+                            borderColor: GLOBAL_STATUS_COLORS[status],
+                            color: "white",
+                          }
+                        : {
+                            borderColor: GLOBAL_STATUS_COLORS[status],
+                            color: GLOBAL_STATUS_COLORS[status],
+                          }
+                    }
+                    onClick={() => handleStatusClick(status)}
+                  >
+                    {GLOBAL_STATUS_LABELS[status]}
+                  </Badge>
+                );
+              },
+            )}
+          </div>
+          {hasUnsavedChanges && (
+            <p className="text-xs text-amber-600 font-semibold">
+              ⚠️ Tienes cambios sin guardar
+            </p>
+          )}
+          {saveErrors.length > 0 && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              {saveErrors.map((error) => (
+                <p key={error}>{error}</p>
+              ))}
+            </div>
           )}
         </div>
-        {hasUnsavedChanges && (
-          <p className="text-xs text-amber-600 font-semibold">
-            ⚠️ Tienes cambios sin guardar
-          </p>
-        )}
-        {saveErrors.length > 0 && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-            {saveErrors.map((error) => (
-              <p key={error}>{error}</p>
-            ))}
-          </div>
-        )}
-      </div>
 
-      <OdontogramTabs
-        items={tabItems}
-        activeKey={activeTab}
-        onChange={setActiveTab}
+        <OdontogramTabs
+          items={tabItems}
+          activeKey={activeTab}
+          onChange={setActiveTab}
+        />
+      </OdontogramModal>
+
+      <SchedulePlanModal
+        open={scheduleModalOpen}
+        onClose={() => setScheduleModalOpen(false)}
+        plans={schedulePlans}
+        onScheduled={(updatedPlans) => {
+          handlePlansChange(updatedPlans);
+          setScheduleModalOpen(false);
+        }}
       />
-    </OdontogramModal>
+    </>
   );
 }
