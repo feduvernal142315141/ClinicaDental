@@ -40,6 +40,7 @@ export const testUnauthorizedError = async () => {
     // Esta URL debe devolver un 401
     // Ajusta según tu API
     await serviceGet("/api/unauthorized-endpoint");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_error) {
     console.log("✅ Error 401 capturado correctamente");
   }
@@ -56,6 +57,7 @@ export const testForbiddenError = async () => {
   try {
     // Esta URL debe devolver un 403
     await serviceGet("/api/forbidden-endpoint");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_error) {
     console.log("✅ Error 403 capturado correctamente");
   }
@@ -72,6 +74,7 @@ export const testServerError = async () => {
   try {
     // Esta URL debe devolver un 500
     await serviceGet("/api/server-error-endpoint");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_error) {
     console.log("✅ Error 500 capturado correctamente");
   }
@@ -88,6 +91,7 @@ export const testBadRequest = async () => {
   try {
     // Enviar datos inválidos
     await servicePost("/api/create-something", { invalid: "data" });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_error) {
     console.log("✅ Error 400 capturado correctamente");
   }
@@ -104,6 +108,7 @@ export const testNetworkError = async () => {
 
   try {
     await serviceGet("/api/any-endpoint");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     console.log("✅ Error de red capturado correctamente");
   }
@@ -155,6 +160,7 @@ export const runAllTests = async () => {
  */
 
 // Exportar todo para uso en consola
+    // eslint-disable-next-line import/no-anonymous-default-export
 export default {
   testTokenInjection,
   testUnauthorizedError,

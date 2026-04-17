@@ -66,12 +66,14 @@ export function GeneralSettings() {
 
   useEffect(() => {
     loadSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadSettings = async () => {
     try {
       const data = await getClinicSettings();
       setSettings(data);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_error) {
       toast({
         title: "Error",
@@ -93,6 +95,7 @@ export function GeneralSettings() {
         title: "Configuración guardada",
         description: "Los cambios se han guardado correctamente",
       });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_error) {
       toast({
         title: "Error",

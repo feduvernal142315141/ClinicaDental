@@ -138,7 +138,7 @@ async function deleteDoctor(id: string): Promise<void> {
 async function changeDoctorPassword(
   data: DoctorChangePasswordRequest
 ): Promise<void> {
-  const response = await servicePut<DoctorChangePasswordRequest, {}>(
+  const response = await servicePut<DoctorChangePasswordRequest, Record<string, unknown>>(
     `${endpoint}/change-password`,
     data
   );

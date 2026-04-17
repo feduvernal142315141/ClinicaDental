@@ -24,7 +24,7 @@ export function useClinicalHistory() {
     try {
       const data = await clinicalHistoryService.getSnapshot(patientId);
       setSnapshot(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       const msg = err.message || "Error al cargar historia clínica";
       setError(msg);
       if (err.status === 403) {
@@ -49,7 +49,7 @@ export function useClinicalHistory() {
         message.success("Historia médica actualizada exitosamente");
         await loadSnapshot(patientId);
         return true;
-      } catch (err: any) {
+      } catch (err: unknown) {
         message.error(err.message || "Error al actualizar historia médica");
         throw err;
       } finally {
@@ -67,7 +67,7 @@ export function useClinicalHistory() {
         message.success("Historia médica validada exitosamente");
         await loadSnapshot(patientId);
         return true;
-      } catch (err: any) {
+      } catch (err: unknown) {
         message.error(err.message || "Error al validar historia médica");
         throw err;
       } finally {

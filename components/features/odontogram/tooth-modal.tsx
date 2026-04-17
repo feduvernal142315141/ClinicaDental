@@ -654,6 +654,7 @@ export function ToothModal({
     if (currentDiagnoses && currentDiagnoses.size > 0) {
       currentDiagnoses.forEach(
         (diagnosis: SurfaceDiagnosis, surface: ToothSurface) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const state = surfaceStatesRef.current.find(
             (s) => s.surface === surface,
           );

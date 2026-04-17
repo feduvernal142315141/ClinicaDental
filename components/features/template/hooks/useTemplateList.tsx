@@ -57,6 +57,7 @@ const useTemplateList = () => {
         customCell: (value) => (
           <div className="flex items-center">
             {value === "image" ? (
+    // eslint-disable-next-line jsx-a11y/alt-text
               <Image className="h-5 w-5" />
             ) : (
               <Video className="h-5 w-5" />
@@ -100,6 +101,7 @@ const useTemplateList = () => {
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 

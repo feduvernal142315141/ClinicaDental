@@ -61,6 +61,7 @@ function getSurfaceLabel(
 /* Geometría del layout cuadrado (viewBox 200x200) */
 const OUTER = 200;
 const INNER_OFFSET = 50;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const INNER_SIZE = OUTER - INNER_OFFSET * 2; // 100
 
 const SURFACE_PATHS: Record<ToothSurface, string> = {

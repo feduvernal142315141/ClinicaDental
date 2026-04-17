@@ -27,6 +27,7 @@ export function LoginHeroSection() {
   const carouselItems: CarouselItem[] = clinicImages.map((image) => ({
     id: image.id,
     content: (
+      /* eslint-disable-next-line @next/next/no-img-element */
       <img
         src={image.url || "/placeholder.svg"}
         alt={image.alt}

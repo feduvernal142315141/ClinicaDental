@@ -233,6 +233,7 @@ export function FileUpload({
                         <div className="space-y-3">
                             <div
                                 className="relative aspect-video w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                     src={previewUrl}
                                     alt="Preview"

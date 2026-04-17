@@ -164,6 +164,7 @@ export const convertFilterToType = (filter: string | undefined) => {
 const formatDateStart = (dateValue: string): string => {
   try {
     return moment(dateValue).format("YYYY-MM-DD HH:mm:ss");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_error) {
     return dateValue;
   }
@@ -172,6 +173,7 @@ const formatDateStart = (dateValue: string): string => {
 const formatDateEnd = (dateValue: string): string => {
   try {
     return moment(dateValue).add(1, "second").format("YYYY-MM-DD HH:mm:ss");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_error) {
     return dateValue;
   }

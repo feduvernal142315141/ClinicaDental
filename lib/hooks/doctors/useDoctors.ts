@@ -43,7 +43,7 @@ export function useDoctors() {
         });
 
         return response;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al cargar doctores");
         throw error;
       } finally {
@@ -62,7 +62,7 @@ export function useDoctors() {
       try {
         const doctor = await doctorsService.getDoctorById(id);
         return doctor;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al cargar doctor");
         throw error;
       } finally {
@@ -80,7 +80,7 @@ export function useDoctors() {
     try {
       const newDoctor = await doctorsService.createDoctor(data);
       return newDoctor;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw error;
     } finally {
       setLoading(false);
@@ -96,7 +96,7 @@ export function useDoctors() {
       try {
         const updatedDoctor = await doctorsService.updateDoctor(id, data);
         return updatedDoctor;
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw error;
       } finally {
         setLoading(false);
@@ -114,7 +114,7 @@ export function useDoctors() {
       try {
         await doctorsService.deleteDoctor(id);
         message.success("Doctor eliminado exitosamente");
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al eliminar doctor");
         throw error;
       } finally {
@@ -135,7 +135,7 @@ export function useDoctors() {
         message.success(
           `Doctor ${active ? "activado" : "desactivado"} exitosamente`
         );
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al cambiar estado");
         throw error;
       } finally {

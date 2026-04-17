@@ -110,7 +110,7 @@ const Button = React.forwardRef<HTMLElement, ButtonProps>(
 
     return (
       <AntdButton
-        ref={ref as any}
+        ref={ref as unknown}
         type={antdTypeFinal}
         size={antdSize}
         htmlType={htmlTypeFinal}

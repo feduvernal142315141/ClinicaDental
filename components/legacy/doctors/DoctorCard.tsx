@@ -9,8 +9,10 @@ import {
 } from "@/components/ui/atomic/data-display/card";
 import { Separator } from "@/components/ui/primitives/shadcn/separator";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { User, Edit, Trash2, Clock } from "lucide-react";
 import type { Doctor } from "@/lib/doctors";
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { doctorService } from "@/lib/doctors";
 import DoctorSchedule from "./DoctorSchedule";
 import { deleteDoctor } from "@/lib/supabase/doctors";
@@ -42,6 +44,7 @@ export default function DoctorCard({
           await deleteDoctor(doctor.id);
           showSuccess("Doctor eliminado", "Se eliminó correctamente.");
           reload();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
           showError("Error", "No se pudo eliminar el doctor.");
         }

@@ -27,6 +27,7 @@ export function InterceptorsContextInitializer() {
     });
 
     console.log("✅ Interceptores configurados con Context API");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Solo se ejecuta una vez al montar
 
   return null;

@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/primitives/shadcn/tabs";
 import { User, Shield } from "lucide-react";
 import {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   doctorService,
   roleService,
   type Doctor,
@@ -32,6 +33,7 @@ export default function DoctorsRolesSettings() {
       return;
     }
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.clinicId]);
 
   const loadData = async () => {

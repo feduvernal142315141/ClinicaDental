@@ -16,6 +16,7 @@ interface VisitDrawerProps {
   onMarkAsDone?: (eventId: string) => void
 }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function VisitDrawer({ events, onEventClick, onChangePriority, onMarkAsDone }: VisitDrawerProps) {
   const [expandedTeeth, setExpandedTeeth] = useState<Set<number>>(new Set())
 

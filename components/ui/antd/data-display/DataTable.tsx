@@ -15,7 +15,7 @@ export interface DataTableColumn<T> {
   align?: "left" | "center" | "right";
   sorter?: boolean;
   filterable?: boolean;
-  render?: (value: any, record: T, index: number) => React.ReactNode;
+  render?: (value: unknown, record: T, index: number) => React.ReactNode;
 }
 
 export interface DataTableProps<T extends object> {

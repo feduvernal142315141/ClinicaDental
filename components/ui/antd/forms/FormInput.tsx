@@ -13,7 +13,7 @@ export interface FormInputProps extends Omit<InputProps, "name"> {
   /** Whether field is required */
   required?: boolean;
   /** Custom validation rules */
-  rules?: any[];
+  rules?: unknown[];
   /** Help text below field */
   help?: string;
   /** Error message (external validation) */

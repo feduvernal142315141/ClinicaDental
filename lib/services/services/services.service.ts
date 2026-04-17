@@ -93,8 +93,8 @@ async function createService(data: CreateServiceRequest): Promise<boolean> {
   }
 
   const errorMessage =
-    (response?.data as any)?.message ||
-    (response?.data as any)?.details ||
+    (response?.data as unknown)?.message ||
+    (response?.data as unknown)?.details ||
     "Error al crear servicio";
   throw new Error(errorMessage);
 }
@@ -117,8 +117,8 @@ async function updateService(
   }
 
   const errorMessage =
-    (response?.data as any)?.message ||
-    (response?.data as any)?.details ||
+    (response?.data as unknown)?.message ||
+    (response?.data as unknown)?.details ||
     "Error al actualizar servicio";
   throw new Error(errorMessage);
 }
@@ -135,8 +135,8 @@ async function toggleServiceStatus(id: string): Promise<boolean> {
   }
 
   const errorMessage =
-    (response?.data as any)?.message ||
-    (response?.data as any)?.details ||
+    (response?.data as unknown)?.message ||
+    (response?.data as unknown)?.details ||
     "Error al cambiar estado del servicio";
   throw new Error(errorMessage);
 }

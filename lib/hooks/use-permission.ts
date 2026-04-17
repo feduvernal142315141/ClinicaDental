@@ -17,9 +17,9 @@ function extractPermissionsFromJwtPayload(
 ): string[] | null {
   const candidates = [
     payload.permissions,
-    (payload as any).Permissions,
-    (payload as any).permisos,
-    (payload as any).permission,
+    (payload as unknown).Permissions,
+    (payload as unknown).permisos,
+    (payload as unknown).permission,
   ];
 
   for (const c of candidates) {
@@ -40,10 +40,10 @@ export function usePermission() {
     if (role === "admin") return { isAdmin: true, permissions: [] as string[] };
 
     // Prefer context-provided permissions if present
-    const direct = (user as any)?.permissions;
+    const direct = (user as unknown)?.permissions;
     if (
       Array.isArray(direct) &&
-      direct.every((x: any) => typeof x === "string")
+      direct.every((x: unknown) => typeof x === "string")
     ) {
       return { isAdmin: false, permissions: direct as string[] };
     }

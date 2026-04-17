@@ -8,7 +8,7 @@ import {
   ArrowLeftOutlined,
 } from "@ant-design/icons";
 
-export interface FormContainerProps<T = any>
+export interface FormContainerProps<T = unknown>
   extends Omit<FormProps<T>, "children"> {
   /** Form content */
   children: React.ReactNode;
@@ -61,7 +61,7 @@ export interface FormContainerProps<T = any>
  *   <FormInput name="email" label="Email" type="email" required />
  * </FormContainer>
  */
-export function FormContainer<T = any>({
+export function FormContainer<T = unknown>({
   children,
   title,
   description,

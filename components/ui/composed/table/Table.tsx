@@ -7,7 +7,7 @@ import { Pagination } from "@/components/ui/composed/pagination/Pagination";
 import { TableProps } from "@/components/ui/composed/table/TableModels";
 import useTable from "@/components/ui/composed/table/hooks/useTable";
 
-export function CustomTable<T extends Record<string, any>>({
+export function CustomTable<T extends Record<string, unknown>>({
   columns,
   data,
   total,

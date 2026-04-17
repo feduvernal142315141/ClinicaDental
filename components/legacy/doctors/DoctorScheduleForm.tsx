@@ -15,7 +15,7 @@ const DAYS = [
 ];
 
 interface DoctorScheduleFormProps {
-  control: Control<any>;
+  control: Control<unknown>;
 }
 
 export function DoctorScheduleForm({ control }: DoctorScheduleFormProps) {

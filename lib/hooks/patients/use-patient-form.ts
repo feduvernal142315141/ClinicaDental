@@ -63,7 +63,7 @@ export function usePatientForm({
 
   // Handle form submission
   const handleSubmit = useCallback(
-    async (values: any) => {
+    async (values: unknown) => {
       try {
         if (isEdit && patientId) {
           const updateData: UpdatePatientRequest = {
@@ -97,7 +97,7 @@ export function usePatientForm({
             router.push(basePath);
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Error in handleSubmit:", error);
       }
     },

@@ -2,7 +2,7 @@
 import apiInstance from "@/lib/services/apiConfig";
 import {ResponseEntity, ServiceResponse} from "@/lib/models/response";
 
-export const serviceGet = async <T = any>(url: string): ServiceResponse<T> => {
+export const serviceGet = async <T = unknown>(url: string): ServiceResponse<T> => {
     return apiInstance
         .get<ResponseEntity<T>>(url)
         .then((response) => {
@@ -13,7 +13,7 @@ export const serviceGet = async <T = any>(url: string): ServiceResponse<T> => {
         })
 }
 
-export const serviceDelete = async <T = any, R = any>(url: string, data?: T): ServiceResponse<R> => {
+export const serviceDelete = async <T = unknown, R = unknown>(url: string, data?: T): ServiceResponse<R> => {
     return apiInstance
         .delete<ResponseEntity<R>>(url, { data })
         .then((response) => {
@@ -24,7 +24,7 @@ export const serviceDelete = async <T = any, R = any>(url: string, data?: T): Se
         })
 }
 
-export const servicePost = async <T = any, R = any>(url: string, data: T): ServiceResponse<R> => {
+export const servicePost = async <T = unknown, R = unknown>(url: string, data: T): ServiceResponse<R> => {
     return apiInstance
         .post<ResponseEntity<R>>(url, data)
         .then((response) => {
@@ -35,7 +35,7 @@ export const servicePost = async <T = any, R = any>(url: string, data: T): Servi
         })
 }
 
-export const servicePut = async <T = any, R = any>(url: string, data: T): ServiceResponse<R> => {
+export const servicePut = async <T = unknown, R = unknown>(url: string, data: T): ServiceResponse<R> => {
     return apiInstance
         .put<ResponseEntity<R>>(url, data)
         .then((response) => {
@@ -46,7 +46,7 @@ export const servicePut = async <T = any, R = any>(url: string, data: T): Servic
         })
 }
 
-export const servicePatch = async <T = any, R = any>(url: string, data?: T): ServiceResponse<R> => {
+export const servicePatch = async <T = unknown, R = unknown>(url: string, data?: T): ServiceResponse<R> => {
     return apiInstance
         .patch<ResponseEntity<R>>(url, data)
         .then((response) => {

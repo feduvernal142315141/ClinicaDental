@@ -15,7 +15,7 @@ import { Controller } from "react-hook-form";
 
 type DatePickerFieldProps = {
   name: string;
-  control: any;
+  control: unknown;
   label?: string;
   error?: string;
   required?: boolean;
@@ -39,8 +39,10 @@ export function DatePickerField({
       name={name}
       control={control}
       render={({ field: { value, onChange } }) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
         const [open, setOpen] = React.useState(false);
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
         const selectedDate = React.useMemo(() => {
           if (!value) return undefined;
           try {

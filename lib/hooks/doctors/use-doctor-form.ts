@@ -13,7 +13,7 @@ import type {
  * Transform backend schedule to frontend format
  * Backend doesn't send 'enabled' field, we infer it from presence of the day
  */
-const transformScheduleFromBackend = (backendSchedule: any): any => {
+const transformScheduleFromBackend = (backendSchedule: unknown): unknown => {
   if (!backendSchedule || typeof backendSchedule !== "object") {
     return DEFAULT_WEEK_SCHEDULE;
   }
@@ -28,7 +28,7 @@ const transformScheduleFromBackend = (backendSchedule: any): any => {
     "sunday",
   ];
 
-  const transformedSchedule: any = {};
+  const transformedSchedule: unknown = {};
 
   daysOfWeek.forEach((day) => {
     if (backendSchedule[day]) {
@@ -59,12 +59,12 @@ const transformScheduleFromBackend = (backendSchedule: any): any => {
  * Transform frontend schedule to backend format
  * Backend doesn't expect 'enabled' field, only send enabled days
  */
-const transformScheduleToBackend = (frontendSchedule: any): any => {
+const transformScheduleToBackend = (frontendSchedule: unknown): unknown => {
   if (!frontendSchedule || typeof frontendSchedule !== "object") {
     return {};
   }
 
-  const backendSchedule: any = {};
+  const backendSchedule: unknown = {};
 
   Object.keys(frontendSchedule).forEach((day) => {
     const daySchedule = frontendSchedule[day];
@@ -166,7 +166,7 @@ export function useDoctorForm({
 
   // Handle form submission
   const handleSubmit = useCallback(
-    async (values: any) => {
+    async (values: unknown) => {
       try {
         console.log("📝 Form values:", values);
         console.log("📅 Schedule from form:", values.schedule);
@@ -230,11 +230,12 @@ export function useDoctorForm({
             router.push(basePath);
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("❌ Error in handleSubmit:", error);
         // El interceptor ya muestra el mensaje de error
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [isEdit, doctorId, createDoctor, updateDoctor, message, router, basePath]
   );
 

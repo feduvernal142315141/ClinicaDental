@@ -1,7 +1,7 @@
 import {FilterOperatorType} from "@/lib/models/filterOperator";
 
 
-export interface TableProps<T extends Record<string, any>> {
+export interface TableProps<T extends Record<string, unknown>> {
     columns: Columns[];
     data: T[];
     total: number;
@@ -11,7 +11,7 @@ export interface TableProps<T extends Record<string, any>> {
     onFilterChange?: (filters: string) => void;
 }
 
-export interface Columns<T = any> {
+export interface Columns<T = unknown> {
     key: string;
     title: string;
     className?: string;
@@ -27,8 +27,8 @@ export interface Columns<T = any> {
         | 'dateRange'
         | undefined;
     relatedField?: string;
-    customFilters?: (value: any, row: T) => React.ReactNode;
-    customCell?: (value: any, row: T) => React.ReactNode;
+    customFilters?: (value: unknown, row: T) => React.ReactNode;
+    customCell?: (value: unknown, row: T) => React.ReactNode;
 
 }
 

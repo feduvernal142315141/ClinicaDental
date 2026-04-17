@@ -43,7 +43,7 @@ export function usePatients() {
         });
 
         return response;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al cargar pacientes");
         throw error;
       } finally {
@@ -62,7 +62,7 @@ export function usePatients() {
       try {
         const patient = await patientsService.getPatientById(id);
         return patient;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al cargar paciente");
         throw error;
       } finally {
@@ -83,7 +83,7 @@ export function usePatients() {
         const patientId = await patientsService.createPatient(data);
         message.success("Paciente creado exitosamente");
         return patientId;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al crear paciente");
         throw error;
       } finally {
@@ -103,7 +103,7 @@ export function usePatients() {
         await patientsService.updatePatient(data);
         message.success("Paciente actualizado exitosamente");
         return true;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al actualizar paciente");
         throw error;
       } finally {
@@ -123,7 +123,7 @@ export function usePatients() {
         await patientsService.deletePatient(id);
         message.success("Paciente eliminado exitosamente");
         return true;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al eliminar paciente");
         throw error;
       } finally {
@@ -143,7 +143,7 @@ export function usePatients() {
         await patientsService.restorePatient(id);
         message.success("Paciente restaurado exitosamente");
         return true;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al restaurar paciente");
         throw error;
       } finally {
@@ -165,7 +165,7 @@ export function usePatients() {
           `Paciente ${active ? "activado" : "desactivado"} exitosamente`,
         );
         return true;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al cambiar estado");
         throw error;
       } finally {

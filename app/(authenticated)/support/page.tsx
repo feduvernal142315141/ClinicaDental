@@ -105,8 +105,7 @@ export default function SupportPage() {
                 ¿Cómo puedo cambiar mi contraseña?
               </h3>
               <p className="text-sm text-muted-foreground">
-                Ve a Configuración {">"} General y selecciona "Cambiar
-                contraseña"
+                Ve a Configuración {">"} General y selecciona &quot;Cambiar contraseña&quot;
               </p>
             </div>
             <div className="border-b pb-4">
@@ -114,8 +113,7 @@ export default function SupportPage() {
                 ¿Cómo agrego nuevos pacientes?
               </h3>
               <p className="text-sm text-muted-foreground">
-                En la sección de Pacientes, haz clic en el botón "Nuevo
-                Paciente" y completa el formulario
+                En la sección de Pacientes, haz clic en el botón &quot;Nuevo Paciente&quot; y completa el formulario
               </p>
             </div>
             <div className="pb-4">

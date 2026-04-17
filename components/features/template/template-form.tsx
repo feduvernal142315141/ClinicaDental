@@ -197,6 +197,7 @@ export function TemplateForm() {
                           {selectedType === "media" && (
                             <div className="aspect-video bg-gray-100 flex items-center justify-center text-muted-foreground border-b">
                               {mediaVariable2 ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
                                 <img
                                   src={mediaVariable2}
                                   alt="Media preview"

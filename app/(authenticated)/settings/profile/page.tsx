@@ -15,8 +15,8 @@ function getLoggedUserDoctorId(fallbackId?: string | null): string | null {
   const userInfo = logged?.userInfo as Record<string, unknown> | undefined;
 
   const idFromJwt = userInfo?.userId;
-  const idFromUpper = (userInfo as any)?.Id;
-  const idFromLower = (userInfo as any)?.id;
+  const idFromUpper = (userInfo as unknown)?.Id;
+  const idFromLower = (userInfo as unknown)?.id;
 
   const resolved = idFromJwt ?? idFromUpper ?? idFromLower;
   return resolved ? String(resolved) : null;

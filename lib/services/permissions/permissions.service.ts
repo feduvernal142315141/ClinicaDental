@@ -57,24 +57,24 @@ function buildQueryString(params?: PermissionsQueryParams): string {
   return queryParams.toString();
 }
 
-async function getPermissions(params?: PermissionsQueryParams): Promise<any> {
+async function getPermissions(params?: PermissionsQueryParams): Promise<unknown> {
   const queryString = buildQueryString(params);
   const url = `${endpoint}${queryString ? `?${queryString}` : ""}`;
 
-  const response = await serviceGet<any>(url);
+  const response = await serviceGet<unknown>(url);
 
   if (response?.status >= 200 && response?.status < 300) {
     return response.data;
   }
 
   const errorMessage =
-    (response?.data as any)?.message ||
-    (response?.data as any)?.details ||
+    (response?.data as unknown)?.message ||
+    (response?.data as unknown)?.details ||
     "Error al cargar permisos";
   throw new Error(errorMessage);
 }
 
-function normalizeCatalogItems(raw: any): PermissionCatalogItem[] {
+function normalizeCatalogItems(raw: unknown): PermissionCatalogItem[] {
   if (!raw) return [];
 
   // Soportar distintas formas típicas: array directo, paginado, etc.
@@ -172,7 +172,7 @@ async function updateRolePermissions(
     catalog
   );
 
-  const response = await servicePut<UpdateRolePermissionsRequest, any>(
+  const response = await servicePut<UpdateRolePermissionsRequest, unknown>(
     endpoint,
     {
       rolId: payload.rolId,
@@ -186,8 +186,8 @@ async function updateRolePermissions(
   }
 
   const errorMessage =
-    (response?.data as any)?.message ||
-    (response?.data as any)?.details ||
+    (response?.data as unknown)?.message ||
+    (response?.data as unknown)?.details ||
     "Error al actualizar permisos";
   throw new Error(errorMessage);
 }

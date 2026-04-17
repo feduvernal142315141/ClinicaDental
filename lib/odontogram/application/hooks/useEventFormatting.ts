@@ -29,7 +29,7 @@ export function useEventFormatting() {
     }
   };
 
-  const formatEventDate = (date: any) => {
+  const formatEventDate = (date: unknown) => {
     if (!date) return "Sin fecha";
     try {
       const dateObj = new Date(date);

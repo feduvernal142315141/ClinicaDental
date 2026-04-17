@@ -28,6 +28,7 @@ export function usePlanTab({
   diagnoses,
   pulpalStatus = "normal",
   initialPlans,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   patientRisk = "medio",
   onPlansChange,
 }: UsePlanTabProps) {
@@ -41,15 +42,16 @@ export function usePlanTab({
     if (initialPlans && initialPlans.length > 0 && plans.length === 0) {
       setPlans(initialPlans)
       if (typeof window !== "undefined") {
-        ;(window as any).__currentPlans = initialPlans
+        ;(window as unknown).__currentPlans = initialPlans
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPlans])
 
   const handlePlansUpdate = (newPlans: ProcedurePlan[]) => {
     setPlans(newPlans)
     if (typeof window !== "undefined") {
-      ;(window as any).__currentPlans = newPlans
+      ;(window as unknown).__currentPlans = newPlans
     }
     if (onPlansChange) {
       onPlansChange(newPlans)

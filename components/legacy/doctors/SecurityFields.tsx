@@ -46,8 +46,8 @@ export function SecurityFields({
             required={!isEdit && !!password}
             placeholder="Confirme la contraseña"
             rules={[
-              ({ getFieldValue }: any) => ({
-                validator(_: any, value: string) {
+              ({ getFieldValue }: unknown) => ({
+                validator(_: unknown, value: string) {
                   if (!value || getFieldValue("password") === value) {
                     return Promise.resolve();
                   }

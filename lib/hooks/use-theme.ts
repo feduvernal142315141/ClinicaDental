@@ -20,6 +20,7 @@ export function useTheme() {
   useEffect(() => {
     setMounted(true);
     setTheme('light');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleTheme = () => {

@@ -6,7 +6,7 @@ export interface Integration {
   icon: string
   enabled: boolean
   configured: boolean
-  config?: Record<string, any>
+  config?: Record<string, unknown>
 }
 
 export interface IntegrationSettings {
@@ -206,6 +206,7 @@ export function saveIntegrationSettings(settings: Partial<IntegrationSettings>) 
   localStorage.setItem("integrationSettings", JSON.stringify(updated))
 }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function testIntegration(integrationId: string): Promise<boolean> {
   // Simular prueba de conexión
   return new Promise((resolve) => {

@@ -10,7 +10,7 @@ const DAYS = [
   { key: "sunday", label: "Domingo" },
 ];
 
-export default function DoctorSchedule({ schedule }: { schedule: any }) {
+export default function DoctorSchedule({ schedule }: { schedule: unknown }) {
   return (
     <div>
       <p className="font-medium mb-2 flex items-center gap-2">

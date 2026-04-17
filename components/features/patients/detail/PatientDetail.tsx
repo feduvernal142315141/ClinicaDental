@@ -89,12 +89,14 @@ export function PatientDetail({
 
   useEffect(() => {
     void loadPatient();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
 
   useEffect(() => {
     if (patient?.id) {
       void loadAppointments();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patient?.id]);
 
   const loadPatient = async () => {

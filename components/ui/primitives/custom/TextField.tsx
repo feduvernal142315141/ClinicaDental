@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/atomic/forms/label";
 
 interface TextFieldProps {
   name: string;
-  control: Control<any>;
+  control: Control<unknown>;
   label?: string;
   placeholder?: string;
   type?: string;

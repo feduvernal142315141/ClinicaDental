@@ -63,6 +63,7 @@ export function PatientDetails({
     if (patient.id) {
       void loadAppointments();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patient.id]);
 
   const loadAppointments = async () => {

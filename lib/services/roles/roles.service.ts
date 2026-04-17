@@ -57,7 +57,7 @@ function normalizeString(v: unknown): string {
     .replace(/[\s_]+/g, "_");
 }
 
-function normalizeCatalogItems(raw: any): PermissionCatalogItem[] {
+function normalizeCatalogItems(raw: unknown): PermissionCatalogItem[] {
   if (!raw) return [];
   const candidates = [raw, raw?.data, raw?.entities, raw?.content, raw?.items];
   for (const c of candidates) {
@@ -208,7 +208,7 @@ async function getRoleById(id: string): Promise<Role> {
     const role = response.data as Role;
     return {
       ...role,
-      permissions: await normalizeRolePermissions((role as any)?.permissions),
+      permissions: await normalizeRolePermissions((role as unknown)?.permissions),
     };
   }
   throw new Error("Error al cargar rol");
@@ -246,8 +246,8 @@ async function createRole(data: CreateRoleRequest): Promise<boolean> {
   }
 
   const errorMessage =
-    (response?.data as any)?.message ||
-    (response?.data as any)?.details ||
+    (response?.data as unknown)?.message ||
+    (response?.data as unknown)?.details ||
     "Error al crear rol";
   throw new Error(errorMessage);
 }

@@ -117,6 +117,7 @@ export default function RoleCard({
         ) : (
           <div className="space-y-3">
             {Object.entries(permissionsByCategory).map(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
               ([category, categoryPermissions]) => {
                 const rolePermissions = role.permissions.filter(
                   (p) => p.category === category

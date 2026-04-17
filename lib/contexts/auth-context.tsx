@@ -56,13 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const rawRole =
       (payload?.roleName as string | undefined) ||
       (payload?.role as string | undefined) ||
-      ((payload as any)?.rol as string | undefined);
+      ((payload as unknown)?.rol as string | undefined);
     const roleName = normalizeRoleName(rawRole);
 
     const rawPermissions =
       (payload?.permissions as unknown) ??
-      ((payload as any)?.Permissions as unknown) ??
-      ((payload as any)?.permisos as unknown);
+      ((payload as unknown)?.Permissions as unknown) ??
+      ((payload as unknown)?.permisos as unknown);
 
     const permissions = Array.isArray(rawPermissions)
       ? rawPermissions.filter((p): p is string => typeof p === "string")
@@ -71,8 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser({
       id: String(
         (payload?.userId as string | undefined) ??
-          ((payload as any)?.Id as string | undefined) ??
-          ((payload as any)?.id as string | undefined) ??
+          ((payload as unknown)?.Id as string | undefined) ??
+          ((payload as unknown)?.id as string | undefined) ??
           "jwt"
       ),
       email,
@@ -103,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       ignore = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email: string, password: string) => {

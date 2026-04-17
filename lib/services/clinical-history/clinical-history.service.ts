@@ -25,7 +25,7 @@ async function getSnapshot(
       ? "No tiene permisos para acceder a la historia clínica"
       : "Error al cargar historia clínica";
   const error = new Error(msg);
-  (error as any).status = status;
+  (error as unknown).status = status;
   throw error;
 }
 
@@ -47,8 +47,8 @@ async function updateMedicalHistory(
   }
 
   const errorMessage =
-    (response?.data as any)?.message ||
-    (response?.data as any)?.details ||
+    (response?.data as unknown)?.message ||
+    (response?.data as unknown)?.details ||
     "Error al actualizar historia médica";
   throw new Error(errorMessage);
 }
@@ -67,8 +67,8 @@ async function validateMedicalHistory(patientId: string): Promise<boolean> {
   }
 
   const errorMessage =
-    (response?.data as any)?.message ||
-    (response?.data as any)?.details ||
+    (response?.data as unknown)?.message ||
+    (response?.data as unknown)?.details ||
     "Error al validar historia médica";
   throw new Error(errorMessage);
 }

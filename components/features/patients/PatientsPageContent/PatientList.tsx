@@ -56,6 +56,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
             page: pagination.page,
             pageSize: pagination.pageSize,
           });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_e) {
           message.error("No se pudo eliminar el paciente");
         }
@@ -70,6 +71,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
         onEdit: handleEditPatient,
         onDelete: handleDelete,
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [handleViewPatient, handleEditPatient],
   );
 

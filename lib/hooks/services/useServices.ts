@@ -42,7 +42,7 @@ export function useServices() {
         });
 
         return response;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al cargar servicios");
         throw error;
       } finally {
@@ -61,7 +61,7 @@ export function useServices() {
       try {
         const service = await servicesService.getServiceById(id);
         return service;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al cargar servicio");
         throw error;
       } finally {
@@ -84,7 +84,7 @@ export function useServices() {
           await fetchServices();
         }
         return success;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al crear servicio");
         throw error;
       } finally {
@@ -107,7 +107,7 @@ export function useServices() {
           await fetchServices();
         }
         return success;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al actualizar servicio");
         throw error;
       } finally {
@@ -134,7 +134,7 @@ export function useServices() {
           await fetchServices();
         }
         return success;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al cambiar estado del servicio");
         throw error;
       } finally {

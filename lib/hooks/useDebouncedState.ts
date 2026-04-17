@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 
-export function useDebouncedState(defaultValue:any, wait: number, options = { leading: false }) {
+export function useDebouncedState(defaultValue:unknown, wait: number, options = { leading: false }) {
   const [value, setValue] = useState(defaultValue)
 
   const timeoutRef = useRef(null)
@@ -12,7 +12,7 @@ export function useDebouncedState(defaultValue:any, wait: number, options = { le
   useEffect(() => clearTimeout, [])
 
   const debouncedSetValue = useCallback(
-    (newValue:any) => {
+    (newValue:unknown) => {
       clearTimeout()
 
       if (leadingRef.current && options.leading) {

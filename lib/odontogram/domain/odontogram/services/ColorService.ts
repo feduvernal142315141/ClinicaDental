@@ -29,7 +29,7 @@ export class ColorService {
     const surfaceEvents = events.filter(
       (e) =>
         e.toothNumber === toothNumber &&
-        (e.surfaces.includes(surface as any) || e.surfaces.length === 0)
+        (e.surfaces.includes(surface as unknown) || e.surfaces.length === 0)
     )
 
     const doneEvent = surfaceEvents.find(

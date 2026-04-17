@@ -54,7 +54,7 @@ export function IntegrationsSettings() {
     setSettings(getIntegrationSettings());
   }, []);
 
-  const handleSave = (section: keyof IntegrationSettings, data: any) => {
+  const handleSave = (section: keyof IntegrationSettings, data: unknown) => {
     if (!settings) return;
 
     const updated = {
@@ -70,6 +70,7 @@ export function IntegrationsSettings() {
     try {
       const result = await testIntegration(integrationId);
       setTestResults((prev) => ({ ...prev, [integrationId]: result }));
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_error) {
       setTestResults((prev) => ({ ...prev, [integrationId]: false }));
     } finally {

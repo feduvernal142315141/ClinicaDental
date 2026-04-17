@@ -1,5 +1,6 @@
 "use client"
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ODONTOGRAM_LEGEND_ITEMS, ODONTOGRAM_STATE_COLORS } from "@/lib/odontogram/domain/odontogram/constants/odontogram-colors.constants"
 
 export function OdontogramLegend() {

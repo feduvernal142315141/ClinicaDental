@@ -50,14 +50,14 @@ apiInstance.interceptors.request.use(
     // Obtener el access token desde cookie (flujo OTP/JWT backend)
     const accessToken = getAccessToken();
     if (accessToken) {
-      const headers: any = config.headers;
+      const headers: unknown = config.headers;
       if (headers && typeof headers.set === "function") {
         headers.set("Authorization", `Bearer ${accessToken}`);
       } else {
         config.headers = {
           ...(headers ?? {}),
           Authorization: `Bearer ${accessToken}`,
-        } as any;
+        } as unknown;
       }
     }
 
@@ -125,11 +125,11 @@ apiInstance.interceptors.response.use(
     // Manejo global de errores
     if (error.response) {
       const status = error.response.status;
-      const data = error.response.data as any;
+      const data = error.response.data as unknown;
 
       // Intento de refresh una sola vez (si expira access token)
       if (status === 401) {
-        const originalRequest = error.config as any;
+        const originalRequest = error.config as unknown;
         const isRetry = originalRequest?._retry;
         const url = String(originalRequest?.url ?? "");
 

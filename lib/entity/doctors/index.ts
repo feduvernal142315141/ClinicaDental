@@ -25,7 +25,7 @@ export interface Doctor {
   specialty?: string;
   description?: string;
   avatarUrl?: string;
-  schedule?: Record<string, any>; // JSON schedule data
+  schedule?: Record<string, unknown>; // JSON schedule data
   gender?: "male" | "female" | "other";
   role?: Role;
   roleId?: string;

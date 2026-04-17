@@ -41,7 +41,7 @@ export function useRoles() {
         });
 
         return response;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al cargar roles");
         throw error;
       } finally {
@@ -60,7 +60,7 @@ export function useRoles() {
       try {
         const role = await rolesService.getRoleById(id);
         return role;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al cargar rol");
         throw error;
       } finally {
@@ -84,7 +84,7 @@ export function useRoles() {
           await fetchRoles();
         }
         return success;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al crear rol");
         throw error;
       } finally {
@@ -107,7 +107,7 @@ export function useRoles() {
           await fetchRoles();
         }
         return success;
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al actualizar rol");
         throw error;
       } finally {

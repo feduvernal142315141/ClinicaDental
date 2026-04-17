@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import dayjs, { type Dayjs } from "dayjs";
 import { doctorsService } from "@/lib/services/doctors";
 import { useAppointments } from "@/lib/hooks/appointments/useAppointments";

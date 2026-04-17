@@ -13,7 +13,7 @@ export function useDoctorChangePassword() {
       try {
         await doctorsService.changeDoctorPassword(data);
         message.success("Contraseña cambiada exitosamente");
-      } catch (error: any) {
+      } catch (error: unknown) {
         message.error(error.message || "Error al cambiar contraseña");
         throw error;
       } finally {

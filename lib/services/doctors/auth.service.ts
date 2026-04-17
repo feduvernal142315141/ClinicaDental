@@ -42,7 +42,7 @@ async function login(credentials: LoginRequest): Promise<LoginResponse> {
   );
 
   const status = response?.status;
-  const data: any = response?.data;
+  const data: unknown = response?.data;
 
   if (!status) throw new Error("Network error during login");
 
@@ -147,6 +147,7 @@ async function verifyResetToken(token: string): Promise<boolean> {
   try {
     await serviceGet(`/auth/verify-token/${token}`);
     return true;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_error) {
     return false;
   }

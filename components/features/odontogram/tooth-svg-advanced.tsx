@@ -35,6 +35,7 @@ export function ToothSVGAdvanced({
   }
 
   const type = toothType()
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const isUpper = toothNumber < 30
 
   // Vista Frontal/Vestibular

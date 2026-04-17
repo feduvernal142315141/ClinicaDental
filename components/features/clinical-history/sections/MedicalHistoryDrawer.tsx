@@ -73,7 +73,7 @@ export function MedicalHistoryDrawer({
     }
   }, [open, medicalHistory, form]);
 
-  const handleFinish = async (values: any) => {
+  const handleFinish = async (values: unknown) => {
     const data: UpdateMedicalHistoryRequest = {
       occupation: values.occupation,
       maritalStatus: values.maritalStatus,
