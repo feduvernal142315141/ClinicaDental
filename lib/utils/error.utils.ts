@@ -1,12 +1,10 @@
-import { ServiceResponse } from "@/lib/models/response";
-
 /**
  * Centraliza la extracción de mensajes de error de la API.
  * Busca iterativamente las propiedades `message` y `details` en la respuesta.
  * Lanza un Error estándar con el mensaje extraído y expone el código de estado HTTP.
  */
 export function handleServiceError(
-  response: ServiceResponse<unknown> | null | undefined,
+  response: { data?: unknown; status?: number } | null | undefined,
   defaultMessage: string,
 ): never {
   const responseData = response?.data as

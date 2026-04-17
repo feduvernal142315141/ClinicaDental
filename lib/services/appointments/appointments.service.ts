@@ -231,7 +231,7 @@ async function updateAppointmentStatus(
  */
 async function cancelAppointment(id: string): Promise<boolean> {
   if (!id) {
-    handleServiceError(typeof response !== "undefined" ? response : null, "ID de cita requerido para cancelar");
+    handleServiceError(null, "ID de cita requerido para cancelar");
   }
 
   const response = (await apiInstance
