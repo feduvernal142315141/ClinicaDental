@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Button as AntdButton } from "antd";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { OdontogramInput, OdontogramSelect } from "@/components/odontogram/ui";
 import {
@@ -618,167 +619,173 @@ export function PlanTab({
             ) : (
               <div className="space-y-3">
                 {plans.map((plan) => (
-                  <div
+                  <Card
                     key={plan.id}
-                    className="p-3 rounded-lg border-2 shadow-sm"
+                    className="shadow-sm border-2 overflow-hidden"
                     style={{
                       borderColor: PLAN_STATUS_COLORS[plan.status],
-                      backgroundColor: `${PLAN_STATUS_COLORS[plan.status]}10`,
+                      backgroundColor: `${PLAN_STATUS_COLORS[plan.status]}08`,
                     }}
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">
-                          {plan.displayName}
-                        </p>
-                        {plan.surfaces.length > 0 && (
-                          <div className="flex gap-1 mt-1">
-                            {plan.surfaces.map((s) => (
-                              <Badge
-                                key={s}
-                                variant="outline"
-                                className="text-xs"
-                              >
-                                {s.charAt(0).toUpperCase()}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                        {plan.status === "done" && (
-                          <div className="flex items-center gap-1 mt-1">
-                            <CheckCircle2 className="w-3 h-3 text-blue-600" />
-                            <span className="text-xs text-blue-700">
-                              Movido a Realizado
-                            </span>
-                          </div>
-                        )}
+                    <CardHeader className="p-3 pb-0">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-sm font-medium text-foreground">
+                            {plan.displayName}
+                          </CardTitle>
+                          {plan.surfaces.length > 0 && (
+                            <div className="flex gap-1 mt-1">
+                              {plan.surfaces.map((s) => (
+                                <Badge
+                                  key={s}
+                                  variant="outline"
+                                  className="text-[10px] px-1.5 py-0"
+                                >
+                                  {s.charAt(0).toUpperCase()}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                          {plan.status === "done" && (
+                            <div className="flex items-center gap-1 mt-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                              <span className="text-xs text-blue-700 font-medium">
+                                Movido a Realizado
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-7 w-7 bg-background/50 hover:bg-background"
+                            onClick={() => handleDuplicatePlan(plan.id)}
+                            title="Duplicar"
+                          >
+                            <Copy className="w-3.5 h-3.5 text-slate-600" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-7 w-7 bg-background/50 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                            onClick={() => handleRemovePlan(plan.id)}
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0"
-                          onClick={() => handleDuplicatePlan(plan.id)}
-                        >
-                          <Copy className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0"
-                          onClick={() => handleRemovePlan(plan.id)}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                    </CardHeader>
+                    <CardContent className="p-3">
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-medium text-muted-foreground">Estado</Label>
+                          <OdontogramSelect
+                            value={plan.status}
+                            onChange={(v) =>
+                              handleUpdatePlan(plan.id, {
+                                status: v as ClinicalEventStatus,
+                              })
+                            }
+                            options={(
+                              Object.entries(PLAN_STATUS_LABELS) as [
+                                ClinicalEventStatus,
+                                string,
+                              ][]
+                            ).map(([status, label]) => ({
+                              value: status,
+                              label,
+                            }))}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-medium text-muted-foreground">Prioridad</Label>
+                          <OdontogramSelect
+                            value={plan.priority}
+                            onChange={(v) =>
+                              handleUpdatePlan(plan.id, {
+                                priority: v as ProcedurePriority,
+                              })
+                            }
+                            options={[
+                              { value: "alta", label: "Alta" },
+                              { value: "media", label: "Media" },
+                              { value: "baja", label: "Baja" },
+                            ]}
+                          />
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      <div>
-                        <Label className="text-xs mb-1 block">Estado</Label>
-                        <OdontogramSelect
-                          value={plan.status}
-                          onChange={(v) =>
-                            handleUpdatePlan(plan.id, {
-                              status: v as ClinicalEventStatus,
-                            })
-                          }
-                          options={(
-                            Object.entries(PLAN_STATUS_LABELS) as [
-                              ClinicalEventStatus,
-                              string,
-                            ][]
-                          ).map(([status, label]) => ({
-                            value: status,
-                            label,
-                          }))}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs mb-1 block">Prioridad</Label>
-                        <OdontogramSelect
-                          value={plan.priority}
-                          onChange={(v) =>
-                            handleUpdatePlan(plan.id, {
-                              priority: v as ProcedurePriority,
-                            })
-                          }
-                          options={[
-                            { value: "alta", label: "Alta" },
-                            { value: "media", label: "Media" },
-                            { value: "baja", label: "Baja" },
-                          ]}
-                        />
-                      </div>
-                    </div>
+                      {plan.material && (
+                        <div className="mb-3 space-y-1.5">
+                          <Label className="text-xs font-medium text-muted-foreground">Material</Label>
+                          <OdontogramInput
+                            value={plan.material}
+                            onChange={(e) =>
+                              handleUpdatePlan(plan.id, {
+                                material: e.target.value,
+                              })
+                            }
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      )}
 
-                    {plan.material && (
-                      <div className="mb-2">
-                        <Label className="text-xs mb-1 block">Material</Label>
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-medium text-muted-foreground">
+                            Tiempo (min)
+                          </Label>
+                          <OdontogramInput
+                            type="number"
+                            value={String(plan.durationMin)}
+                            onChange={(e) =>
+                              handleUpdatePlan(plan.id, {
+                                durationMin: Number(e.target.value),
+                              })
+                            }
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-medium text-muted-foreground">Costo</Label>
+                          <OdontogramInput
+                            type="number"
+                            value={String(plan.cost)}
+                            onChange={(e) =>
+                              handleUpdatePlan(plan.id, {
+                                cost: Number(e.target.value),
+                              })
+                            }
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-muted-foreground">Notas</Label>
                         <OdontogramInput
-                          value={plan.material}
+                          value={plan.notes || ""}
                           onChange={(e) =>
                             handleUpdatePlan(plan.id, {
-                              material: e.target.value,
+                              notes: e.target.value,
                             })
                           }
-                          className="h-7 text-xs"
+                          placeholder="Observaciones..."
+                          className="h-8 text-xs"
                         />
                       </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      <div>
-                        <Label className="text-xs mb-1 block">
-                          Tiempo (min)
-                        </Label>
-                        <OdontogramInput
-                          type="number"
-                          value={String(plan.durationMin)}
-                          onChange={(e) =>
-                            handleUpdatePlan(plan.id, {
-                              durationMin: Number(e.target.value),
-                            })
-                          }
-                          className="h-7 text-xs"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs mb-1 block">Costo</Label>
-                        <OdontogramInput
-                          type="number"
-                          value={String(plan.cost)}
-                          onChange={(e) =>
-                            handleUpdatePlan(plan.id, {
-                              cost: Number(e.target.value),
-                            })
-                          }
-                          className="h-7 text-xs"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-xs mb-1 block">Notas</Label>
-                      <OdontogramInput
-                        value={plan.notes || ""}
-                        onChange={(e) =>
-                          handleUpdatePlan(plan.id, { notes: e.target.value })
-                        }
-                        placeholder="Observaciones..."
-                        className="h-7 text-xs"
-                      />
-                    </div>
-
+                    </CardContent>
                     {plan.dependencies && plan.dependencies.length > 0 && (
-                      <div className="mt-2 flex items-center gap-1">
+                      <div className="px-3 pb-3 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 text-amber-600" />
                         <span className="text-xs text-amber-700">
                           Depende de otros procedimientos
                         </span>
                       </div>
                     )}
-                  </div>
+                  </Card>
                 ))}
               </div>
             )}
@@ -843,26 +850,24 @@ export function PlanTab({
               </div>
 
               <div className="flex gap-2 mt-4">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 text-xs bg-transparent"
+                <AntdButton
+                  type="default"
+                  style={{ flex: 1 }}
                   onClick={() => onSchedulePlans?.(plans)}
+                  icon={<Calendar className="w-4 h-4" />}
                 >
-                  <Calendar className="w-3 h-3 mr-1" />
                   Programar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="flex-1 text-xs"
+                </AntdButton>
+                <AntdButton
+                  type="primary"
+                  style={{ flex: 1 }}
                   onClick={() => {
                     const now = new Date().toISOString();
                     const updatedPlans = plans.map((p) =>
-                      p.status === "plan"
+                      p.status !== "done" && p.status !== "canceled"
                         ? {
                             ...p,
-                            status: "in_progress" as ClinicalEventStatus,
+                            status: "done" as ClinicalEventStatus,
                             appointmentAt: now,
                             updatedAt: now,
                           }
@@ -870,10 +875,10 @@ export function PlanTab({
                     );
                     handlePlansUpdate(updatedPlans);
                   }}
+                  icon={<Play className="w-4 h-4" />}
                 >
-                  <Play className="w-3 h-3 mr-1" />
                   Realizar ahora
-                </Button>
+                </AntdButton>
               </div>
             </Card>
           )}

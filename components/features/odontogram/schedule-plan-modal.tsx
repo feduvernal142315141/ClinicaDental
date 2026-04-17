@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { OdontogramModal } from "@/components/features/odontogram/ui";
 import { OdontogramSelect } from "@/components/features/odontogram/ui";
-import { Button } from "@/components/ui/button";
+import { Button } from "antd";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, User, AlertCircle, Loader2 } from "lucide-react";
@@ -78,7 +78,7 @@ export function SchedulePlanModal({
     0,
   );
 
-  const pendingPlans = plans.filter((p) => p.status === "plan");
+  const pendingPlans = plans.filter((p) => p.status !== "done" && p.status !== "canceled");
 
   const canSubmit =
     doctorId && date && time && patientId && pendingPlans.length > 0;
@@ -104,7 +104,7 @@ export function SchedulePlanModal({
 
       const now = new Date().toISOString();
       const updatedPlans = plans.map((p) =>
-        p.status === "plan"
+        p.status !== "done" && p.status !== "canceled"
           ? {
               ...p,
               status: "scheduled" as ProcedurePlan["status"],
@@ -250,29 +250,21 @@ export function SchedulePlanModal({
         {/* Actions */}
         <div className="flex gap-2 pt-2">
           <Button
-            variant="outline"
-            className="flex-1 bg-transparent"
+            type="default"
+            style={{ flex: 1 }}
             onClick={onClose}
             disabled={loading}
           >
             Cancelar
           </Button>
           <Button
-            className="flex-1"
+            type="primary"
+            style={{ flex: 1 }}
             onClick={handleSubmit}
             disabled={!canSubmit || loading}
+            icon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
           >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                Programando...
-              </>
-            ) : (
-              <>
-                <Calendar className="w-4 h-4 mr-1" />
-                Programar cita
-              </>
-            )}
+            {loading ? "Programando..." : "Programar cita"}
           </Button>
         </div>
       </div>

@@ -378,7 +378,9 @@ export function SurfacesTab({
                 }}
               >
                 {surface.surface.charAt(0).toUpperCase()} ·{" "}
-                {SURFACE_STATUS_LABELS[surface.status]}
+                {surface.status === "pathology" && surface.icdasScore > 0
+                  ? `ICDAS ${surface.icdasScore}`
+                  : SURFACE_STATUS_LABELS[surface.status]}
               </Badge>
             ))
           )}
