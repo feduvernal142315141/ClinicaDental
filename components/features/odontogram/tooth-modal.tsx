@@ -694,12 +694,11 @@ export function ToothModal({
               suggestPlan:
                 diagnosis.icdasScore >= 3 ||
                 diagnosis.nonCariousLesions.length > 0,
-              urgencyLevel:
-                diagnosis.icdasScore >= 5
-                  ? "high"
-                  : diagnosis.icdasScore >= 3
-                    ? "medium"
-                    : "low",
+              urgencyLevel: (diagnosis.icdasScore >= 5
+                ? "high"
+                : diagnosis.icdasScore >= 3
+                  ? "medium"
+                  : "low") as "high" | "medium" | "low",
             },
             icdasScore: diagnosis.icdasScore,
             notes: buildSurfaceDiagnosisNotes(diagnosis),
