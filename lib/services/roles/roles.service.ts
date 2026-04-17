@@ -2,6 +2,7 @@ import { serviceGet, servicePost } from "../baseService";
 import { permissionsService } from "../permissions";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { PERMISSIONS } from "@/lib/constants/roles.constants";
+import { handleServiceError } from "@/lib/utils/error.utils";
 import type {
   Role,
   CreateRoleRequest,
@@ -211,7 +212,7 @@ async function getRoleById(id: string): Promise<Role> {
       permissions: await normalizeRolePermissions((role as unknown)?.permissions),
     };
   }
-  throw new Error("Error al cargar rol");
+  handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar rol");
 }
 
 /**
@@ -228,7 +229,7 @@ async function getRoles(
   if (response?.data) {
     return response.data;
   }
-  throw new Error("Error al cargar roles");
+  handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar roles");
 }
 
 /**
@@ -245,11 +246,7 @@ async function createRole(data: CreateRoleRequest): Promise<boolean> {
     return true;
   }
 
-  const errorMessage =
-    (response?.data as unknown)?.message ||
-    (response?.data as unknown)?.details ||
-    "Error al crear rol";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al crear rol");
 }
 
 /**

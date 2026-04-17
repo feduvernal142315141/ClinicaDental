@@ -1,4 +1,5 @@
 import { serviceGet, servicePut, servicePatch } from "../baseService";
+import { handleServiceError } from "@/lib/utils/error.utils";
 import type {
   ClinicalHistorySnapshot,
   UpdateMedicalHistoryRequest,
@@ -46,12 +47,8 @@ async function updateMedicalHistory(
     return true;
   }
 
-  const responseData = response?.data as { message?: string; details?: string } | undefined;
-  const errorMessage =
-    responseData?.message ||
-    responseData?.details ||
-    "Error al actualizar historia médica";
-  throw new Error(errorMessage);
+
+  handleServiceError(response, "Error al actualizar historia médica");
 }
 
 /**
@@ -67,12 +64,8 @@ async function validateMedicalHistory(patientId: string): Promise<boolean> {
     return true;
   }
 
-  const responseData = response?.data as { message?: string; details?: string } | undefined;
-  const errorMessage =
-    responseData?.message ||
-    responseData?.details ||
-    "Error al validar historia médica";
-  throw new Error(errorMessage);
+
+  handleServiceError(response, "Error al validar historia médica");
 }
 
 export const clinicalHistoryService = {

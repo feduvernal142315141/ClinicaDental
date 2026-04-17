@@ -1,3 +1,4 @@
+import { handleServiceError } from "@/lib/utils/error.utils";
 import {
   serviceGet,
   servicePost,
@@ -69,7 +70,7 @@ async function getPatients(
   if (response?.data) {
     return response.data;
   }
-  throw new Error("Error al cargar pacientes");
+  handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar pacientes");
 }
 
 /**
@@ -81,7 +82,7 @@ async function getPatientById(id: string): Promise<Patient> {
   if (response?.data) {
     return response.data;
   }
-  throw new Error("Error al cargar paciente");
+  handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar paciente");
 }
 
 /**
@@ -101,12 +102,7 @@ async function createPatient(data: CreatePatientRequest): Promise<string> {
     return response.data;
   }
 
-  // Handle error response
-  const errorMessage =
-    response?.data?.message ||
-    response?.data?.details ||
-    "Error al crear paciente";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al crear paciente");
 }
 
 /**
@@ -127,12 +123,7 @@ async function updatePatient(data: UpdatePatientRequest): Promise<boolean> {
     return true;
   }
 
-  // Handle error response
-  const errorMessage =
-    response?.data?.message ||
-    response?.data?.details ||
-    "Error al actualizar paciente";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al actualizar paciente");
 }
 
 /**
@@ -149,12 +140,7 @@ async function deletePatient(id: string): Promise<boolean> {
     return true;
   }
 
-  // Handle error response
-  const errorMessage =
-    response?.data?.message ||
-    response?.data?.details ||
-    "Error al eliminar paciente";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al eliminar paciente");
 }
 
 /**

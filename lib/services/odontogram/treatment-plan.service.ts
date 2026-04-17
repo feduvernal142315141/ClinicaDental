@@ -1,4 +1,5 @@
 import { serviceGet, servicePost, servicePut, servicePatch } from "../baseService";
+import { handleServiceError } from "@/lib/utils/error.utils";
 import type {
   CreateTreatmentPlanRequest,
   UpdateTreatmentPlanRequest,
@@ -59,11 +60,7 @@ async function createTreatmentPlan(
     return response.data as unknown as string;
   }
 
-  const errorMessage =
-    response?.data?.message ||
-    response?.data?.details ||
-    "Error al crear el plan de tratamiento";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al crear el plan de tratamiento");
 }
 
 /**
@@ -84,11 +81,7 @@ async function updateTreatmentPlan(
     return true;
   }
 
-  const errorMessage =
-    response?.data?.message ||
-    response?.data?.details ||
-    "Error al actualizar el plan de tratamiento";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al actualizar el plan de tratamiento");
 }
 
 /**
@@ -112,11 +105,7 @@ async function cancelTreatmentPlan(id: string): Promise<boolean> {
     return true;
   }
 
-  const errorMessage =
-    response?.data?.message ||
-    response?.data?.details ||
-    "Error al cancelar el plan de tratamiento";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al cancelar el plan de tratamiento");
 }
 
 /**
@@ -136,11 +125,7 @@ async function getTreatmentPlan(
     return response.data ?? null;
   }
 
-  const errorMessage =
-    response?.data?.message ??
-    (response?.data as unknown as { details?: string })?.details ??
-    "Error al cargar el plan de tratamiento";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al cargar el plan de tratamiento");
 }
 
 /**
@@ -161,7 +146,7 @@ async function getTreatmentPlansByPatient(
     return response.data;
   }
 
-  throw new Error("Error al cargar los planes de tratamiento");
+  handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar los planes de tratamiento");
 }
 
 export const treatmentPlanService = {

@@ -4,6 +4,7 @@ import {
   servicePut,
 } from "@/lib/services/baseService";
 import apiInstance from "@/lib/services/apiConfig";
+import { handleServiceError } from "@/lib/utils/error.utils";
 import type {
   Appointment,
   AppointmentStatus,
@@ -230,7 +231,7 @@ async function updateAppointmentStatus(
  */
 async function cancelAppointment(id: string): Promise<boolean> {
   if (!id) {
-    throw new Error("ID de cita requerido para cancelar");
+    handleServiceError(typeof response !== "undefined" ? response : null, "ID de cita requerido para cancelar");
   }
 
   const response = (await apiInstance

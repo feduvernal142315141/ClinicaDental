@@ -2,6 +2,7 @@ import { serviceGet, servicePut } from "../baseService";
 import { permissionsToObject } from "@/lib/permissions/permissions-encoding";
 import { PERMISSIONS } from "@/lib/constants/roles.constants";
 
+import { handleServiceError } from "@/lib/utils/error.utils";
 export interface PermissionsQueryParams {
   page?: number;
   pageSize?: number;
@@ -67,11 +68,7 @@ async function getPermissions(params?: PermissionsQueryParams): Promise<unknown>
     return response.data;
   }
 
-  const errorMessage =
-    (response?.data as unknown)?.message ||
-    (response?.data as unknown)?.details ||
-    "Error al cargar permisos";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al cargar permisos");
 }
 
 function normalizeCatalogItems(raw: unknown): PermissionCatalogItem[] {
@@ -185,11 +182,7 @@ async function updateRolePermissions(
     return true;
   }
 
-  const errorMessage =
-    (response?.data as unknown)?.message ||
-    (response?.data as unknown)?.details ||
-    "Error al actualizar permisos";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al actualizar permisos");
 }
 
 export const permissionsService = {

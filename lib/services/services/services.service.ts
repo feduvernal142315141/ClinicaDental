@@ -1,3 +1,4 @@
+import { handleServiceError } from "@/lib/utils/error.utils";
 import {
   serviceGet,
   servicePost,
@@ -63,7 +64,7 @@ async function getServices(
   if (response?.data) {
     return response.data;
   }
-  throw new Error("Error al cargar servicios");
+  handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar servicios");
 }
 
 /**
@@ -75,7 +76,7 @@ async function getServiceById(id: string): Promise<Service> {
   if (response?.data) {
     return response.data;
   }
-  throw new Error("Error al cargar servicio");
+  handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar servicio");
 }
 
 /**
@@ -92,11 +93,7 @@ async function createService(data: CreateServiceRequest): Promise<boolean> {
     return true;
   }
 
-  const errorMessage =
-    (response?.data as unknown)?.message ||
-    (response?.data as unknown)?.details ||
-    "Error al crear servicio";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al crear servicio");
 }
 
 /**
@@ -116,11 +113,7 @@ async function updateService(
     return true;
   }
 
-  const errorMessage =
-    (response?.data as unknown)?.message ||
-    (response?.data as unknown)?.details ||
-    "Error al actualizar servicio";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al actualizar servicio");
 }
 
 /**
@@ -134,11 +127,7 @@ async function toggleServiceStatus(id: string): Promise<boolean> {
     return true;
   }
 
-  const errorMessage =
-    (response?.data as unknown)?.message ||
-    (response?.data as unknown)?.details ||
-    "Error al cambiar estado del servicio";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al cambiar estado del servicio");
 }
 
 /**

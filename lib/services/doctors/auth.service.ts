@@ -1,4 +1,5 @@
 import { serviceGet, servicePost } from "../baseService";
+import { handleServiceError } from "@/lib/utils/error.utils";
 import type {
   LoginRequest,
   LoginResponse,
@@ -44,7 +45,7 @@ async function login(credentials: LoginRequest): Promise<LoginResponse> {
   const status = response?.status;
   const data: unknown = response?.data;
 
-  if (!status) throw new Error("Network error during login");
+  if (!status) handleServiceError(typeof response !== "undefined" ? response : null, "Network error during login");
 
   if (status < 200 || status >= 300) {
     throw new Error(data?.message || "Login failed");
@@ -75,7 +76,7 @@ async function validateOtp(
   if (response?.data) {
     return response.data;
   }
-  throw new Error("Error al validar OTP");
+  handleServiceError(typeof response !== "undefined" ? response : null, "Error al validar OTP");
 }
 
 /**
@@ -92,7 +93,7 @@ async function refreshToken(
   if (response?.data) {
     return response.data;
   }
-  throw new Error("Error al refrescar la sesión");
+  handleServiceError(typeof response !== "undefined" ? response : null, "Error al refrescar la sesión");
 }
 
 /**
@@ -102,7 +103,7 @@ async function refreshToken(
 async function logout(data: { refreshToken: string }): Promise<void> {
   const response = await servicePost("/auth/logout", data);
   if (!response?.data) {
-    throw new Error("Error al cerrar sesión");
+    handleServiceError(typeof response !== "undefined" ? response : null, "Error al cerrar sesión");
   }
 }
 
@@ -113,7 +114,7 @@ async function logout(data: { refreshToken: string }): Promise<void> {
 async function forgotPassword(data: ForgotPasswordRequest): Promise<void> {
   const response = await servicePost("/auth/forgot-password", data);
   if (!response?.data) {
-    throw new Error("Error al solicitar restablecimiento");
+    handleServiceError(typeof response !== "undefined" ? response : null, "Error al solicitar restablecimiento");
   }
 }
 
@@ -124,7 +125,7 @@ async function forgotPassword(data: ForgotPasswordRequest): Promise<void> {
 async function resetPassword(data: ResetPasswordRequest): Promise<void> {
   const response = await servicePost("/auth/reset-password", data);
   if (!response?.data) {
-    throw new Error("Error al restablecer contraseña");
+    handleServiceError(typeof response !== "undefined" ? response : null, "Error al restablecer contraseña");
   }
 }
 
@@ -135,7 +136,7 @@ async function resetPassword(data: ResetPasswordRequest): Promise<void> {
 async function changePassword(data: ChangePasswordRequest): Promise<void> {
   const response = await servicePost("/auth/change-password", data);
   if (!response?.data) {
-    throw new Error("Error al cambiar contraseña");
+    handleServiceError(typeof response !== "undefined" ? response : null, "Error al cambiar contraseña");
   }
 }
 

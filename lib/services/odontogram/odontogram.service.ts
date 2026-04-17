@@ -1,4 +1,5 @@
 import { serviceGet, servicePut } from "../baseService";
+import { handleServiceError } from "@/lib/utils/error.utils";
 import type {
   SaveOdontogramRequest,
   OdontogramResponse,
@@ -60,11 +61,7 @@ async function saveOdontogram(data: SaveOdontogramRequest): Promise<boolean> {
     return true;
   }
 
-  const errorMessage =
-    response?.data?.message ||
-    response?.data?.details ||
-    "Error al guardar el odontograma";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al guardar el odontograma");
 }
 
 /**
@@ -84,11 +81,7 @@ async function getOdontogram(
     return response.data ?? null;
   }
 
-  const errorMessage =
-    response?.data?.message ??
-    (response?.data as unknown as { details?: string })?.details ??
-    "Error al cargar el odontograma";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al cargar el odontograma");
 }
 
 /**
@@ -109,7 +102,7 @@ async function getOdontogramHistory(
     return response.data;
   }
 
-  throw new Error("Error al cargar el historial del odontograma");
+  handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar el historial del odontograma");
 }
 
 export const odontogramService = {

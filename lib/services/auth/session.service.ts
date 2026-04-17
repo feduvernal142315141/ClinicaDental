@@ -1,5 +1,6 @@
 import { servicePost } from "@/lib/services/baseService";
 
+import { handleServiceError } from "@/lib/utils/error.utils";
 export type CreateAuthSessionInput = {
   accessToken: string;
   refreshToken: string;
@@ -32,9 +33,5 @@ export async function createAuthSession(
     return response.data;
   }
 
-  const errorMessage =
-    response?.data?.message ||
-    response?.data?.details ||
-    "Failed to create auth session";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Failed to create auth session");
 }

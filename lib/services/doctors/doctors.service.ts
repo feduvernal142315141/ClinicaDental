@@ -1,3 +1,4 @@
+import { handleServiceError } from "@/lib/utils/error.utils";
 import {
   serviceGet,
   servicePost,
@@ -56,7 +57,7 @@ async function getDoctors(
     // Backend returns { entities: Doctor[], pagination: { page, pageSize, total } }
     return response.data;
   }
-  throw new Error("Error al cargar doctores");
+  handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar doctores");
 }
 
 /**
@@ -68,7 +69,7 @@ async function getDoctorById(id: string): Promise<Doctor> {
   if (response?.data) {
     return response.data;
   }
-  throw new Error("Error al cargar doctor");
+  handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar doctor");
 }
 
 /**
@@ -86,12 +87,7 @@ async function createDoctor(data: CreateDoctorRequest): Promise<Doctor> {
     return response.data;
   }
 
-  // Handle error response
-  const errorMessage =
-    response?.data?.message ||
-    response?.data?.details ||
-    "Error al crear doctor";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al crear doctor");
 }
 
 /**
@@ -112,12 +108,7 @@ async function updateDoctor(
     return response.data;
   }
 
-  // Handle error response
-  const errorMessage =
-    response?.data?.message ||
-    response?.data?.details ||
-    "Error al actualizar doctor";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al actualizar doctor");
 }
 
 /**
@@ -127,7 +118,7 @@ async function updateDoctor(
 async function deleteDoctor(id: string): Promise<void> {
   const response = await serviceDelete(`${endpoint}/${id}`);
   if (!response?.data) {
-    throw new Error("Error al eliminar doctor");
+    handleServiceError(typeof response !== "undefined" ? response : null, "Error al eliminar doctor");
   }
 }
 
@@ -147,11 +138,7 @@ async function changeDoctorPassword(
     return;
   }
 
-  const errorMessage =
-    response?.data?.message ||
-    response?.data?.details ||
-    "Error al cambiar contraseña";
-  throw new Error(errorMessage);
+  handleServiceError(response, "Error al cambiar contraseña");
 }
 
 export const doctorsService = {
