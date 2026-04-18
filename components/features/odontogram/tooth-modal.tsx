@@ -27,7 +27,6 @@ import {
   GLOBAL_STATUS_LABELS,
   GLOBAL_STATUS_COLORS,
   SURFACE_STATUS_COLORS,
-  getICDASColor,
 } from "./types";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { SurfacesTab } from "./surfaces-tab";
@@ -326,7 +325,7 @@ export function ToothModal({
             surface,
             status: "pathology" as const,
             icdasScore: diagEvent.icdasScore as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-            color: getICDASColor(diagEvent.icdasScore),
+            color: SURFACE_STATUS_COLORS.pathology,
             lastUpdate: diagEvent.updatedAt,
             notes: diagEvent.notes,
           };
@@ -640,179 +639,169 @@ export function ToothModal({
         event.surfaces.length > 0,
     );
 
-    const handledSurfaces = new Set<ToothSurface>();
-    const eventsToUpdateSurfaces = new Map<string, ToothSurface[]>();
-    const eventsToDelete = new Set<string>();
-
-    const getExistingEventForSurface = (surface: ToothSurface) => {
-      return existingSurfaceDiagnosisEvents.find(
-        (e) => e.surfaces.includes(surface) && !eventsToDelete.has(e.id),
+    existingSurfaceDiagnosisEvents.forEach((event) => {
+      const hasAnyTrackedSurface = event.surfaces.some((surface) =>
+        currentDiagnoses.has(surface),
       );
-    };
 
-    // 1. Process currentDiagnoses (detailed diagnoses from DiagnosisTab)
+      if (!hasAnyTrackedSurface) {
+        deleteClinicalEvent(event.id);
+      }
+    });
+
     if (currentDiagnoses && currentDiagnoses.size > 0) {
       currentDiagnoses.forEach(
         (diagnosis: SurfaceDiagnosis, surface: ToothSurface) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const state = surfaceStatesRef.current.find(
-            (s) => s.surface === surface,
+          const existingEvent = getToothEvents(tooth.number).find(
+            (e) => e.type === "diagnosis" && e.surfaces.includes(surface),
           );
-          // Skip if not selected
-          if (!selectedSurfaces.includes(surface)) {
-            return;
-          }
-
-          handledSurfaces.add(surface);
-          const existingEvent = getExistingEventForSurface(surface);
-
-          const payload = {
-            schemaVersion: 2,
-            diagnosisKind: "surface-finding" as const,
-            surfaces: [surface],
-            surfacesV2: [
-              createSurfaceRef(tooth.number, surface, diagnosis.cariesType),
-            ],
-            diagnosisPayload: {
-              surfaceDiagnosis: {
-                ...diagnosis,
-                surfaceRef: createSurfaceRef(
-                  tooth.number,
-                  surface,
-                  diagnosis.cariesType,
-                ),
-              },
-            },
-            visualState: {
-              affectsOdontogram: diagnosis.icdasScore > 0,
-              priorityKey:
-                diagnosis.icdasScore > 0
-                  ? "surface-diagnosis"
-                  : "support-only",
-            },
-            automationHints: {
-              suggestPlan:
-                diagnosis.icdasScore >= 3 ||
-                diagnosis.nonCariousLesions.length > 0,
-              urgencyLevel: (diagnosis.icdasScore >= 5
-                ? "high"
-                : diagnosis.icdasScore >= 3
-                  ? "medium"
-                  : "low") as "high" | "medium" | "low",
-            },
-            icdasScore: diagnosis.icdasScore,
-            notes: buildSurfaceDiagnosisNotes(diagnosis),
-            severity: diagnosis.icdasScore,
-          };
 
           if (existingEvent) {
-            if (existingEvent.surfaces.length > 1) {
-              const currentSurfacesForEvent =
-                eventsToUpdateSurfaces.get(existingEvent.id) ||
-                existingEvent.surfaces;
-              eventsToUpdateSurfaces.set(
-                existingEvent.id,
-                currentSurfacesForEvent.filter((s) => s !== surface),
-              );
-              addClinicalEvent({
-                toothNumber: tooth.number,
-                level: "surface",
-                type: "diagnosis",
-                status: "open",
-                ...payload,
-              });
-            } else {
-              updateClinicalEvent(existingEvent.id, payload);
-            }
+            updateClinicalEvent(existingEvent.id, {
+              schemaVersion: 2,
+              diagnosisKind: "surface-finding",
+              surfacesV2: [
+                createSurfaceRef(tooth.number, surface, diagnosis.cariesType),
+              ],
+              diagnosisPayload: {
+                surfaceDiagnosis: {
+                  ...diagnosis,
+                  surfaceRef: createSurfaceRef(
+                    tooth.number,
+                    surface,
+                    diagnosis.cariesType,
+                  ),
+                },
+              },
+              visualState: {
+                affectsOdontogram: diagnosis.icdasScore > 0,
+                priorityKey:
+                  diagnosis.icdasScore > 0
+                    ? "surface-diagnosis"
+                    : "support-only",
+              },
+              automationHints: {
+                suggestPlan:
+                  diagnosis.icdasScore >= 3 ||
+                  diagnosis.nonCariousLesions.length > 0,
+                urgencyLevel:
+                  diagnosis.icdasScore >= 5
+                    ? "high"
+                    : diagnosis.icdasScore >= 3
+                      ? "medium"
+                      : "low",
+              },
+              icdasScore: diagnosis.icdasScore,
+              notes: buildSurfaceDiagnosisNotes(diagnosis),
+              severity: diagnosis.icdasScore,
+            });
           } else {
             addClinicalEvent({
+              schemaVersion: 2,
               toothNumber: tooth.number,
+              surfaces: [surface],
+              surfacesV2: [
+                createSurfaceRef(tooth.number, surface, diagnosis.cariesType),
+              ],
               level: "surface",
               type: "diagnosis",
               status: "open",
-              ...payload,
+              diagnosisKind: "surface-finding",
+              diagnosisPayload: {
+                surfaceDiagnosis: {
+                  ...diagnosis,
+                  surfaceRef: createSurfaceRef(
+                    tooth.number,
+                    surface,
+                    diagnosis.cariesType,
+                  ),
+                },
+              },
+              visualState: {
+                affectsOdontogram: diagnosis.icdasScore > 0,
+                priorityKey:
+                  diagnosis.icdasScore > 0
+                    ? "surface-diagnosis"
+                    : "support-only",
+              },
+              automationHints: {
+                suggestPlan:
+                  diagnosis.icdasScore >= 3 ||
+                  diagnosis.nonCariousLesions.length > 0,
+                urgencyLevel:
+                  diagnosis.icdasScore >= 5
+                    ? "high"
+                    : diagnosis.icdasScore >= 3
+                      ? "medium"
+                      : "low",
+              },
+              severity: diagnosis.icdasScore,
+              icdasScore: diagnosis.icdasScore,
+              notes: buildSurfaceDiagnosisNotes(diagnosis),
             });
           }
         },
       );
     }
 
-    // 2. Process template-generated diagnoses from SurfacesTab
-    surfaceStatesRef.current.forEach((state) => {
+    // Auto-generar eventos de diagnóstico desde templates aplicados en SurfacesTab
+    const surfaceStates = surfaceStatesRef.current;
+    surfaceStates.forEach((state) => {
       if (
-        selectedSurfaces.includes(state.surface) &&
         state.status === "pathology" &&
         state.icdasScore &&
-        state.icdasScore > 0 &&
-        !handledSurfaces.has(state.surface)
+        state.icdasScore > 0
       ) {
-        handledSurfaces.add(state.surface);
-        const existingEvent = getExistingEventForSurface(state.surface);
+        // Solo crear si no hay ya un diagnóstico para esta superficie
+        const alreadyHandled =
+          currentDiagnoses instanceof Map &&
+          currentDiagnoses.has(state.surface);
+        if (!alreadyHandled) {
+          const existingEvent = getToothEvents(tooth.number).find(
+            (e) => e.type === "diagnosis" && e.surfaces.includes(state.surface),
+          );
 
-        const payload = {
-          schemaVersion: 2,
-          diagnosisKind: "surface-finding" as const,
-          surfaces: [state.surface],
-          surfacesV2: [createSurfaceRef(tooth.number, state.surface)],
-          diagnosisPayload: {
-            surfaceDiagnosis: {
-              surface: state.surface,
-              surfaceRef: createSurfaceRef(tooth.number, state.surface),
+          if (existingEvent) {
+            updateClinicalEvent(existingEvent.id, {
+              schemaVersion: 2,
+              diagnosisKind: "surface-finding",
+              surfacesV2: [createSurfaceRef(tooth.number, state.surface)],
+              diagnosisPayload: {
+                surfaceDiagnosis: {
+                  surface: state.surface,
+                  surfaceRef: createSurfaceRef(tooth.number, state.surface),
+                  icdasScore: state.icdasScore,
+                  nonCariousLesions: [],
+                },
+              },
               icdasScore: state.icdasScore,
-              nonCariousLesions: [],
-            },
-          },
-          icdasScore: state.icdasScore,
-          notes: `ICDAS ${state.icdasScore}`,
-          severity: state.icdasScore,
-        };
-
-        if (existingEvent) {
-          if (existingEvent.surfaces.length > 1) {
-            const currentSurfacesForEvent =
-              eventsToUpdateSurfaces.get(existingEvent.id) ||
-              existingEvent.surfaces;
-            eventsToUpdateSurfaces.set(
-              existingEvent.id,
-              currentSurfacesForEvent.filter((s) => s !== state.surface),
-            );
+              notes: `ICDAS ${state.icdasScore}`,
+              severity: state.icdasScore,
+            });
+          } else {
             addClinicalEvent({
+              schemaVersion: 2,
               toothNumber: tooth.number,
+              surfaces: [state.surface],
+              surfacesV2: [createSurfaceRef(tooth.number, state.surface)],
               level: "surface",
               type: "diagnosis",
               status: "open",
-              ...payload,
+              diagnosisKind: "surface-finding",
+              diagnosisPayload: {
+                surfaceDiagnosis: {
+                  surface: state.surface,
+                  surfaceRef: createSurfaceRef(tooth.number, state.surface),
+                  icdasScore: state.icdasScore,
+                  nonCariousLesions: [],
+                },
+              },
+              severity: state.icdasScore,
+              icdasScore: state.icdasScore,
+              notes: `ICDAS ${state.icdasScore}`,
             });
-          } else {
-            updateClinicalEvent(existingEvent.id, payload);
           }
-        } else {
-          addClinicalEvent({
-            toothNumber: tooth.number,
-            level: "surface",
-            type: "diagnosis",
-            status: "open",
-            ...payload,
-          });
         }
-      }
-    });
-
-    // 3. Cleanup existing events that are no longer valid (unchecked or changed to healthy)
-    existingSurfaceDiagnosisEvents.forEach((event) => {
-      if (eventsToDelete.has(event.id)) {
-        deleteClinicalEvent(event.id);
-        return;
-      }
-
-      let finalSurfaces =
-        eventsToUpdateSurfaces.get(event.id) || event.surfaces;
-      finalSurfaces = finalSurfaces.filter((s) => handledSurfaces.has(s));
-
-      if (finalSurfaces.length === 0) {
-        deleteClinicalEvent(event.id);
-      } else if (finalSurfaces.length < event.surfaces.length) {
-        updateClinicalEvent(event.id, { surfaces: finalSurfaces });
       }
     });
 
