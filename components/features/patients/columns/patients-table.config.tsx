@@ -54,7 +54,20 @@ export function getPatientsColumns({
       key: "phone",
       title: "Teléfono",
       dataIndex: "phone",
-      render: (value) => value || "-",
+      render: (value: string | undefined) => {
+        if (!value) return "-";
+        const clean = value.replace(/\D/g, "");
+        return (
+          <a
+            href={`https://wa.me/${clean}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ whiteSpace: "nowrap" }}
+          >
+            {value}
+          </a>
+        );
+      },
     },
     {
       key: "address",
