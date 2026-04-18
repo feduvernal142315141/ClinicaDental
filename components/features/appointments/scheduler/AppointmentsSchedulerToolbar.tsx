@@ -69,54 +69,55 @@ export function AppointmentsSchedulerToolbar({
   const rangeLabel = formatRangeLabel(viewMode, currentDate, dateRange);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        alignItems: "center",
-        gap: 12,
-        marginBottom: 16,
-      }}
-    >
-      {/* Left: view mode */}
-      <Segmented
-        options={VIEW_OPTIONS}
-        value={viewMode}
-        onChange={(val) => onViewModeChange(val as SchedulerViewMode)}
-      />
-
-      {/* Center: navigation */}
-      <Space size={4}>
-        <Button icon={<LeftOutlined />} size="small" onClick={onPrev} />
-        <Button size="small" onClick={onToday}>
-          Hoy
-        </Button>
-        <Button icon={<RightOutlined />} size="small" onClick={onNext} />
-      </Space>
-
-      {/* Range label */}
-      <Text
-        strong
+    <div style={{ marginBottom: 16 }}>
+      <div
         style={{
-          fontSize: 15,
-          textTransform: "capitalize",
-          whiteSpace: "nowrap",
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: 12,
         }}
       >
-        {rangeLabel}
-      </Text>
+        {/* Left: view mode */}
+        <Segmented
+          options={VIEW_OPTIONS}
+          value={viewMode}
+          onChange={(val) => onViewModeChange(val as SchedulerViewMode)}
+        />
 
-      {/* Date picker */}
-      <DatePicker
-        size="small"
-        format="DD/MM/YYYY"
-        value={dayjs(currentDate, "YYYY-MM-DD")}
-        onChange={(val) => {
-          if (val) onDateChange(val.format("YYYY-MM-DD"));
-        }}
-        allowClear={false}
-        style={{ marginLeft: "auto" }}
-      />
+        {/* Center: navigation */}
+        <Space size={4}>
+          <Button icon={<LeftOutlined />} size="small" onClick={onPrev} />
+          <Button size="small" onClick={onToday}>
+            Hoy
+          </Button>
+          <Button icon={<RightOutlined />} size="small" onClick={onNext} />
+        </Space>
+
+        {/* Range label */}
+        <Text
+          strong
+          style={{
+            fontSize: 15,
+            textTransform: "capitalize",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {rangeLabel}
+        </Text>
+
+        {/* Date picker */}
+        <DatePicker
+          size="small"
+          format="DD/MM/YYYY"
+          value={dayjs(currentDate, "YYYY-MM-DD")}
+          onChange={(val) => {
+            if (val) onDateChange(val.format("YYYY-MM-DD"));
+          }}
+          allowClear={false}
+          style={{ marginLeft: "auto" }}
+        />
+      </div>
     </div>
   );
 }

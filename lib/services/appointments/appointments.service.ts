@@ -2,6 +2,7 @@ import {
   serviceGet,
   servicePost,
   servicePut,
+  servicePatch,
 } from "@/lib/services/baseService";
 import apiInstance from "@/lib/services/apiConfig";
 import { handleServiceError } from "@/lib/utils/error.utils";
@@ -325,6 +326,21 @@ async function getDoctorAvailability(
   );
 }
 
+async function completeAppointment(id: string): Promise<boolean> {
+  const response = await servicePatch<boolean>(`${endpoint}/${id}/complete`);
+
+  if (
+    response &&
+    typeof response.status === "number" &&
+    response.status >= 200 &&
+    response.status < 300
+  ) {
+    return true;
+  }
+
+  throw new Error(getErrorMessage(response, "Error al completar la cita"));
+}
+
 export const appointmentsService = {
   getAppointments,
   getAppointmentById,
@@ -333,6 +349,7 @@ export const appointmentsService = {
   /** @deprecated Usar cancelAppointment en su lugar */
   updateAppointmentStatus,
   cancelAppointment,
+  completeAppointment,
   getDoctorAppointments,
   getPatientAppointments,
   getDoctorAvailability,

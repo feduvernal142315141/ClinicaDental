@@ -4,13 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import { Button, Drawer } from "antd";
 import { FilterOutlined } from "@ant-design/icons";
 import { useAppointmentsScheduler } from "@/lib/hooks/appointments/use-appointments-scheduler";
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { Appointment, SchedulerEvent } from "@/lib/entity/appointment";
 import { AppointmentsSchedulerToolbar } from "./AppointmentsSchedulerToolbar";
 import { AppointmentsSpecialistSidebar } from "./AppointmentsSpecialistSidebar";
 import { AppointmentsDayGrid } from "./AppointmentsDayGrid";
 import { AppointmentsWeekGrid } from "./AppointmentsWeekGrid";
 import { AppointmentsMonthGrid } from "./AppointmentsMonthGrid";
+import {
+  getTemporalCategory,
+  type AppointmentTemporalCategory,
+} from "@/lib/utils/appointment-utils";
 
 interface AppointmentsSchedulerShellProps {
   canCreate: boolean;

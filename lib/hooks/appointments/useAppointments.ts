@@ -43,20 +43,17 @@ export function useAppointments() {
     [],
   );
 
-  const getAppointmentById = useCallback(
-    async (id: string) => {
-      // TODO: Keep this flow for compatibility until backend exposes GET /appointments/:id.
-      setLoading(true);
-      try {
-        return await appointmentsService.getAppointmentById(id);
-      } catch (error) {
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const getAppointmentById = useCallback(async (id: string) => {
+    // TODO: Keep this flow for compatibility until backend exposes GET /appointments/:id.
+    setLoading(true);
+    try {
+      return await appointmentsService.getAppointmentById(id);
+    } catch (error) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const createAppointment = useCallback(
     async (data: CreateAppointmentRequest) => {
@@ -106,20 +103,29 @@ export function useAppointments() {
     [],
   );
 
-  const cancelAppointment = useCallback(
-    async (id: string) => {
-      setLoading(true);
-      try {
-        const result = await appointmentsService.cancelAppointment(id);
-        return result;
-      } catch (error) {
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const cancelAppointment = useCallback(async (id: string) => {
+    setLoading(true);
+    try {
+      const result = await appointmentsService.cancelAppointment(id);
+      return result;
+    } catch (error) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const completeAppointment = useCallback(async (id: string) => {
+    setLoading(true);
+    try {
+      const result = await appointmentsService.completeAppointment(id);
+      return result;
+    } catch (error) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const getDoctorAppointments = useCallback(
     async (doctorId: string, date: string) => {
@@ -160,6 +166,7 @@ export function useAppointments() {
     updateAppointment,
     updateAppointmentStatus,
     cancelAppointment,
+    completeAppointment,
     getDoctorAppointments,
     getDoctorAvailability,
   };

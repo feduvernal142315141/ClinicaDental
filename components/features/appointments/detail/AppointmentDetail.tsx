@@ -3,17 +3,24 @@
 import { useCallback, useEffect, useState } from "react";
 import { App, Space } from "antd";
 import { Button } from "@/components/ui/primitives/shadcn/button";
-import { ArrowLeftOutlined, EditOutlined, StopOutlined } from "@ant-design/icons";
+import {
+  ArrowLeftOutlined,
+  CheckCircleOutlined,
+  EditOutlined,
+  StopOutlined,
+} from "@ant-design/icons";
 import { useAppointments } from "@/lib/hooks/appointments";
 import { useAppointmentsPage } from "@/lib/hooks/appointments";
 import type { Appointment } from "@/lib/entity/appointment";
 import { AppointmentForm } from "../form/AppointmentForm";
+import { isAppointmentActionable } from "@/lib/utils/appointment-utils";
 
 interface AppointmentDetailProps {
   appointmentId: string;
   basePath?: string;
   canEdit?: boolean;
   canCancel?: boolean;
+  canComplete?: boolean;
 }
 
 export function AppointmentDetail({
@@ -21,13 +28,19 @@ export function AppointmentDetail({
   basePath = "/appointments",
   canEdit = false,
   canCancel = false,
+  canComplete = false,
 }: AppointmentDetailProps) {
   const { modal } = App.useApp();
   const { handleBackToList, handleEditAppointment } = useAppointmentsPage({
     basePath,
   });
 
-  const { getAppointmentById, cancelAppointment, loading } = useAppointments();
+  const {
+    getAppointmentById,
+    cancelAppointment,
+    completeAppointment,
+    loading,
+  } = useAppointments();
 
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
@@ -63,6 +76,23 @@ export function AppointmentDetail({
     });
   }, [modal, appointment, cancelAppointment, loadAppointment]);
 
+  const handleCompleteAppointment = useCallback(() => {
+    if (!appointment) return;
+
+    modal.confirm({
+      title: "¿Marcar cita como realizada?",
+      content:
+        "La cita se marcará como completada. Esta acción no se puede deshacer.",
+      okText: "Marcar como realizada",
+      okType: "primary",
+      cancelText: "Cancelar",
+      onOk: async () => {
+        await completeAppointment(appointment.id);
+        await loadAppointment();
+      },
+    });
+  }, [modal, appointment, completeAppointment, loadAppointment]);
+
   if (detailLoading) {
     return (
       <div className="rounded-lg border p-6">
@@ -86,7 +116,7 @@ export function AppointmentDetail({
     <>
       <div className="flex items-center justify-end mb-6">
         <Space>
-          {canEdit && (
+          {canEdit && isAppointmentActionable(appointment) && (
             <Button
               type="primary"
               icon={<EditOutlined />}
@@ -97,18 +127,34 @@ export function AppointmentDetail({
             </Button>
           )}
 
-          {canCancel && appointment.status !== "cancelled" && (
-            <Button
-              type="default"
-              danger
-              icon={<StopOutlined />}
-              onClick={handleCancelAppointment}
-              size="lg"
-              disabled={loading}
-            >
-              Cancelar cita
-            </Button>
-          )}
+          {canComplete &&
+            appointment.status === "scheduled" &&
+            !isAppointmentActionable(appointment) && (
+              <Button
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                onClick={handleCompleteAppointment}
+                size="large"
+                disabled={loading}
+              >
+                Marcar como realizada
+              </Button>
+            )}
+
+          {canCancel &&
+            appointment.status !== "cancelled" &&
+            isAppointmentActionable(appointment) && (
+              <Button
+                type="default"
+                danger
+                icon={<StopOutlined />}
+                onClick={handleCancelAppointment}
+                size="lg"
+                disabled={loading}
+              >
+                Cancelar cita
+              </Button>
+            )}
 
           <Button
             icon={<ArrowLeftOutlined />}

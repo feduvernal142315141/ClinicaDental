@@ -8,6 +8,7 @@ import {
   CloseCircleOutlined,
 } from "@ant-design/icons";
 import type { Appointment } from "@/lib/entity/appointment";
+import { isAppointmentActionable } from "@/lib/utils/appointment-utils";
 
 interface AppointmentQuickActionsProps {
   appointment: Appointment;
@@ -24,7 +25,7 @@ export function AppointmentQuickActions({
   onReschedule,
   onCancel,
 }: AppointmentQuickActionsProps) {
-  const isScheduled = appointment.status === "scheduled";
+  const isActionable = isAppointmentActionable(appointment);
 
   const items: MenuProps["items"] = [
     onViewDetail
@@ -35,7 +36,7 @@ export function AppointmentQuickActions({
           onClick: () => onViewDetail(appointment),
         }
       : null,
-    onReschedule && isScheduled
+    onReschedule && isActionable
       ? {
           key: "reschedule",
           icon: <CalendarOutlined />,
@@ -43,7 +44,7 @@ export function AppointmentQuickActions({
           onClick: () => onReschedule(appointment),
         }
       : null,
-    onCancel && isScheduled
+    onCancel && isActionable
       ? {
           key: "cancel",
           icon: <CloseCircleOutlined />,

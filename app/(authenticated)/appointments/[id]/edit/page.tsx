@@ -1,11 +1,13 @@
 "use client";
 
 import { use, useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SectionTitle } from "@/components/ui/antd";
 import { AppointmentForm } from "@/components/features/appointments/form/AppointmentForm";
 import { useAppointments } from "@/lib/hooks/appointments";
 import type { Appointment } from "@/lib/entity/appointment";
 import { Skeleton } from "antd";
+import { isAppointmentActionable } from "@/lib/utils/appointment-utils";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -13,6 +15,7 @@ interface PageProps {
 
 export default function EditAppointmentPage({ params }: PageProps) {
   const { id } = use(params);
+  const router = useRouter();
   const { getAppointmentById } = useAppointments();
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,6 +24,10 @@ export default function EditAppointmentPage({ params }: PageProps) {
     try {
       setLoading(true);
       const data = await getAppointmentById(id);
+      if (!isAppointmentActionable(data)) {
+        router.replace(`/appointments/${id}`);
+        return;
+      }
       setAppointment(data);
     } finally {
       setLoading(false);

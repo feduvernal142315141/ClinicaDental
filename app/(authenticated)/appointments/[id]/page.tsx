@@ -16,6 +16,7 @@ export default function AppointmentDetailPage({ params }: PageProps) {
 
   const canEdit = isAdmin || can("appointments", PermissionAction.EDIT);
   const canCancel = isAdmin || can("appointments", PermissionAction.DELETE);
+  const canComplete = isAdmin || can("appointments", PermissionAction.EDIT);
 
   return (
     <>
@@ -28,6 +29,7 @@ export default function AppointmentDetailPage({ params }: PageProps) {
         basePath="/appointments"
         canEdit={canEdit}
         canCancel={canCancel}
+        canComplete={canComplete}
       />
     </>
   );

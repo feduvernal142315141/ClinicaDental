@@ -106,6 +106,63 @@ const DAY_INDEX_TO_KEY: Record<number, keyof WeekSchedule> = {
   6: "saturday",
 };
 
+// ---------------------------------------------------------------------------
+// Temporal utilities
+// ---------------------------------------------------------------------------
+
+/**
+ * Parsea la fecha (YYYY-MM-DD) y hora (HH:mm) de una cita en un objeto Date local.
+ */
+export function getAppointmentStartAt(appointment: Appointment): Date {
+  const [h, m] = (appointment.time || "00:00").split(":").map(Number);
+  const d = new Date(appointment.date + "T00:00:00");
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+/**
+ * Calcula la fecha/hora de fin de una cita sumando su duración.
+ */
+export function getAppointmentEndAt(appointment: Appointment): Date {
+  const start = getAppointmentStartAt(appointment);
+  return new Date(start.getTime() + (appointment.duration || 0) * 60_000);
+}
+
+/**
+ * Retorna true si la cita está programada Y aún no ha iniciado (se puede modificar).
+ */
+export function isAppointmentActionable(appointment: Appointment): boolean {
+  if (appointment.status !== "scheduled") return false;
+  return getAppointmentStartAt(appointment) > new Date();
+}
+
+export type AppointmentTemporalCategory =
+  | "all"
+  | "today"
+  | "future"
+  | "past"
+  | "completed";
+
+/**
+ * Categoriza una cita en función de su estado y fecha de inicio.
+ * - completed → "completed"
+ * - date es hoy → "today"
+ * - date es futuro → "future"
+ * - date es pasado (o ya cancelada) → "past"
+ */
+export function getTemporalCategory(
+  appointment: Appointment,
+): AppointmentTemporalCategory {
+  if (appointment.status === "completed") return "completed";
+
+  const today = dayjs().startOf("day");
+  const apptDate = dayjs(appointment.date + "T00:00:00").startOf("day");
+
+  if (apptDate.isSame(today, "day")) return "today";
+  if (apptDate.isAfter(today, "day")) return "future";
+  return "past";
+}
+
 /**
  * Construye una función `disabledDate` para DatePicker / Calendar de Ant Design
  * basándose en el schedule semanal del doctor.
