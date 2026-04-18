@@ -105,6 +105,10 @@ function normalizeAppointment(raw: unknown): Appointment {
       toStringValue(doctor.fullName),
     clinicId,
     clinic_id: clinicId,
+    serviceId: toStringValue(source.serviceId),
+    serviceCode: toStringValue(source.serviceCode),
+    serviceName: toStringValue(source.serviceName),
+    serviceCost: toNumberValue(source.serviceCost),
     createdAt:
       toStringValue(source.createdAt) ?? toStringValue(source.createAt),
     updatedAt:
@@ -140,14 +144,13 @@ async function getAppointments(
 }
 
 async function getAppointmentById(id: string): Promise<Appointment> {
-  // TODO: Keep for compatibility. Backend currently does not expose this endpoint.
   const response = await serviceGet<Appointment>(`${endpoint}/${id}`);
 
   if (response?.status >= 200 && response?.status < 300 && response?.data) {
     return normalizeAppointment(response.data);
   }
 
-  throw new Error(getErrorMessage(response, "Error al cargar la cita"));
+  handleServiceError(response, "Error al cargar la cita");
 }
 
 async function createAppointment(

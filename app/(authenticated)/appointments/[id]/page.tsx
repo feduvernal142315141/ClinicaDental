@@ -1,14 +1,34 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { use } from "react";
+import { AppointmentDetail } from "@/components/features/appointments/detail/AppointmentDetail";
+import { SectionTitle } from "@/components/ui/antd";
+import { usePermission } from "@/lib/hooks/use-permission";
+import { PermissionAction } from "@/lib/permissions/permission-actions";
 
-export default function AppointmentDetailPage() {
-  const router = useRouter();
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
 
-  useEffect(() => {
-    router.replace("/appointments?notice=detail_unavailable");
-  }, [router]);
+export default function AppointmentDetailPage({ params }: PageProps) {
+  const { id } = use(params);
+  const { can, isAdmin } = usePermission();
 
-  return null;
+  const canEdit = isAdmin || can("appointments", PermissionAction.EDIT);
+  const canCancel = isAdmin || can("appointments", PermissionAction.DELETE);
+
+  return (
+    <>
+      <SectionTitle
+        title="Detalle de Cita"
+        subtitle="Información completa de la cita"
+      />
+      <AppointmentDetail
+        appointmentId={id}
+        basePath="/appointments"
+        canEdit={canEdit}
+        canCancel={canCancel}
+      />
+    </>
+  );
 }

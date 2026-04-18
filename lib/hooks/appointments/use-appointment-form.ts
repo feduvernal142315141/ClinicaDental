@@ -260,7 +260,7 @@ export function useAppointmentForm({
         type: values.type,
         reason: values.reason,
         notes: values.notes,
-        ...(values.serviceId ? { serviceId: values.serviceId } : {}),
+        serviceId: values.serviceId,
       };
 
       if (isEdit && appointmentId) {

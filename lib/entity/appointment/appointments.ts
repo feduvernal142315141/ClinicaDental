@@ -79,6 +79,7 @@ export interface UpdateAppointmentRequest {
   type?: AppointmentType;
   notes?: string;
   reason?: string;
+  serviceId?: string;
 }
 
 /**

@@ -84,14 +84,7 @@ export function AppointmentDetail({
 
   return (
     <>
-      <div className="flex items-start justify-between mb-6">
-        <div className="flex-1">
-          <h2 className="text-2xl font-semibold mb-1">Detalle de la Cita</h2>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-            Visualice la información completa de la cita
-          </p>
-        </div>
-
+      <div className="flex items-center justify-end mb-6">
         <Space>
           {canEdit && (
             <Button
