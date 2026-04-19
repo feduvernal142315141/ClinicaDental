@@ -114,7 +114,7 @@ async function createPatient(data: CreatePatientRequest): Promise<string> {
  */
 async function updatePatient(data: UpdatePatientRequest): Promise<boolean> {
   const response = await servicePut<UpdatePatientRequest, boolean>(
-    endpoint,
+    `${endpoint}/${data.id}`,
     data,
   );
 

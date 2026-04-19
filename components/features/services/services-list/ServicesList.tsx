@@ -68,7 +68,7 @@ export function ServicesList({
 
   return (
     <Card>
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <Input.Search
           placeholder="Buscar servicios por nombre"
           allowClear

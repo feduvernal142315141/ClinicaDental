@@ -8,12 +8,10 @@ import {
   NotificationsSettings,
   IntegrationsSettings,
   DoctorsRolesSettings,
-  PatientsPageClient,
 } from "./lazy-settings-tabs";
 
 const SETTINGS_TABS = [
   { value: "general", label: "Opciones Generales" },
-  { value: "patients", label: "Gestión de Pacientes" },
   { value: "doctors", label: "Doctores y Roles" },
   { value: "notifications", label: "Notificaciones" },
   { value: "integrations", label: "Integraciones" },
@@ -33,10 +31,6 @@ export function SettingsPage() {
       <TabsContainer defaultValue="general" tabs={SETTINGS_TABS}>
         <TabPanel value="general">
           <GeneralSettings />
-        </TabPanel>
-
-        <TabPanel value="patients">
-          <PatientsPageClient />
         </TabPanel>
 
         <TabPanel value="users">

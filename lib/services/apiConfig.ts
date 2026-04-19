@@ -7,7 +7,7 @@ type InterceptorHandlers = {
   onLoadingEnd?: () => void;
   onNotification?: (
     message: string,
-    type: "success" | "error" | "warning" | "info"
+    type: "success" | "error" | "warning" | "info",
   ) => void;
   onUnauthorized?: () => void;
   onForbidden?: () => void;
@@ -22,7 +22,7 @@ let interceptorHandlers: InterceptorHandlers = {};
  * Esto permite inyectar dispatch de Redux u otras funciones de estado global
  */
 export const setInterceptorHandlers = (
-  handlers: Partial<InterceptorHandlers>
+  handlers: Partial<InterceptorHandlers>,
 ) => {
   interceptorHandlers = { ...interceptorHandlers, ...handlers };
 };
@@ -67,7 +67,7 @@ apiInstance.interceptors.request.use(
     // Desactivar indicador de carga en caso de error
     interceptorHandlers.onLoadingEnd?.();
     return Promise.reject(error);
-  }
+  },
 );
 
 // ============================================
@@ -77,44 +77,6 @@ apiInstance.interceptors.response.use(
   (response) => {
     // Desactivar indicador de carga
     interceptorHandlers.onLoadingEnd?.();
-
-    // Manejar respuestas exitosas con notificaciones
-    const status = response.status;
-    const method = response.config.method?.toUpperCase();
-
-    // Mostrar notificación de éxito para operaciones CREATE (POST con 201)
-    if (status === 201 && method === "POST") {
-      const url = response.config.url || "";
-      let message = "Recurso creado exitosamente";
-
-      // Mensajes personalizados según el endpoint
-      if (url.includes("/doctor")) {
-        message = "Doctor creado correctamente";
-      } else if (url.includes("/patient")) {
-        message = "Paciente creado correctamente";
-      } else if (url.includes("/appointment")) {
-        message = "Cita creada correctamente";
-      }
-
-      interceptorHandlers.onNotification?.(message, "success");
-    }
-
-    // Mostrar notificación de éxito para operaciones UPDATE (PUT con 200)
-    if (status === 200 && method === "PUT") {
-      const url = response.config.url || "";
-      let message = "Recurso actualizado exitosamente";
-
-      // Mensajes personalizados según el endpoint
-      if (url.includes("/doctor")) {
-        message = "Doctor actualizado correctamente";
-      } else if (url.includes("/patient")) {
-        message = "Paciente actualizado correctamente";
-      } else if (url.includes("/appointment")) {
-        message = "Cita actualizada correctamente";
-      }
-
-      interceptorHandlers.onNotification?.(message, "success");
-    }
 
     return response;
   },
@@ -217,7 +179,7 @@ apiInstance.interceptors.response.use(
           // Bad Gateway
           interceptorHandlers.onNotification?.(
             "Servicio no disponible temporalmente.",
-            "error"
+            "error",
           );
           console.error("Error 502 - Bad Gateway:", data);
           break;
@@ -226,7 +188,7 @@ apiInstance.interceptors.response.use(
           // Service Unavailable
           interceptorHandlers.onNotification?.(
             "Servicio en mantenimiento. Intenta más tarde.",
-            "error"
+            "error",
           );
           console.error("Error 503 - Service Unavailable:", data);
           break;
@@ -242,23 +204,23 @@ apiInstance.interceptors.response.use(
       // La petición se realizó pero no se recibió respuesta
       interceptorHandlers.onNotification?.(
         "No se pudo conectar con el servidor. Verifica tu conexión a internet.",
-        "error"
+        "error",
       );
       console.error(
         "Error de red - Sin respuesta del servidor:",
-        error.request
+        error.request,
       );
     } else {
       // Error al configurar la petición
       interceptorHandlers.onNotification?.(
         "Error al procesar la solicitud.",
-        "error"
+        "error",
       );
       console.error("Error al configurar la petición:", error.message);
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiInstance;

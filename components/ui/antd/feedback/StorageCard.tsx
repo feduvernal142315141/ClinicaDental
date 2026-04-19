@@ -36,7 +36,7 @@ export function StorageCard({
         body: { padding: 16 },
       }}
     >
-      <Space direction="vertical" size="small" className="w-full">
+      <Space orientation="vertical" size="small" className="w-full">
         <div className="flex items-center gap-3">
           <Progress
             type="circle"

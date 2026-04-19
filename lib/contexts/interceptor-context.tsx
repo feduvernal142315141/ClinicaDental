@@ -12,7 +12,7 @@
  */
 
 import { createContext, useContext, useState, ReactNode } from "react";
-import { toast } from "sonner";
+import { message as antdMessage } from "antd";
 
 // ============================================
 // TIPOS
@@ -51,7 +51,7 @@ interface InterceptorContextType {
   showAlert: (
     title: string,
     description: string,
-    type?: "error" | "warning" | "info"
+    type?: "error" | "warning" | "info",
   ) => void;
   closeAlert: () => void;
 
@@ -71,7 +71,7 @@ interface InterceptorContextType {
 // ============================================
 
 const InterceptorContext = createContext<InterceptorContextType | undefined>(
-  undefined
+  undefined,
 );
 
 // ============================================
@@ -96,7 +96,7 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
 
   // Callback de actividad (para auto-logout)
   const [onActivity, setOnActivity] = useState<(() => void) | undefined>(
-    undefined
+    undefined,
   );
 
   // ============================================
@@ -125,19 +125,19 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
 
     setNotifications((prev) => [...prev, notification]);
 
-    // Mostrar toast
+    // Mostrar toast con Ant Design
     switch (type) {
       case "success":
-        toast.success(message);
+        antdMessage.success(message);
         break;
       case "error":
-        toast.error(message);
+        antdMessage.error(message);
         break;
       case "warning":
-        toast.warning(message);
+        antdMessage.warning(message);
         break;
       case "info":
-        toast.info(message);
+        antdMessage.info(message);
         break;
     }
 
@@ -162,7 +162,7 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
   const showAlert = (
     title: string,
     description: string,
-    type: "error" | "warning" | "info" = "info"
+    type: "error" | "warning" | "info" = "info",
   ) => {
     setAlertDialog({
       isOpen: true,
@@ -185,7 +185,7 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
       case 400:
         showNotification(
           message || "La solicitud contiene datos inválidos",
-          "error"
+          "error",
         );
         break;
       case 401:
@@ -196,7 +196,7 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
           "Acceso Denegado",
           message ||
             "No tienes los permisos necesarios para realizar esta acción. Contacta al administrador si crees que esto es un error.",
-          "error"
+          "error",
         );
         break;
       case 404:
@@ -205,7 +205,7 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
       case 422:
         showNotification(
           message || "Los datos proporcionados no son válidos",
-          "error"
+          "error",
         );
         break;
       case 500:
@@ -213,21 +213,21 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
           "Error del Servidor",
           message ||
             "Ocurrió un error en el servidor. Por favor, intenta nuevamente más tarde.",
-          "error"
+          "error",
         );
         break;
       case 502:
         showAlert(
           "Servicio No Disponible",
           "El servidor no está respondiendo. Por favor, intenta nuevamente en unos momentos.",
-          "error"
+          "error",
         );
         break;
       case 503:
         showAlert(
           "Servicio en Mantenimiento",
           "El servicio está temporalmente fuera de línea. Por favor, intenta nuevamente más tarde.",
-          "warning"
+          "warning",
         );
         break;
       default:
@@ -239,7 +239,7 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
     showAlert(
       "Sesión Expirada",
       "Tu sesión ha expirado. Serás redirigido a la página de inicio de sesión.",
-      "warning"
+      "warning",
     );
 
     // Redirigir después de 2 segundos
@@ -293,7 +293,7 @@ export function useInterceptor(): InterceptorContextType {
   const context = useContext(InterceptorContext);
   if (!context) {
     throw new Error(
-      "useInterceptor debe usarse dentro de un InterceptorProvider"
+      "useInterceptor debe usarse dentro de un InterceptorProvider",
     );
   }
   return context;

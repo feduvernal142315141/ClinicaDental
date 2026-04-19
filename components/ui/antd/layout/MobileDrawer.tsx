@@ -94,7 +94,7 @@ export function MobileDrawer({
 
         {/* Footer with user and theme */}
         <div className="border-t p-4">
-          <Space direction="vertical" className="w-full" size="middle">
+          <Space orientation="vertical" className="w-full" size="middle">
             <div className="flex items-center justify-between">
               <Text type="secondary" className="text-sm">
                 Tema

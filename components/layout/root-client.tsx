@@ -1,6 +1,5 @@
 "use client";
 import { Suspense } from "react";
-import { Toaster } from "sonner";
 import { Theme } from "@radix-ui/themes";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/lib/contexts/auth-context";
@@ -40,7 +39,6 @@ export function RootClient({ children }: RootClientProps) {
                 </AuthProvider>
               </InterceptorProvider>
             </Suspense>
-            <Toaster position="top-right" richColors closeButton />
             <Analytics />
           </Theme>
         </AppLoader>
