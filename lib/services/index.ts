@@ -31,6 +31,9 @@ export * from "./patients";
 // Appointments Services
 export * from "./appointments";
 
+// Dashboard Services
+export * from "./dashboard";
+
 // Odontogram & Treatment-Plan Services
 export * from "./odontogram";
 

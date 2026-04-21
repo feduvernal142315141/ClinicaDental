@@ -112,6 +112,12 @@ export const PERMISSIONS = {
     description: "Gestión de historia clínica",
     category: PERMISSION_CATEGORIES.CLINICAL,
   },
+  REPORTS: {
+    id: "reports",
+    name: "Reportes",
+    description: "Acceso a reportes y dashboard administrativo",
+    category: PERMISSION_CATEGORIES.REPORTS,
+  },
 } as const;
 
 /**
