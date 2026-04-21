@@ -17,23 +17,14 @@ import {
   CardTitle,
 } from "@/components/ui/atomic/data-display/card";
 import { KpiCard } from "@/components/ui/atomic/data-display/kpi-card";
-import { Button as AntButton, Modal, Tabs, Typography } from "antd";
+import { Button as AntButton, Modal, Tabs, Timeline, Typography } from "antd";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { Separator } from "@/components/ui/primitives/shadcn/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/atomic/data-display/table";
 import {
   User,
   Mail,
   Phone,
   Calendar,
-  Clock,
   Activity,
   UserRound,
   Circle,
@@ -369,119 +360,164 @@ export function PatientDetail({
                   </div>
 
                   <div className="space-y-6 lg:col-span-2">
+                    {/* ── UNIFIED APPOINTMENT TIMELINE ── */}
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          <Clock className="h-5 w-5" /> Próximas Citas
+                          <Calendar className="h-5 w-5 text-blue-500" />
+                          Línea de Tiempo de Citas
                         </CardTitle>
                         <CardDescription>
-                          {upcomingAppointments.length} cita
-                          {upcomingAppointments.length !== 1 ? "s" : ""}{" "}
-                          programada
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {upcomingAppointments.length === 0 ? (
-                          <p className="py-4 text-center text-muted-foreground">
-                            No hay citas próximas programadas
-                          </p>
-                        ) : (
-                          <div className="space-y-3">
-                            {upcomingAppointments.map((appointment) => (
-                              <div
-                                key={appointment.id}
-                                className="flex items-center justify-between rounded-lg border p-3"
-                              >
-                                <div>
-                                  <p className="font-medium">
-                                    Dr. {appointment.doctorName}
-                                  </p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {formatDate(appointment.date)} a las{" "}
-                                    {appointment.time}
-                                  </p>
-                                </div>
-                                <Badge
-                                  className={getStatusColor(appointment.status)}
-                                >
-                                  {getStatusText(appointment.status)}
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Activity className="h-5 w-5" /> Historial de Citas
-                        </CardTitle>
-                        <CardDescription>
-                          {pastAppointments.length} cita
-                          {pastAppointments.length !== 1 ? "s" : ""} anteriores
+                          {upcomingAppointments.length} próxima
+                          {upcomingAppointments.length !== 1 ? "s" : ""} ·{" "}
+                          {pastAppointments.length} anterior
+                          {pastAppointments.length !== 1 ? "es" : ""}
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
                         {appointmentsLoading ? (
-                          <div className="flex items-center justify-center py-4">
-                            <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
-                            <span className="ml-2">Cargando historial...</span>
+                          <div className="flex items-center justify-center py-8">
+                            <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
+                            <span className="ml-2 text-sm text-muted-foreground">
+                              Cargando citas...
+                            </span>
                           </div>
-                        ) : pastAppointments.length === 0 ? (
-                          <p className="py-4 text-center text-muted-foreground">
-                            No hay historial de citas
+                        ) : appointments.length === 0 ? (
+                          <p className="py-8 text-center text-muted-foreground">
+                            No hay citas registradas
                           </p>
                         ) : (
-                          <div className="rounded-md border">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Fecha</TableHead>
-                                  <TableHead>Hora</TableHead>
-                                  <TableHead>Doctor</TableHead>
-                                  <TableHead>Motivo</TableHead>
-                                  <TableHead>Estado</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {pastAppointments
-                                  .sort(
-                                    (left, right) =>
-                                      new Date(
-                                        `${right.date}T${right.time}`,
-                                      ).getTime() -
-                                      new Date(
-                                        `${left.date}T${left.time}`,
-                                      ).getTime(),
-                                  )
-                                  .map((appointment) => (
-                                    <TableRow key={appointment.id}>
-                                      <TableCell>
-                                        {formatDate(appointment.date)}
-                                      </TableCell>
-                                      <TableCell>{appointment.time}</TableCell>
-                                      <TableCell>
-                                        Dr. {appointment.doctorName}
-                                      </TableCell>
-                                      <TableCell>
-                                        {appointment.reason || "-"}
-                                      </TableCell>
-                                      <TableCell>
-                                        <Badge
-                                          className={getStatusColor(
-                                            appointment.status,
-                                          )}
-                                        >
-                                          {getStatusText(appointment.status)}
-                                        </Badge>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                              </TableBody>
-                            </Table>
-                          </div>
+                          <Timeline
+                            mode="start"
+                            items={[
+                              // ── Sección: próximas ──────────────────────
+                              ...(upcomingAppointments.length > 0
+                                ? [
+                                    {
+                                      icon: (
+                                        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-[10px] font-bold">
+                                          →
+                                        </span>
+                                      ),
+                                      title: (
+                                        <span className="text-xs font-semibold uppercase tracking-wide text-blue-500">
+                                          Próximas
+                                        </span>
+                                      ),
+                                      content: null,
+                                    },
+                                    ...upcomingAppointments.map((appt) => ({
+                                      color: "blue",
+                                      title: (
+                                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                          {formatDate(appt.date)}
+                                          <br />
+                                          {appt.time}
+                                        </span>
+                                      ),
+                                      content: (
+                                        <div className="mb-2 rounded-xl bg-blue-50 px-4 py-3">
+                                          <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                              <p className="font-semibold text-blue-900 text-sm">
+                                                Dr. {appt.doctorName}
+                                              </p>
+                                              {appt.reason && (
+                                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                                  {appt.reason}
+                                                </p>
+                                              )}
+                                            </div>
+                                            <Badge className="shrink-0 bg-blue-100 text-blue-800 hover:bg-blue-100 text-[11px]">
+                                              {getStatusText(appt.status)}
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                      ),
+                                    })),
+                                  ]
+                                : []),
+                              // ── Sección: historial ─────────────────────
+                              ...(pastAppointments.length > 0
+                                ? [
+                                    {
+                                      icon: (
+                                        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold">
+                                          ↺
+                                        </span>
+                                      ),
+                                      title: (
+                                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                          Historial
+                                        </span>
+                                      ),
+                                      content: null,
+                                    },
+                                    ...pastAppointments
+                                      .sort(
+                                        (l, r) =>
+                                          new Date(
+                                            `${r.date}T${r.time}`,
+                                          ).getTime() -
+                                          new Date(
+                                            `${l.date}T${l.time}`,
+                                          ).getTime(),
+                                      )
+                                      .map((appt) => {
+                                        const dotColor =
+                                          appt.status === "completed"
+                                            ? "green"
+                                            : appt.status === "cancelled"
+                                              ? "red"
+                                              : appt.status === "no-show"
+                                                ? "orange"
+                                                : "gray";
+                                        const bgClass =
+                                          appt.status === "completed"
+                                            ? "bg-green-50"
+                                            : appt.status === "cancelled"
+                                              ? "bg-red-50"
+                                              : appt.status === "no-show"
+                                                ? "bg-amber-50"
+                                                : "bg-slate-50";
+                                        return {
+                                          color: dotColor,
+                                          title: (
+                                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                              {formatDate(appt.date)}
+                                              <br />
+                                              {appt.time}
+                                            </span>
+                                          ),
+                                          content: (
+                                            <div
+                                              className={`mb-2 rounded-xl ${bgClass} px-4 py-3`}
+                                            >
+                                              <div className="flex items-start justify-between gap-2">
+                                                <div>
+                                                  <p className="font-semibold text-slate-800 text-sm">
+                                                    Dr. {appt.doctorName}
+                                                  </p>
+                                                  {appt.reason && (
+                                                    <p className="mt-0.5 text-xs text-muted-foreground">
+                                                      {appt.reason}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                                <Badge
+                                                  className={`shrink-0 ${getStatusColor(appt.status)} text-[11px]`}
+                                                >
+                                                  {getStatusText(appt.status)}
+                                                </Badge>
+                                              </div>
+                                            </div>
+                                          ),
+                                        };
+                                      }),
+                                  ]
+                                : []),
+                            ]}
+                          />
                         )}
                       </CardContent>
                     </Card>
