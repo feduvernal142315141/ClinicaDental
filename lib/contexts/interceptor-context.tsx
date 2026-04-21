@@ -12,7 +12,7 @@
  */
 
 import { createContext, useContext, useState, ReactNode } from "react";
-import { message as antdMessage } from "antd";
+import { message } from "antd";
 
 // ============================================
 // TIPOS
@@ -79,6 +79,9 @@ const InterceptorContext = createContext<InterceptorContextType | undefined>(
 // ============================================
 
 export function InterceptorProvider({ children }: { children: ReactNode }) {
+  // Hook API de Ant Design (context-aware, no estática)
+  const [messageApi, contextHolder] = message.useMessage();
+
   // Estado de loading
   const [isLoading, setIsLoading] = useState(false);
   const [activeRequests, setActiveRequests] = useState(0);
@@ -125,19 +128,19 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
 
     setNotifications((prev) => [...prev, notification]);
 
-    // Mostrar toast con Ant Design
+    // Mostrar toast con Ant Design (hook API, context-aware)
     switch (type) {
       case "success":
-        antdMessage.success(message);
+        messageApi.success(message);
         break;
       case "error":
-        antdMessage.error(message);
+        messageApi.error(message);
         break;
       case "warning":
-        antdMessage.warning(message);
+        messageApi.warning(message);
         break;
       case "info":
-        antdMessage.info(message);
+        messageApi.info(message);
         break;
     }
 
@@ -280,6 +283,7 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
 
   return (
     <InterceptorContext.Provider value={value}>
+      {contextHolder}
       {children}
     </InterceptorContext.Provider>
   );
