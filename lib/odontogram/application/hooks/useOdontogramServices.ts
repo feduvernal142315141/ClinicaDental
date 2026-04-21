@@ -36,7 +36,7 @@ function serviceToCatalogItem(service: ServiceListItem): ProcedureCatalogItem {
     name: service.name,
     code: service.code,
     category: mapCategory(service.category),
-    estimatedDuration: 30,
+    estimatedDuration: service.duration ?? 30,
     baseCost: service.cost ?? 0,
     isFavorite: false,
   };
