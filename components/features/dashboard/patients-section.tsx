@@ -1,57 +1,67 @@
 "use client";
 
 import { KpiCard, KpiGrid } from "@/components/ui/atomic/data-display/kpi-card";
-import { AlertCard } from "@/components/ui/atomic/data-display/alert-card";
+import { AlertCardGrid } from "@/components/ui/atomic/data-display/alert-card";
 import { DataCard } from "@/components/ui/atomic/data-display/data-card";
 import { Header } from "@/components/ui/atomic/layout/header";
 import {
   PieChart,
   Pie,
   Cell,
+  AreaChart,
+  Area,
   ResponsiveContainer,
   Tooltip,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { Users, UserPlus, UserX, AlertCircle } from "lucide-react";
-import { getPatientAnalytics } from "@/lib/analytics";
-import { useEffect, useState } from "react";
+import { Users, UserPlus, Briefcase, AlertTriangle } from "lucide-react";
+import { DashboardSummary } from "@/lib/entity/dashboard";
 
-export function PatientsSection() {
-  const [analytics, setAnalytics] = useState(getPatientAnalytics());
+interface PatientsSectionProps {
+  data: DashboardSummary;
+}
 
-  useEffect(() => {
-    setAnalytics(getPatientAnalytics());
-  }, []);
+export function PatientsSection({ data }: PatientsSectionProps) {
+  const { patientSignals, serviceDemand } = data;
 
   const newVsRecurringData = [
-    { name: "Nuevos", value: analytics.newVsRecurring.new, color: "#3b82f6" },
+    { name: "Nuevos", value: patientSignals.newPatients, color: "#3b82f6" },
     {
       name: "Recurrentes",
-      value: analytics.newVsRecurring.recurring,
+      value: patientSignals.recurringPatients,
       color: "#10b981",
     },
   ];
+
+  const totalPatients =
+    patientSignals.newPatients + patientSignals.recurringPatients;
+  const topDemandData = serviceDemand.top.map((service) => ({
+    name: service.serviceName || "Servicio sin nombre",
+    Citas: service.appointmentCount,
+    Estimado: service.estimatedRevenue,
+  }));
+  const bottomDemandData = serviceDemand.bottom.map((service) => ({
+    name: service.serviceName || "Servicio sin nombre",
+    Citas: service.appointmentCount,
+    Estimado: service.estimatedRevenue,
+  }));
 
   return (
     <div className="space-y-6">
       <Header
         level={2}
         size="lg"
-        title="Análisis de Pacientes"
-        description="Segmentación y comportamiento de pacientes"
+        title="Análisis de Pacientes & Servicios"
+        description="Segmentación y demanda de servicios"
       />
 
       {/* Patient Overview */}
-      <KpiGrid cols={{ default: 1, md: 4 }} gap={6}>
+      <KpiGrid cols={{ default: 1, md: 3 }} gap={6}>
         <KpiCard
-          title="Total Pacientes"
-          value={
-            analytics.newVsRecurring.new + analytics.newVsRecurring.recurring
-          }
+          title="Total Pacientes Atendidos"
+          value={patientSignals.uniquePatientsAttended}
           icon={Users}
           iconColor="text-blue-600"
         />
@@ -59,17 +69,18 @@ export function PatientsSection() {
         <KpiCard
           variant="badges"
           title="Nuevos"
-          value={analytics.newVsRecurring.new}
+          value={patientSignals.newPatients}
           icon={UserPlus}
           iconColor="text-green-600"
           badges={[
             {
-              label: `${Math.round(
-                (analytics.newVsRecurring.new /
-                  (analytics.newVsRecurring.new +
-                    analytics.newVsRecurring.recurring)) *
-                  100,
-              )}%`,
+              label: `${
+                totalPatients > 0
+                  ? Math.round(
+                      (patientSignals.newPatients / totalPatients) * 100,
+                    )
+                  : 0
+              }%`,
               variant: "secondary",
             },
           ]}
@@ -78,32 +89,19 @@ export function PatientsSection() {
         <KpiCard
           variant="badges"
           title="Recurrentes"
-          value={analytics.newVsRecurring.recurring}
+          value={patientSignals.recurringPatients}
           icon={Users}
           iconColor="text-purple-600"
           badges={[
             {
-              label: `${Math.round(
-                (analytics.newVsRecurring.recurring /
-                  (analytics.newVsRecurring.new +
-                    analytics.newVsRecurring.recurring)) *
-                  100,
-              )}%`,
+              label: `${
+                totalPatients > 0
+                  ? Math.round(
+                      (patientSignals.recurringPatients / totalPatients) * 100,
+                    )
+                  : 0
+              }%`,
               variant: "secondary",
-            },
-          ]}
-        />
-
-        <KpiCard
-          variant="badges"
-          title="Cancelaciones"
-          value={analytics.frequentCancellations.length}
-          icon={UserX}
-          iconColor="text-red-600"
-          badges={[
-            {
-              label: "Frecuentes",
-              variant: "destructive",
             },
           ]}
         />
@@ -116,31 +114,37 @@ export function PatientsSection() {
           title="Nuevos vs Recurrentes"
           description="Distribución de tipos de pacientes"
         >
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={newVsRecurringData}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={5}
-                dataKey="value"
-              >
-                {newVsRecurringData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+          {totalPatients > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={newVsRecurringData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {newVsRecurringData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              No hay pacientes atendidos en este periodo.
+            </p>
+          )}
           <div className="flex justify-center gap-4 mt-4">
             {newVsRecurringData.map((entry, index) => (
               <div key={index} className="flex items-center gap-2">
                 <div
                   className="w-3 h-3 rounded-full"
                   style={{ backgroundColor: entry.color }}
-                ></div>
+                />
                 <span className="text-sm">
                   {entry.name}: {entry.value}
                 </span>
@@ -149,67 +153,147 @@ export function PatientsSection() {
           </div>
         </DataCard>
 
-        {/* Demographics by Age */}
+        {/* Top Services */}
         <DataCard
-          title="Distribución por Edad"
-          description="Segmentación demográfica"
+          title="Mayor Demanda de Servicios"
+          description="Citas no canceladas por servicio"
+          icon={Briefcase}
+          iconColor="text-blue-600"
         >
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={analytics.demographics.ageGroups}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="range" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="count" fill="#3b82f6" />
-            </BarChart>
-          </ResponsiveContainer>
+          {topDemandData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={topDemandData}>
+                <defs>
+                  <linearGradient
+                    id="colorTopCitas"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} />
+                <Tooltip formatter={formatDemandTooltip} />
+                <Area
+                  type="monotone"
+                  dataKey="Citas"
+                  stroke="#3b82f6"
+                  fill="url(#colorTopCitas)"
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              No hay servicios asociados a citas no canceladas.
+            </p>
+          )}
         </DataCard>
       </div>
 
-      {/* Problem Patients */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Frequent Cancellations */}
         <DataCard
-          title="Cancelaciones Frecuentes"
-          description="Pacientes con problemas de comunicación"
-          icon={AlertCircle}
+          title="Menor Demanda de Servicios"
+          description="Incluye servicios activos sin citas"
+          icon={AlertTriangle}
           iconColor="text-amber-500"
-          contentClassName="space-y-3"
         >
-          {analytics.frequentCancellations.map((patient, index) => (
-            <AlertCard
-              key={index}
-              title={patient.name}
-              description="Requiere seguimiento"
-              badgeValue={`${patient.cancellations} cancelaciones`}
-              variant="warning"
-              badgeVariant="destructive"
-            />
-          ))}
+          {bottomDemandData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={bottomDemandData}>
+                <defs>
+                  <linearGradient
+                    id="colorBottomCitas"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} />
+                <Tooltip formatter={formatDemandTooltip} />
+                <Area
+                  type="monotone"
+                  dataKey="Citas"
+                  stroke="#f59e0b"
+                  fill="url(#colorBottomCitas)"
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              No hay servicios activos para comparar demanda.
+            </p>
+          )}
         </DataCard>
 
-        {/* Missed Follow-ups */}
         <DataCard
-          title="Sin Seguimiento"
-          description="Pacientes con tratamientos pausados"
-          icon={AlertCircle}
-          iconColor="text-red-500"
-          contentClassName="space-y-3"
+          title="Calidad de Datos de Agenda"
+          description="Señales para mejorar estimaciones de demanda"
+          icon={AlertTriangle}
+          iconColor="text-amber-500"
         >
-          {analytics.missedFollowups.map((patient, index) => (
-            <AlertCard
-              key={index}
-              title={patient.name}
-              description={`Última visita: ${new Date(
-                patient.lastVisit,
-              ).toLocaleDateString()}`}
-              badgeValue="Contactar"
-              variant="error"
-              badgeVariant="destructive"
-            />
-          ))}
+          <AlertCardGrid
+            alerts={[
+              {
+                title: "Citas Sin Servicio",
+                description: "No entran al ranking de demanda",
+                badgeValue: serviceDemand.appointmentsWithoutService,
+                variant:
+                  serviceDemand.appointmentsWithoutService > 0
+                    ? "warning"
+                    : "success",
+                badgeVariant: "secondary",
+              },
+              {
+                title: "Servicios Sin Demanda",
+                description: "Activos con cero citas",
+                badgeValue: bottomDemandData.filter((item) => item.Citas === 0)
+                  .length,
+                variant: bottomDemandData.some((item) => item.Citas === 0)
+                  ? "warning"
+                  : "success",
+                badgeVariant: "secondary",
+              },
+              {
+                title: "Ticket Promedio",
+                description: "Estimado sobre citas completadas",
+                badgeValue: formatCurrency(data.kpis.averageTicket),
+                variant: "info",
+                badgeVariant: "outline",
+              },
+            ]}
+            cols={{ default: 1 }}
+            gap={3}
+          />
         </DataCard>
       </div>
     </div>
   );
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(value ?? 0);
+}
+
+function formatDemandTooltip(value: number | string, name: string) {
+  if (name === "Estimado") {
+    return [formatCurrency(Number(value)), "Estimado no cobrado"];
+  }
+  return [value, name];
 }
