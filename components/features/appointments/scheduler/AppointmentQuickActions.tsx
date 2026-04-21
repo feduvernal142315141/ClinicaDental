@@ -7,6 +7,7 @@ import {
   CalendarOutlined,
   CloseCircleOutlined,
   CheckCircleOutlined,
+  MedicineBoxOutlined,
 } from "@ant-design/icons";
 import type { Appointment } from "@/lib/entity/appointment";
 import { isAppointmentActionable } from "@/lib/utils/appointment-utils";
@@ -15,6 +16,7 @@ interface AppointmentQuickActionsProps {
   appointment: Appointment;
   children: React.ReactNode;
   onViewDetail?: (appointment: Appointment) => void;
+  onStartConsultation?: (appointment: Appointment) => void;
   onReschedule?: (appointment: Appointment) => void;
   onCancel?: (appointment: Appointment) => void;
   onComplete?: (appointment: Appointment) => void;
@@ -24,6 +26,7 @@ export function AppointmentQuickActions({
   appointment,
   children,
   onViewDetail,
+  onStartConsultation,
   onReschedule,
   onCancel,
   onComplete,
@@ -34,8 +37,19 @@ export function AppointmentQuickActions({
   // Cualquier cita en estado `scheduled` puede cancelarse (incluye no-shows
   // con hora ya pasada). El backend valida completed/cancelled.
   const canCancel = appointment.status === "scheduled";
+  // "Iniciar consulta" solo si la cita está programada y tiene paciente.
+  const canStartConsultation =
+    appointment.status === "scheduled" && !!appointment.patientId;
 
   const items: MenuProps["items"] = [
+    onStartConsultation && canStartConsultation
+      ? {
+          key: "start-consultation",
+          icon: <MedicineBoxOutlined />,
+          label: "Iniciar consulta",
+          onClick: () => onStartConsultation(appointment),
+        }
+      : null,
     onViewDetail
       ? {
           key: "detail",
