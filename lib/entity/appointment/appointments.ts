@@ -18,6 +18,17 @@ export type AppointmentType =
   | "routine";
 
 /**
+ * Snapshot ligero de un servicio asociado a una cita.
+ * Backend: com.kodewave.clinic.backend.domain.entities.appointment.AppointmentServiceSnapshot
+ */
+export interface AppointmentServiceSnapshot {
+  serviceId: string;
+  serviceCode?: string;
+  serviceName?: string;
+  serviceCost?: number;
+}
+
+/**
  * Appointment entity - Full representation
  */
 export interface Appointment {
@@ -36,11 +47,19 @@ export interface Appointment {
   doctorName?: string;
   clinicId?: string;
 
-  /** Service snapshot (populated by backend when serviceId was provided at creation) */
+  /**
+   * Servicio principal (primer elemento de `services`). Se mantiene por compatibilidad.
+   */
   serviceId?: string;
   serviceCode?: string;
   serviceName?: string;
   serviceCost?: number;
+
+  /**
+   * Lista completa de servicios de la cita.
+   * Si sólo hay uno, coincide con los campos legacy.
+   */
+  services?: AppointmentServiceSnapshot[];
 
   // Backward compatibility with legacy payloads
   patient_id?: string;
@@ -63,8 +82,10 @@ export interface CreateAppointmentRequest {
   status?: AppointmentStatus;
   notes?: string;
   reason?: string;
-  /** Optional: links the appointment to a clinic service */
+  /** Legacy: id de servicio único. Se mantiene por compatibilidad. */
   serviceId?: string;
+  /** Nuevo: lista de ids de servicios asociados a la cita (uno o más). */
+  serviceIds?: string[];
 }
 
 /**
@@ -80,6 +101,7 @@ export interface UpdateAppointmentRequest {
   notes?: string;
   reason?: string;
   serviceId?: string;
+  serviceIds?: string[];
 }
 
 /**
