@@ -25,7 +25,7 @@ type AppointmentFormValues = {
   type: AppointmentType;
   reason?: string;
   notes?: string;
-  serviceId?: string;
+  serviceIds?: string[];
 };
 
 export interface SelectOption {
@@ -159,7 +159,14 @@ export function useAppointmentForm({
       type: appointment.type,
       reason: appointment.reason,
       notes: appointment.notes,
-      serviceId: appointment.serviceId,
+      serviceIds:
+        appointment.services && appointment.services.length > 0
+          ? appointment.services
+              .map((s) => s.serviceId)
+              .filter((id): id is string => !!id)
+          : appointment.serviceId
+            ? [appointment.serviceId]
+            : [],
     });
   }, [isEdit, appointmentId, initialData, getAppointmentById, form]);
 
@@ -251,6 +258,9 @@ export function useAppointmentForm({
 
   const handleSubmit = useCallback(
     async (values: AppointmentFormValues) => {
+      const serviceIds = (values.serviceIds ?? []).filter(
+        (id): id is string => !!id,
+      );
       const payloadBase = {
         patientId: values.patientId,
         doctorId: values.doctorId,
@@ -260,7 +270,8 @@ export function useAppointmentForm({
         type: values.type,
         reason: values.reason,
         notes: values.notes,
-        serviceId: values.serviceId,
+        serviceIds,
+        serviceId: serviceIds[0],
       };
 
       if (isEdit && appointmentId) {
