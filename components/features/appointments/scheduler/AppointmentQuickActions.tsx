@@ -6,6 +6,7 @@ import {
   EyeOutlined,
   CalendarOutlined,
   CloseCircleOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 import type { Appointment } from "@/lib/entity/appointment";
 import { isAppointmentActionable } from "@/lib/utils/appointment-utils";
@@ -16,6 +17,7 @@ interface AppointmentQuickActionsProps {
   onViewDetail?: (appointment: Appointment) => void;
   onReschedule?: (appointment: Appointment) => void;
   onCancel?: (appointment: Appointment) => void;
+  onComplete?: (appointment: Appointment) => void;
 }
 
 export function AppointmentQuickActions({
@@ -24,8 +26,14 @@ export function AppointmentQuickActions({
   onViewDetail,
   onReschedule,
   onCancel,
+  onComplete,
 }: AppointmentQuickActionsProps) {
   const isActionable = isAppointmentActionable(appointment);
+  // A scheduled appointment whose start is in the past is ready to complete
+  const canComplete = appointment.status === "scheduled" && !isActionable;
+  // Cualquier cita en estado `scheduled` puede cancelarse (incluye no-shows
+  // con hora ya pasada). El backend valida completed/cancelled.
+  const canCancel = appointment.status === "scheduled";
 
   const items: MenuProps["items"] = [
     onViewDetail
@@ -36,6 +44,14 @@ export function AppointmentQuickActions({
           onClick: () => onViewDetail(appointment),
         }
       : null,
+    onComplete && canComplete
+      ? {
+          key: "complete",
+          icon: <CheckCircleOutlined />,
+          label: "Marcar como realizada",
+          onClick: () => onComplete(appointment),
+        }
+      : null,
     onReschedule && isActionable
       ? {
           key: "reschedule",
@@ -44,7 +60,7 @@ export function AppointmentQuickActions({
           onClick: () => onReschedule(appointment),
         }
       : null,
-    onCancel && isActionable
+    onCancel && canCancel
       ? {
           key: "cancel",
           icon: <CloseCircleOutlined />,
