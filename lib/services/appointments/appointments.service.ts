@@ -348,19 +348,21 @@ async function getDoctorAvailability(
   date: string,
   interval = 15,
 ): Promise<string[]> {
-  const response = await serviceGet<AvailabilityResponse>(
+  // validateStatus < 500 evita que el interceptor global muestre error toast
+  // cuando el backend retorna 400 por "doctor sin horario en ese día".
+  const response = await apiInstance.get<AvailabilityResponse>(
     `${endpoint}/availability/doctor/${doctorId}?date=${date}&interval=${interval}`,
+    { validateStatus: (s) => s < 500 },
   );
 
-  if (response?.status >= 200 && response?.status < 300 && response?.data) {
+  if (response.status >= 200 && response.status < 300 && response.data) {
     return Array.isArray(response.data.availableTime)
       ? response.data.availableTime
       : [];
   }
 
-  throw new Error(
-    getErrorMessage(response, "Error al obtener disponibilidad del doctor"),
-  );
+  // 400 = doctor sin disponibilidad para ese día → lista vacía sin error toast
+  return [];
 }
 
 async function completeAppointment(id: string): Promise<boolean> {
