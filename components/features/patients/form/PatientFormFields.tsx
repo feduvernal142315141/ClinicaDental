@@ -48,7 +48,7 @@ export function PatientFormFields({
       : undefined;
   return (
     <Row gutter={gutter}>
-      <Col xs={24} md={12}>
+      <Col xs={24} md={12} lg={8}>
         <Form.Item
           name="name"
           label="Nombre Completo"
@@ -64,7 +64,7 @@ export function PatientFormFields({
         </Form.Item>
       </Col>
 
-      <Col xs={24} md={12}>
+      <Col xs={24} md={12} lg={8}>
         <Form.Item
           name="email"
           label="Correo Electrónico"
@@ -77,7 +77,7 @@ export function PatientFormFields({
         </Form.Item>
       </Col>
 
-      <Col xs={24} md={12}>
+      <Col xs={24} md={12} lg={8}>
         <Form.Item
           name="phone"
           label="Teléfono"
@@ -87,7 +87,7 @@ export function PatientFormFields({
         </Form.Item>
       </Col>
 
-      <Col xs={24} md={12}>
+      <Col xs={24} md={12} lg={8}>
         <Form.Item
           name="dateOfBirth"
           label="Fecha de Nacimiento"
@@ -112,7 +112,7 @@ export function PatientFormFields({
         </Form.Item>
       </Col>
 
-      <Col xs={24} md={12}>
+      <Col xs={24} md={12} lg={8}>
         <Form.Item
           name="gender"
           label="Género"
@@ -130,13 +130,13 @@ export function PatientFormFields({
         </Form.Item>
       </Col>
 
-      <Col xs={24} md={12}>
+      <Col xs={24} md={12} lg={8}>
         <Form.Item name="address" label="Dirección">
           <Input placeholder="Ej: Calle Mayor 123, Madrid" size="large" />
         </Form.Item>
       </Col>
 
-      <Col xs={24} md={12}>
+      <Col xs={24} md={12} lg={8}>
         <Form.Item name="agreement" label="Convenio" valuePropName="checked">
           <Switch checkedChildren="Sí" unCheckedChildren="No" />
         </Form.Item>
