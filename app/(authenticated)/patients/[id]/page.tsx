@@ -1,6 +1,7 @@
 "use client";
 
 import { use } from "react";
+import { useSearchParams } from "next/navigation";
 import { PatientDetail } from "@/components/patients";
 
 interface PageProps {
@@ -9,5 +10,17 @@ interface PageProps {
 
 export default function PatientDetailPage({ params }: PageProps) {
   const { id } = use(params);
-  return <PatientDetail patientId={id} basePath="/patients" />;
+  const searchParams = useSearchParams();
+
+  const initialTab = searchParams.get("tab") ?? undefined;
+  const activeAppointmentId = searchParams.get("appointmentId") ?? undefined;
+
+  return (
+    <PatientDetail
+      patientId={id}
+      basePath="/patients"
+      initialTab={initialTab}
+      activeAppointmentId={activeAppointmentId}
+    />
+  );
 }
