@@ -15,6 +15,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  Legend,
 } from "recharts";
 import { Users, UserPlus, Briefcase, AlertTriangle } from "lucide-react";
 import { DashboardSummary } from "@/lib/entity/dashboard";
@@ -176,9 +177,17 @@ export function PatientsSection({ data }: PatientsSectionProps) {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11 }}
+                  angle={topDemandData.length > 8 ? -35 : 0}
+                  textAnchor={topDemandData.length > 8 ? "end" : "middle"}
+                  height={topDemandData.length > 8 ? 50 : 30}
+                  interval={0}
+                />
                 <YAxis allowDecimals={false} />
                 <Tooltip formatter={formatDemandTooltip} />
+                <Legend />
                 <Area
                   type="monotone"
                   dataKey="Citas"
@@ -219,9 +228,17 @@ export function PatientsSection({ data }: PatientsSectionProps) {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11 }}
+                  angle={bottomDemandData.length > 8 ? -35 : 0}
+                  textAnchor={bottomDemandData.length > 8 ? "end" : "middle"}
+                  height={bottomDemandData.length > 8 ? 50 : 30}
+                  interval={0}
+                />
                 <YAxis allowDecimals={false} />
                 <Tooltip formatter={formatDemandTooltip} />
+                <Legend />
                 <Area
                   type="monotone"
                   dataKey="Citas"
