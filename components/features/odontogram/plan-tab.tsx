@@ -20,6 +20,9 @@ import {
   Package,
   CheckCircle2,
   Play,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
 } from "lucide-react";
 import type {
   Tooth,
@@ -45,6 +48,7 @@ import {
   TreatmentSuggestionService,
 } from "./types";
 import { useOdontogramServices } from "@/lib/odontogram/application/hooks/useOdontogramServices";
+import { useIcdasTemplateSuggestions } from "@/lib/odontogram/application/hooks/useIcdasTemplateSuggestions";
 
 interface PlanTabProps {
   tooth: Tooth;
@@ -90,6 +94,25 @@ export function PlanTab({
   const [plans, setPlans] = useState<ProcedurePlan[]>([]);
   const [currency, setCurrency] = useState<Currency>("USD");
   const [exchangeRate] = useState(36.5);
+  const [icdasSectionOpen, setIcdasSectionOpen] = useState(true);
+
+  // Derive the highest ICDAS score and primary surface from diagnoses
+  const { maxIcdasScore, primarySurface } = useMemo(() => {
+    if (!diagnoses || diagnoses.size === 0)
+      return { maxIcdasScore: null, primarySurface: null };
+    let max = -1;
+    let surface: string | null = null;
+    diagnoses.forEach((diag, surf) => {
+      if (diag.icdasScore > max) {
+        max = diag.icdasScore;
+        surface = surf;
+      }
+    });
+    return { maxIcdasScore: max >= 0 ? max : null, primarySurface: surface };
+  }, [diagnoses]);
+
+  const { suggestions: icdasTemplateSuggestions, loading: icdasLoading } =
+    useIcdasTemplateSuggestions(maxIcdasScore, primarySurface);
 
   useEffect(() => {
     setPlans(initialPlans ?? []);
@@ -241,6 +264,35 @@ export function PlanTab({
           durationMin: procedure.estimatedDuration,
           cost: procedure.baseCost,
           dependencies: tp.dependsOn,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as ProcedurePlan;
+      })
+      .filter(Boolean) as ProcedurePlan[];
+
+    handlePlansUpdate([...plans, ...newPlans]);
+  };
+
+  // Apply all items from an ICDAS-based backend template suggestion
+  const handleApplyIcdasTemplate = (
+    templateName: string,
+    itemServiceIds: string[],
+  ) => {
+    const newPlans: ProcedurePlan[] = itemServiceIds
+      .map((serviceId) => {
+        const procedure = serviceCatalog.find((p) => p.id === serviceId);
+        if (!procedure) return null;
+        return {
+          id: generateId(),
+          toothNumber: tooth.number,
+          surfaces: selectedSurfaces,
+          procedureId: procedure.id,
+          displayName: procedure.name,
+          category: procedure.category,
+          status: "plan" as const,
+          priority: "media" as const,
+          durationMin: procedure.estimatedDuration,
+          cost: procedure.baseCost,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         } as ProcedurePlan;
@@ -441,6 +493,131 @@ export function PlanTab({
                   </div>
                 ))}
               </div>
+            </Card>
+          )}
+
+          {/* Plantillas sugeridas según ICDAS (backend) */}
+          {maxIcdasScore !== null && (
+            <Card className="p-4 shadow-sm">
+              <button
+                className="w-full flex items-center justify-between mb-1"
+                onClick={() => setIcdasSectionOpen((v) => !v)}
+              >
+                <Label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  Plantillas sugeridas · ICDAS {maxIcdasScore}
+                </Label>
+                {icdasSectionOpen ? (
+                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                )}
+              </button>
+
+              {icdasSectionOpen && (
+                <div className="space-y-2 mt-2">
+                  {icdasLoading && (
+                    <p className="text-xs text-muted-foreground py-2">
+                      Cargando plantillas…
+                    </p>
+                  )}
+                  {!icdasLoading && icdasTemplateSuggestions.length === 0 && (
+                    <p className="text-xs text-muted-foreground py-2">
+                      No hay plantillas sugeridas para ICDAS {maxIcdasScore}.
+                    </p>
+                  )}
+                  {icdasTemplateSuggestions.map((suggestion) => {
+                    const totalDuration = suggestion.items.reduce(
+                      (sum, item) => {
+                        const svc = serviceCatalog.find(
+                          (s) => s.id === item.serviceId,
+                        );
+                        return sum + (svc?.estimatedDuration ?? 0);
+                      },
+                      0,
+                    );
+                    const totalCost = suggestion.items.reduce((sum, item) => {
+                      const svc = serviceCatalog.find(
+                        (s) => s.id === item.serviceId,
+                      );
+                      return sum + (svc?.baseCost ?? 0);
+                    }, 0);
+
+                    return (
+                      <div
+                        key={suggestion.templateId}
+                        className="p-3 rounded-lg border bg-amber-50/50 border-amber-200"
+                      >
+                        <div className="flex items-start justify-between mb-1">
+                          <p className="text-sm font-medium">
+                            {suggestion.templateName}
+                          </p>
+                          <Badge
+                            variant="outline"
+                            className="text-xs border-amber-400 text-amber-700"
+                          >
+                            P{suggestion.priority}
+                          </Badge>
+                        </div>
+                        {suggestion.templateDescription && (
+                          <p className="text-xs text-muted-foreground mb-2">
+                            {suggestion.templateDescription}
+                          </p>
+                        )}
+                        <div className="flex gap-3 text-xs text-muted-foreground mb-2">
+                          {totalDuration > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {totalDuration} min
+                            </span>
+                          )}
+                          {totalCost > 0 && (
+                            <span className="flex items-center gap-1">
+                              <DollarSign className="w-3 h-3" />
+                              {formatCurrency(totalCost)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {suggestion.items
+                            .sort((a, b) => a.itemOrder - b.itemOrder)
+                            .map((item, idx) => {
+                              const svc = serviceCatalog.find(
+                                (s) => s.id === item.serviceId,
+                              );
+                              return (
+                                <Badge
+                                  key={item.id}
+                                  variant="outline"
+                                  className="text-xs"
+                                >
+                                  {idx + 1}.{" "}
+                                  {svc?.name ?? item.serviceId.slice(0, 8)}
+                                </Badge>
+                              );
+                            })}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full text-xs border-amber-400 text-amber-700 hover:bg-amber-50 bg-transparent"
+                          onClick={() =>
+                            handleApplyIcdasTemplate(
+                              suggestion.templateName,
+                              suggestion.items
+                                .sort((a, b) => a.itemOrder - b.itemOrder)
+                                .map((i) => i.serviceId),
+                            )
+                          }
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Aplicar plantilla
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </Card>
           )}
 
@@ -680,7 +857,9 @@ export function PlanTab({
                     <CardContent className="p-3">
                       <div className="grid grid-cols-2 gap-3 mb-3">
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-medium text-muted-foreground">Estado</Label>
+                          <Label className="text-xs font-medium text-muted-foreground">
+                            Estado
+                          </Label>
                           <OdontogramSelect
                             value={plan.status}
                             onChange={(v) =>
@@ -700,7 +879,9 @@ export function PlanTab({
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-medium text-muted-foreground">Prioridad</Label>
+                          <Label className="text-xs font-medium text-muted-foreground">
+                            Prioridad
+                          </Label>
                           <OdontogramSelect
                             value={plan.priority}
                             onChange={(v) =>
@@ -719,7 +900,9 @@ export function PlanTab({
 
                       {plan.material && (
                         <div className="mb-3 space-y-1.5">
-                          <Label className="text-xs font-medium text-muted-foreground">Material</Label>
+                          <Label className="text-xs font-medium text-muted-foreground">
+                            Material
+                          </Label>
                           <OdontogramInput
                             value={plan.material}
                             onChange={(e) =>
@@ -749,7 +932,9 @@ export function PlanTab({
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-medium text-muted-foreground">Costo</Label>
+                          <Label className="text-xs font-medium text-muted-foreground">
+                            Costo
+                          </Label>
                           <OdontogramInput
                             type="number"
                             value={String(plan.cost)}
@@ -764,7 +949,9 @@ export function PlanTab({
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-xs font-medium text-muted-foreground">Notas</Label>
+                        <Label className="text-xs font-medium text-muted-foreground">
+                          Notas
+                        </Label>
                         <OdontogramInput
                           value={plan.notes || ""}
                           onChange={(e) =>
