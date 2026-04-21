@@ -19,6 +19,7 @@ interface AppointmentsDayGridProps {
   loading?: boolean;
   onEventClick?: (event: SchedulerEvent) => void;
   onViewDetail?: (appointment: Appointment) => void;
+  onStartConsultation?: (appointment: Appointment) => void;
   onReschedule?: (appointment: Appointment) => void;
   onCancel?: (appointment: Appointment) => void;
   onComplete?: (appointment: Appointment) => void;
@@ -34,6 +35,7 @@ export function AppointmentsDayGrid({
   slotHeight,
   loading,
   onViewDetail,
+  onStartConsultation,
   onReschedule,
   onCancel,
   onComplete,
@@ -180,6 +182,7 @@ export function AppointmentsDayGrid({
                 <AppointmentQuickActions
                   appointment={ev.appointment}
                   onViewDetail={onViewDetail}
+                  onStartConsultation={onStartConsultation}
                   onReschedule={onReschedule}
                   onCancel={onCancel}
                   onComplete={onComplete}

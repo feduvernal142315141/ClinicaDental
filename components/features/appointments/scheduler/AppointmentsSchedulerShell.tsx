@@ -27,6 +27,7 @@ interface AppointmentsSchedulerShellProps {
   }) => void;
   onViewDetail: (appointmentId: string) => void;
   onEditAppointment: (appointmentId: string) => void;
+  onStartConsultation: (appointment: Appointment) => void;
 }
 
 const MOBILE_BREAKPOINT = 768;
@@ -37,6 +38,7 @@ export function AppointmentsSchedulerShell({
   onNewAppointmentPrefilled,
   onViewDetail,
   onEditAppointment,
+  onStartConsultation,
 }: AppointmentsSchedulerShellProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -68,6 +70,13 @@ export function AppointmentsSchedulerShell({
       onEditAppointment(appointment.id);
     },
     [onEditAppointment],
+  );
+
+  const handleStartConsultation = useCallback(
+    (appointment: Appointment) => {
+      onStartConsultation(appointment);
+    },
+    [onStartConsultation],
   );
 
   const handleCancel = useCallback(
@@ -121,6 +130,7 @@ export function AppointmentsSchedulerShell({
             slotHeight={scheduler.slotHeight}
             loading={scheduler.loading}
             onViewDetail={handleViewDetail}
+            onStartConsultation={handleStartConsultation}
             onReschedule={canCreate ? handleReschedule : undefined}
             onCancel={canCreate ? handleCancel : undefined}
             onComplete={canCreate ? handleComplete : undefined}
@@ -137,6 +147,7 @@ export function AppointmentsSchedulerShell({
             slotHeight={scheduler.slotHeight}
             loading={scheduler.loading}
             onViewDetail={handleViewDetail}
+            onStartConsultation={handleStartConsultation}
             onReschedule={canCreate ? handleReschedule : undefined}
             onCancel={canCreate ? handleCancel : undefined}
             onComplete={canCreate ? handleComplete : undefined}
@@ -150,6 +161,7 @@ export function AppointmentsSchedulerShell({
             loading={scheduler.loading}
             onDayClick={handleMonthDayClick}
             onViewDetail={handleViewDetail}
+            onStartConsultation={handleStartConsultation}
             onReschedule={canCreate ? handleReschedule : undefined}
             onCancel={canCreate ? handleCancel : undefined}
             onComplete={canCreate ? handleComplete : undefined}

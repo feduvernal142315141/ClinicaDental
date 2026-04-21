@@ -21,6 +21,7 @@ interface AppointmentsWeekGridProps {
   slotHeight: number;
   loading?: boolean;
   onViewDetail?: (appointment: Appointment) => void;
+  onStartConsultation?: (appointment: Appointment) => void;
   onReschedule?: (appointment: Appointment) => void;
   onCancel?: (appointment: Appointment) => void;
   onComplete?: (appointment: Appointment) => void;
@@ -36,6 +37,7 @@ export function AppointmentsWeekGrid({
   slotHeight,
   loading,
   onViewDetail,
+  onStartConsultation,
   onReschedule,
   onCancel,
   onComplete,
@@ -256,6 +258,7 @@ export function AppointmentsWeekGrid({
                       <AppointmentQuickActions
                         appointment={ev.appointment}
                         onViewDetail={onViewDetail}
+                        onStartConsultation={onStartConsultation}
                         onReschedule={onReschedule}
                         onCancel={onCancel}
                         onComplete={onComplete}

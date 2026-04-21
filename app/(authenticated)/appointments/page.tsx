@@ -16,6 +16,7 @@ export default function AppointmentsPage() {
     handleNewAppointmentPrefilled,
     handleViewAppointment,
     handleEditAppointment,
+    handleStartConsultation,
   } = useAppointmentsPage({
     basePath: "/appointments",
   });
@@ -48,6 +49,7 @@ export default function AppointmentsPage() {
         onNewAppointmentPrefilled={handleNewAppointmentPrefilled}
         onViewDetail={handleViewAppointment}
         onEditAppointment={handleEditAppointment}
+        onStartConsultation={handleStartConsultation}
       />
     </>
   );

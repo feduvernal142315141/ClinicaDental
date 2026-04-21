@@ -18,6 +18,7 @@ interface AppointmentsMonthGridProps {
   loading?: boolean;
   onDayClick: (date: string) => void;
   onViewDetail?: (appointment: Appointment) => void;
+  onStartConsultation?: (appointment: Appointment) => void;
   onReschedule?: (appointment: Appointment) => void;
   onCancel?: (appointment: Appointment) => void;
   onComplete?: (appointment: Appointment) => void;
@@ -29,6 +30,7 @@ export function AppointmentsMonthGrid({
   loading,
   onDayClick,
   onViewDetail,
+  onStartConsultation,
   onReschedule,
   onCancel,
   onComplete,
@@ -53,6 +55,7 @@ export function AppointmentsMonthGrid({
             key={ev.appointment.id}
             appointment={ev.appointment}
             onViewDetail={onViewDetail}
+            onStartConsultation={onStartConsultation}
             onReschedule={onReschedule}
             onCancel={onCancel}
             onComplete={onComplete}
