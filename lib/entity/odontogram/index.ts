@@ -130,3 +130,71 @@ export interface PaginatedTreatmentPlansResponse {
   entities: TreatmentPlanResponse[];
   pagination: Pagination;
 }
+
+// ─── Service Templates / ICDAS Suggestions ──────────────────────────
+
+/** A single service within a template, as returned by the suggest endpoint. */
+export interface ServiceTemplateItemDetail {
+  id: string;
+  serviceId: string;
+  itemOrder: number;
+  dependsOnIds?: string;
+}
+
+/**
+ * One suggestion returned by GET /service-templates/suggest.
+ * Contains the template metadata plus the ordered list of service items.
+ */
+export interface IcdasTemplateSuggestion {
+  templateId: string;
+  templateCode: string;
+  templateName: string;
+  templateDescription?: string;
+  priority: number;
+  icdasFrom: number;
+  icdasTo: number;
+  items: ServiceTemplateItemDetail[];
+}
+
+/** Entry from GET /service-templates (paginated list). */
+export interface ServiceTemplateResponse {
+  id: string;
+  clinicId?: string;
+  code: string;
+  name: string;
+  description?: string;
+  isSystem: boolean;
+  active: boolean;
+  createAt?: string;
+}
+
+/** Paginated response for service templates list. */
+export interface PaginatedServiceTemplatesResponse {
+  entities: ServiceTemplateResponse[];
+  pagination: Pagination;
+}
+
+/** Enriched item returned by GET /service-templates/{id}. */
+export interface ServiceTemplateItemEnriched {
+  id: string;
+  serviceId: string;
+  serviceCode: string;
+  serviceName: string;
+  serviceCost?: number;
+  serviceDuration?: number;
+  itemOrder: number;
+  dependsOnIds?: string;
+}
+
+/** Detailed response from GET /service-templates/{id}. */
+export interface ServiceTemplateDetailResponse {
+  id: string;
+  clinicId?: string;
+  code: string;
+  name: string;
+  description?: string;
+  isSystem: boolean;
+  active: boolean;
+  createAt?: string;
+  items: ServiceTemplateItemEnriched[];
+}
