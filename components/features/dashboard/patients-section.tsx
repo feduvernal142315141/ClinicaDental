@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { KpiCard, KpiGrid } from "@/components/ui/atomic/data-display/kpi-card";
 import { AlertCardGrid } from "@/components/ui/atomic/data-display/alert-card";
 import { DataCard } from "@/components/ui/atomic/data-display/data-card";
@@ -8,7 +9,10 @@ import {
   PieChart,
   Pie,
   Cell,
-  AreaChart,
+  BarChart,
+  Bar,
+  ComposedChart,
+  Line,
   Area,
   ResponsiveContainer,
   Tooltip,
@@ -18,7 +22,9 @@ import {
   Legend,
 } from "recharts";
 import { Users, UserPlus, Briefcase, AlertTriangle } from "lucide-react";
-import { DashboardSummary } from "@/lib/entity/dashboard";
+import { DashboardSummary, ServiceDemandItem } from "@/lib/entity/dashboard";
+
+type DemandSource = "consolidated" | "appointments" | "plans" | "performed";
 
 interface PatientsSectionProps {
   data: DashboardSummary;
@@ -26,6 +32,9 @@ interface PatientsSectionProps {
 
 export function PatientsSection({ data }: PatientsSectionProps) {
   const { patientSignals, serviceDemand } = data;
+  const [topSource, setTopSource] = useState<DemandSource>("consolidated");
+  const [bottomSource, setBottomSource] =
+    useState<DemandSource>("appointments");
 
   const newVsRecurringData = [
     { name: "Nuevos", value: patientSignals.newPatients, color: "#3b82f6" },
@@ -38,16 +47,47 @@ export function PatientsSection({ data }: PatientsSectionProps) {
 
   const totalPatients =
     patientSignals.newPatients + patientSignals.recurringPatients;
-  const topDemandData = serviceDemand.top.map((service) => ({
-    name: service.serviceName || "Servicio sin nombre",
-    Citas: service.appointmentCount,
-    Estimado: service.estimatedRevenue,
+
+  const resolveSource = (source: DemandSource): ServiceDemandItem[] => {
+    switch (source) {
+      case "appointments":
+        return serviceDemand.topByAppointments ?? [];
+      case "plans":
+        return serviceDemand.topByPlans ?? [];
+      case "performed":
+        return serviceDemand.topByPerformed ?? [];
+      default:
+        return serviceDemand.top ?? [];
+    }
+  };
+
+  const topDemandData = resolveSource(topSource).map((s) => ({
+    name: s.serviceName || "Sin nombre",
+    Citas: s.appointmentCount,
+    Estimado: s.estimatedRevenue,
   }));
-  const bottomDemandData = serviceDemand.bottom.map((service) => ({
-    name: service.serviceName || "Servicio sin nombre",
-    Citas: service.appointmentCount,
-    Estimado: service.estimatedRevenue,
+
+  const bottomDemandData = resolveSource(bottomSource).map((s) => ({
+    name: s.serviceName || "Sin nombre",
+    Citas: s.appointmentCount,
+    Estimado: s.estimatedRevenue,
   }));
+
+  const categoryData = (serviceDemand.categoryDistribution ?? []).map((c) => ({
+    name: c.category,
+    Citas: c.appointmentCount,
+    Planes: c.planCount,
+    Realizados: c.performedCount,
+  }));
+
+  const CATEGORY_COLORS = ["#3b82f6", "#10b981", "#f59e0b"];
+
+  const sourceTabs: { key: DemandSource; label: string }[] = [
+    { key: "consolidated", label: "Consolidado" },
+    { key: "appointments", label: "Citas" },
+    { key: "plans", label: "Planes" },
+    { key: "performed", label: "Realizados" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -154,16 +194,62 @@ export function PatientsSection({ data }: PatientsSectionProps) {
           </div>
         </DataCard>
 
-        {/* Top Services */}
+        {/* Category distribution */}
+        <DataCard
+          title="Distribución por Categoría"
+          description="Citas · Planes · Realizados del odontograma"
+        >
+          {categoryData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={categoryData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" allowDecimals={false} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  tick={{ fontSize: 11 }}
+                  width={90}
+                />
+                <Tooltip />
+                <Legend />
+                {CATEGORY_COLORS.map((color, idx) => {
+                  const keys = ["Citas", "Planes", "Realizados"] as const;
+                  return (
+                    <Bar
+                      key={keys[idx]}
+                      dataKey={keys[idx]}
+                      fill={color}
+                      stackId="a"
+                    />
+                  );
+                })}
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              Sin datos de categorías para el periodo.
+            </p>
+          )}
+        </DataCard>
+      </div>
+
+      {/* Top & Bottom demand with source tabs */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Demand */}
         <DataCard
           title="Mayor Demanda de Servicios"
-          description="Citas no canceladas por servicio"
+          description="Selecciona la fuente de datos"
           icon={Briefcase}
           iconColor="text-blue-600"
         >
+          <SourceTabs
+            tabs={sourceTabs}
+            active={topSource}
+            onChange={setTopSource}
+          />
           {topDemandData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={topDemandData}>
+            <ResponsiveContainer width="100%" height={260}>
+              <ComposedChart data={topDemandData}>
                 <defs>
                   <linearGradient
                     id="colorTopCitas"
@@ -172,49 +258,82 @@ export function PatientsSection({ data }: PatientsSectionProps) {
                     x2="0"
                     y2="1"
                   >
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.6} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
                   dataKey="name"
                   tick={{ fontSize: 11 }}
-                  angle={topDemandData.length > 8 ? -35 : 0}
-                  textAnchor={topDemandData.length > 8 ? "end" : "middle"}
-                  height={topDemandData.length > 8 ? 50 : 30}
+                  angle={topDemandData.length > 4 ? -35 : 0}
+                  textAnchor={topDemandData.length > 4 ? "end" : "middle"}
+                  height={topDemandData.length > 4 ? 50 : 30}
                   interval={0}
                 />
-                <YAxis allowDecimals={false} />
+                <YAxis
+                  yAxisId="left"
+                  allowDecimals={false}
+                  tick={{ fontSize: 11 }}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v) => formatCurrencyShort(Number(v))}
+                />
                 <Tooltip formatter={formatDemandTooltip} />
                 <Legend />
                 <Area
+                  yAxisId="left"
                   type="monotone"
                   dataKey="Citas"
-                  stroke="#3b82f6"
                   fill="url(#colorTopCitas)"
-                  strokeWidth={2}
+                  stroke="#3b82f6"
+                  strokeWidth={0}
                 />
-              </AreaChart>
+                <Bar
+                  yAxisId="left"
+                  dataKey="Citas"
+                  fill="#3b82f6"
+                  barSize={28}
+                  radius={[4, 4, 0, 0]}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="Estimado"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           ) : (
             <p className="py-12 text-center text-sm text-muted-foreground">
-              No hay servicios asociados a citas no canceladas.
+              Sin datos para la fuente seleccionada.
             </p>
           )}
         </DataCard>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Bottom demand */}
         <DataCard
           title="Menor Demanda de Servicios"
-          description="Incluye servicios activos sin citas"
+          description="Incluye servicios activos sin actividad"
           icon={AlertTriangle}
           iconColor="text-amber-500"
         >
+          <SourceTabs
+            tabs={sourceTabs.filter((t) => t.key !== "consolidated")}
+            active={
+              bottomSource === "consolidated" ? "appointments" : bottomSource
+            }
+            onChange={setBottomSource}
+          />
           {bottomDemandData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={bottomDemandData}>
+            <ResponsiveContainer width="100%" height={260}>
+              <ComposedChart data={bottomDemandData}>
                 <defs>
                   <linearGradient
                     id="colorBottomCitas"
@@ -223,38 +342,68 @@ export function PatientsSection({ data }: PatientsSectionProps) {
                     x2="0"
                     y2="1"
                   >
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.6} />
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
                   dataKey="name"
                   tick={{ fontSize: 11 }}
-                  angle={bottomDemandData.length > 8 ? -35 : 0}
-                  textAnchor={bottomDemandData.length > 8 ? "end" : "middle"}
-                  height={bottomDemandData.length > 8 ? 50 : 30}
+                  angle={bottomDemandData.length > 4 ? -35 : 0}
+                  textAnchor={bottomDemandData.length > 4 ? "end" : "middle"}
+                  height={bottomDemandData.length > 4 ? 50 : 30}
                   interval={0}
                 />
-                <YAxis allowDecimals={false} />
+                <YAxis
+                  yAxisId="left"
+                  allowDecimals={false}
+                  tick={{ fontSize: 11 }}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v) => formatCurrencyShort(Number(v))}
+                />
                 <Tooltip formatter={formatDemandTooltip} />
                 <Legend />
                 <Area
+                  yAxisId="left"
                   type="monotone"
                   dataKey="Citas"
-                  stroke="#f59e0b"
                   fill="url(#colorBottomCitas)"
-                  strokeWidth={2}
+                  stroke="#f59e0b"
+                  strokeWidth={0}
                 />
-              </AreaChart>
+                <Bar
+                  yAxisId="left"
+                  dataKey="Citas"
+                  fill="#f59e0b"
+                  barSize={28}
+                  radius={[4, 4, 0, 0]}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="Estimado"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           ) : (
             <p className="py-12 text-center text-sm text-muted-foreground">
-              No hay servicios activos para comparar demanda.
+              Sin datos para la fuente seleccionada.
             </p>
           )}
         </DataCard>
+      </div>
 
+      {/* Data quality */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DataCard
           title="Calidad de Datos de Agenda"
           description="Señales para mejorar estimaciones de demanda"
@@ -276,9 +425,12 @@ export function PatientsSection({ data }: PatientsSectionProps) {
               {
                 title: "Servicios Sin Demanda",
                 description: "Activos con cero citas",
-                badgeValue: bottomDemandData.filter((item) => item.Citas === 0)
-                  .length,
-                variant: bottomDemandData.some((item) => item.Citas === 0)
+                badgeValue: (serviceDemand.bottom ?? []).filter(
+                  (item) => item.appointmentCount === 0,
+                ).length,
+                variant: (serviceDemand.bottom ?? []).some(
+                  (item) => item.appointmentCount === 0,
+                )
                   ? "warning"
                   : "success",
                 badgeVariant: "secondary",
@@ -295,7 +447,70 @@ export function PatientsSection({ data }: PatientsSectionProps) {
             gap={3}
           />
         </DataCard>
+
+        {/* Conversion summary */}
+        <DataCard
+          title="Conversión Plan → Realizado"
+          description="Top 5 servicios con mayor planificación"
+        >
+          {(serviceDemand.planConversion ?? []).length > 0 ? (
+            <div className="space-y-3 mt-2">
+              {serviceDemand.planConversion.slice(0, 5).map((item, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="truncate max-w-[180px]">
+                      {item.serviceName}
+                    </span>
+                    <span className="font-medium text-muted-foreground">
+                      {item.conversionRate.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-blue-500 transition-all"
+                      style={{
+                        width: `${Math.min(item.conversionRate, 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Sin datos de conversión para el periodo.
+            </p>
+          )}
+        </DataCard>
       </div>
+    </div>
+  );
+}
+
+// ── Source tabs component ────────────────────────────────────────────
+
+interface SourceTabsProps {
+  tabs: { key: DemandSource; label: string }[];
+  active: DemandSource;
+  onChange: (source: DemandSource) => void;
+}
+
+function SourceTabs({ tabs, active, onChange }: SourceTabsProps) {
+  return (
+    <div className="flex gap-1 mb-3 p-1 bg-muted rounded-md w-fit">
+      {tabs.map((tab) => (
+        <button
+          key={tab.key}
+          onClick={() => onChange(tab.key)}
+          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+            active === tab.key
+              ? "bg-background shadow text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -306,6 +521,13 @@ function formatCurrency(value: number): string {
     currency: "COP",
     maximumFractionDigits: 0,
   }).format(value ?? 0);
+}
+
+function formatCurrencyShort(value: number): string {
+  const v = value ?? 0;
+  if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(v) >= 1_000) return `$${(v / 1_000).toFixed(0)}k`;
+  return `$${v}`;
 }
 
 function formatDemandTooltip(value: number | string, name: string) {
