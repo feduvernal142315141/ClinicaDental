@@ -47,6 +47,8 @@ export interface Service {
   symbolUrl?: string;
   /** Short text rendered on the tooth for TEXT mode */
   symbolText?: string;
+  /** Duration in minutes */
+  duration?: number;
   active: boolean;
   createAt?: string;
   updatedAt?: string;
@@ -68,6 +70,8 @@ export interface ServiceListItem {
   symbolPublicId?: string;
   symbolUrl?: string;
   symbolText?: string;
+  /** Duration in minutes */
+  duration?: number;
   active: boolean;
   createAt?: string;
 }
