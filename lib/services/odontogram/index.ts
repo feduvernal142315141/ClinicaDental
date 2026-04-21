@@ -6,3 +6,4 @@
 
 export { odontogramService } from "./odontogram.service";
 export { treatmentPlanService } from "./treatment-plan.service";
+export { ServiceTemplateService } from "./service-template.service";
