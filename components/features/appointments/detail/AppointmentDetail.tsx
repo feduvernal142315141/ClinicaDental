@@ -141,20 +141,18 @@ export function AppointmentDetail({
               </Button>
             )}
 
-          {canCancel &&
-            appointment.status !== "cancelled" &&
-            isAppointmentActionable(appointment) && (
-              <Button
-                type="default"
-                danger
-                icon={<StopOutlined />}
-                onClick={handleCancelAppointment}
-                size="lg"
-                disabled={loading}
-              >
-                Cancelar cita
-              </Button>
-            )}
+          {canCancel && appointment.status === "scheduled" && (
+            <Button
+              type="default"
+              danger
+              icon={<StopOutlined />}
+              onClick={handleCancelAppointment}
+              size="lg"
+              disabled={loading}
+            >
+              Cancelar cita
+            </Button>
+          )}
 
           <Button
             icon={<ArrowLeftOutlined />}
