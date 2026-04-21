@@ -8,6 +8,7 @@ import apiInstance from "@/lib/services/apiConfig";
 import { handleServiceError } from "@/lib/utils/error.utils";
 import type {
   Appointment,
+  AppointmentServiceSnapshot,
   AppointmentStatus,
   AppointmentsQueryParams,
   AvailabilityResponse,
@@ -39,6 +40,36 @@ function toStringValue(value: unknown): string | undefined {
 
 function toNumberValue(value: unknown, fallback = 0): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function toOptionalNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+function normalizeServicesList(
+  raw: unknown,
+  fallbackPrimary?: AppointmentServiceSnapshot,
+): AppointmentServiceSnapshot[] | undefined {
+  if (Array.isArray(raw)) {
+    const list = raw
+      .map((item) => {
+        const r = toRecord(item);
+        const serviceId = toStringValue(r.serviceId);
+        if (!serviceId) return null;
+        return {
+          serviceId,
+          serviceCode: toStringValue(r.serviceCode),
+          serviceName: toStringValue(r.serviceName),
+          serviceCost: toOptionalNumber(r.serviceCost),
+        } satisfies AppointmentServiceSnapshot;
+      })
+      .filter((item): item is AppointmentServiceSnapshot => item !== null);
+    if (list.length > 0) return list;
+  }
+  if (fallbackPrimary?.serviceId) return [fallbackPrimary];
+  return undefined;
 }
 
 function buildQueryString(params?: AppointmentsQueryParams): string {
@@ -110,6 +141,12 @@ function normalizeAppointment(raw: unknown): Appointment {
     serviceCode: toStringValue(source.serviceCode),
     serviceName: toStringValue(source.serviceName),
     serviceCost: toNumberValue(source.serviceCost),
+    services: normalizeServicesList(source.services, {
+      serviceId: toStringValue(source.serviceId) ?? "",
+      serviceCode: toStringValue(source.serviceCode),
+      serviceName: toStringValue(source.serviceName),
+      serviceCost: toOptionalNumber(source.serviceCost),
+    }),
     createdAt:
       toStringValue(source.createdAt) ?? toStringValue(source.createAt),
     updatedAt:
