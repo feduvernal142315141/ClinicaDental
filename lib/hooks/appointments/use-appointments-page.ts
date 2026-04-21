@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
+import type { Appointment } from "@/lib/entity/appointment";
 
 interface UseAppointmentsPageOptions {
   basePath?: string;
@@ -66,11 +67,24 @@ export function useAppointmentsPage(options: UseAppointmentsPageOptions = {}) {
     router.push(basePath);
   }, [router, basePath]);
 
+  const handleStartConsultation = useCallback(
+    (appointment: Appointment) => {
+      if (!appointment.patientId) return;
+      const query = new URLSearchParams({
+        tab: "odontogram",
+        appointmentId: appointment.id,
+      });
+      router.push(`/patients/${appointment.patientId}?${query.toString()}`);
+    },
+    [router],
+  );
+
   return {
     handleNewAppointment,
     handleNewAppointmentPrefilled,
     handleViewAppointment,
     handleEditAppointment,
     handleBackToList,
+    handleStartConsultation,
   };
 }
