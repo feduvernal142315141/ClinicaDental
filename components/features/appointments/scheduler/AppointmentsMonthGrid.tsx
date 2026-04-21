@@ -20,6 +20,7 @@ interface AppointmentsMonthGridProps {
   onViewDetail?: (appointment: Appointment) => void;
   onReschedule?: (appointment: Appointment) => void;
   onCancel?: (appointment: Appointment) => void;
+  onComplete?: (appointment: Appointment) => void;
 }
 
 export function AppointmentsMonthGrid({
@@ -30,6 +31,7 @@ export function AppointmentsMonthGrid({
   onViewDetail,
   onReschedule,
   onCancel,
+  onComplete,
 }: AppointmentsMonthGridProps) {
   const hasAnyEvents = Array.from(eventsByDay.values()).some(
     (evs) => evs.length > 0,
@@ -53,6 +55,7 @@ export function AppointmentsMonthGrid({
             onViewDetail={onViewDetail}
             onReschedule={onReschedule}
             onCancel={onCancel}
+            onComplete={onComplete}
           >
             <div
               style={{

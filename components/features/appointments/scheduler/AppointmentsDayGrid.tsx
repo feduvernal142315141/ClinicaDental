@@ -21,6 +21,7 @@ interface AppointmentsDayGridProps {
   onViewDetail?: (appointment: Appointment) => void;
   onReschedule?: (appointment: Appointment) => void;
   onCancel?: (appointment: Appointment) => void;
+  onComplete?: (appointment: Appointment) => void;
 }
 
 const TIME_COL_WIDTH = 56;
@@ -35,6 +36,7 @@ export function AppointmentsDayGrid({
   onViewDetail,
   onReschedule,
   onCancel,
+  onComplete,
 }: AppointmentsDayGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const slots = getTimeSlots(startHour, endHour, 30);
@@ -180,6 +182,7 @@ export function AppointmentsDayGrid({
                   onViewDetail={onViewDetail}
                   onReschedule={onReschedule}
                   onCancel={onCancel}
+                  onComplete={onComplete}
                 >
                   <div style={{ height: "100%", position: "relative" }}>
                     <AppointmentEventCard event={ev} />

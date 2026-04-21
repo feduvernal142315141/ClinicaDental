@@ -26,6 +26,7 @@ interface AppointmentsSchedulerShellProps {
     patientId?: string;
   }) => void;
   onViewDetail: (appointmentId: string) => void;
+  onEditAppointment: (appointmentId: string) => void;
 }
 
 const MOBILE_BREAKPOINT = 768;
@@ -35,6 +36,7 @@ export function AppointmentsSchedulerShell({
   onNewAppointment,
   onNewAppointmentPrefilled,
   onViewDetail,
+  onEditAppointment,
 }: AppointmentsSchedulerShellProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -63,19 +65,21 @@ export function AppointmentsSchedulerShell({
 
   const handleReschedule = useCallback(
     (appointment: Appointment) => {
-      onNewAppointmentPrefilled({
-        doctorId: appointment.doctorId ?? appointment.doctor_id ?? "",
-        patientId: appointment.patientId ?? appointment.patient_id ?? "",
-        date: appointment.date,
-        time: appointment.time,
-      });
+      onEditAppointment(appointment.id);
     },
-    [onNewAppointmentPrefilled],
+    [onEditAppointment],
   );
 
   const handleCancel = useCallback(
     (appointment: Appointment) => {
       scheduler.cancelAppointment(appointment);
+    },
+    [scheduler],
+  );
+
+  const handleComplete = useCallback(
+    (appointment: Appointment) => {
+      scheduler.completeAppointment(appointment);
     },
     [scheduler],
   );
@@ -119,6 +123,7 @@ export function AppointmentsSchedulerShell({
             onViewDetail={handleViewDetail}
             onReschedule={canCreate ? handleReschedule : undefined}
             onCancel={canCreate ? handleCancel : undefined}
+            onComplete={canCreate ? handleComplete : undefined}
           />
         );
       }
@@ -134,6 +139,7 @@ export function AppointmentsSchedulerShell({
             onViewDetail={handleViewDetail}
             onReschedule={canCreate ? handleReschedule : undefined}
             onCancel={canCreate ? handleCancel : undefined}
+            onComplete={canCreate ? handleComplete : undefined}
           />
         );
       case "month":
@@ -146,6 +152,7 @@ export function AppointmentsSchedulerShell({
             onViewDetail={handleViewDetail}
             onReschedule={canCreate ? handleReschedule : undefined}
             onCancel={canCreate ? handleCancel : undefined}
+            onComplete={canCreate ? handleComplete : undefined}
           />
         );
     }
