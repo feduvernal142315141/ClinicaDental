@@ -9,7 +9,6 @@ import { Form, Input, InputNumber, Select, Switch } from "antd";
 import {
   InfoCircleOutlined,
   FileTextOutlined,
-  DollarOutlined,
   MedicineBoxOutlined,
 } from "@ant-design/icons";
 import { AvatarUpload } from "@/components/features/doctors";
@@ -106,16 +105,16 @@ export function ServiceForm({
       }}
     >
       <div className="space-y-6">
-        {/* Section 1: Información General */}
+        {/* Información principal del servicio */}
         <Card>
           <SectionHeader
             icon={<InfoCircleOutlined />}
             iconBg="bg-blue-50"
             iconColor="text-blue-600"
-            title="Información General"
-            subtitle="Detalles básicos de identificación del servicio."
+            title="Información del Servicio"
+            subtitle="Datos básicos, costos y configuración del odontograma."
           />
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-0 sm:grid-cols-2 lg:grid-cols-3">
             <Form.Item
               label="Código"
               name="code"
@@ -144,17 +143,7 @@ export function ServiceForm({
             >
               <Input placeholder="Ej: Limpieza dental" />
             </Form.Item>
-          </div>
 
-        {/* Section 3: Configuración de Costos */}
-          <SectionHeader
-            icon={<DollarOutlined />}
-            iconBg="bg-amber-50"
-            iconColor="text-amber-600"
-            title="Configuración de Costos"
-            subtitle="Estructura de precios y categorización."
-          />
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <Form.Item
               label="Tipo de servicio"
               name="type"
@@ -185,17 +174,7 @@ export function ServiceForm({
                 placeholder="0.00"
               />
             </Form.Item>
-          </div>
 
-        {/* Section 4: Configuración de Odontograma */}
-          <SectionHeader
-            icon={<MedicineBoxOutlined />}
-            iconBg="bg-gray-100"
-            iconColor="text-gray-600"
-            title="Configuración de Odontograma"
-            subtitle="Mapeo visual en el historial dental."
-          />
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <Form.Item
               label="Categoría odontograma"
               name="category"
@@ -208,95 +187,108 @@ export function ServiceForm({
               />
             </Form.Item>
 
-            <div className="flex items-center justify-evenly rounded-xl bg-gray-100 px-4 py-3 h-fit self-end mb-6 ">
-              <div>
-                <p className="font-semibold text-gray-800 text-sm leading-tight">
-                  Visible en odontograma
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">
+            <Form.Item label="Visible en odontograma" className="mb-6">
+              <div className="flex items-center justify-between rounded-xl bg-gray-100 px-4 py-1.75 h-9.5">
+                <span className="text-sm text-gray-600">
                   Mostrar icono en el mapa dental
-                </p>
+                </span>
+                <Form.Item
+                  name="odontogramEnabled"
+                  valuePropName="checked"
+                  noStyle
+                >
+                  <Switch />
+                </Form.Item>
               </div>
-              <Form.Item
-                name="odontogramEnabled"
-                valuePropName="checked"
-                className="m-auto items-center"
-              >
-                <Switch />
-              </Form.Item>
-            </div>
+            </Form.Item>
           </div>
 
           {odontogramEnabled && (
-            <div className="border-t border-gray-100 pt-6 mt-2 space-y-4">
-              <Form.Item
-                label="Modo de símbolo"
-                name="odontogramSymbolMode"
-                rules={[
-                  {
-                    required: true,
-                    message: "El modo de símbolo es obligatorio",
-                  },
-                ]}
-              >
-                <Select
-                  options={SYMBOL_MODE_OPTIONS}
-                  placeholder="Seleccione modo"
-                />
-              </Form.Item>
-
-              {symbolMode === "ASSET" && (
-                <Form.Item label="Imagen del símbolo" required>
-                  <AvatarUpload
-                    initialFileList={symbolFileList}
-                    maxCount={1}
-                    listType="picture-card"
-                    size={120}
-                    maxSizeMB={2}
-                    allowedFormats={[
-                      "image/jpeg",
-                      "image/png",
-                      "image/jpg",
-                      "image/svg+xml",
-                    ]}
-                    onFileListChange={handleSymbolFileChange}
-                  />
-                </Form.Item>
-              )}
-
-              {symbolMode === "TEXT" && (
+            <div className="border-t border-gray-100 pt-6 mt-2">
+              <SectionHeader
+                icon={<MedicineBoxOutlined />}
+                iconBg="bg-gray-100"
+                iconColor="text-gray-600"
+                title="Símbolo en Odontograma"
+                subtitle="Configura cómo se representa este servicio en el mapa dental."
+              />
+              <div className="grid grid-cols-1 gap-x-6 gap-y-0 sm:grid-cols-2 lg:grid-cols-3">
                 <Form.Item
-                  label="Texto del símbolo"
-                  name="symbolText"
+                  label="Modo de símbolo"
+                  name="odontogramSymbolMode"
                   rules={[
                     {
                       required: true,
-                      message: "El texto del símbolo es obligatorio",
+                      message: "El modo de símbolo es obligatorio",
                     },
-                    { max: 5, message: "Máximo 5 caracteres" },
                   ]}
                 >
-                  <Input placeholder="Ej: LD" maxLength={5} />
+                  <Select
+                    options={SYMBOL_MODE_OPTIONS}
+                    placeholder="Seleccione modo"
+                  />
                 </Form.Item>
-              )}
+
+                {symbolMode === "TEXT" && (
+                  <Form.Item
+                    label="Texto del símbolo"
+                    name="symbolText"
+                    rules={[
+                      {
+                        required: true,
+                        message: "El texto del símbolo es obligatorio",
+                      },
+                      { max: 5, message: "Máximo 5 caracteres" },
+                    ]}
+                  >
+                    <Input placeholder="Ej: LD" maxLength={5} />
+                  </Form.Item>
+                )}
+
+                {symbolMode === "ASSET" && (
+                  <Form.Item
+                    label="Imagen del símbolo"
+                    required
+                    className="sm:col-span-2 lg:col-span-2"
+                  >
+                    <AvatarUpload
+                      initialFileList={symbolFileList}
+                      maxCount={1}
+                      listType="picture-card"
+                      size={120}
+                      maxSizeMB={2}
+                      allowedFormats={[
+                        "image/jpeg",
+                        "image/png",
+                        "image/jpg",
+                        "image/svg+xml",
+                      ]}
+                      onFileListChange={handleSymbolFileChange}
+                    />
+                  </Form.Item>
+                )}
+              </div>
             </div>
           )}
-        {/* Section 2: Descripción */}
-          <SectionHeader
-            icon={<FileTextOutlined />}
-            iconBg="bg-slate-100"
-            iconColor="text-slate-600"
-            title="Descripción"
-            subtitle="Provea detalles adicionales sobre el procedimiento."
-          />
-          <Form.Item label="Descripción" name="description">
-            <Input.TextArea
-              rows={4}
-              placeholder="Describa brevemente en qué consiste el servicio, indicaciones previas o duración aproximada..."
-              maxLength={500}
-              showCount
+
+          {/* Descripción */}
+          <div className="border-t border-gray-100 pt-6 mt-2">
+            <SectionHeader
+              icon={<FileTextOutlined />}
+              iconBg="bg-slate-100"
+              iconColor="text-slate-600"
+              title="Descripción"
+              subtitle="Provea detalles adicionales sobre el procedimiento."
             />
-          </Form.Item>
+            <Form.Item label="Descripción" name="description">
+              <Input.TextArea
+                rows={4}
+                placeholder="Describa brevemente en qué consiste el servicio, indicaciones previas o duración aproximada..."
+                maxLength={500}
+                showCount
+              />
+            </Form.Item>
+          </div>
         </Card>
 
         {/* Footer de acciones */}
