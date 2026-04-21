@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/atomic/data-display/badge";
 import type { LucideIcon } from "lucide-react";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import { ResponsiveContainer, AreaChart, Area } from "recharts";
 
 // ============================================
 // TYPES
@@ -37,7 +38,7 @@ type TrendConfig = {
 
 export interface KpiCardProps {
   /** Variante del componente */
-  variant?: "default" | "badges" | "trend";
+  variant?: "default" | "badges" | "trend" | "featured";
 
   /** Título de la métrica */
   title: string;
@@ -57,8 +58,14 @@ export interface KpiCardProps {
   /** Lista de badges (solo para variant="badges") */
   badges?: BadgeConfig[];
 
-  /** Configuración de tendencia (solo para variant="trend") */
+  /** Configuración de tendencia (solo para variant="trend" | "featured") */
   trend?: TrendConfig;
+
+  /** Mini sparkline – array de { value: number } (máx ~12 puntos) */
+  sparkline?: { value: number }[];
+
+  /** Callback para botón "Detalles" (variant="featured") */
+  onDetails?: () => void;
 
   /** Clases CSS adicionales */
   className?: string;
@@ -112,25 +119,87 @@ export function KpiCard({
   description,
   badges = [],
   trend,
+  sparkline,
+  onDetails,
   className,
 }: KpiCardProps) {
-  // Calcular propiedades de tendencia
   const trendValue = trend?.value ?? 0;
   const trendLabel = trend?.label ?? "vs periodo anterior";
   const isPositive = trend?.color ? trend.color === "positive" : trendValue > 0;
   const TrendIcon = isPositive ? TrendingUp : TrendingDown;
   const trendColorClass = isPositive ? "text-green-600" : "text-red-600";
 
+  // ── Featured variant (tarjeta con fondo azul) ──────────────────────────────
+  if (variant === "featured") {
+    return (
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-xl bg-blue-600 p-5 text-white shadow-md flex flex-col justify-between min-h-32",
+          className,
+        )}
+      >
+        <p className="text-xs font-semibold uppercase tracking-widest text-blue-200">
+          {title}
+        </p>
+        <p className="mt-1 text-3xl font-bold tracking-tight">{value}</p>
+        <div className="mt-3 flex items-center justify-between">
+          {trend && (
+            <span className="flex items-center gap-1 text-xs text-blue-100">
+              <TrendIcon className="h-3 w-3" />
+              {Math.abs(trendValue)}% {trendLabel}
+            </span>
+          )}
+          {onDetails && (
+            <button
+              onClick={onDetails}
+              className="ml-auto rounded-md bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur hover:bg-white/30 transition-colors"
+            >
+              Detalles
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className={cn("h-4 w-4", iconColor)} />
+        <Icon className={cn("h-6 w-6", iconColor)} />
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
         {description && (
           <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        )}
+
+        {/* Mini sparkline */}
+        {sparkline && sparkline.length > 1 && (
+          <div className="mt-2 h-10 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={sparkline}
+                margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+              >
+                <defs>
+                  <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#10b981"
+                  fill="url(#sparkGrad)"
+                  strokeWidth={1.5}
+                  dot={false}
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         )}
 
         {/* Badges variant */}
@@ -215,7 +284,7 @@ export function KpiGrid({
     cols.xl === 3 && "xl:grid-cols-3",
     cols.xl === 4 && "xl:grid-cols-4",
     `gap-${gap}`,
-    className
+    className,
   );
 
   return <div className={gridClasses}>{children}</div>;
