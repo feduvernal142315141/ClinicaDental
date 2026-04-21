@@ -29,10 +29,18 @@ export function AppointmentEventCard({
     .filter(Boolean)
     .join(" · ");
 
+  const servicesLabel =
+    appointment.services && appointment.services.length > 0
+      ? appointment.services
+          .map((s) => s.serviceName)
+          .filter(Boolean)
+          .join(" · ")
+      : appointment.serviceName;
+
   const detail = [
     appointment.duration ? `${appointment.duration} min` : null,
     TYPE_LABELS[appointment.type] ?? appointment.type,
-    appointment.serviceName,
+    servicesLabel,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -48,7 +56,7 @@ export function AppointmentEventCard({
             {appointment.time} — {appointment.duration} min
           </div>
           {appointment.doctorName && <div>Dr. {appointment.doctorName}</div>}
-          {appointment.serviceName && <div>{appointment.serviceName}</div>}
+          {servicesLabel && <div>{servicesLabel}</div>}
         </>
       }
       placement="right"
