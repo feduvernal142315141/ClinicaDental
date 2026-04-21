@@ -82,6 +82,11 @@ export function PatientsSection({ data }: PatientsSectionProps) {
 
   const CATEGORY_COLORS = ["#3b82f6", "#10b981", "#f59e0b"];
 
+  const truncateLabel = (value: string, max = 14): string => {
+    if (!value) return "";
+    return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+  };
+
   const sourceTabs: { key: DemandSource; label: string }[] = [
     { key: "consolidated", label: "Consolidado" },
     { key: "appointments", label: "Citas" },
@@ -248,8 +253,11 @@ export function PatientsSection({ data }: PatientsSectionProps) {
             onChange={setTopSource}
           />
           {topDemandData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <ComposedChart data={topDemandData}>
+            <ResponsiveContainer width="100%" height={320}>
+              <ComposedChart
+                data={topDemandData}
+                margin={{ top: 10, right: 12, left: 0, bottom: 8 }}
+              >
                 <defs>
                   <linearGradient
                     id="colorTopCitas"
@@ -268,8 +276,10 @@ export function PatientsSection({ data }: PatientsSectionProps) {
                   tick={{ fontSize: 11 }}
                   angle={topDemandData.length > 4 ? -35 : 0}
                   textAnchor={topDemandData.length > 4 ? "end" : "middle"}
-                  height={topDemandData.length > 4 ? 50 : 30}
+                  height={topDemandData.length > 4 ? 80 : 32}
                   interval={0}
+                  tickMargin={8}
+                  tickFormatter={(v: string) => truncateLabel(v)}
                 />
                 <YAxis
                   yAxisId="left"
@@ -283,7 +293,11 @@ export function PatientsSection({ data }: PatientsSectionProps) {
                   tickFormatter={(v) => formatCurrencyShort(Number(v))}
                 />
                 <Tooltip formatter={formatDemandTooltip} />
-                <Legend />
+                <Legend
+                  verticalAlign="bottom"
+                  height={28}
+                  wrapperStyle={{ paddingTop: 12 }}
+                />
                 <Area
                   yAxisId="left"
                   type="monotone"
@@ -332,8 +346,11 @@ export function PatientsSection({ data }: PatientsSectionProps) {
             onChange={setBottomSource}
           />
           {bottomDemandData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <ComposedChart data={bottomDemandData}>
+            <ResponsiveContainer width="100%" height={320}>
+              <ComposedChart
+                data={bottomDemandData}
+                margin={{ top: 10, right: 12, left: 0, bottom: 8 }}
+              >
                 <defs>
                   <linearGradient
                     id="colorBottomCitas"
@@ -352,8 +369,10 @@ export function PatientsSection({ data }: PatientsSectionProps) {
                   tick={{ fontSize: 11 }}
                   angle={bottomDemandData.length > 4 ? -35 : 0}
                   textAnchor={bottomDemandData.length > 4 ? "end" : "middle"}
-                  height={bottomDemandData.length > 4 ? 50 : 30}
+                  height={bottomDemandData.length > 4 ? 80 : 32}
                   interval={0}
+                  tickMargin={8}
+                  tickFormatter={(v: string) => truncateLabel(v)}
                 />
                 <YAxis
                   yAxisId="left"
@@ -367,7 +386,11 @@ export function PatientsSection({ data }: PatientsSectionProps) {
                   tickFormatter={(v) => formatCurrencyShort(Number(v))}
                 />
                 <Tooltip formatter={formatDemandTooltip} />
-                <Legend />
+                <Legend
+                  verticalAlign="bottom"
+                  height={28}
+                  wrapperStyle={{ paddingTop: 12 }}
+                />
                 <Area
                   yAxisId="left"
                   type="monotone"
