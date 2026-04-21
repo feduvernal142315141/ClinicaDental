@@ -386,6 +386,38 @@ export function useAppointmentsScheduler(
     [modal, fetchRange, invalidateCache],
   );
 
+  // ---- Complete appointment ------------------------------------------------
+  const completeAppointment = useCallback(
+    (appointment: Appointment) => {
+      modal.confirm({
+        title: "¿Marcar cita como realizada?",
+        content: `Se marcará como realizada la cita de ${appointment.patientName ?? "paciente"} del ${appointment.date} a las ${appointment.time || "--:--"}. Esta acción no se puede deshacer.`,
+        okText: "Sí, marcar como realizada",
+        okType: "primary",
+        cancelText: "Cancelar",
+        onOk: async () => {
+          try {
+            await appointmentsService.completeAppointment(appointment.id);
+            // Invalidate this specific doctor + date and refetch
+            const doctorId =
+              appointment.doctorId ?? appointment.doctor_id ?? "";
+            if (doctorId && appointment.date) {
+              cacheRef.current.delete(
+                buildCacheKey(doctorId, appointment.date),
+              );
+              fetchRange(new Set([doctorId]), [appointment.date]);
+            } else {
+              invalidateCache();
+            }
+          } catch {
+            // Error notification handled by interceptor
+          }
+        },
+      });
+    },
+    [modal, fetchRange, invalidateCache],
+  );
+
   // ---- Return --------------------------------------------------------------
   return {
     // View
@@ -419,6 +451,7 @@ export function useAppointmentsScheduler(
 
     // Actions
     cancelAppointment,
+    completeAppointment,
     invalidateCache,
 
     // Constants for grids
