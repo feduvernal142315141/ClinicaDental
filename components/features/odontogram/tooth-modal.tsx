@@ -33,6 +33,7 @@ import { SurfacesTab } from "./surfaces-tab";
 import { DiagnosisTab } from "./diagnosis-tab";
 import { PlanTab } from "./plan-tab";
 import { PerformedTab } from "./performed-tab";
+import { App } from "antd";
 import { SchedulePlanModal } from "./schedule-plan-modal";
 import { useOdontogramStore } from "@/lib/odontogram/store";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services";
@@ -180,6 +181,8 @@ export function ToothModal({
     deleteClinicalEvent,
     clinicalEvents,
   } = useOdontogramStore();
+  const visitId = useOdontogramStore((state) => state.metadata.visitId);
+  const { message: antdMessage } = App.useApp();
   const odontogramConfirm = useOdontogramConfirm();
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -1097,6 +1100,12 @@ export function ToothModal({
           onNavigateToTab={handleNavigateToTab}
           onPlansChange={handlePlansChange}
           onSchedulePlans={(p) => {
+            if (visitId) {
+              antdMessage.warning(
+                "Hay una cita activa. Finaliza la cita actual para programar nuevos planes.",
+              );
+              return;
+            }
             setSchedulePlans(p);
             setScheduleModalOpen(true);
           }}
