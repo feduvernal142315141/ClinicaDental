@@ -19,11 +19,32 @@ interface OverviewSectionProps {
 }
 
 export function OverviewSection({ data }: OverviewSectionProps) {
-  const { kpis, doctorProductivity, serviceDemand } = data;
+  const { kpis, doctorProductivity, serviceDemand, monthlyAppointments } = data;
   const cancellationAlert = `${kpis.todayCancelled} hoy · ${kpis.cancellationRate}% periodo`;
   const lowDemandCount = serviceDemand.bottom.filter(
     (service) => service.appointmentCount === 0,
   ).length;
+
+  // Sparkline de tasa de asistencia por mes
+  const attendanceSparkline = monthlyAppointments.map((m) => ({
+    value:
+      m.completed + m.cancelled > 0
+        ? Math.round((m.completed / (m.completed + m.cancelled)) * 100)
+        : 0,
+  }));
+
+  // Tendencia: comparar último mes vs penúltimo
+  const attendanceTrend = (() => {
+    if (attendanceSparkline.length < 2) return undefined;
+    const last = attendanceSparkline[attendanceSparkline.length - 1].value;
+    const prev = attendanceSparkline[attendanceSparkline.length - 2].value;
+    const diff = last - prev;
+    return {
+      value: Math.abs(diff),
+      label: "vs mes anterior",
+      color: (diff >= 0 ? "positive" : "negative") as "positive" | "negative",
+    };
+  })();
 
   return (
     <div className="space-y-6">
@@ -55,6 +76,8 @@ export function OverviewSection({ data }: OverviewSectionProps) {
           icon={Target}
           iconColor="text-green-600"
           description="Citas cumplidas sobre cumplidas + canceladas"
+          sparkline={attendanceSparkline}
+          trend={attendanceTrend}
         />
 
         <KpiCard
@@ -76,79 +99,77 @@ export function OverviewSection({ data }: OverviewSectionProps) {
         />
 
         <KpiCard
-          variant="badges"
+          variant="featured"
           title="Producción Estimada"
           value={formatCurrency(kpis.estimatedProductionCompleted)}
           icon={DollarSign}
-          iconColor="text-orange-600"
+          iconColor="text-white"
           description="Servicios completados, no cobrado"
-          badges={[
-            {
-              label: `Pipeline ${formatCurrency(kpis.estimatedPipelineScheduled)}`,
-              variant: "outline",
-            },
-            {
-              label: `Cancelado ${formatCurrency(kpis.estimatedLossCancelled)}`,
-              variant: "secondary",
-            },
-          ]}
+          trend={{
+            value: 0,
+            label:
+              "pipeline " + formatCurrency(kpis.estimatedPipelineScheduled),
+            color: "positive",
+          }}
         />
       </KpiGrid>
 
-      <DataCard
-        title="Señales Operativas"
-        description="Indicadores para revisar agenda y calidad de registro"
-        icon={AlertTriangle}
-        iconColor="text-amber-500"
-      >
-        <AlertCardGrid
-          alerts={[
-            {
-              title: "Cancelaciones",
-              description: "Impacto potencial en agenda",
-              badgeValue: cancellationAlert,
-              variant: kpis.cancellationRate > 20 ? "error" : "warning",
-              badgeVariant:
-                kpis.cancellationRate > 20 ? "destructive" : "secondary",
-            },
-            {
-              title: "Citas Sin Servicio",
-              description: "No aportan demanda ni estimado",
-              badgeValue: serviceDemand.appointmentsWithoutService,
-              variant:
-                serviceDemand.appointmentsWithoutService > 0
-                  ? "warning"
-                  : "success",
-              badgeVariant: "secondary",
-            },
-            {
-              title: "Baja Demanda",
-              description: "Servicios activos sin citas",
-              badgeValue: lowDemandCount,
-              variant: lowDemandCount > 0 ? "warning" : "success",
-              badgeVariant: "secondary",
-            },
-          ]}
-          cols={{ default: 1, md: 3 }}
-          gap={4}
-        />
-      </DataCard>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DataCard
+          title="Señales Operativas"
+          description="Indicadores para revisar agenda y calidad de registro"
+          icon={AlertTriangle}
+          iconColor="text-amber-500"
+        >
+          <AlertCardGrid
+            alerts={[
+              {
+                title: "Cancelaciones",
+                description: "Impacto potencial en agenda",
+                badgeValue: cancellationAlert,
+                variant: kpis.cancellationRate > 20 ? "error" : "warning",
+                badgeVariant:
+                  kpis.cancellationRate > 20 ? "destructive" : "secondary",
+              },
+              {
+                title: "Citas Sin Servicio",
+                description: "No aportan demanda ni estimado",
+                badgeValue: serviceDemand.appointmentsWithoutService,
+                variant:
+                  serviceDemand.appointmentsWithoutService > 0
+                    ? "warning"
+                    : "success",
+                badgeVariant: "secondary",
+              },
+              {
+                title: "Baja Demanda",
+                description: "Servicios activos sin citas",
+                badgeValue: lowDemandCount,
+                variant: lowDemandCount > 0 ? "warning" : "success",
+                badgeVariant: "secondary",
+              },
+            ]}
+            cols={{ default: 1 }}
+            gap={4}
+          />
+        </DataCard>
 
-      {/* Doctor Productivity */}
-      <DataCard
-        title="Ocupación de Doctores"
-        description="Tasa de asistencia por doctor en el período"
-      >
-        <ProgressList
-          items={doctorProductivity.map((doc) => ({
-            label: doc.doctorName,
-            value: Math.round(doc.attendanceRate),
-          }))}
-          showPercentage
-          progressHeight="md"
-          spacing="md"
-        />
-      </DataCard>
+        {/* Doctor Productivity */}
+        <DataCard
+          title="Ocupación de Doctores"
+          description="Tasa de asistencia por doctor en el período"
+        >
+          <ProgressList
+            items={doctorProductivity.map((doc) => ({
+              label: doc.doctorName,
+              value: Math.round(doc.attendanceRate),
+            }))}
+            showPercentage
+            progressHeight="md"
+            spacing="md"
+          />
+        </DataCard>
+      </div>
     </div>
   );
 }
