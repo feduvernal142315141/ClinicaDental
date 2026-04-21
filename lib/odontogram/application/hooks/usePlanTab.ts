@@ -1,25 +1,31 @@
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect } from "react";
 import type {
   Tooth,
   ToothSurface,
   SurfaceDiagnosis,
   ProcedurePlan,
+  ProcedureCatalogItem,
   ProcedureCategory,
   Currency,
   PulpalStatus,
   PatientRiskLevel,
-} from "@/lib/odontogram/domain/odontogram/types"
-import { PROCEDURE_CATALOG_MOCK } from "@/lib/odontogram/infrastructure/data/mock"
-import { TreatmentSuggestionService, ProcedureFilterService, PlanCalculationService } from "@/lib/odontogram/domain/odontogram/services"
+} from "@/lib/odontogram/domain/odontogram/types";
+import { PROCEDURE_CATALOG_MOCK } from "@/lib/odontogram/infrastructure/data/mock";
+import {
+  TreatmentSuggestionService,
+  ProcedureFilterService,
+  PlanCalculationService,
+} from "@/lib/odontogram/domain/odontogram/services";
 
 interface UsePlanTabProps {
-  tooth: Tooth
-  selectedSurfaces: ToothSurface[]
-  diagnoses?: Map<ToothSurface, SurfaceDiagnosis>
-  pulpalStatus?: PulpalStatus
-  initialPlans?: ProcedurePlan[]
-  patientRisk?: PatientRiskLevel
-  onPlansChange?: (plans: ProcedurePlan[]) => void
+  tooth: Tooth;
+  selectedSurfaces: ToothSurface[];
+  diagnoses?: Map<ToothSurface, SurfaceDiagnosis>;
+  pulpalStatus?: PulpalStatus;
+  initialPlans?: ProcedurePlan[];
+  patientRisk?: PatientRiskLevel;
+  procedureCatalog?: ProcedureCatalogItem[];
+  onPlansChange?: (plans: ProcedurePlan[]) => void;
 }
 
 export function usePlanTab({
@@ -28,59 +34,63 @@ export function usePlanTab({
   diagnoses,
   pulpalStatus = "normal",
   initialPlans,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   patientRisk = "medio",
+  procedureCatalog,
   onPlansChange,
 }: UsePlanTabProps) {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<ProcedureCategory | "all">("all")
-  const [plans, setPlans] = useState<ProcedurePlan[]>([])
-  const [currency, setCurrency] = useState<Currency>("USD")
-  const [exchangeRate] = useState(36.5)
+  const catalog = procedureCatalog ?? PROCEDURE_CATALOG_MOCK;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<
+    ProcedureCategory | "all"
+  >("all");
+  const [plans, setPlans] = useState<ProcedurePlan[]>([]);
+  const [currency, setCurrency] = useState<Currency>("USD");
+  const [exchangeRate] = useState(36.5);
 
   useEffect(() => {
     if (initialPlans && initialPlans.length > 0 && plans.length === 0) {
-      setPlans(initialPlans)
+      setPlans(initialPlans);
       if (typeof window !== "undefined") {
-        ;(window as unknown).__currentPlans = initialPlans
+        (window as unknown).__currentPlans = initialPlans;
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialPlans])
+  }, [initialPlans]);
 
   const handlePlansUpdate = (newPlans: ProcedurePlan[]) => {
-    setPlans(newPlans)
+    setPlans(newPlans);
     if (typeof window !== "undefined") {
-      ;(window as unknown).__currentPlans = newPlans
+      (window as unknown).__currentPlans = newPlans;
     }
     if (onPlansChange) {
-      onPlansChange(newPlans)
+      onPlansChange(newPlans);
     }
-  }
+  };
 
   const suggestions = useMemo(() => {
     return TreatmentSuggestionService.generateSuggestions(
       diagnoses,
       pulpalStatus,
-      PROCEDURE_CATALOG_MOCK
-    )
-  }, [diagnoses, pulpalStatus])
+      catalog,
+    );
+  }, [diagnoses, pulpalStatus, catalog]);
 
   const filteredCatalog = useMemo(() => {
     return ProcedureFilterService.filterCatalog(
-      PROCEDURE_CATALOG_MOCK,
+      catalog,
       selectedCategory,
-      searchQuery
-    )
-  }, [searchQuery, selectedCategory])
+      searchQuery,
+    );
+  }, [searchQuery, selectedCategory, catalog]);
 
   const totals = useMemo(() => {
-    return PlanCalculationService.calculateTotals(plans)
-  }, [plans])
+    return PlanCalculationService.calculateTotals(plans);
+  }, [plans]);
 
   const addPlan = (procedureId: string, surfaces: ToothSurface[] = []) => {
-    const procedure = PROCEDURE_CATALOG_MOCK.find((p) => p.id === procedureId)
-    if (!procedure) return
+    const procedure = catalog.find((p) => p.id === procedureId);
+    if (!procedure) return;
 
     const newPlan: ProcedurePlan = {
       id: `plan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -95,24 +105,24 @@ export function usePlanTab({
       cost: procedure.baseCost,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    }
+    };
 
-    handlePlansUpdate([...plans, newPlan])
-  }
+    handlePlansUpdate([...plans, newPlan]);
+  };
 
   const removePlan = (planId: string) => {
-    handlePlansUpdate(plans.filter((p) => p.id !== planId))
-  }
+    handlePlansUpdate(plans.filter((p) => p.id !== planId));
+  };
 
   const updatePlan = (planId: string, updates: Partial<ProcedurePlan>) => {
     handlePlansUpdate(
       plans.map((p) =>
         p.id === planId
           ? { ...p, ...updates, updatedAt: new Date().toISOString() }
-          : p
-      )
-    )
-  }
+          : p,
+      ),
+    );
+  };
 
   return {
     searchQuery,
@@ -129,5 +139,5 @@ export function usePlanTab({
     addPlan,
     removePlan,
     updatePlan,
-  }
+  };
 }
