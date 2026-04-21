@@ -65,7 +65,7 @@ export default function DashboardPage() {
   if (loading && !data) {
     return (
       <div className="flex items-center justify-center min-h-64">
-        <Spin size="large" tip="Cargando dashboard..." />
+        <Spin size="large" description="Cargando dashboard..." />
       </div>
     );
   }
@@ -107,9 +107,7 @@ export default function DashboardPage() {
 
       <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 shadow-sm lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-normal">
-            Dashboard
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-normal">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
             Estado operativo de la clínica basado en citas reales.
           </p>
@@ -184,7 +182,9 @@ export default function DashboardPage() {
             onClick={refresh}
             aria-label="Actualizar dashboard"
           >
-            <RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+            <RefreshCw
+              className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"}
+            />
           </Button>
         </div>
       </div>
