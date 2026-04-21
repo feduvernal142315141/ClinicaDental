@@ -188,7 +188,7 @@ export function AppointmentForm({
           )}
 
           <Row gutter={[24, 16]}>
-            <Col xs={24} md={12}>
+            <Col xs={24} md={12} lg={8}>
               <Form.Item label="Paciente" required style={{ marginBottom: 0 }}>
                 <Flex align="center" gap={8}>
                   <Form.Item
@@ -226,7 +226,7 @@ export function AppointmentForm({
               </Form.Item>
             </Col>
 
-            <Col xs={24} md={12}>
+            <Col xs={24} md={12} lg={8}>
               <Form.Item
                 name="doctorId"
                 label="Doctor"
@@ -246,7 +246,7 @@ export function AppointmentForm({
               </Form.Item>
             </Col>
 
-            <Col xs={24} md={12}>
+            <Col xs={24} md={12} lg={8}>
               <Form.Item
                 name="date"
                 label="Fecha"
@@ -266,7 +266,7 @@ export function AppointmentForm({
               </Form.Item>
             </Col>
 
-            <Col xs={24} md={12}>
+            <Col xs={24} md={12} lg={8}>
               <FormTimePicker
                 name="time"
                 label="Hora"
@@ -278,7 +278,7 @@ export function AppointmentForm({
               />
             </Col>
 
-            <Col xs={24} md={12}>
+            <Col xs={24} md={12} lg={8}>
               <Form.Item
                 name="duration"
                 label="Duración"
@@ -294,7 +294,7 @@ export function AppointmentForm({
               </Form.Item>
             </Col>
 
-            <Col xs={24} md={12}>
+            <Col xs={24} md={12} lg={8}>
               <Form.Item
                 name="type"
                 label="Tipo de Cita"
@@ -308,11 +308,12 @@ export function AppointmentForm({
               </Form.Item>
             </Col>
 
-            <Col xs={24} md={12}>
-              <Form.Item name="serviceId" label="Servicio">
+            <Col xs={24} md={24} lg={16}>
+              <Form.Item name="serviceIds" label="Servicios">
                 <Select
-                  placeholder="Seleccione servicio (opcional)"
+                  placeholder="Seleccione uno o más servicios"
                   size="large"
+                  mode="multiple"
                   allowClear
                   showSearch
                   optionFilterProp="label"
