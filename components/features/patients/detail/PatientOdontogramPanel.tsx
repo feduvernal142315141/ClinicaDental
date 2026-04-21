@@ -13,10 +13,12 @@ interface PatientOdontogramPanelProps {
     clinicId?: string;
     clinic_id?: string;
   };
+  activeAppointmentId?: string;
 }
 
 export function PatientOdontogramPanel({
   patient,
+  activeAppointmentId,
 }: PatientOdontogramPanelProps) {
   const { message } = App.useApp();
   const { can, isAdmin } = usePermission();
@@ -29,8 +31,9 @@ export function PatientOdontogramPanel({
       createApiOdontogramAdapter({
         authorId: user?.id ?? "",
         clinicId,
+        visitId: activeAppointmentId,
       }),
-    [user?.id, clinicId],
+    [user?.id, clinicId, activeAppointmentId],
   );
 
   const readOnly = !(isAdmin || can("patients", PermissionAction.EDIT));

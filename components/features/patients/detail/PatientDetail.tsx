@@ -186,6 +186,12 @@ export function PatientDetail({
       appointment.status !== "scheduled",
   );
 
+  // Cita activa del día de hoy (para habilitar finalización desde odontograma)
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayActiveAppointment = appointments.find(
+    (a) => a.status === "scheduled" && a.date === todayStr,
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between mb-6">
@@ -529,7 +535,12 @@ export function PatientDetail({
           {
             key: "odontogram",
             label: "Odontograma",
-            children: <PatientOdontogramPanel patient={patient} />,
+            children: (
+              <PatientOdontogramPanel
+                patient={patient}
+                activeAppointmentId={todayActiveAppointment?.id}
+              />
+            ),
           },
           ...(canAccessClinicalHistory
             ? [
