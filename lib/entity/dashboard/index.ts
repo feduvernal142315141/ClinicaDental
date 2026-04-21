@@ -38,9 +38,19 @@ export interface MonthlyAppointments {
 }
 
 export interface ServiceDemand {
+  /** Consolidated top (citas + planes + realizados) */
   top: ServiceDemandItem[];
+  /** Consolidated bottom */
   bottom: ServiceDemandItem[];
+  /** Only from appointments */
+  topByAppointments: ServiceDemandItem[];
+  /** Only from odontogram plan events */
+  topByPlans: ServiceDemandItem[];
+  /** Only from odontogram performed events */
+  topByPerformed: ServiceDemandItem[];
   appointmentsWithoutService: number;
+  categoryDistribution: ServiceCategoryDistribution[];
+  planConversion: PlanConversionItem[];
 }
 
 export interface ServiceDemandItem {
@@ -48,6 +58,22 @@ export interface ServiceDemandItem {
   serviceName: string;
   appointmentCount: number;
   estimatedRevenue: number;
+}
+
+export interface ServiceCategoryDistribution {
+  category: string;
+  appointmentCount: number;
+  planCount: number;
+  performedCount: number;
+  estimatedRevenue: number;
+}
+
+export interface PlanConversionItem {
+  serviceId: string;
+  serviceName: string;
+  plannedCount: number;
+  performedCount: number;
+  conversionRate: number;
 }
 
 export interface DoctorProductivity {
