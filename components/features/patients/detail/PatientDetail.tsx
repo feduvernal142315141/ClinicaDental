@@ -45,17 +45,23 @@ import { ClinicalHistoryPanel } from "@/components/features/clinical-history";
 interface PatientDetailProps {
   patientId: string;
   basePath?: string;
+  initialTab?: string;
+  activeAppointmentId?: string;
 }
 
 export function PatientDetail({
   patientId,
   basePath = "/patients",
+  initialTab,
+  activeAppointmentId: externalAppointmentId,
 }: PatientDetailProps) {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
-  const [activePatientTab, setActivePatientTab] = useState("general");
+  const [activePatientTab, setActivePatientTab] = useState(
+    initialTab ?? "general",
+  );
 
   const { handleBackToList, handleEditPatient } = usePatientsPage({ basePath });
   const { getPatientById } = usePatients();
@@ -192,6 +198,17 @@ export function PatientDetail({
     (a) => a.status === "scheduled" && a.date === todayStr,
   );
 
+  // Priorizar el appointmentId externo (venido de la agenda vía query param)
+  // sobre la detección interna de la cita activa del día.
+  const resolvedAppointmentId =
+    externalAppointmentId ?? todayActiveAppointment?.id;
+
+  // Información para el badge "Consulta en curso" cuando se llega desde
+  // "Iniciar consulta" de la agenda.
+  const activeConsultationAppointment = externalAppointmentId
+    ? appointments.find((a) => a.id === externalAppointmentId)
+    : undefined;
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between mb-6">
@@ -202,6 +219,22 @@ export function PatientDetail({
           <p className="text-gray-500 text-sm mt-1">
             Información completa e historial médico
           </p>
+          {externalAppointmentId && (
+            <div className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              Consulta en curso
+              {activeConsultationAppointment && (
+                <span className="text-green-600 font-medium">
+                  · {activeConsultationAppointment.time}
+                  {activeConsultationAppointment.serviceName
+                    ? ` — ${activeConsultationAppointment.serviceName}`
+                    : activeConsultationAppointment.type
+                      ? ` — ${activeConsultationAppointment.type}`
+                      : ""}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <AntButton
@@ -538,7 +571,7 @@ export function PatientDetail({
             children: (
               <PatientOdontogramPanel
                 patient={patient}
-                activeAppointmentId={todayActiveAppointment?.id}
+                activeAppointmentId={resolvedAppointmentId}
               />
             ),
           },
