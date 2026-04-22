@@ -449,6 +449,11 @@ async function startAppointment(id: string): Promise<{ appointmentAdjusted?: boo
 }
 
 async function completeAppointment(id: string): Promise<boolean> {
+  const response = (await apiInstance
+    .patch<void>(`${endpoint}/${id}/complete`, {})
+    .catch((err) => err.response as unknown)) as
+    | { status?: number; data?: unknown; message?: string }
+    | undefined;
 
   if (
     response &&
