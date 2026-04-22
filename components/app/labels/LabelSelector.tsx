@@ -58,7 +58,7 @@ export function LabelSelector({
         placeholder="Seleccionar etiquetas..."
         maxCount={maxLabels}
         style={{ width: "100%" }}
-        dropdownRender={(menu) => (
+        popupRender={(menu) => (
           <>
             {menu}
             {onCreateNew && (
