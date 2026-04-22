@@ -103,32 +103,32 @@ export interface PaginatedPatientsResponse {
 
 /**
  * Filter operators available for patient queries
+ * Matches backend API_CONTRACT.md uppercase operators
  */
 export type FilterOperator =
-  | "eq"
-  | "eqIgnoreCase"
-  | "neq"
-  | "neqIgnoreCase"
-  | "gte"
-  | "lte"
-  | "gt"
-  | "lt"
-  | "contains"
-  | "containsIgnoreCase"
-  | "notContains"
-  | "in"
-  | "notIn";
+  | "EQ"
+  | "NEQ"
+  | "CONTAINS"
+  | "NOT_CONTAINS"
+  | "GTE"
+  | "LTE"
+  | "GT"
+  | "LT"
+  | "IN"
+  | "NOT_IN"
+  | "IS_NULL"
+  | "IS_NOT_NULL";
 
 /**
  * Helper to build filter string
- * @example buildFilter("name", "containsIgnoreCase", "juan") => "name:containsIgnoreCase:juan"
+ * @example buildFilter("name", "CONTAINS", "juan") => "name__CONTAINS__juan"
  */
 export function buildFilter(
   field: string,
   operator: FilterOperator,
   value: string | boolean | number,
 ): string {
-  return `${field}:${operator}:${value}`;
+  return `${field}__${operator}__${value}`;
 }
 
 /**

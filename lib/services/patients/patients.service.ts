@@ -39,7 +39,7 @@ function buildQueryString(params?: PatientsQueryParams): string {
   if (params.pageSize !== undefined)
     queryParams.append("pageSize", params.pageSize.toString());
 
-  // Filters - format: campo:operador:valor
+  // Filters - format: campo__OPERADOR__valor
   if (params.filters && params.filters.length > 0) {
     params.filters.forEach((filter) => {
       queryParams.append("filters", filter);
@@ -70,7 +70,10 @@ async function getPatients(
   if (response?.data) {
     return response.data;
   }
-  handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar pacientes");
+  handleServiceError(
+    typeof response !== "undefined" ? response : null,
+    "Error al cargar pacientes",
+  );
 }
 
 /**
@@ -82,7 +85,10 @@ async function getPatientById(id: string): Promise<Patient> {
   if (response?.data) {
     return response.data;
   }
-  handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar paciente");
+  handleServiceError(
+    typeof response !== "undefined" ? response : null,
+    "Error al cargar paciente",
+  );
 }
 
 /**
