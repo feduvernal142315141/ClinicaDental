@@ -815,9 +815,12 @@ export function ToothModal({
     existingPlanEvents.forEach((event) => {
       const stillExists = currentPlans.some(
         (plan) =>
-          event.procedureId === plan.procedureId &&
-          event.surfaces.length === plan.surfaces.length &&
-          event.surfaces.every((surface) => plan.surfaces.includes(surface)),
+          plan.id === event.id ||
+          (
+            event.procedureId === plan.procedureId &&
+            event.surfaces.length === plan.surfaces.length &&
+            event.surfaces.every((surface) => plan.surfaces.includes(surface))
+          ),
       );
 
       if (!stillExists) {
@@ -830,9 +833,14 @@ export function ToothModal({
         const existingPlanEvent = getToothEvents(tooth.number).find(
           (e) =>
             e.type === "plan" &&
-            e.procedureId === plan.procedureId &&
-            e.surfaces.length === plan.surfaces.length &&
-            e.surfaces.every((s) => plan.surfaces.includes(s)),
+            (
+              e.id === plan.id ||
+              (
+                e.procedureId === plan.procedureId &&
+                e.surfaces.length === plan.surfaces.length &&
+                e.surfaces.every((s) => plan.surfaces.includes(s))
+              )
+            ),
         );
 
         const eventNotes = plan.notes?.trim() ? plan.notes : plan.displayName;
