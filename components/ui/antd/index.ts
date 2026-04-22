@@ -20,6 +20,7 @@ export { PageCard } from "./data-display/PageCard";
 export { StatusTag, ActiveStatusTag } from "./data-display/StatusTag";
 export { ActionButtons, ActionPresets } from "./data-display/ActionButtons";
 export { PageToolbar } from "./data-display/PageToolbar";
+export { TableSearchBar } from "./data-display/TableSearchBar";
 
 // Ant Design Form Components
 export { SearchBox } from "./forms/SearchBox";
