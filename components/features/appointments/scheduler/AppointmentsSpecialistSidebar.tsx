@@ -1,8 +1,10 @@
 "use client";
 
-import { Button, Avatar, Typography, Space, Checkbox } from "antd";
+import { Button, Avatar, Typography, Space, Checkbox, Divider } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import type { SchedulerDoctorOption } from "@/lib/entity/appointment";
+import { LabelChip } from "@/components/app/labels";
+import { useLabels } from "@/lib/hooks/labels";
 
 const { Text } = Typography;
 
@@ -15,6 +17,88 @@ interface AppointmentsSpecialistSidebarProps {
   onNewAppointment: () => void;
   canCreate: boolean;
   loading?: boolean;
+  selectedLabelIds: Set<string>;
+  onToggleLabel: (labelId: string) => void;
+  onClearLabels: () => void;
+}
+
+function LabelFilterSection({
+  selectedLabelIds,
+  onToggle,
+  onClear,
+}: {
+  selectedLabelIds: Set<string>;
+  onToggle: (id: string) => void;
+  onClear: () => void;
+}) {
+  const { labels, loading } = useLabels(false);
+  const activeLabels = labels.filter((l) => !l.isArchived);
+
+  if (loading || activeLabels.length === 0) return null;
+
+  return (
+    <>
+      <Divider style={{ margin: "12px 0" }} />
+      <div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: "#8c8c8c",
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            Etiquetas
+          </Text>
+          {selectedLabelIds.size > 0 && (
+            <Button
+              size="small"
+              type="link"
+              onClick={onClear}
+              style={{ padding: 0, fontSize: 11 }}
+            >
+              Limpiar
+            </Button>
+          )}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {activeLabels.map((label) => {
+            const isSelected = selectedLabelIds.has(label.id);
+            return (
+              <span
+                key={label.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => onToggle(label.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onToggle(label.id);
+                  }
+                }}
+                style={{
+                  cursor: "pointer",
+                  opacity: isSelected ? 1 : 0.45,
+                  transition: "opacity 0.15s",
+                }}
+              >
+                <LabelChip label={label} size="sm" />
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
 }
 
 export function AppointmentsSpecialistSidebar({
@@ -26,6 +110,9 @@ export function AppointmentsSpecialistSidebar({
   onNewAppointment,
   canCreate,
   loading,
+  selectedLabelIds,
+  onToggleLabel,
+  onClearLabels,
 }: AppointmentsSpecialistSidebarProps) {
   return (
     <div
@@ -148,6 +235,13 @@ export function AppointmentsSpecialistSidebar({
           </Text>
         )}
       </div>
+
+      {/* Labels filter */}
+      <LabelFilterSection
+        selectedLabelIds={selectedLabelIds}
+        onToggle={onToggleLabel}
+        onClear={onClearLabels}
+      />
     </div>
   );
 }

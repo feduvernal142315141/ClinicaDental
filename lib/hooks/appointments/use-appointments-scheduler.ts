@@ -110,6 +110,7 @@ export function useAppointmentsScheduler(
   const [visibleDoctorIds, setVisibleDoctorIds] = useState<Set<string>>(
     new Set(),
   );
+  const [selectedLabelIds, setSelectedLabelIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [doctorsLoading, setDoctorsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -272,11 +273,20 @@ export function useAppointmentsScheduler(
 
     for (const date of datesInRange) {
       const dayEvents = events.filter((e) => e.appointment.date === date);
-      map.set(date, resolveOverlaps(dayEvents));
+      const labelFiltered =
+        selectedLabelIds.size === 0
+          ? dayEvents
+          : dayEvents.filter(
+              (e) =>
+                e.appointment.labels?.some((l) =>
+                  selectedLabelIds.has(l.id),
+                ) ?? false,
+            );
+      map.set(date, resolveOverlaps(labelFiltered));
     }
 
     return map;
-  }, [events, datesInRange]);
+  }, [events, datesInRange, selectedLabelIds]);
 
   // ---- Navigation ----------------------------------------------------------
   const goToday = useCallback(() => {
@@ -332,6 +342,18 @@ export function useAppointmentsScheduler(
   const clearAllDoctors = useCallback(() => {
     setVisibleDoctorIds(new Set());
   }, []);
+
+  // ---- Label filter --------------------------------------------------------
+  const toggleLabel = useCallback((labelId: string) => {
+    setSelectedLabelIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(labelId)) next.delete(labelId);
+      else next.add(labelId);
+      return next;
+    });
+  }, []);
+
+  const clearLabels = useCallback(() => setSelectedLabelIds(new Set()), []);
 
   // ---- Cache invalidation --------------------------------------------------
   const invalidateCache = useCallback(
@@ -448,6 +470,11 @@ export function useAppointmentsScheduler(
     goPrev,
     goNext,
     goToDate,
+
+    // Label filter
+    selectedLabelIds,
+    toggleLabel,
+    clearLabels,
 
     // Actions
     cancelAppointment,

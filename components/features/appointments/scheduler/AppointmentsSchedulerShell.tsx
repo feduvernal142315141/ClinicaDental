@@ -122,6 +122,9 @@ export function AppointmentsSchedulerShell({
       onNewAppointment={onNewAppointment}
       canCreate={canCreate}
       loading={scheduler.doctorsLoading}
+      selectedLabelIds={scheduler.selectedLabelIds}
+      onToggleLabel={scheduler.toggleLabel}
+      onClearLabels={scheduler.clearLabels}
     />
   );
 
