@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { Tag, Badge } from "antd";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, Edit } from "lucide-react";
+import { Separator } from "@/components/ui/primitives/shadcn/separator";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { MedicalHistoryDrawer } from "@/components/features/clinical-history/sections/MedicalHistoryDrawer";
 import { ClinicalNotesEditor } from "@/components/features/clinical-history/notes/ClinicalNotesEditor";
 import { useClinicalNotes } from "@/lib/hooks/clinical-history";
+import { TreatmentPlansPendingSection } from "./TreatmentPlansPendingSection";
 import type {
   ClinicalHistoryMedicalHistory,
   ClinicalHistoryPatientHeader,
@@ -16,7 +17,10 @@ import type {
 } from "@/lib/entity/clinical-history";
 import { ALERT_SEVERITY_COLORS } from "@/lib/entity/clinical-history";
 
-const SEVERITY_BADGE_STATUS: Record<AlertSeverity, "error" | "warning" | "processing"> = {
+const SEVERITY_BADGE_STATUS: Record<
+  AlertSeverity,
+  "error" | "warning" | "processing"
+> = {
   critical: "error",
   warning: "warning",
   info: "processing",
@@ -28,6 +32,23 @@ interface MedicalAntecedentsColumnProps {
   patientId: string;
   onMedicalHistoryUpdated?: () => void;
   canEdit?: boolean;
+}
+
+function SectionBlock({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="py-3">
+      <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase mb-2">
+        {title}
+      </p>
+      {children}
+    </div>
+  );
 }
 
 function TagList({
@@ -62,7 +83,10 @@ export function MedicalAntecedentsColumn({
 }: MedicalAntecedentsColumnProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerLoading, setDrawerLoading] = useState(false);
-  const { saving, save } = useClinicalNotes(patientId, medicalHistory?.clinicalNotes);
+  const { saving, save } = useClinicalNotes(
+    patientId,
+    medicalHistory?.clinicalNotes,
+  );
 
   const handleSaveDrawer = async (_data: UpdateMedicalHistoryRequest) => {
     setDrawerLoading(true);
@@ -78,17 +102,17 @@ export function MedicalAntecedentsColumn({
   const alerts = patientHeader?.alerts ?? [];
 
   return (
-    <div className="flex flex-col gap-4 h-full overflow-auto">
-      {/* Alertas */}
+    <div className="flex flex-col h-full overflow-y-auto px-4 border-r border-border">
+      {/* Alertas — banner al tope */}
       {alerts.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
+        <div className="py-3 rounded-md bg-red-50 border border-red-200 px-3 my-3">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+            <p className="text-xs font-semibold text-destructive uppercase tracking-wide">
               Alertas
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 flex flex-wrap gap-2">
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
             {alerts.map((alert) => (
               <Badge
                 key={alert.id}
@@ -97,27 +121,13 @@ export function MedicalAntecedentsColumn({
                 text={alert.message}
               />
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Antecedentes médicos */}
-      <Card>
-        <CardHeader className="pb-2 pt-4 px-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">Antecedentes médicos</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDrawerOpen(true)}
-              className="h-7 text-xs"
-            >
-              <Edit className="mr-1 h-3 w-3" />
-              Editar antecedentes
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 space-y-3">
+      {/* Antecedentes */}
+      <SectionBlock title="ANTECEDENTES">
+        <div className="space-y-3">
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">
               Alergias
@@ -128,7 +138,6 @@ export function MedicalAntecedentsColumn({
               emptyText="Sin alergias registradas"
             />
           </div>
-
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">
               Medicamentos actuales
@@ -139,7 +148,6 @@ export function MedicalAntecedentsColumn({
               emptyText="Sin medicamentos registrados"
             />
           </div>
-
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">
               Cirugías previas
@@ -150,7 +158,6 @@ export function MedicalAntecedentsColumn({
               emptyText="Sin cirugías registradas"
             />
           </div>
-
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">
               Enfermedades sistémicas
@@ -161,28 +168,43 @@ export function MedicalAntecedentsColumn({
               emptyText="Sin enfermedades sistémicas registradas"
             />
           </div>
-        </CardContent>
-      </Card>
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDrawerOpen(true)}
+              className="h-7 text-xs mt-1"
+            >
+              <Edit className="mr-1 h-3 w-3" />
+              Editar antecedentes
+            </Button>
+          )}
+        </div>
+      </SectionBlock>
 
-      {/* Notas clínicas */}
-      <Card>
-        <CardHeader className="pb-2 pt-4 px-4">
-          <CardTitle className="text-sm">Notas clínicas</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <ClinicalNotesEditor
-            patientId={patientId}
-            initialContent={medicalHistory?.clinicalNotes}
-            updatedAt={medicalHistory?.clinicalNotesUpdatedAt}
-            updatedBy={medicalHistory?.clinicalNotesUpdatedBy}
-            readOnly={!canEdit}
-            onSave={async (html) => {
-              await save(html);
-            }}
-            saving={saving}
-          />
-        </CardContent>
-      </Card>
+      <Separator />
+
+      {/* Planes pendientes */}
+      <SectionBlock title="PLANES PENDIENTES">
+        <TreatmentPlansPendingSection patientId={patientId} />
+      </SectionBlock>
+
+      <Separator />
+
+      {/* Notas de historial */}
+      <SectionBlock title="NOTAS DE HISTORIAL">
+        <ClinicalNotesEditor
+          patientId={patientId}
+          initialContent={medicalHistory?.clinicalNotes}
+          updatedAt={medicalHistory?.clinicalNotesUpdatedAt}
+          updatedBy={medicalHistory?.clinicalNotesUpdatedBy}
+          readOnly={!canEdit}
+          onSave={async (html) => {
+            await save(html);
+          }}
+          saving={saving}
+        />
+      </SectionBlock>
 
       <MedicalHistoryDrawer
         open={drawerOpen}
