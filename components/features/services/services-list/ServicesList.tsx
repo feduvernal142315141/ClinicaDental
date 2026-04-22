@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { App, Input, Space } from "antd";
-import { Card, DataTable } from "@/components/ui/antd";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { App } from "antd";
+import { Card, DataTable, TableSearchBar } from "@/components/ui/antd";
 import { useServices } from "@/lib/hooks/services/useServices";
 import { useServicesPage } from "@/lib/hooks/services/use-services-page";
 import { usePermission } from "@/lib/hooks/use-permission";
@@ -23,32 +23,41 @@ export function ServicesList({
 
   const { services, loading, pagination, fetchServices, toggleServiceStatus } =
     useServices();
+
   const [search, setSearch] = useState("");
 
+  // Persist active filters and current pageSize across re-renders
+  const activeFiltersRef = useRef<string[]>([]);
+  const pageSizeRef = useRef(10);
+  pageSizeRef.current = pagination.pageSize;
+
+  const handleFiltersChange = useCallback(
+    (filters: string[]) => {
+      activeFiltersRef.current = filters;
+      fetchServices({ page: 0, pageSize: pageSizeRef.current, filters }).catch(
+        () => {},
+      );
+    },
+    [fetchServices],
+  );
+
+  // Carga inicial
   useEffect(() => {
     fetchServices({ page: 0, pageSize: 10 }).catch((err) => {
       message.error(err?.message || "Error al cargar servicios");
     });
   }, [fetchServices, message]);
 
-  // Debounced search
+  // Debounce: 350ms tras cambio en el buscador
   useEffect(() => {
     const timer = setTimeout(() => {
       const filters = search.trim()
-        ? [buildFilter("name", "contains", search.trim())]
+        ? [buildFilter("name", "CONTAINS", search.trim())]
         : [];
-
-      fetchServices({
-        page: 0,
-        pageSize: pagination.pageSize,
-        filters,
-      }).catch(() => {
-        // errors are already surfaced by useServices
-      });
-    }, 500);
-
+      handleFiltersChange(filters);
+    }, 350);
     return () => clearTimeout(timer);
-  }, [search, fetchServices, pagination.pageSize]);
+  }, [search, handleFiltersChange]);
 
   const canEdit = isAdmin || can("service", PermissionAction.EDIT);
   const canBlock = isAdmin || can("service", PermissionAction.BLOCK);
@@ -68,31 +77,29 @@ export function ServicesList({
 
   return (
     <Card>
-      <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
-        <Input.Search
-          placeholder="Buscar servicios por nombre"
-          allowClear
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <DataTable
-          columns={columns}
-          data={services}
-          loading={loading}
-          rowKey="id"
-          page={pagination.page + 1}
-          pageSize={pagination.pageSize}
-          total={pagination.total}
-          showSizeChanger={true}
-          onPageChange={(page, pageSize) => {
-            const filters = search.trim()
-              ? [buildFilter("name", "contains", search.trim())]
-              : [];
-            fetchServices({ page: page - 1, pageSize, filters });
-          }}
-        />
-      </Space>
+      <TableSearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Buscar servicio por nombre..."
+        loading={loading}
+      />
+      <DataTable
+        columns={columns}
+        data={services}
+        loading={loading}
+        rowKey="id"
+        page={pagination.page + 1}
+        pageSize={pagination.pageSize}
+        total={pagination.total}
+        showSizeChanger={true}
+        onPageChange={(page, pageSize) => {
+          fetchServices({
+            page: page - 1,
+            pageSize,
+            filters: activeFiltersRef.current,
+          });
+        }}
+      />
     </Card>
   );
 }
