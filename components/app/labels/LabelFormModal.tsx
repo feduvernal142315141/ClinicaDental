@@ -16,11 +16,22 @@ interface LabelFormModalProps {
 }
 
 const AVAILABLE_ICONS = [
-  "alert", "star", "setting", "experiment", "scissor",
-  "thunderbolt", "pushpin", "eye", "safety-certificate", "smile",
-  "heart", "clock-circle", "user", "tag", "bell",
-  "check-circle", "info", "warning", "plus", "minus",
-  "calendar", "snippets", "file", "home", "tool",
+  // Salud y clínica
+  "heart", "activity", "stethoscope", "pill", "thermometer", "syringe",
+  // Urgencia / prioridad
+  "alert-circle", "alert-triangle", "zap", "flame",
+  // Personas
+  "user", "users", "smile", "baby",
+  // Tiempo / calendario
+  "clock", "calendar", "timer",
+  // Categorización
+  "star", "tag", "bookmark", "flag",
+  // Acciones / herramientas
+  "scissors", "settings", "wrench",
+  // Dinero / seguro
+  "shield", "shield-off", "credit-card", "dollar-sign",
+  // General
+  "eye", "check-circle", "info", "bell", "file-text", "home",
 ];
 
 interface IconPickerProps {
@@ -59,7 +70,7 @@ function IconPicker({ value, onChange }: IconPickerProps) {
                 fontSize: 18,
               }}
             >
-              <DynamicIcon name={iconName} />
+              <DynamicIcon name={iconName} size={22} />
             </div>
           </Tooltip>
         );

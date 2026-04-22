@@ -25,6 +25,12 @@ function getContrastColor(hex: string): string {
   return luminance > 0.55 ? "#000000" : "#ffffff";
 }
 
+const ICON_SIZE: Record<NonNullable<LabelChipProps["size"]>, number> = {
+  xs: 10,
+  sm: 12,
+  md: 14,
+};
+
 const SIZE_STYLES: Record<NonNullable<LabelChipProps["size"]>, React.CSSProperties> = {
   xs: { fontSize: 10, padding: "1px 6px", borderRadius: 10, gap: 3 },
   sm: { fontSize: 11, padding: "2px 8px", borderRadius: 12, gap: 4 },
@@ -54,7 +60,8 @@ export function LabelChip({ label, size = "sm", removable = false, onRemove }: L
       {label.icon && (
         <DynamicIcon
           name={label.icon}
-          style={{ fontSize: sizeStyle.fontSize, opacity: 0.8, marginRight: sizeStyle.gap }}
+          size={ICON_SIZE[size]}
+          style={{ opacity: 0.8, marginRight: sizeStyle.gap }}
         />
       )}
       {label.name}
