@@ -162,6 +162,17 @@ function normalizeAppointment(raw: unknown): Appointment {
     actualStartAt: toStringValue(source.actualStartAt),
     adjustedAt: toStringValue(source.adjustedAt),
     adjustmentReason: toStringValue(source.adjustmentReason),
+    labels: Array.isArray(source.labels)
+      ? (source.labels as unknown[]).map((l) => {
+          const lbl = l as Record<string, unknown>;
+          return {
+            id: String(lbl.id ?? ""),
+            name: String(lbl.name ?? ""),
+            color: String(lbl.color ?? "#cccccc"),
+            icon: lbl.icon ? String(lbl.icon) : undefined,
+          };
+        })
+      : undefined,
   };
 }
 
