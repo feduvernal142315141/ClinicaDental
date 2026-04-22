@@ -29,6 +29,7 @@ interface MedicalAntecedentsColumnProps {
   patientHeader: ClinicalHistoryPatientHeader | null;
   patientId: string;
   onMedicalHistoryUpdated?: () => void;
+  onSaveMedicalHistory?: (data: UpdateMedicalHistoryRequest) => Promise<void>;
   canEdit?: boolean;
 }
 
@@ -58,6 +59,7 @@ export function MedicalAntecedentsColumn({
   patientHeader,
   patientId,
   onMedicalHistoryUpdated,
+  onSaveMedicalHistory,
   canEdit = false,
 }: MedicalAntecedentsColumnProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -67,12 +69,16 @@ export function MedicalAntecedentsColumn({
     medicalHistory?.clinicalNotes,
   );
 
-  const handleSaveDrawer = async (_data: UpdateMedicalHistoryRequest) => {
+  const handleSaveDrawer = async (data: UpdateMedicalHistoryRequest) => {
     setDrawerLoading(true);
     try {
-      // TODO: call update service
+      if (onSaveMedicalHistory) {
+        await onSaveMedicalHistory(data);
+      }
       onMedicalHistoryUpdated?.();
       setDrawerOpen(false);
+    } catch {
+      // error handled upstream
     } finally {
       setDrawerLoading(false);
     }
@@ -105,7 +111,7 @@ export function MedicalAntecedentsColumn({
       )}
 
       {/* Antecedentes */}
-      <section className="bg-card rounded-xl border border-border p-6">
+      <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
             <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
@@ -151,8 +157,8 @@ export function MedicalAntecedentsColumn({
       </section>
 
       {/* Planes pendientes */}
-      <section className="bg-card rounded-xl border border-border overflow-hidden">
-        <div className="px-5 py-4 border-b border-border">
+      <section className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100">
           <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
             Planes Pendientes
           </h3>
@@ -163,7 +169,7 @@ export function MedicalAntecedentsColumn({
       </section>
 
       {/* Notas de historial */}
-      <section className="bg-card rounded-xl border border-border p-6">
+      <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
         <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
           Notas de historial
         </h3>

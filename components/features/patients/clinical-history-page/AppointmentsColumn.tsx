@@ -46,7 +46,7 @@ function ScheduledCard({
 }) {
   const { day, monthShort } = parseDateParts(appointment.date);
   return (
-    <div className="p-5 flex gap-4 hover:bg-muted/40 transition-colors">
+    <div className="p-5 flex gap-4 hover:bg-gray-50 transition-colors">
       <div className="w-12 h-12 bg-blue-50 rounded-lg text-blue-600 flex flex-col items-center justify-center shrink-0">
         <span className="text-lg font-bold leading-none">{day}</span>
         <span className="text-[10px] font-semibold uppercase">{monthShort}</span>
@@ -81,7 +81,7 @@ function CompletedCard({
 }) {
   const { day, monthShort } = parseDateParts(appointment.date);
   return (
-    <div className="p-5 flex gap-4 hover:bg-muted/40 transition-colors">
+    <div className="p-5 flex gap-4 hover:bg-gray-50 transition-colors">
       <div className="w-12 h-12 bg-green-50 rounded-lg text-green-600 flex flex-col items-center justify-center shrink-0">
         <span className="text-lg font-bold leading-none">{day}</span>
         <span className="text-[10px] font-semibold uppercase">{monthShort}</span>
@@ -178,13 +178,13 @@ export function AppointmentsColumn({
           {inProgress.length > 0 && <InProgressBanner appts={inProgress} />}
 
           {/* Consultas agendadas */}
-          <section className="bg-card rounded-xl border border-border overflow-hidden mb-4">
-            <div className="px-5 py-3 border-b border-border">
+          <section className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+            <div className="px-5 py-3 border-b border-gray-100">
               <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                 Consultas Agendadas
               </h3>
             </div>
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-gray-50">
               {scheduled.length === 0 ? (
                 <p className="text-xs text-muted-foreground p-5">
                   Sin consultas agendadas
@@ -203,13 +203,13 @@ export function AppointmentsColumn({
           </section>
 
           {/* Consultas realizadas */}
-          <section className="bg-card rounded-xl border border-border overflow-hidden mb-4">
-            <div className="px-5 py-3 border-b border-border">
+          <section className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+            <div className="px-5 py-3 border-b border-gray-100">
               <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                 Consultas Realizadas
               </h3>
             </div>
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-gray-50">
               {completed.length === 0 ? (
                 <div className="p-8 flex flex-col items-center text-center">
                   <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center mb-3">

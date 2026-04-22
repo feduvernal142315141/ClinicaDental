@@ -36,7 +36,7 @@ export function ClinicalHistoryPage({
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
 
-  const { snapshot, loading: snapshotLoading, loadSnapshot, refresh } =
+  const { snapshot, loading: snapshotLoading, loadSnapshot, refresh, updateMedicalHistory } =
     useClinicalHistory();
 
   const { isAdmin, can } = usePermission();
@@ -145,6 +145,9 @@ export function ClinicalHistoryPage({
               patientHeader={snapshot?.patientHeader ?? null}
               patientId={patientId}
               onMedicalHistoryUpdated={() => refresh()}
+              onSaveMedicalHistory={async (data) => {
+                await updateMedicalHistory(patientId, data);
+              }}
               canEdit={canEditMedicalHistory}
             />
           )}
