@@ -3,6 +3,7 @@ import { handleServiceError } from "@/lib/utils/error.utils";
 import type {
   SaveOdontogramRequest,
   OdontogramResponse,
+  OdontogramVisitSnapshot,
   PaginatedOdontogramHistoryResponse,
   PaginatedQueryParams,
 } from "@/lib/entity/odontogram";
@@ -105,8 +106,33 @@ async function getOdontogramHistory(
   handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar el historial del odontograma");
 }
 
+/**
+ * Get odontogram snapshot for a specific visit.
+ * GET /odontograms/visit/{visitId}
+ *
+ * @returns OdontogramVisitSnapshot or null when not found (404).
+ */
+async function getOdontogramByVisit(
+  visitId: string,
+): Promise<OdontogramVisitSnapshot | null> {
+  const response = await serviceGet<OdontogramVisitSnapshot | null>(
+    `${endpoint}/visit/${visitId}`,
+  );
+
+  if (response?.status === 404) {
+    return null;
+  }
+
+  if (response?.status === 200) {
+    return response.data ?? null;
+  }
+
+  handleServiceError(response, "Error al cargar el odontograma de la visita");
+}
+
 export const odontogramService = {
   saveOdontogram,
   getOdontogram,
   getOdontogramHistory,
+  getOdontogramByVisit,
 };

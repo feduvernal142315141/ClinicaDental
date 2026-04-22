@@ -186,6 +186,21 @@ export interface ServiceTemplateItemEnriched {
   dependsOnIds?: string;
 }
 
+// ─── Odontogram Visit Snapshot ─────────────────────────────────────────────
+
+/**
+ * Snapshot of an odontogram tied to a specific visit/appointment.
+ * GET /odontograms/visit/{visitId}
+ */
+export interface OdontogramVisitSnapshot {
+  id: string;
+  patientId: string;
+  visitId: string;
+  state: string; // JSON string of the odontogram snapshot
+  createdAt: string; // ISO-8601
+  authorId?: string;
+}
+
 /** Detailed response from GET /service-templates/{id}. */
 export interface ServiceTemplateDetailResponse {
   id: string;
