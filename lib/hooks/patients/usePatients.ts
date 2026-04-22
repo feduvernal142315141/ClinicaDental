@@ -35,12 +35,14 @@ export function usePatients() {
           await patientsService.getPatients(params);
 
         // Backend returns { entities: Patient[], pagination: { page, pageSize, total } }
+        // pageSize is sourced from the request params, not the backend echo,
+        // because some backends return the actual result count as pageSize.
         setPatients(response.entities ?? []);
-        setPagination({
+        setPagination((prev) => ({
           page: response.pagination?.page ?? 0,
-          pageSize: response.pagination?.pageSize ?? 10,
+          pageSize: params?.pageSize ?? prev.pageSize,
           total: response.pagination?.total ?? 0,
-        });
+        }));
 
         return response;
       } catch (error: unknown) {

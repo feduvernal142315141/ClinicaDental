@@ -34,12 +34,14 @@ export function useServices() {
         const response: PaginatedServicesResponse =
           await servicesService.getServices(params);
 
+        // pageSize is sourced from the request params, not the backend echo,
+        // because some backends return the actual result count as pageSize.
         setServices(response.entities);
-        setPagination({
+        setPagination((prev) => ({
           page: response.pagination.page,
-          pageSize: response.pagination.pageSize,
+          pageSize: params?.pageSize ?? prev.pageSize,
           total: response.pagination.total,
-        });
+        }));
 
         return response;
       } catch (error: unknown) {

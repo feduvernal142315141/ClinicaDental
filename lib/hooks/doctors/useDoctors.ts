@@ -35,12 +35,14 @@ export function useDoctors() {
           await doctorsService.getDoctors(params);
 
         // Backend returns { entities: Doctor[], pagination: {...} }
+        // pageSize is sourced from the request params, not the backend echo,
+        // because some backends return the actual result count as pageSize.
         setDoctors(response.entities);
-        setPagination({
+        setPagination((prev) => ({
           page: response.pagination.page,
-          pageSize: response.pagination.pageSize,
+          pageSize: params?.pageSize ?? prev.pageSize,
           total: response.pagination.total,
-        });
+        }));
 
         return response;
       } catch (error: unknown) {
@@ -50,7 +52,7 @@ export function useDoctors() {
         setLoading(false);
       }
     },
-    [message]
+    [message],
   );
 
   /**
@@ -69,7 +71,7 @@ export function useDoctors() {
         setLoading(false);
       }
     },
-    [message]
+    [message],
   );
 
   /**
@@ -102,7 +104,7 @@ export function useDoctors() {
         setLoading(false);
       }
     },
-    []
+    [],
   );
 
   /**
@@ -121,7 +123,7 @@ export function useDoctors() {
         setLoading(false);
       }
     },
-    [message]
+    [message],
   );
 
   /**
@@ -133,7 +135,7 @@ export function useDoctors() {
       try {
         await doctorsService.updateDoctor(id, { active });
         message.success(
-          `Doctor ${active ? "activado" : "desactivado"} exitosamente`
+          `Doctor ${active ? "activado" : "desactivado"} exitosamente`,
         );
       } catch (error: unknown) {
         message.error(error.message || "Error al cambiar estado");
@@ -142,7 +144,7 @@ export function useDoctors() {
         setLoading(false);
       }
     },
-    [message]
+    [message],
   );
 
   return {
