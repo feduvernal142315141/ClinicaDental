@@ -55,7 +55,7 @@ export function AttachmentUploadModal({ open, onClose, onUpload, uploading }: At
           Subir
         </Button>,
       ]}
-      destroyOnClose
+      destroyOnHidden
     >
       <div className="space-y-4 py-2">
         <Upload.Dragger

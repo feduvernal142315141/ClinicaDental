@@ -54,6 +54,7 @@ export function ClinicalNotesEditor({
   const [content, setContent] = useState(initialContent ?? "");
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       UnderlineExtension,
