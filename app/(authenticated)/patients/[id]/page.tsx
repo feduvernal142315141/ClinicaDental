@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import { useSearchParams } from "next/navigation";
-import { PatientDetail } from "@/components/patients";
+import { ClinicalHistoryPage } from "@/components/features/patients/clinical-history-page/ClinicalHistoryPage";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -16,7 +16,7 @@ export default function PatientDetailPage({ params }: PageProps) {
   const activeAppointmentId = searchParams.get("appointmentId") ?? undefined;
 
   return (
-    <PatientDetail
+    <ClinicalHistoryPage
       patientId={id}
       basePath="/patients"
       initialTab={initialTab}
