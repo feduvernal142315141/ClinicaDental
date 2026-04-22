@@ -104,7 +104,7 @@ export function MedicalHistoryDrawer({
       open={open}
       onClose={onClose}
       size="large"
-      destroyOnClose
+      destroyOnHidden
       extra={
         <Space>
           <Button icon={<CloseOutlined />} onClick={onClose}>

@@ -81,7 +81,7 @@ export function CancelModal({ appointment, isOpen, onClose, onSuccess }: CancelM
       okText="Sí, cancelar cita"
       cancelText="Volver"
       okButtonProps={{ danger: true, loading }}
-      destroyOnClose
+      destroyOnHidden
     >
       <Space direction="vertical" style={{ width: "100%" }} size="middle">
         <Alert

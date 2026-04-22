@@ -143,7 +143,7 @@ export function RescheduleModal({ appointment, isOpen, onClose, onSuccess }: Res
       okText="Confirmar reagendo"
       cancelText="Cancelar"
       okButtonProps={{ loading, disabled: !isFormValid || loading }}
-      destroyOnClose
+      destroyOnHidden
     >
       <Space direction="vertical" style={{ width: "100%" }} size="middle">
         <div>

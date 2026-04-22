@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { LabelSummary } from "@/lib/entity/label";
+import { DynamicIcon } from "./DynamicIcon";
 
 interface LabelChipProps {
   label: LabelSummary;
@@ -51,9 +52,10 @@ export function LabelChip({ label, size = "sm", removable = false, onRemove }: L
       }}
     >
       {label.icon && (
-        <span style={{ marginRight: sizeStyle.gap, opacity: 0.8 }}>
-          {label.icon}
-        </span>
+        <DynamicIcon
+          name={label.icon}
+          style={{ fontSize: sizeStyle.fontSize, opacity: 0.8, marginRight: sizeStyle.gap }}
+        />
       )}
       {label.name}
       {removable && onRemove && (

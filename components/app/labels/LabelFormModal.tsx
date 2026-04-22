@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Modal, Form, Input, Button } from "antd";
+import { Modal, Form, Input, Button, Tooltip } from "antd";
+import { DynamicIcon } from "./DynamicIcon";
 import { LabelChip } from "./LabelChip";
 import { useCreateLabel } from "@/lib/hooks/labels";
 import { labelsService } from "@/lib/services/labels";
@@ -12,6 +13,59 @@ interface LabelFormModalProps {
   onClose: () => void;
   onSuccess: (label: Label) => void;
   label?: Label;
+}
+
+const AVAILABLE_ICONS = [
+  "alert", "star", "setting", "experiment", "scissor",
+  "thunderbolt", "pushpin", "eye", "safety-certificate", "smile",
+  "heart", "clock-circle", "user", "tag", "bell",
+  "check-circle", "info", "warning", "plus", "minus",
+  "calendar", "snippets", "file", "home", "tool",
+];
+
+interface IconPickerProps {
+  value?: string;
+  onChange?: (value: string) => void;
+}
+
+function IconPicker({ value, onChange }: IconPickerProps) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      <Tooltip title="Sin ícono">
+        <div
+          onClick={() => onChange?.("")}
+          style={{
+            width: 36, height: 36, borderRadius: 6, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            border: value === "" || !value ? "2px solid #1890ff" : "1px solid #d9d9d9",
+            background: value === "" || !value ? "#e6f4ff" : "#fafafa",
+            color: "#595959", fontSize: 12,
+          }}
+        >
+          –
+        </div>
+      </Tooltip>
+      {AVAILABLE_ICONS.map((iconName) => {
+        const isSelected = value === iconName;
+        return (
+          <Tooltip key={iconName} title={iconName}>
+            <div
+              onClick={() => onChange?.(iconName)}
+              style={{
+                width: 36, height: 36, borderRadius: 6, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                border: isSelected ? "2px solid #1890ff" : "1px solid #d9d9d9",
+                background: isSelected ? "#e6f4ff" : "#fafafa",
+                fontSize: 18,
+              }}
+            >
+              <DynamicIcon name={iconName} />
+            </div>
+          </Tooltip>
+        );
+      })}
+    </div>
+  );
 }
 
 const PRESET_COLORS = [
@@ -73,7 +127,7 @@ export function LabelFormModal({ isOpen, onClose, onSuccess, label }: LabelFormM
       onCancel={onClose}
       title={isEdit ? "Editar etiqueta" : "Nueva etiqueta"}
       footer={null}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form
         form={form}
@@ -138,7 +192,7 @@ export function LabelFormModal({ isOpen, onClose, onSuccess, label }: LabelFormM
         </Form.Item>
 
         <Form.Item name="icon" label="Ícono (opcional)">
-          <Input placeholder="Ej. alert, star, clock" maxLength={50} />
+          <IconPicker value={previewIcon} onChange={(v) => { setPreviewIcon(v); form.setFieldValue("icon", v); }} />
         </Form.Item>
 
         {/* Live preview */}
