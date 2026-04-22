@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Separator } from "@/components/ui/primitives/shadcn/separator";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   User,
   Mail,
@@ -32,6 +31,23 @@ interface PatientInfoColumnProps {
   canDelete?: boolean;
 }
 
+function SectionBlock({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="py-3">
+      <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase mb-2">
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
 function InfoRow({
   icon: Icon,
   label,
@@ -43,11 +59,11 @@ function InfoRow({
 }) {
   if (!value) return null;
   return (
-    <div className="flex items-start gap-2 text-sm">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-      <div>
-        <span className="text-muted-foreground">{label}: </span>
-        <span className="font-medium">{value}</span>
+    <div className="flex items-start gap-2 text-sm mb-1.5">
+      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <span className="text-muted-foreground text-xs">{label}: </span>
+        <span className="font-medium text-xs">{value}</span>
       </div>
     </div>
   );
@@ -71,104 +87,97 @@ export function PatientInfoColumn({
       ? "Masculino"
       : patient.gender === "female"
         ? "Femenino"
-        : patient.gender ?? "No especificado";
+        : patient.gender ?? null;
+
+  const dob = patient.dateOfBirth ?? null;
 
   return (
-    <Card className="h-full overflow-auto">
-      <CardContent className="p-4 space-y-4">
-        {/* Avatar + nombre */}
-        <div className="flex flex-col items-center gap-2 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-            <User className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="font-semibold text-base">{patient.name}</p>
-            {age !== null && (
-              <p className="text-sm text-muted-foreground">{age} años</p>
+    <div className="flex flex-col h-full overflow-y-auto pr-3 border-r border-border">
+      {/* Avatar + nombre + edad — zona prominente */}
+      <div className="flex flex-col items-center gap-3 py-4 text-center">
+        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+          <User className="h-10 w-10 text-blue-400" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold leading-tight">{patient.name}</h2>
+          <p className="text-sm text-muted-foreground">
+            {dob && <span>{dob}</span>}
+            {dob && age !== null && <span> · </span>}
+            {age !== null && <span>{age} años</span>}
+            {genderLabel && (
+              <span className="ml-1 text-muted-foreground">· {genderLabel}</span>
             )}
-          </div>
-          <div className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-            <User className="h-3 w-3" />
-            {genderLabel}
-          </div>
+          </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push(`/patients/${patient.id}/edit`)}
+        >
+          <Edit className="h-3.5 w-3.5 mr-1" />
+          Editar
+        </Button>
+      </div>
 
-        <Separator />
+      <Separator />
 
-        {/* Datos de contacto */}
-        <div className="space-y-2">
-          <InfoRow icon={Mail} label="Email" value={patient.email} />
-          <InfoRow icon={Phone} label="Teléfono" value={patient.phone} />
-          <InfoRow icon={MapPin} label="Dirección" value={patient.address} />
-          <InfoRow
-            icon={Calendar}
-            label="Nacimiento"
-            value={patient.dateOfBirth}
-          />
-        </div>
+      <SectionBlock title="CONTACTO">
+        <InfoRow icon={Mail} label="Email" value={patient.email} />
+        <InfoRow icon={Phone} label="Teléfono" value={patient.phone} />
+        <InfoRow icon={MapPin} label="Dirección" value={patient.address} />
+        <InfoRow icon={Calendar} label="Nacimiento" value={patient.dateOfBirth} />
+      </SectionBlock>
 
-        {medicalHistory && (
-          <>
-            <Separator />
-            <div className="space-y-2">
-              <InfoRow
-                icon={Briefcase}
-                label="Ocupación"
-                value={medicalHistory.occupation}
-              />
-              <InfoRow
-                icon={Heart}
-                label="Estado civil"
-                value={medicalHistory.maritalStatus}
-              />
-            </div>
-          </>
-        )}
+      {medicalHistory && (
+        <>
+          <Separator />
+          <SectionBlock title="DATOS PERSONALES">
+            <InfoRow
+              icon={Briefcase}
+              label="Ocupación"
+              value={medicalHistory.occupation}
+            />
+            <InfoRow
+              icon={Heart}
+              label="Estado civil"
+              value={medicalHistory.maritalStatus}
+            />
+          </SectionBlock>
+        </>
+      )}
 
-        {patientHeader && (
-          <>
-            <Separator />
-            <div className="space-y-2">
-              <InfoRow
-                icon={Droplets}
-                label="Tipo de sangre"
-                value={patientHeader.bloodType}
-              />
-              <InfoRow
-                icon={Shield}
-                label="Plan de seguro"
-                value={patientHeader.insurancePlan}
-              />
-              <InfoRow
-                icon={AlertCircle}
-                label="Contacto emergencia"
-                value={patientHeader.emergencyContact}
-              />
-            </div>
-          </>
-        )}
+      {patientHeader && (
+        <>
+          <Separator />
+          <SectionBlock title="CLÍNICO">
+            <InfoRow
+              icon={Droplets}
+              label="Tipo de sangre"
+              value={patientHeader.bloodType}
+            />
+            <InfoRow
+              icon={Shield}
+              label="Plan de seguro"
+              value={patientHeader.insurancePlan}
+            />
+            <InfoRow
+              icon={AlertCircle}
+              label="Contacto emergencia"
+              value={patientHeader.emergencyContact}
+            />
+          </SectionBlock>
+        </>
+      )}
 
-        <Separator />
+      <Separator />
 
-        {/* Archivos */}
+      <SectionBlock title="ARCHIVOS">
         <PatientAttachmentsSection
           patientId={patient.id}
           canUpload={canUpload}
           canDelete={canDelete}
         />
-
-        <Separator />
-
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={() => router.push(`/patients/${patient.id}/edit`)}
-        >
-          <Edit className="mr-2 h-4 w-4" />
-          Editar datos
-        </Button>
-      </CardContent>
-    </Card>
+      </SectionBlock>
+    </div>
   );
 }
