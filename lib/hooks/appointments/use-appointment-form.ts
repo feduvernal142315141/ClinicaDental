@@ -168,8 +168,8 @@ export function useAppointmentForm({
           : appointment.serviceId
             ? [appointment.serviceId]
             : [],
-      labelIds: Array.isArray((appointment as Record<string, unknown>).labelIds)
-        ? ((appointment as Record<string, unknown>).labelIds as string[])
+      labelIds: Array.isArray(appointment.labels)
+        ? appointment.labels.map((l) => l.id)
         : [],
     });
   }, [isEdit, appointmentId, initialData, getAppointmentById, form]);
