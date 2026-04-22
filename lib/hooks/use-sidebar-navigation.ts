@@ -5,14 +5,10 @@ import {
   Stethoscope,
   UserCheck,
   ClipboardList,
-  BookImage,
-  FileText,
   LayoutDashboard,
   Sliders,
   UserCog,
-  Bell,
   Shield,
-  Link,
   Briefcase,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
@@ -41,8 +37,9 @@ export function useSidebarNavigation(userRole?: string) {
       { path: "/settings/general", label: "Opciones Generales", icon: Sliders },
       { path: "/settings/doctors", label: "Doctores", icon: UserCog },
       { path: "/settings/roles", label: "Roles", icon: Shield },
-      { path: "/settings/notifications", label: "Notificaciones", icon: Bell },
-      { path: "/settings/integrations", label: "Integraciones", icon: Link },
+      // MVP: notifications and integrations hidden until post-MVP
+      // { path: "/settings/notifications", label: "Notificaciones", icon: Bell },
+      // { path: "/settings/integrations", label: "Integraciones", icon: Link },
       { path: "/settings/services", label: "Servicios", icon: Briefcase },
     ];
 
@@ -53,8 +50,9 @@ export function useSidebarNavigation(userRole?: string) {
             { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
             { path: "/patients", label: "Pacientes", icon: Users },
             { path: "/appointments", label: "Citas", icon: Calendar },
-            { path: "/campaigns", label: "Campañas", icon: BookImage },
-            { path: "/template-demo", label: "Templates", icon: FileText },
+            // MVP: campaigns and templates hidden until post-MVP
+            // { path: "/campaigns", label: "Campañas", icon: BookImage },
+            // { path: "/template-demo", label: "Templates", icon: FileText },
             {
               path: "/settings",
               label: "Configuración",
