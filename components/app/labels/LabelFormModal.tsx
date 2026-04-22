@@ -17,21 +17,47 @@ interface LabelFormModalProps {
 
 const AVAILABLE_ICONS = [
   // Salud y clínica
-  "heart", "activity", "stethoscope", "pill", "thermometer", "syringe",
+  "heart",
+  "activity",
+  "stethoscope",
+  "pill",
+  "thermometer",
+  "syringe",
   // Urgencia / prioridad
-  "alert-circle", "alert-triangle", "zap", "flame",
+  "alert-circle",
+  "alert-triangle",
+  "zap",
+  "flame",
   // Personas
-  "user", "users", "smile", "baby",
+  "user",
+  "users",
+  "smile",
+  "baby",
   // Tiempo / calendario
-  "clock", "calendar", "timer",
+  "clock",
+  "calendar",
+  "timer",
   // Categorización
-  "star", "tag", "bookmark", "flag",
+  "star",
+  "tag",
+  "bookmark",
+  "flag",
   // Acciones / herramientas
-  "scissors", "settings", "wrench",
+  "scissors",
+  "settings",
+  "wrench",
   // Dinero / seguro
-  "shield", "shield-off", "credit-card", "dollar-sign",
+  "shield",
+  "shield-off",
+  "credit-card",
+  "dollar-sign",
   // General
-  "eye", "check-circle", "info", "bell", "file-text", "home",
+  "eye",
+  "check-circle",
+  "info",
+  "bell",
+  "file-text",
+  "home",
 ];
 
 interface IconPickerProps {
@@ -46,11 +72,20 @@ function IconPicker({ value, onChange }: IconPickerProps) {
         <div
           onClick={() => onChange?.("")}
           style={{
-            width: 36, height: 36, borderRadius: 6, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            border: value === "" || !value ? "2px solid #1890ff" : "1px solid #d9d9d9",
+            width: 36,
+            height: 36,
+            borderRadius: 6,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border:
+              value === "" || !value
+                ? "2px solid #1890ff"
+                : "1px solid #d9d9d9",
             background: value === "" || !value ? "#e6f4ff" : "#fafafa",
-            color: "#595959", fontSize: 12,
+            color: "#595959",
+            fontSize: 12,
           }}
         >
           –
@@ -63,8 +98,13 @@ function IconPicker({ value, onChange }: IconPickerProps) {
             <div
               onClick={() => onChange?.(iconName)}
               style={{
-                width: 36, height: 36, borderRadius: 6, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
+                width: 36,
+                height: 36,
+                borderRadius: 6,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 border: isSelected ? "2px solid #1890ff" : "1px solid #d9d9d9",
                 background: isSelected ? "#e6f4ff" : "#fafafa",
                 fontSize: 18,
@@ -80,11 +120,24 @@ function IconPicker({ value, onChange }: IconPickerProps) {
 }
 
 const PRESET_COLORS = [
-  "#FF5733", "#FF8C00", "#FFC300", "#28B463", "#1ABC9C",
-  "#3498DB", "#8E44AD", "#E91E63", "#607D8B", "#795548",
+  "#FF5733",
+  "#FF8C00",
+  "#FFC300",
+  "#28B463",
+  "#1ABC9C",
+  "#3498DB",
+  "#8E44AD",
+  "#E91E63",
+  "#607D8B",
+  "#795548",
 ];
 
-export function LabelFormModal({ isOpen, onClose, onSuccess, label }: LabelFormModalProps) {
+export function LabelFormModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  label,
+}: LabelFormModalProps) {
   const [form] = Form.useForm<CreateLabelDto>();
   const isEdit = !!label;
   const { createLabel, loading: createLoading } = useCreateLabel();
@@ -113,7 +166,10 @@ export function LabelFormModal({ isOpen, onClose, onSuccess, label }: LabelFormM
     if (isEdit && label) {
       setUpdateLoading(true);
       try {
-        const updated = await labelsService.updateLabel(label.id, values as UpdateLabelDto);
+        const updated = await labelsService.updateLabel(
+          label.id,
+          values as UpdateLabelDto,
+        );
         onSuccess(updated);
         onClose();
       } catch {
@@ -161,7 +217,11 @@ export function LabelFormModal({ isOpen, onClose, onSuccess, label }: LabelFormM
           <Input placeholder="Ej. Urgencia" maxLength={50} />
         </Form.Item>
 
-        <Form.Item name="color" label="Color" rules={[{ required: true, message: "El color es requerido" }]}>
+        <Form.Item
+          name="color"
+          label="Color"
+          rules={[{ required: true, message: "El color es requerido" }]}
+        >
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {PRESET_COLORS.map((c) => (
@@ -177,7 +237,10 @@ export function LabelFormModal({ isOpen, onClose, onSuccess, label }: LabelFormM
                     height: 24,
                     borderRadius: "50%",
                     backgroundColor: c,
-                    border: previewColor === c ? "2px solid #000" : "2px solid transparent",
+                    border:
+                      previewColor === c
+                        ? "2px solid #000"
+                        : "2px solid transparent",
                     cursor: "pointer",
                     padding: 0,
                   }}
@@ -199,11 +262,21 @@ export function LabelFormModal({ isOpen, onClose, onSuccess, label }: LabelFormM
         </Form.Item>
 
         <Form.Item name="description" label="Descripción (opcional)">
-          <Input.TextArea rows={2} maxLength={255} placeholder="Descripción breve" />
+          <Input.TextArea
+            rows={2}
+            maxLength={255}
+            placeholder="Descripción breve"
+          />
         </Form.Item>
 
         <Form.Item name="icon" label="Ícono (opcional)">
-          <IconPicker value={previewIcon} onChange={(v) => { setPreviewIcon(v); form.setFieldValue("icon", v); }} />
+          <IconPicker
+            value={previewIcon}
+            onChange={(v) => {
+              setPreviewIcon(v);
+              form.setFieldValue("icon", v);
+            }}
+          />
         </Form.Item>
 
         {/* Live preview */}

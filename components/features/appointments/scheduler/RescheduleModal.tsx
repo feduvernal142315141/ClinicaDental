@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Modal, DatePicker, TimePicker, Typography, Space, Alert, Spin } from "antd";
+import {
+  Modal,
+  DatePicker,
+  TimePicker,
+  Typography,
+  Space,
+  Alert,
+  Spin,
+} from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useRescheduleAppointment } from "@/lib/hooks/appointments/use-reschedule-appointment";
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
@@ -46,26 +54,42 @@ function getISOFromAppt(appt: RescheduleModalProps["appointment"]): {
   return { startIso: undefined, endIso: undefined };
 }
 
-export function RescheduleModal({ appointment, isOpen, onClose, onSuccess }: RescheduleModalProps) {
+export function RescheduleModal({
+  appointment,
+  isOpen,
+  onClose,
+  onSuccess,
+}: RescheduleModalProps) {
   const { startIso, endIso } = getISOFromAppt(appointment);
 
   const originalDurationMinutes =
-    startIso && endIso ? dayjs(endIso).diff(dayjs(startIso), "minute") : (appointment.duration ?? 30);
+    startIso && endIso
+      ? dayjs(endIso).diff(dayjs(startIso), "minute")
+      : (appointment.duration ?? 30);
 
-  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(startIso ? dayjs(startIso) : null);
-  const [selectedTime, setSelectedTime] = useState<Dayjs | null>(startIso ? dayjs(startIso) : null);
-  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(
+    startIso ? dayjs(startIso) : null,
+  );
+  const [selectedTime, setSelectedTime] = useState<Dayjs | null>(
+    startIso ? dayjs(startIso) : null,
+  );
+  const [availabilityError, setAvailabilityError] = useState<string | null>(
+    null,
+  );
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const doctorId = appointment.doctorId ?? appointment.doctor_id ?? "";
 
-  const { reschedule, loading, error } = useRescheduleAppointment(appointment.id, {
-    onSuccess: () => {
-      onSuccess();
-      onClose();
+  const { reschedule, loading, error } = useRescheduleAppointment(
+    appointment.id,
+    {
+      onSuccess: () => {
+        onSuccess();
+        onClose();
+      },
     },
-  });
+  );
 
   // Availability check with debounce
   const checkAvailability = useCallback(
@@ -78,7 +102,10 @@ export function RescheduleModal({ appointment, isOpen, onClose, onSuccess }: Res
         setAvailabilityError(null);
         try {
           const dateStr = date.format("YYYY-MM-DD");
-          const slots = await appointmentsService.getDoctorAvailability(doctorId, dateStr);
+          const slots = await appointmentsService.getDoctorAvailability(
+            doctorId,
+            dateStr,
+          );
           const timeStr = time.format("HH:mm");
           if (slots.length > 0 && !slots.includes(timeStr)) {
             setAvailabilityError("El doctor no está disponible en ese horario");
@@ -125,14 +152,15 @@ export function RescheduleModal({ appointment, isOpen, onClose, onSuccess }: Res
 
   const isFormValid = !!selectedDate && !!selectedTime && !availabilityError;
 
-  const computedEndTime = selectedDate && selectedTime
-    ? selectedDate
-        .hour(selectedTime.hour())
-        .minute(selectedTime.minute())
-        .second(0)
-        .add(originalDurationMinutes, "minute")
-        .format("HH:mm")
-    : "—";
+  const computedEndTime =
+    selectedDate && selectedTime
+      ? selectedDate
+          .hour(selectedTime.hour())
+          .minute(selectedTime.minute())
+          .second(0)
+          .add(originalDurationMinutes, "minute")
+          .format("HH:mm")
+      : "—";
 
   return (
     <Modal

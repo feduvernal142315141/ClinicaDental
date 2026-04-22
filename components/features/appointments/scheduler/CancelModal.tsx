@@ -44,8 +44,15 @@ function formatAppointmentTime(appt: CancelModalProps["appointment"]): string {
   return "—";
 }
 
-export function CancelModal({ appointment, isOpen, onClose, onSuccess }: CancelModalProps) {
-  const [reasonCode, setReasonCode] = useState<CancellationReasonCode | undefined>();
+export function CancelModal({
+  appointment,
+  isOpen,
+  onClose,
+  onSuccess,
+}: CancelModalProps) {
+  const [reasonCode, setReasonCode] = useState<
+    CancellationReasonCode | undefined
+  >();
   const [freeText, setFreeText] = useState("");
 
   const { cancel, loading } = useCancelAppointment(appointment.id, {
@@ -113,8 +120,15 @@ export function CancelModal({ appointment, isOpen, onClose, onSuccess }: CancelM
           <Text type="secondary"> (opcional)</Text>
           <Radio.Group
             value={reasonCode}
-            onChange={(e) => setReasonCode(e.target.value as CancellationReasonCode)}
-            style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}
+            onChange={(e) =>
+              setReasonCode(e.target.value as CancellationReasonCode)
+            }
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              marginTop: 8,
+            }}
           >
             {CANCEL_REASONS.map((r) => (
               <Radio key={r.value} value={r.value}>
