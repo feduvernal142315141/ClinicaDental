@@ -118,51 +118,45 @@ export function ClinicalHistoryPage({
         </span>
       ),
       children: (
-        <div className="flex gap-4 h-full min-h-0">
+        <div className="grid grid-cols-[260px_1fr_300px] gap-4 h-full min-h-0">
           {/* Col 1: Patient info */}
-          <div className="w-[280px] shrink-0">
-            {snapshotLoading ? (
-              <div className="flex h-40 items-center justify-center">
-                <Spin />
-              </div>
-            ) : (
-              <PatientInfoColumn
-                patient={patient}
-                medicalHistory={snapshot?.medicalHistory ?? null}
-                patientHeader={snapshot?.patientHeader ?? null}
-                canUpload={canManageAttachments}
-                canDelete={canManageAttachments}
-              />
-            )}
-          </div>
+          {snapshotLoading ? (
+            <div className="flex h-40 items-center justify-center">
+              <Spin />
+            </div>
+          ) : (
+            <PatientInfoColumn
+              patient={patient}
+              medicalHistory={snapshot?.medicalHistory ?? null}
+              patientHeader={snapshot?.patientHeader ?? null}
+              canUpload={canManageAttachments}
+              canDelete={canManageAttachments}
+            />
+          )}
 
           {/* Col 2: Medical antecedents */}
-          <div className="flex-1 min-w-0">
-            {snapshotLoading ? (
-              <div className="flex h-40 items-center justify-center">
-                <Spin />
-              </div>
-            ) : (
-              <MedicalAntecedentsColumn
-                medicalHistory={snapshot?.medicalHistory ?? null}
-                patientHeader={snapshot?.patientHeader ?? null}
-                patientId={patientId}
-                onMedicalHistoryUpdated={() => refresh()}
-                canEdit={canEditMedicalHistory}
-              />
-            )}
-          </div>
+          {snapshotLoading ? (
+            <div className="flex h-40 items-center justify-center">
+              <Spin />
+            </div>
+          ) : (
+            <MedicalAntecedentsColumn
+              medicalHistory={snapshot?.medicalHistory ?? null}
+              patientHeader={snapshot?.patientHeader ?? null}
+              patientId={patientId}
+              onMedicalHistoryUpdated={() => refresh()}
+              canEdit={canEditMedicalHistory}
+            />
+          )}
 
           {/* Col 3: Appointments */}
-          <div className="w-[300px] shrink-0">
-            <AppointmentsColumn
-              appointments={appointments}
-              loading={appointmentsLoading}
-              patientId={patientId}
-              activeAppointmentId={activeAppointmentId}
-              onViewOdontogram={handleViewOdontogram}
-            />
-          </div>
+          <AppointmentsColumn
+            appointments={appointments}
+            loading={appointmentsLoading}
+            patientId={patientId}
+            activeAppointmentId={activeAppointmentId}
+            onViewOdontogram={handleViewOdontogram}
+          />
         </div>
       ),
     },
