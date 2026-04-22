@@ -62,6 +62,9 @@ export interface ClinicalHistoryMedicalHistory {
   isValidated: boolean;
   validatedAt?: string;
   validatedBy?: string;
+  clinicalNotes?: string;
+  clinicalNotesUpdatedAt?: string;
+  clinicalNotesUpdatedBy?: string;
 }
 
 export interface ClinicalHistoryTreatment {

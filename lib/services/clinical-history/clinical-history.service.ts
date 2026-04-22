@@ -68,8 +68,29 @@ async function validateMedicalHistory(patientId: string): Promise<boolean> {
   handleServiceError(response, "Error al validar historia médica");
 }
 
+/**
+ * Save clinical notes for a patient
+ * PATCH /clinical-history/patients/{patientId}/notes
+ */
+async function saveClinicalNotes(
+  patientId: string,
+  notes: string,
+): Promise<{ updatedAt: string; updatedBy: string }> {
+  const response = await servicePatch<{ notes: string }, { updatedAt: string; updatedBy: string }>(
+    `${endpoint}/${patientId}/notes`,
+    { notes },
+  );
+
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
+    return response.data;
+  }
+
+  handleServiceError(response, "Error al guardar notas clínicas");
+}
+
 export const clinicalHistoryService = {
   getSnapshot,
   updateMedicalHistory,
   validateMedicalHistory,
+  saveClinicalNotes,
 };
