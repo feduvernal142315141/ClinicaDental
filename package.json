@@ -43,6 +43,12 @@
     "@radix-ui/themes": "^3.2.1",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.57.4",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tiptap/extension-placeholder": "^3.22.4",
+    "@tiptap/extension-underline": "^3.22.4",
+    "@tiptap/pm": "^3.22.4",
+    "@tiptap/react": "^3.22.4",
+    "@tiptap/starter-kit": "^3.22.4",
     "@vercel/analytics": "latest",
     "antd": "^6.1.1",
     "autoprefixer": "^10.4.20",
@@ -70,8 +76,8 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
-    "zustand": "^5.0.3",
-    "zod": "3.25.67"
+    "zod": "3.25.67",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.9",
