@@ -73,6 +73,9 @@ export interface Appointment {
   scheduledStartAt?: string; // ISO datetime
   scheduledEndAt?: string;   // ISO datetime
 
+  // Labels (HU-LABEL-001)
+  labels?: import("@/lib/entity/label").LabelSummary[];
+
   // Audit fields (HU-APPT-005)
   cancellationReason?: string;
   cancellationReasonCode?: CancellationReasonCode;

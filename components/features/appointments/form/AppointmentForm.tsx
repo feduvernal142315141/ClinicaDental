@@ -20,7 +20,9 @@ import { FormTimePicker } from "@/components/ui/antd/forms/FormTimePicker";
 import { Modal as CustomModal } from "@/components/ui/primitives/custom";
 import { FormActions } from "@/components/features/doctors/form/components/FormActions";
 import { PatientFormFields } from "@/components/features/patients/form/PatientFormFields";
+import { LabelSelector } from "@/components/app/labels";
 import { useAppointmentForm } from "@/lib/hooks/appointments";
+
 import type { AppointmentFormPrefill } from "@/lib/hooks/appointments/use-appointment-form";
 import type { Appointment } from "@/lib/entity/appointment";
 
@@ -335,6 +337,16 @@ export function AppointmentForm({
             <Col xs={24}>
               <Form.Item name="notes" label="Notas">
                 <Input.TextArea rows={4} placeholder="Notas adicionales" />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24}>
+              <Form.Item label="Etiquetas">
+                <LabelSelector
+                  value={(form.getFieldValue as (name: string) => string[] | undefined)("labelIds") ?? []}
+                  onChange={(ids) => (form.setFieldValue as (name: string, value: unknown) => void)("labelIds", ids)}
+                  disabled={readOnly}
+                />
               </Form.Item>
             </Col>
           </Row>

@@ -2,6 +2,7 @@
 
 import { Typography, Tooltip } from "antd";
 import type { SchedulerEvent } from "@/lib/entity/appointment";
+import { LabelChip } from "@/components/app/labels";
 
 const { Text } = Typography;
 
@@ -115,6 +116,16 @@ export function AppointmentEventCard({
           >
             {detail}
           </Text>
+        )}
+        {!isCompact && appointment.labels && appointment.labels.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 2 }}>
+            {appointment.labels.slice(0, 3).map((label) => (
+              <LabelChip key={label.id} label={label} size="xs" />
+            ))}
+            {appointment.labels.length > 3 && (
+              <span style={{ fontSize: 10, color: "#595959" }}>+{appointment.labels.length - 3}</span>
+            )}
+          </div>
         )}
       </div>
     </Tooltip>
