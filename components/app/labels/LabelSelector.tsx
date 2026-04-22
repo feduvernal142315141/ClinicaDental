@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Select, Alert } from "antd";
+import { Select, Alert, Button } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import { useLabels } from "@/lib/hooks/labels";
 import { LabelChip } from "./LabelChip";
 import type { LabelSummary } from "@/lib/entity/label";
@@ -12,6 +13,7 @@ interface LabelSelectorProps {
   onChange?: (ids: string[]) => void;
   maxLabels?: number;
   disabled?: boolean;
+  onCreateNew?: () => void;
 }
 
 export function LabelSelector({
@@ -19,6 +21,7 @@ export function LabelSelector({
   onChange,
   maxLabels = 5,
   disabled = false,
+  onCreateNew,
 }: LabelSelectorProps) {
   const { labels, loading } = useLabels(false);
 
@@ -55,6 +58,18 @@ export function LabelSelector({
         placeholder="Seleccionar etiquetas..."
         maxCount={maxLabels}
         style={{ width: "100%" }}
+        dropdownRender={(menu) => (
+          <>
+            {menu}
+            {onCreateNew && (
+              <div style={{ padding: "8px", borderTop: "1px solid #f0f0f0" }}>
+                <Button type="link" icon={<PlusOutlined />} onClick={onCreateNew}>
+                  Nueva etiqueta
+                </Button>
+              </div>
+            )}
+          </>
+        )}
         tagRender={(props) => {
           const found = labels.find((l) => l.id === props.value);
           if (!found) return <span>{props.label}</span>;

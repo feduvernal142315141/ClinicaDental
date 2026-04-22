@@ -20,11 +20,12 @@ import { FormTimePicker } from "@/components/ui/antd/forms/FormTimePicker";
 import { Modal as CustomModal } from "@/components/ui/primitives/custom";
 import { FormActions } from "@/components/features/doctors/form/components/FormActions";
 import { PatientFormFields } from "@/components/features/patients/form/PatientFormFields";
-import { LabelSelector } from "@/components/app/labels";
+import { LabelSelector, LabelFormModal } from "@/components/app/labels";
 import { useAppointmentForm } from "@/lib/hooks/appointments";
 
 import type { AppointmentFormPrefill } from "@/lib/hooks/appointments/use-appointment-form";
 import type { Appointment } from "@/lib/entity/appointment";
+import type { Label } from "@/lib/entity/label";
 
 const DURATION_OPTIONS = [
   { value: 15, label: "15 minutos" },
@@ -68,6 +69,7 @@ export function AppointmentForm({
 }: AppointmentFormProps) {
   const [isCreatePatientModalOpen, setIsCreatePatientModalOpen] =
     useState(false);
+  const [isCreateLabelModalOpen, setIsCreateLabelModalOpen] = useState(false);
   const [quickPatientForm] = Form.useForm<QuickPatientFormValues>();
 
   const {
@@ -140,6 +142,15 @@ export function AppointmentForm({
       // AntD handles validation errors and patient hook handles API errors.
     }
   }, [closeCreatePatientModal, createQuickPatient, quickPatientForm]);
+
+  const handleCreateLabelSubmit = useCallback(
+    (newLabel: Label) => {
+      setIsCreateLabelModalOpen(false);
+      const currentLabelIds = form.getFieldValue("labelIds") || [];
+      form.setFieldValue("labelIds", [...currentLabelIds, newLabel.id]);
+    },
+    [form],
+  );
 
   return (
     <>
@@ -342,7 +353,10 @@ export function AppointmentForm({
 
             <Col xs={24}>
               <Form.Item name="labelIds" label="Etiquetas">
-                <LabelSelector disabled={readOnly} />
+                <LabelSelector
+                  disabled={readOnly}
+                  onCreateNew={readOnly ? undefined : () => setIsCreateLabelModalOpen(true)}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -384,6 +398,11 @@ export function AppointmentForm({
           </Flex>
         </Form>
       </CustomModal>
+      <LabelFormModal
+        isOpen={isCreateLabelModalOpen}
+        onClose={() => setIsCreateLabelModalOpen(false)}
+        onSuccess={handleCreateLabelSubmit}
+      />
     </>
   );
 }

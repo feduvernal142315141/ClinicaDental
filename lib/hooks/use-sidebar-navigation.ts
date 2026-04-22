@@ -10,6 +10,7 @@ import {
   UserCog,
   Shield,
   Briefcase,
+  Tag,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -41,6 +42,7 @@ export function useSidebarNavigation(userRole?: string) {
       // { path: "/settings/notifications", label: "Notificaciones", icon: Bell },
       // { path: "/settings/integrations", label: "Integraciones", icon: Link },
       { path: "/settings/services", label: "Servicios", icon: Briefcase },
+      { path: "/settings/labels", label: "Etiquetas", icon: Tag },
     ];
 
     switch (normalizedRole as UserRole) {
