@@ -6,6 +6,8 @@ import { Stethoscope, ClipboardList } from "lucide-react";
 import { patientsService } from "@/lib/services/patients/patients.service";
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
 import { useClinicalHistory } from "@/lib/hooks/clinical-history";
+import { usePermission } from "@/lib/hooks/use-permission";
+import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { PatientInfoColumn } from "./PatientInfoColumn";
 import { MedicalAntecedentsColumn } from "./MedicalAntecedentsColumn";
 import { AppointmentsColumn } from "./AppointmentsColumn";
@@ -36,6 +38,9 @@ export function ClinicalHistoryPage({
 
   const { snapshot, loading: snapshotLoading, loadSnapshot, refresh } =
     useClinicalHistory();
+
+  const { isAdmin, can } = usePermission();
+  const canManageAttachments = isAdmin || can('patients', PermissionAction.EDIT);
 
   // Load patient
   useEffect(() => {
@@ -124,6 +129,8 @@ export function ClinicalHistoryPage({
                 patient={patient}
                 medicalHistory={snapshot?.medicalHistory ?? null}
                 patientHeader={snapshot?.patientHeader ?? null}
+                canUpload={canManageAttachments}
+                canDelete={canManageAttachments}
               />
             )}
           </div>

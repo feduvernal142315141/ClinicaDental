@@ -15,9 +15,9 @@ import {
   Droplets,
   Shield,
   AlertCircle,
-  Paperclip,
   Edit,
 } from "lucide-react";
+import { PatientAttachmentsSection } from "@/components/features/patients/attachments/PatientAttachmentsSection";
 import type { Patient } from "@/lib/entity/patients/patients";
 import type {
   ClinicalHistoryMedicalHistory,
@@ -28,6 +28,8 @@ interface PatientInfoColumnProps {
   patient: Patient;
   medicalHistory: ClinicalHistoryMedicalHistory | null;
   patientHeader: ClinicalHistoryPatientHeader | null;
+  canUpload?: boolean;
+  canDelete?: boolean;
 }
 
 function InfoRow({
@@ -55,6 +57,8 @@ export function PatientInfoColumn({
   patient,
   medicalHistory,
   patientHeader,
+  canUpload = false,
+  canDelete = false,
 }: PatientInfoColumnProps) {
   const router = useRouter();
 
@@ -147,18 +151,11 @@ export function PatientInfoColumn({
         <Separator />
 
         {/* Archivos */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Paperclip className="h-4 w-4" />
-            Archivos
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Sin archivos adjuntos
-          </p>
-          <Button variant="outline" size="sm" disabled className="w-full text-xs">
-            Agregar archivo (próximamente)
-          </Button>
-        </div>
+        <PatientAttachmentsSection
+          patientId={patient.id}
+          canUpload={canUpload}
+          canDelete={canDelete}
+        />
 
         <Separator />
 
