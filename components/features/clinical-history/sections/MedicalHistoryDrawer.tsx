@@ -73,24 +73,37 @@ export function MedicalHistoryDrawer({
     }
   }, [open, medicalHistory, form]);
 
-  const handleFinish = async (values: unknown) => {
+  const handleFinish = async (values: Record<string, unknown>) => {
+    // intensity 0 = "sin dolor" — backend validator rejects 0, expects null when not applicable
+    const rawIntensity = values.painIntensity as number | undefined;
+    const intensity = rawIntensity && rawIntensity > 0 ? rawIntensity : null;
+
+    // Only include currentPain object if at least one field is filled
+    const hasPainData =
+      intensity !== null ||
+      (values.painLocation as string)?.trim() ||
+      values.painType ||
+      (values.painDuration as string)?.trim();
+
     const data: UpdateMedicalHistoryRequest = {
-      occupation: values.occupation,
-      maritalStatus: values.maritalStatus,
-      systemicDiseases: values.systemicDiseases ?? [],
-      currentMedications: values.currentMedications ?? [],
-      allergies: values.allergies ?? [],
-      previousSurgeries: values.previousSurgeries ?? [],
-      chiefComplaint: values.chiefComplaint,
-      habits: values.habits ?? [],
-      currentPain: {
-        location: values.painLocation,
-        intensity: values.painIntensity,
-        type: values.painType,
-        duration: values.painDuration,
-      },
+      occupation: values.occupation as string,
+      maritalStatus: values.maritalStatus as string,
+      systemicDiseases: (values.systemicDiseases as string[]) ?? [],
+      currentMedications: (values.currentMedications as string[]) ?? [],
+      allergies: (values.allergies as string[]) ?? [],
+      previousSurgeries: (values.previousSurgeries as string[]) ?? [],
+      chiefComplaint: values.chiefComplaint as string,
+      habits: (values.habits as string[]) ?? [],
+      currentPain: hasPainData
+        ? {
+            location: values.painLocation as string,
+            intensity: intensity ?? undefined,
+            type: values.painType as string,
+            duration: values.painDuration as string,
+          }
+        : undefined,
       lastDentalVisit: values.lastDentalVisit
-        ? values.lastDentalVisit.format("YYYY-MM-DD")
+        ? (values.lastDentalVisit as { format: (s: string) => string }).format("YYYY-MM-DD")
         : undefined,
     };
     await onSave(data);
