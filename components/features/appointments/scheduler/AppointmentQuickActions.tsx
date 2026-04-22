@@ -34,9 +34,11 @@ export function AppointmentQuickActions({
   const isActionable = isAppointmentActionable(appointment);
   // A scheduled appointment whose start is in the past is ready to complete
   const canComplete = appointment.status === "scheduled" && !isActionable;
-  // Cualquier cita en estado `scheduled` puede cancelarse (incluye no-shows
-  // con hora ya pasada). El backend valida completed/cancelled.
-  const canCancel = appointment.status === "scheduled";
+  // Cancelar: scheduled o in_progress. No si completed, cancelled, no_show, no-show.
+  const canCancel =
+    appointment.status === "scheduled" || appointment.status === "in_progress";
+  // Reagendar: solo scheduled
+  const canReschedule = appointment.status === "scheduled";
   // "Iniciar consulta" solo si la cita está programada y tiene paciente.
   const canStartConsultation =
     appointment.status === "scheduled" && !!appointment.patientId;
@@ -66,7 +68,7 @@ export function AppointmentQuickActions({
           onClick: () => onComplete(appointment),
         }
       : null,
-    onReschedule && isActionable
+    onReschedule && canReschedule
       ? {
           key: "reschedule",
           icon: <CalendarOutlined />,

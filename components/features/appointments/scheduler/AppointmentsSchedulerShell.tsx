@@ -11,6 +11,8 @@ import { AppointmentsSpecialistSidebar } from "./AppointmentsSpecialistSidebar";
 import { AppointmentsDayGrid } from "./AppointmentsDayGrid";
 import { AppointmentsWeekGrid } from "./AppointmentsWeekGrid";
 import { AppointmentsMonthGrid } from "./AppointmentsMonthGrid";
+import { CancelModal } from "./CancelModal";
+import { RescheduleModal } from "./RescheduleModal";
 import {
   getTemporalCategory,
   type AppointmentTemporalCategory,
@@ -42,6 +44,8 @@ export function AppointmentsSchedulerShell({
 }: AppointmentsSchedulerShellProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
+  const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null);
 
   // Detect mobile
   useEffect(() => {
@@ -67,10 +71,11 @@ export function AppointmentsSchedulerShell({
 
   const handleReschedule = useCallback(
     (appointment: Appointment) => {
-      onEditAppointment(appointment.id);
+      setRescheduleTarget(appointment);
     },
-    [onEditAppointment],
+    [],
   );
+
 
   const handleStartConsultation = useCallback(
     (appointment: Appointment) => {
@@ -81,9 +86,9 @@ export function AppointmentsSchedulerShell({
 
   const handleCancel = useCallback(
     (appointment: Appointment) => {
-      scheduler.cancelAppointment(appointment);
+      setCancelTarget(appointment);
     },
-    [scheduler],
+    [],
   );
 
   const handleComplete = useCallback(
@@ -100,6 +105,11 @@ export function AppointmentsSchedulerShell({
     },
     [scheduler],
   );
+
+  // Invalidate cache after modal success
+  const handleModalSuccess = useCallback(() => {
+    scheduler.invalidateCache();
+  }, [scheduler]);
 
   // ---- Sidebar content (shared between inline and Drawer) ------------------
   const sidebarContent = (
@@ -172,6 +182,43 @@ export function AppointmentsSchedulerShell({
 
   return (
     <div>
+      {/* Modales de cancelar y reagendar */}
+      {cancelTarget && (
+        <CancelModal
+          appointment={{
+            id: cancelTarget.id,
+            patientName: cancelTarget.patientName,
+            scheduledStartAt: cancelTarget.scheduledStartAt,
+            scheduledEndAt: cancelTarget.scheduledEndAt,
+            date: cancelTarget.date,
+            time: cancelTarget.time,
+            status: cancelTarget.status,
+          }}
+          isOpen={!!cancelTarget}
+          onClose={() => setCancelTarget(null)}
+          onSuccess={handleModalSuccess}
+        />
+      )}
+      {rescheduleTarget && (
+        <RescheduleModal
+          appointment={{
+            id: rescheduleTarget.id,
+            doctorId: rescheduleTarget.doctorId,
+            doctor_id: rescheduleTarget.doctor_id,
+            patientName: rescheduleTarget.patientName,
+            doctorName: rescheduleTarget.doctorName,
+            serviceName: rescheduleTarget.serviceName,
+            scheduledStartAt: rescheduleTarget.scheduledStartAt,
+            scheduledEndAt: rescheduleTarget.scheduledEndAt,
+            date: rescheduleTarget.date,
+            time: rescheduleTarget.time,
+            duration: rescheduleTarget.duration,
+          }}
+          isOpen={!!rescheduleTarget}
+          onClose={() => setRescheduleTarget(null)}
+          onSuccess={handleModalSuccess}
+        />
+      )}
       {/* Toolbar */}
       <AppointmentsSchedulerToolbar
         viewMode={scheduler.viewMode}

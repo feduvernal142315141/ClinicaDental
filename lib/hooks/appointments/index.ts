@@ -10,3 +10,5 @@ export { useAppointmentCalendar } from "./use-appointment-calendar";
 export { useAppointmentAvailability } from "./use-appointment-availability";
 export { useDoctorAppointments } from "./use-doctor-appointments";
 export { useAppointmentsScheduler } from "./use-appointments-scheduler";
+export { useCancelAppointment } from "./use-cancel-appointment";
+export { useRescheduleAppointment } from "./use-reschedule-appointment";

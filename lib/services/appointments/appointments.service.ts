@@ -12,6 +12,7 @@ import type {
   AppointmentStatus,
   AppointmentsQueryParams,
   AvailabilityResponse,
+  CancellationReasonCode,
   CreateAppointmentRequest,
   PaginatedAppointmentsResponse,
   UpdateAppointmentRequest,
@@ -151,6 +152,16 @@ function normalizeAppointment(raw: unknown): Appointment {
       toStringValue(source.createdAt) ?? toStringValue(source.createAt),
     updatedAt:
       toStringValue(source.updatedAt) ?? toStringValue(source.updateAt),
+    scheduledStartAt: toStringValue(source.scheduledStartAt),
+    scheduledEndAt: toStringValue(source.scheduledEndAt),
+    // Audit fields
+    cancellationReason: toStringValue(source.cancellationReason),
+    cancellationReasonCode: toStringValue(source.cancellationReasonCode) as CancellationReasonCode | undefined,
+    cancelledAt: toStringValue(source.cancelledAt),
+    rescheduledAt: toStringValue(source.rescheduledAt),
+    actualStartAt: toStringValue(source.actualStartAt),
+    adjustedAt: toStringValue(source.adjustedAt),
+    adjustmentReason: toStringValue(source.adjustmentReason),
   };
 }
 
@@ -267,16 +278,19 @@ async function updateAppointmentStatus(
 
 /**
  * Cancela una cita cambiando su estado a 'cancelled'.
- * Solo citas con estado 'scheduled' pueden ser canceladas.
+ * Solo citas con estado 'scheduled' o 'in_progress' pueden ser canceladas.
  * Endpoint: PATCH /appointments/{id}/cancel
  */
-async function cancelAppointment(id: string): Promise<boolean> {
+async function cancelAppointment(
+  id: string,
+  data?: { reason?: string; reasonCode?: CancellationReasonCode },
+): Promise<boolean> {
   if (!id) {
     handleServiceError(null, "ID de cita requerido para cancelar");
   }
 
   const response = (await apiInstance
-    .patch<boolean>(`${endpoint}/${id}/cancel`, {})
+    .patch<boolean>(`${endpoint}/${id}/cancel`, data ?? {})
     .catch((err) => err.response as unknown)) as
     | {
         status?: number;
@@ -365,8 +379,65 @@ async function getDoctorAvailability(
   return [];
 }
 
+/**
+ * Reagenda una cita a una nueva fecha/hora.
+ * Solo citas con estado 'scheduled' pueden ser reagendadas.
+ * Endpoint: PUT /appointments/{id}/reschedule
+ */
+async function rescheduleAppointment(
+  id: string,
+  data: { scheduledStartAt: string; scheduledEndAt: string },
+): Promise<boolean> {
+  const response = (await apiInstance
+    .put<boolean>(`${endpoint}/${id}/reschedule`, data)
+    .catch((err) => err.response as unknown)) as
+    | { status?: number; data?: unknown; message?: string }
+    | undefined;
+
+  if (
+    response &&
+    typeof response.status === "number" &&
+    response.status >= 200 &&
+    response.status < 300
+  ) {
+    return true;
+  }
+
+  const err = response as { status?: number; data?: { message?: string }; message?: string } | undefined;
+  if (err?.status === 409) {
+    throw Object.assign(
+      new Error(err?.data?.message ?? "El doctor tiene otra cita en ese horario"),
+      { status: 409 },
+    );
+  }
+
+  throw new Error(getErrorMessage(response, "Error al reagendar la cita"));
+}
+
+/**
+ * Inicia una cita cambiando su estado a 'in_progress'.
+ * Endpoint: PATCH /appointments/{id}/start
+ */
+async function startAppointment(id: string): Promise<{ appointmentAdjusted?: boolean; adjustedStartAt?: string }> {
+  const response = (await apiInstance
+    .patch<{ appointmentAdjusted?: boolean; adjustedStartAt?: string }>(`${endpoint}/${id}/start`, {})
+    .catch((err) => err.response as unknown)) as
+    | { status?: number; data?: { appointmentAdjusted?: boolean; adjustedStartAt?: string }; message?: string }
+    | undefined;
+
+  if (
+    response &&
+    typeof response.status === "number" &&
+    response.status >= 200 &&
+    response.status < 300
+  ) {
+    return response.data ?? {};
+  }
+
+  throw new Error(getErrorMessage(response, "Error al iniciar la cita"));
+}
+
 async function completeAppointment(id: string): Promise<boolean> {
-  const response = await servicePatch<boolean>(`${endpoint}/${id}/complete`);
 
   if (
     response &&
@@ -388,6 +459,8 @@ export const appointmentsService = {
   /** @deprecated Usar cancelAppointment en su lugar */
   updateAppointmentStatus,
   cancelAppointment,
+  rescheduleAppointment,
+  startAppointment,
   completeAppointment,
   getDoctorAppointments,
   getPatientAppointments,

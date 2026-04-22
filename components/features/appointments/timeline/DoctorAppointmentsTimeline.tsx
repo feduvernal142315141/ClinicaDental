@@ -56,6 +56,18 @@ const STATUS_CONFIG: Record<
     tagColor: "warning",
     hex: "#faad14",
   },
+  no_show: {
+    color: "orange",
+    label: "No asistió",
+    tagColor: "warning",
+    hex: "#faad14",
+  },
+  in_progress: {
+    color: "purple",
+    label: "En curso",
+    tagColor: "processing",
+    hex: "#722ed1",
+  },
 };
 
 const TYPE_LABELS: Record<string, string> = {

@@ -8,7 +8,16 @@ export type AppointmentStatus =
   | "scheduled"
   | "completed"
   | "cancelled"
-  | "no-show";
+  | "no-show"
+  | "in_progress"
+  | "no_show";
+
+export type CancellationReasonCode =
+  | "PATIENT_CANCELLED"
+  | "DOCTOR_CONFLICT"
+  | "RESCHEDULE_REQUEST"
+  | "NO_SHOW"
+  | "OTHER";
 
 export type AppointmentType =
   | "consultation"
@@ -60,6 +69,18 @@ export interface Appointment {
    * Si sólo hay uno, coincide con los campos legacy.
    */
   services?: AppointmentServiceSnapshot[];
+
+  scheduledStartAt?: string; // ISO datetime
+  scheduledEndAt?: string;   // ISO datetime
+
+  // Audit fields (HU-APPT-005)
+  cancellationReason?: string;
+  cancellationReasonCode?: CancellationReasonCode;
+  cancelledAt?: string;
+  rescheduledAt?: string;
+  actualStartAt?: string;
+  adjustedAt?: string;
+  adjustmentReason?: string;
 
   // Backward compatibility with legacy payloads
   patient_id?: string;
