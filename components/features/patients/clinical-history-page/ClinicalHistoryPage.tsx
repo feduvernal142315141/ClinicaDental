@@ -41,6 +41,7 @@ export function ClinicalHistoryPage({
 
   const { isAdmin, can } = usePermission();
   const canManageAttachments = isAdmin || can('patients', PermissionAction.EDIT);
+  const canEditMedicalHistory = isAdmin || can('clinical_history', PermissionAction.EDIT) || can('clinical_history', PermissionAction.CREATE);
 
   // Load patient
   useEffect(() => {
@@ -147,6 +148,7 @@ export function ClinicalHistoryPage({
                 patientHeader={snapshot?.patientHeader ?? null}
                 patientId={patientId}
                 onMedicalHistoryUpdated={() => refresh()}
+                canEdit={canEditMedicalHistory}
               />
             )}
           </div>

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Tag, Badge, Input, Button as AntButton } from "antd";
+import { Tag, Badge } from "antd";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, Edit } from "lucide-react";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { MedicalHistoryDrawer } from "@/components/features/clinical-history/sections/MedicalHistoryDrawer";
+import { ClinicalNotesEditor } from "@/components/features/clinical-history/notes/ClinicalNotesEditor";
+import { useClinicalNotes } from "@/lib/hooks/clinical-history";
 import type {
   ClinicalHistoryMedicalHistory,
   ClinicalHistoryPatientHeader,
@@ -13,8 +15,6 @@ import type {
   UpdateMedicalHistoryRequest,
 } from "@/lib/entity/clinical-history";
 import { ALERT_SEVERITY_COLORS } from "@/lib/entity/clinical-history";
-
-const { TextArea } = Input;
 
 const SEVERITY_BADGE_STATUS: Record<AlertSeverity, "error" | "warning" | "processing"> = {
   critical: "error",
@@ -27,6 +27,7 @@ interface MedicalAntecedentsColumnProps {
   patientHeader: ClinicalHistoryPatientHeader | null;
   patientId: string;
   onMedicalHistoryUpdated?: () => void;
+  canEdit?: boolean;
 }
 
 function TagList({
@@ -55,12 +56,13 @@ function TagList({
 export function MedicalAntecedentsColumn({
   medicalHistory,
   patientHeader,
-  patientId: _patientId,
+  patientId,
   onMedicalHistoryUpdated,
+  canEdit = false,
 }: MedicalAntecedentsColumnProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerLoading, setDrawerLoading] = useState(false);
-  const [notes, setNotes] = useState("");
+  const { saving, save } = useClinicalNotes(patientId, medicalHistory?.clinicalNotes);
 
   const handleSaveDrawer = async (_data: UpdateMedicalHistoryRequest) => {
     setDrawerLoading(true);
@@ -167,20 +169,18 @@ export function MedicalAntecedentsColumn({
         <CardHeader className="pb-2 pt-4 px-4">
           <CardTitle className="text-sm">Notas clínicas</CardTitle>
         </CardHeader>
-        <CardContent className="px-4 pb-4 space-y-2">
-          <TextArea
-            rows={5}
-            placeholder="Escribir notas clínicas..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+        <CardContent className="px-4 pb-4">
+          <ClinicalNotesEditor
+            patientId={patientId}
+            initialContent={medicalHistory?.clinicalNotes}
+            updatedAt={medicalHistory?.clinicalNotesUpdatedAt}
+            updatedBy={medicalHistory?.clinicalNotesUpdatedBy}
+            readOnly={!canEdit}
+            onSave={async (html) => {
+              await save(html);
+            }}
+            saving={saving}
           />
-          <AntButton
-            type="primary"
-            size="small"
-            onClick={() => console.log("TODO: HU-CLIN-003", notes)}
-          >
-            Guardar
-          </AntButton>
         </CardContent>
       </Card>
 
