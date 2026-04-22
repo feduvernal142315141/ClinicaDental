@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Spin } from "antd";
-import { Play, Stethoscope } from "lucide-react";
+import { Plus, Stethoscope, ClipboardList } from "lucide-react";
 import { CancelModal } from "@/components/features/appointments/scheduler/CancelModal";
 import { RescheduleModal } from "@/components/features/appointments/scheduler/RescheduleModal";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
@@ -16,33 +16,22 @@ interface AppointmentsColumnProps {
   onViewOdontogram?: (visitId: string) => void;
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase pt-4 pb-2 border-b border-border mb-1">
-      {children}
-    </p>
-  );
-}
-
 function parseDateParts(dateStr: string): {
   day: string;
   monthShort: string;
-  year: string;
 } {
   const MONTHS = [
     "ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
     "JUL", "AGO", "SEP", "OCT", "NOV", "DIC",
   ];
   try {
-    // dateStr may be "YYYY-MM-DD" or similar
     const d = new Date(dateStr + "T00:00:00");
     return {
       day: String(d.getDate()).padStart(2, "0"),
       monthShort: MONTHS[d.getMonth()],
-      year: String(d.getFullYear()),
     };
   } catch {
-    return { day: "--", monthShort: "---", year: "----" };
+    return { day: "--", monthShort: "---" };
   }
 }
 
@@ -55,38 +44,26 @@ function ScheduledCard({
   onCancel: () => void;
   onReschedule: () => void;
 }) {
-  const { day, monthShort, year } = parseDateParts(appointment.date);
+  const { day, monthShort } = parseDateParts(appointment.date);
   return (
-    <div className="flex border-b py-3 gap-3">
-      <div className="flex flex-col items-center justify-start min-w-[40px] border-l-2 border-blue-500 pl-2">
-        <span className="text-2xl font-bold leading-none text-blue-600">
-          {day}
-        </span>
-        <span className="text-[10px] font-semibold text-blue-500 uppercase">
-          {monthShort}
-        </span>
-        <span className="text-[10px] text-muted-foreground">{year}</span>
+    <div className="p-5 flex gap-4 hover:bg-muted/40 transition-colors">
+      <div className="w-12 h-12 bg-blue-50 rounded-lg text-blue-600 flex flex-col items-center justify-center shrink-0">
+        <span className="text-lg font-bold leading-none">{day}</span>
+        <span className="text-[10px] font-semibold uppercase">{monthShort}</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">
+        <p className="text-sm font-semibold text-foreground truncate">
           {appointment.serviceName ?? appointment.reason ?? "Consulta"}
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {appointment.time}
           {appointment.doctorName && ` · Dr. ${appointment.doctorName}`}
         </p>
-        <div className="flex gap-1 mt-1.5 items-center">
-          <button
-            onClick={onCancel}
-            className="text-xs text-red-500 hover:underline"
-          >
+        <div className="mt-2 flex gap-3 text-xs font-semibold">
+          <button onClick={onCancel} className="text-red-500 hover:underline">
             Cancelar
           </button>
-          <span className="text-muted-foreground">·</span>
-          <button
-            onClick={onReschedule}
-            className="text-xs text-blue-500 hover:underline"
-          >
+          <button onClick={onReschedule} className="text-blue-500 hover:underline">
             Reagendar
           </button>
         </div>
@@ -102,23 +79,18 @@ function CompletedCard({
   appointment: Appointment;
   onViewOdontogram?: (visitId: string) => void;
 }) {
-  const { day, monthShort, year } = parseDateParts(appointment.date);
+  const { day, monthShort } = parseDateParts(appointment.date);
   return (
-    <div className="flex border-b py-3 gap-3">
-      <div className="flex flex-col items-center justify-start min-w-[40px] border-l-2 border-green-500 pl-2">
-        <span className="text-2xl font-bold leading-none text-green-600">
-          {day}
-        </span>
-        <span className="text-[10px] font-semibold text-green-500 uppercase">
-          {monthShort}
-        </span>
-        <span className="text-[10px] text-muted-foreground">{year}</span>
+    <div className="p-5 flex gap-4 hover:bg-muted/40 transition-colors">
+      <div className="w-12 h-12 bg-green-50 rounded-lg text-green-600 flex flex-col items-center justify-center shrink-0">
+        <span className="text-lg font-bold leading-none">{day}</span>
+        <span className="text-[10px] font-semibold uppercase">{monthShort}</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">
+        <p className="text-sm font-semibold text-foreground truncate">
           {appointment.serviceName ?? appointment.reason ?? "Consulta"}
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {appointment.time}
           {appointment.doctorName && ` · Dr. ${appointment.doctorName}`}
         </p>
@@ -196,7 +168,7 @@ export function AppointmentsColumn({
               className="w-full group flex items-center justify-center gap-3 p-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-300 disabled:hover:text-gray-500 disabled:hover:bg-transparent"
             >
               <div className="bg-gray-100 group-hover:bg-blue-100 p-2 rounded-full transition-colors">
-                <Play className="h-4 w-4" />
+                <Plus className="h-4 w-4" />
               </div>
               <span className="font-bold text-sm">Iniciar Nueva Consulta</span>
             </button>
@@ -206,45 +178,68 @@ export function AppointmentsColumn({
           {inProgress.length > 0 && <InProgressBanner appts={inProgress} />}
 
           {/* Consultas agendadas */}
-          <SectionLabel>CONSULTAS AGENDADAS</SectionLabel>
-          {scheduled.length === 0 && (
-            <p className="text-xs text-muted-foreground py-2">
-              Sin consultas agendadas
-            </p>
-          )}
-          {scheduled.map((appt) => (
-            <ScheduledCard
-              key={appt.id}
-              appointment={appt}
-              onCancel={() => setCancelAppointment(appt)}
-              onReschedule={() => setRescheduleAppointment(appt)}
-            />
-          ))}
+          <section className="bg-card rounded-xl border border-border overflow-hidden mb-4">
+            <div className="px-5 py-3 border-b border-border">
+              <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                Consultas Agendadas
+              </h3>
+            </div>
+            <div className="divide-y divide-border">
+              {scheduled.length === 0 ? (
+                <p className="text-xs text-muted-foreground p-5">
+                  Sin consultas agendadas
+                </p>
+              ) : (
+                scheduled.map((appt) => (
+                  <ScheduledCard
+                    key={appt.id}
+                    appointment={appt}
+                    onCancel={() => setCancelAppointment(appt)}
+                    onReschedule={() => setRescheduleAppointment(appt)}
+                  />
+                ))
+              )}
+            </div>
+          </section>
 
           {/* Consultas realizadas */}
-          <SectionLabel>CONSULTAS REALIZADAS</SectionLabel>
-          {completed.length === 0 && (
-            <p className="text-xs text-muted-foreground py-2">
-              Sin consultas realizadas
-            </p>
-          )}
-          {completed
-            .slice(0, showAll ? undefined : 5)
-            .map((appt) => (
-              <CompletedCard
-                key={appt.id}
-                appointment={appt}
-                onViewOdontogram={onViewOdontogram}
-              />
-            ))}
-          {completed.length > 5 && !showAll && (
-            <button
-              onClick={() => setShowAll(true)}
-              className="text-xs text-blue-500 hover:underline py-2 text-center w-full"
-            >
-              Ver {completed.length - 5} más
-            </button>
-          )}
+          <section className="bg-card rounded-xl border border-border overflow-hidden mb-4">
+            <div className="px-5 py-3 border-b border-border">
+              <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                Consultas Realizadas
+              </h3>
+            </div>
+            <div className="divide-y divide-border">
+              {completed.length === 0 ? (
+                <div className="p-8 flex flex-col items-center text-center">
+                  <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center mb-3">
+                    <ClipboardList className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Sin consultas realizadas</p>
+                </div>
+              ) : (
+                <>
+                  {completed
+                    .slice(0, showAll ? undefined : 5)
+                    .map((appt) => (
+                      <CompletedCard
+                        key={appt.id}
+                        appointment={appt}
+                        onViewOdontogram={onViewOdontogram}
+                      />
+                    ))}
+                  {completed.length > 5 && !showAll && (
+                    <button
+                      onClick={() => setShowAll(true)}
+                      className="text-xs text-blue-500 hover:underline py-3 text-center w-full"
+                    >
+                      Ver {completed.length - 5} más
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
         </>
       )}
 

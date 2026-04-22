@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Tag, Badge } from "antd";
+import { Badge } from "antd";
 import { AlertTriangle, Edit } from "lucide-react";
-import { Separator } from "@/components/ui/primitives/shadcn/separator";
-import { Button } from "@/components/ui/primitives/shadcn/button";
 import { MedicalHistoryDrawer } from "@/components/features/clinical-history/sections/MedicalHistoryDrawer";
 import { ClinicalNotesEditor } from "@/components/features/clinical-history/notes/ClinicalNotesEditor";
 import { useClinicalNotes } from "@/lib/hooks/clinical-history";
@@ -34,42 +32,23 @@ interface MedicalAntecedentsColumnProps {
   canEdit?: boolean;
 }
 
-function SectionBlock({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="py-3">
-      <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase mb-2">
-        {title}
-      </p>
-      {children}
-    </div>
-  );
-}
-
-function TagList({
+function AntecedentItem({
+  label,
   items,
-  color,
-  emptyText,
+  empty,
 }: {
-  items: string[];
-  color: string;
-  emptyText: string;
+  label: string;
+  items?: string[];
+  empty: string;
 }) {
-  if (!items.length) {
-    return <p className="text-xs text-muted-foreground">{emptyText}</p>;
-  }
   return (
-    <div className="flex flex-wrap gap-1">
-      {items.map((item) => (
-        <Tag key={item} color={color}>
-          {item}
-        </Tag>
-      ))}
+    <div>
+      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+        {label}
+      </label>
+      <p className="text-sm text-foreground">
+        {items?.length ? items.join(", ") : empty}
+      </p>
     </div>
   );
 }
@@ -102,10 +81,10 @@ export function MedicalAntecedentsColumn({
   const alerts = patientHeader?.alerts ?? [];
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto px-4">
+    <div className="flex flex-col h-full overflow-y-auto px-4 gap-4">
       {/* Alertas — banner al tope */}
       {alerts.length > 0 && (
-        <div className="py-3 rounded-md bg-red-50 border border-red-200 px-3 my-3">
+        <div className="py-3 rounded-md bg-red-50 border border-red-200 px-3 mt-3">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="h-4 w-4 text-destructive" />
             <p className="text-xs font-semibold text-destructive uppercase tracking-wide">
@@ -126,73 +105,68 @@ export function MedicalAntecedentsColumn({
       )}
 
       {/* Antecedentes */}
-      <SectionBlock title="ANTECEDENTES">
-        <div className="space-y-3">
+      <section className="bg-card rounded-xl border border-border p-6">
+        <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1">
-              Alergias
+            <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+              Antecedentes Médicos
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Información general y clínica del paciente
             </p>
-            <TagList
-              items={medicalHistory?.allergies ?? []}
-              color="red"
-              emptyText="Sin alergias registradas"
-            />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1">
-              Medicamentos actuales
-            </p>
-            <TagList
-              items={medicalHistory?.currentMedications ?? []}
-              color="blue"
-              emptyText="Sin medicamentos registrados"
-            />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1">
-              Cirugías previas
-            </p>
-            <TagList
-              items={medicalHistory?.previousSurgeries ?? []}
-              color="orange"
-              emptyText="Sin cirugías registradas"
-            />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1">
-              Enfermedades sistémicas
-            </p>
-            <TagList
-              items={medicalHistory?.systemicDiseases ?? []}
-              color="purple"
-              emptyText="Sin enfermedades sistémicas registradas"
-            />
           </div>
           {canEdit && (
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={() => setDrawerOpen(true)}
-              className="h-7 text-xs mt-1"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
             >
-              <Edit className="mr-1 h-3 w-3" />
-              Editar antecedentes
-            </Button>
+              <Edit className="h-4 w-4" />
+              Editar historia clínica
+            </button>
           )}
         </div>
-      </SectionBlock>
 
-      <Separator />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <AntecedentItem
+            label="Alergias"
+            items={medicalHistory?.allergies}
+            empty="Sin alergias registradas"
+          />
+          <AntecedentItem
+            label="Medicamentos actuales"
+            items={medicalHistory?.currentMedications}
+            empty="Sin medicamentos registrados"
+          />
+          <AntecedentItem
+            label="Cirugías previas"
+            items={medicalHistory?.previousSurgeries}
+            empty="Sin cirugías registradas"
+          />
+          <AntecedentItem
+            label="Enfermedades sistémicas"
+            items={medicalHistory?.systemicDiseases}
+            empty="Sin enfermedades sistémicas registradas"
+          />
+        </div>
+      </section>
 
       {/* Planes pendientes */}
-      <SectionBlock title="PLANES PENDIENTES">
-        <TreatmentPlansPendingSection patientId={patientId} />
-      </SectionBlock>
-
-      <Separator />
+      <section className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="px-5 py-4 border-b border-border">
+          <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+            Planes Pendientes
+          </h3>
+        </div>
+        <div className="p-5">
+          <TreatmentPlansPendingSection patientId={patientId} />
+        </div>
+      </section>
 
       {/* Notas de historial */}
-      <SectionBlock title="NOTAS DE HISTORIAL">
+      <section className="bg-card rounded-xl border border-border p-6">
+        <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
+          Notas de historial
+        </h3>
         <ClinicalNotesEditor
           patientId={patientId}
           initialContent={medicalHistory?.clinicalNotes}
@@ -204,7 +178,7 @@ export function MedicalAntecedentsColumn({
           }}
           saving={saving}
         />
-      </SectionBlock>
+      </section>
 
       <MedicalHistoryDrawer
         open={drawerOpen}
