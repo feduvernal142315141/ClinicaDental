@@ -1,10 +1,15 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useCallback, useRef } from "react";
 import { App } from "antd";
 import { DataTable, Card } from "@/components/ui/antd";
-import { usePatients, usePatientsPage } from "@/lib/hooks/patients";
+import {
+  usePatients,
+  usePatientsPage,
+  usePatientFilters,
+} from "@/lib/hooks/patients";
 import { getPatientsColumns } from "../columns/patients-table.config";
+import { PatientSearchBar } from "./PatientSearchBar";
 import type { Patient } from "@/lib/entity/patients";
 
 interface PatientListProps {
@@ -28,6 +33,21 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
 
   const { patients, loading, pagination, fetchPatients, deletePatient } =
     usePatients();
+
+  // Persist active filters and current pageSize across re-renders
+  const activeFiltersRef = useRef<string[]>([]);
+  const pageSizeRef = useRef(10);
+  pageSizeRef.current = pagination.pageSize;
+
+  const handleFiltersChange = useCallback(
+    (filters: string[]) => {
+      activeFiltersRef.current = filters;
+      fetchPatients({ page: 0, pageSize: pageSizeRef.current, filters });
+    },
+    [fetchPatients],
+  );
+
+  const { search, setSearch } = usePatientFilters(handleFiltersChange);
 
   // Load patients on component mount
   useEffect(() => {
@@ -56,7 +76,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
             page: pagination.page,
             pageSize: pagination.pageSize,
           });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_e) {
           message.error("No se pudo eliminar el paciente");
         }
@@ -77,6 +97,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
 
   return (
     <Card>
+      <PatientSearchBar value={search} onChange={setSearch} loading={loading} />
       <DataTable
         columns={columns}
         data={patients}
@@ -87,7 +108,11 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
         total={pagination.total}
         showSizeChanger={true}
         onPageChange={(page, pageSize) => {
-          fetchPatients({ page: page - 1, pageSize });
+          fetchPatients({
+            page: page - 1,
+            pageSize,
+            filters: activeFiltersRef.current,
+          });
         }}
       />
     </Card>
