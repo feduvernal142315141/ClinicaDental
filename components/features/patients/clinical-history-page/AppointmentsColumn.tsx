@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button as AntButton, Spin } from "antd";
+import { Spin } from "antd";
 import { Play, Stethoscope } from "lucide-react";
 import { CancelModal } from "@/components/features/appointments/scheduler/CancelModal";
 import { RescheduleModal } from "@/components/features/appointments/scheduler/RescheduleModal";
@@ -177,7 +177,7 @@ export function AppointmentsColumn({
   const startableAppointment = inProgress[0] ?? todayScheduled[0] ?? null;
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto pl-3 border-l border-border">
+    <div className="flex flex-col h-full overflow-y-auto pl-3">
       {loading ? (
         <div className="flex justify-center py-8">
           <Spin />
@@ -186,21 +186,20 @@ export function AppointmentsColumn({
         <>
           {/* Botón iniciar consulta — siempre al tope */}
           <div className="py-4">
-            <AntButton
-              type="primary"
-              block
-              size="large"
-              icon={<Play className="h-4 w-4" />}
+            <button
               onClick={() => {
                 if (startableAppointment && onStartConsultation) {
                   onStartConsultation(startableAppointment.id);
                 }
               }}
               disabled={!startableAppointment || !onStartConsultation}
-              style={{ height: 44, fontSize: 15, fontWeight: 600 }}
+              className="w-full group flex items-center justify-center gap-3 p-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-300 disabled:hover:text-gray-500 disabled:hover:bg-transparent"
             >
-              Iniciar Nueva Consulta
-            </AntButton>
+              <div className="bg-gray-100 group-hover:bg-blue-100 p-2 rounded-full transition-colors">
+                <Play className="h-4 w-4" />
+              </div>
+              <span className="font-bold text-sm">Iniciar Nueva Consulta</span>
+            </button>
           </div>
 
           {/* Consultas en curso */}

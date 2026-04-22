@@ -102,7 +102,7 @@ export function MedicalAntecedentsColumn({
   const alerts = patientHeader?.alerts ?? [];
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto px-4 border-r border-border">
+    <div className="flex flex-col h-full overflow-y-auto px-4">
       {/* Alertas — banner al tope */}
       {alerts.length > 0 && (
         <div className="py-3 rounded-md bg-red-50 border border-red-200 px-3 my-3">

@@ -2,13 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/primitives/shadcn/button";
-import { Separator } from "@/components/ui/primitives/shadcn/separator";
 import {
   User,
   Mail,
   Phone,
   MapPin,
-  Calendar,
   Briefcase,
   Heart,
   Droplets,
@@ -31,7 +29,45 @@ interface PatientInfoColumnProps {
   canDelete?: boolean;
 }
 
-function SectionBlock({
+/** Extracts YYYY-MM-DD from any ISO date string, avoiding timezone shift */
+function formatDateShort(isoDate?: string | null): string | null {
+  if (!isoDate) return null;
+  // Slice the first 10 chars is safe for all ISO formats: YYYY-MM-DDTHH:... or YYYY-MM-DD
+  return isoDate.slice(0, 10);
+}
+
+/** Accurate age calculation that accounts for birth month/day */
+function calculateAge(isoDate?: string | null): number | null {
+  if (!isoDate) return null;
+  const dateStr = isoDate.slice(0, 10); // YYYY-MM-DD
+  const [year, month, day] = dateStr.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const hasBirthdayPassed =
+    today.getMonth() + 1 > month ||
+    (today.getMonth() + 1 === month && today.getDate() >= day);
+  if (!hasBirthdayPassed) age -= 1;
+  return age;
+}
+
+function InfoRow({
+  icon: Icon,
+  value,
+}: {
+  icon: React.ElementType;
+  value?: string | null;
+}) {
+  if (!value) return null;
+  return (
+    <li className="flex items-start gap-3">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      <span className="text-sm text-muted-foreground break-all">{value}</span>
+    </li>
+  );
+}
+
+function SectionCard({
   title,
   children,
 }: {
@@ -39,33 +75,12 @@ function SectionBlock({
   children: React.ReactNode;
 }) {
   return (
-    <div className="py-3">
-      <p className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase mb-2">
+    <section className="bg-card rounded-xl border border-border p-5 space-y-3">
+      <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
         {title}
-      </p>
+      </h3>
       {children}
-    </div>
-  );
-}
-
-function InfoRow({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value?: string | null;
-}) {
-  if (!value) return null;
-  return (
-    <div className="flex items-start gap-2 text-sm mb-1.5">
-      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      <div className="min-w-0">
-        <span className="text-muted-foreground text-xs">{label}: </span>
-        <span className="font-medium text-xs">{value}</span>
-      </div>
-    </div>
+    </section>
   );
 }
 
@@ -78,9 +93,8 @@ export function PatientInfoColumn({
 }: PatientInfoColumnProps) {
   const router = useRouter();
 
-  const age = patient.dateOfBirth
-    ? new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()
-    : null;
+  const dobShort = formatDateShort(patient.dateOfBirth);
+  const age = calculateAge(patient.dateOfBirth);
 
   const genderLabel =
     patient.gender === "male"
@@ -89,95 +103,81 @@ export function PatientInfoColumn({
         ? "Femenino"
         : patient.gender ?? null;
 
-  const dob = patient.dateOfBirth ?? null;
+  const profileMeta = [
+    dobShort,
+    age !== null ? `${age} años` : null,
+    genderLabel,
+  ]
+    .filter(Boolean)
+    .join(" • ");
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto pr-3 border-r border-border">
-      {/* Avatar + nombre + edad — zona prominente */}
-      <div className="flex flex-col items-center gap-3 py-4 text-center">
-        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+    <div className="flex flex-col h-full overflow-y-auto pr-3 gap-5 py-2">
+      {/* Profile card */}
+      <section className="bg-card rounded-xl border border-border p-6 flex flex-col items-center text-center">
+        <div className="h-20 w-20 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center mb-3">
           <User className="h-10 w-10 text-blue-400" />
         </div>
-        <div>
-          <h2 className="text-lg font-bold leading-tight">{patient.name}</h2>
-          <p className="text-sm text-muted-foreground">
-            {dob && <span>{dob}</span>}
-            {dob && age !== null && <span> · </span>}
-            {age !== null && <span>{age} años</span>}
-            {genderLabel && (
-              <span className="ml-1 text-muted-foreground">· {genderLabel}</span>
-            )}
-          </p>
-        </div>
+        <h2 className="text-lg font-bold leading-tight">{patient.name}</h2>
+        {profileMeta && (
+          <p className="text-sm text-muted-foreground mt-0.5">{profileMeta}</p>
+        )}
         <Button
           variant="outline"
           size="sm"
+          className="mt-4"
           onClick={() => router.push(`/patients/${patient.id}/edit`)}
         >
           <Edit className="h-3.5 w-3.5 mr-1" />
-          Editar
+          Editar Perfil
         </Button>
-      </div>
+      </section>
 
-      <Separator />
+      {/* Contacto */}
+      <SectionCard title="Contacto">
+        <ul className="space-y-3">
+          <InfoRow icon={Mail} value={patient.email} />
+          <InfoRow icon={Phone} value={patient.phone} />
+          <InfoRow icon={MapPin} value={patient.address} />
+        </ul>
+      </SectionCard>
 
-      <SectionBlock title="CONTACTO">
-        <InfoRow icon={Mail} label="Email" value={patient.email} />
-        <InfoRow icon={Phone} label="Teléfono" value={patient.phone} />
-        <InfoRow icon={MapPin} label="Dirección" value={patient.address} />
-        <InfoRow icon={Calendar} label="Nacimiento" value={patient.dateOfBirth} />
-      </SectionBlock>
+      {/* Datos personales (de antecedentes) */}
+      {medicalHistory &&
+        (medicalHistory.occupation || medicalHistory.maritalStatus) && (
+          <SectionCard title="Datos Personales">
+            <ul className="space-y-3">
+              <InfoRow icon={Briefcase} value={medicalHistory.occupation} />
+              <InfoRow icon={Heart} value={medicalHistory.maritalStatus} />
+            </ul>
+          </SectionCard>
+        )}
 
-      {medicalHistory && (
-        <>
-          <Separator />
-          <SectionBlock title="DATOS PERSONALES">
-            <InfoRow
-              icon={Briefcase}
-              label="Ocupación"
-              value={medicalHistory.occupation}
-            />
-            <InfoRow
-              icon={Heart}
-              label="Estado civil"
-              value={medicalHistory.maritalStatus}
-            />
-          </SectionBlock>
-        </>
-      )}
+      {/* Clínico (de patientHeader) */}
+      {patientHeader &&
+        (patientHeader.bloodType ||
+          patientHeader.insurancePlan ||
+          patientHeader.emergencyContact) && (
+          <SectionCard title="Clínico">
+            <ul className="space-y-3">
+              <InfoRow icon={Droplets} value={patientHeader.bloodType} />
+              <InfoRow icon={Shield} value={patientHeader.insurancePlan} />
+              <InfoRow
+                icon={AlertCircle}
+                value={patientHeader.emergencyContact}
+              />
+            </ul>
+          </SectionCard>
+        )}
 
-      {patientHeader && (
-        <>
-          <Separator />
-          <SectionBlock title="CLÍNICO">
-            <InfoRow
-              icon={Droplets}
-              label="Tipo de sangre"
-              value={patientHeader.bloodType}
-            />
-            <InfoRow
-              icon={Shield}
-              label="Plan de seguro"
-              value={patientHeader.insurancePlan}
-            />
-            <InfoRow
-              icon={AlertCircle}
-              label="Contacto emergencia"
-              value={patientHeader.emergencyContact}
-            />
-          </SectionBlock>
-        </>
-      )}
-
-      <Separator />
-
-      <SectionBlock title="ARCHIVOS">
+      {/* Archivos */}
+      <SectionCard title="Archivos">
         <PatientAttachmentsSection
           patientId={patient.id}
           canUpload={canUpload}
           canDelete={canDelete}
         />
-      </SectionBlock>
+      </SectionCard>
     </div>
   );
 }

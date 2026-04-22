@@ -118,7 +118,7 @@ export function ClinicalHistoryPage({
         </span>
       ),
       children: (
-        <div className="grid grid-cols-[260px_1fr_300px] gap-4 h-full min-h-0">
+        <div className="grid grid-cols-[280px_1fr_300px] gap-6 h-full min-h-0">
           {/* Col 1: Patient info */}
           {snapshotLoading ? (
             <div className="flex h-40 items-center justify-center">
