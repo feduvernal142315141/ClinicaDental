@@ -1,15 +1,14 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Patient } from "@/lib/entity/patients/patients";
 import { LazyLoadingFallback } from "@/components/ui/atomic/feedback/lazy-loading-fallback";
 
-const PatientDetails = dynamic(
+const ClinicalHistoryPage = dynamic(
   () =>
-    import("@/components/patients/detail/PatientDetails").then(
-      (mod) => mod.PatientDetails
-    ),
+    import(
+      "@/components/features/patients/clinical-history-page/ClinicalHistoryPage"
+    ).then((mod) => mod.ClinicalHistoryPage),
   { loading: () => <LazyLoadingFallback /> }
 );
 
@@ -20,21 +19,10 @@ interface PatientDetailsPageClientProps {
 export function PatientDetailsPageClient({
   patient,
 }: PatientDetailsPageClientProps) {
-  const router = useRouter();
-
-  const handleEdit = (patientToEdit: Patient) => {
-    router.push(`/patients/${patientToEdit.id}/edit`);
-  };
-
-  const handleClose = () => {
-    router.push("/patients");
-  };
-
   return (
-    <PatientDetails
-      patient={patient}
-      onEdit={handleEdit}
-      onClose={handleClose}
+    <ClinicalHistoryPage
+      patientId={patient.id}
+      basePath={`/patients/${patient.id}`}
     />
   );
 }
