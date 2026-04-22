@@ -1,13 +1,39 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Collapse, Popconfirm, Space, Spin, Typography } from "antd";
+import { Button, Collapse, Popconfirm, Space, Spin, Tooltip, Typography } from "antd";
 import { EditOutlined, InboxOutlined, PlusOutlined } from "@ant-design/icons";
 import { useLabels, useArchiveLabel } from "@/lib/hooks/labels";
 import { LabelChip, LabelFormModal } from "@/components/app/labels";
 import type { Label } from "@/lib/entity/label";
 
 const { Text } = Typography;
+
+// ── Action button styles ────────────────────────────────────────────────────
+function actionBtnStyle(color: string): React.CSSProperties {
+  return {
+    background: color + "12",
+    border: `1.5px solid ${color}55`,
+    color: color,
+    borderRadius: 6,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "background 0.15s, border-color 0.15s",
+  };
+}
+function actionBtnHoverStyle(color: string): React.CSSProperties {
+  return {
+    background: color + "28",
+    border: `1.5px solid ${color}cc`,
+    color: color,
+    borderRadius: 6,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "background 0.15s, border-color 0.15s",
+  };
+}
 
 export default function LabelsSettingsPage() {
   const { labels, loading, refetch } = useLabels(true);
@@ -126,13 +152,17 @@ function LabelRow({
         )}
       </div>
       {!isArchived && (
-        <Space>
-          <Button
-            type="text"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => onEdit(label)}
-          />
+        <Space size={6}>
+          <Tooltip title="Editar etiqueta" mouseEnterDelay={0.3}>
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => onEdit(label)}
+              style={actionBtnStyle("#3B82F6")}
+              onMouseEnter={(e) => Object.assign((e.currentTarget as HTMLElement).style, actionBtnHoverStyle("#3B82F6"))}
+              onMouseLeave={(e) => Object.assign((e.currentTarget as HTMLElement).style, actionBtnStyle("#3B82F6"))}
+            />
+          </Tooltip>
           <Popconfirm
             title="¿Archivar esta etiqueta?"
             description="La etiqueta dejará de estar disponible para nuevas citas."
@@ -140,13 +170,16 @@ function LabelRow({
             okText="Archivar"
             cancelText="Cancelar"
           >
-            <Button
-              type="text"
-              size="small"
-              icon={<InboxOutlined />}
-              loading={loading}
-              danger
-            />
+            <Tooltip title="Archivar etiqueta" mouseEnterDelay={0.3}>
+              <Button
+                size="small"
+                icon={<InboxOutlined />}
+                loading={loading}
+                style={actionBtnStyle("#EF4444")}
+                onMouseEnter={(e) => Object.assign((e.currentTarget as HTMLElement).style, actionBtnHoverStyle("#EF4444"))}
+                onMouseLeave={(e) => Object.assign((e.currentTarget as HTMLElement).style, actionBtnStyle("#EF4444"))}
+              />
+            </Tooltip>
           </Popconfirm>
         </Space>
       )}
