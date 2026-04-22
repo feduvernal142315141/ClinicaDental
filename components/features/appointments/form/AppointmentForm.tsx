@@ -341,12 +341,8 @@ export function AppointmentForm({
             </Col>
 
             <Col xs={24}>
-              <Form.Item label="Etiquetas">
-                <LabelSelector
-                  value={(form.getFieldValue as (name: string) => string[] | undefined)("labelIds") ?? []}
-                  onChange={(ids) => (form.setFieldValue as (name: string, value: unknown) => void)("labelIds", ids)}
-                  disabled={readOnly}
-                />
+              <Form.Item name="labelIds" label="Etiquetas">
+                <LabelSelector disabled={readOnly} />
               </Form.Item>
             </Col>
           </Row>

@@ -8,14 +8,14 @@ import type { LabelSummary } from "@/lib/entity/label";
 
 interface LabelSelectorProps {
   appointmentId?: string;
-  value: string[];
-  onChange: (ids: string[]) => void;
+  value?: string[];
+  onChange?: (ids: string[]) => void;
   maxLabels?: number;
   disabled?: boolean;
 }
 
 export function LabelSelector({
-  value,
+  value = [],
   onChange,
   maxLabels = 5,
   disabled = false,

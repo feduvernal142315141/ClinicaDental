@@ -110,6 +110,8 @@ export interface CreateAppointmentRequest {
   serviceId?: string;
   /** Nuevo: lista de ids de servicios asociados a la cita (uno o más). */
   serviceIds?: string[];
+  /** IDs de etiquetas asociadas a la cita. */
+  labelIds?: string[];
 }
 
 /**
@@ -126,6 +128,8 @@ export interface UpdateAppointmentRequest {
   reason?: string;
   serviceId?: string;
   serviceIds?: string[];
+  /** IDs de etiquetas asociadas a la cita. */
+  labelIds?: string[];
 }
 
 /**
