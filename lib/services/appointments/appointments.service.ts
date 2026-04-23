@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import {
   serviceGet,
   servicePost,
@@ -116,7 +117,11 @@ function normalizeAppointment(raw: unknown): Appointment {
 
   return {
     id: toStringValue(source.id) ?? "",
-    date: toStringValue(source.date) ?? "",
+    date:
+      toStringValue(source.date) ??
+      (source.scheduledStartAt
+        ? dayjs(source.scheduledStartAt as string).format("YYYY-MM-DD")
+        : ""),
     time: toStringValue(source.time) ?? "",
     duration: toNumberValue(source.duration),
     status: status ?? "scheduled",
