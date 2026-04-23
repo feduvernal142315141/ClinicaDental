@@ -20,6 +20,7 @@ interface AppointmentQuickActionsProps {
   onReschedule?: (appointment: Appointment) => void;
   onCancel?: (appointment: Appointment) => void;
   onComplete?: (appointment: Appointment) => void;
+  startConsultationLoading?: boolean;
 }
 
 export function AppointmentQuickActions({
@@ -30,6 +31,7 @@ export function AppointmentQuickActions({
   onReschedule,
   onCancel,
   onComplete,
+  startConsultationLoading,
 }: AppointmentQuickActionsProps) {
   const isActionable = isAppointmentActionable(appointment);
   // A scheduled appointment whose start is in the past is ready to complete
@@ -39,16 +41,18 @@ export function AppointmentQuickActions({
     appointment.status === "scheduled" || appointment.status === "in_progress";
   // Reagendar: solo scheduled
   const canReschedule = appointment.status === "scheduled";
-  // "Iniciar consulta" solo si la cita está programada y tiene paciente.
+  // "Iniciar consulta" si la cita está scheduled o in_progress y tiene paciente.
   const canStartConsultation =
-    appointment.status === "scheduled" && !!appointment.patientId;
+    (appointment.status === "scheduled" || appointment.status === "in_progress") &&
+    !!appointment.patientId;
 
   const items: MenuProps["items"] = [
     onStartConsultation && canStartConsultation
       ? {
           key: "start-consultation",
           icon: <MedicineBoxOutlined />,
-          label: "Iniciar consulta",
+          label: appointment.status === "in_progress" ? "Continuar consulta" : "Iniciar consulta",
+          disabled: startConsultationLoading,
           onClick: () => onStartConsultation(appointment),
         }
       : null,

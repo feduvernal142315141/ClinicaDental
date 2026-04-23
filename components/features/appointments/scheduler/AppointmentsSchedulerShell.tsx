@@ -30,6 +30,7 @@ interface AppointmentsSchedulerShellProps {
   onViewDetail: (appointmentId: string) => void;
   onEditAppointment: (appointmentId: string) => void;
   onStartConsultation: (appointment: Appointment) => void;
+  startConsultationLoading?: boolean;
 }
 
 const MOBILE_BREAKPOINT = 768;
@@ -41,6 +42,7 @@ export function AppointmentsSchedulerShell({
   onViewDetail,
   onEditAppointment,
   onStartConsultation,
+  startConsultationLoading,
 }: AppointmentsSchedulerShellProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -147,6 +149,7 @@ export function AppointmentsSchedulerShell({
             onReschedule={canCreate ? handleReschedule : undefined}
             onCancel={canCreate ? handleCancel : undefined}
             onComplete={canCreate ? handleComplete : undefined}
+            startConsultationLoading={startConsultationLoading}
           />
         );
       }
@@ -164,6 +167,7 @@ export function AppointmentsSchedulerShell({
             onReschedule={canCreate ? handleReschedule : undefined}
             onCancel={canCreate ? handleCancel : undefined}
             onComplete={canCreate ? handleComplete : undefined}
+            startConsultationLoading={startConsultationLoading}
           />
         );
       case "month":
@@ -178,6 +182,7 @@ export function AppointmentsSchedulerShell({
             onReschedule={canCreate ? handleReschedule : undefined}
             onCancel={canCreate ? handleCancel : undefined}
             onComplete={canCreate ? handleComplete : undefined}
+            startConsultationLoading={startConsultationLoading}
           />
         );
     }

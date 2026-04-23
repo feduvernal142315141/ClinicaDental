@@ -22,6 +22,7 @@ interface AppointmentsMonthGridProps {
   onReschedule?: (appointment: Appointment) => void;
   onCancel?: (appointment: Appointment) => void;
   onComplete?: (appointment: Appointment) => void;
+  startConsultationLoading?: boolean;
 }
 
 export function AppointmentsMonthGrid({
@@ -34,6 +35,7 @@ export function AppointmentsMonthGrid({
   onReschedule,
   onCancel,
   onComplete,
+  startConsultationLoading,
 }: AppointmentsMonthGridProps) {
   const hasAnyEvents = Array.from(eventsByDay.values()).some(
     (evs) => evs.length > 0,
@@ -59,6 +61,7 @@ export function AppointmentsMonthGrid({
             onReschedule={onReschedule}
             onCancel={onCancel}
             onComplete={onComplete}
+            startConsultationLoading={startConsultationLoading}
           >
             <div
               style={{

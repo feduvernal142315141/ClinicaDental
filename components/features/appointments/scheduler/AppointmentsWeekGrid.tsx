@@ -25,6 +25,7 @@ interface AppointmentsWeekGridProps {
   onReschedule?: (appointment: Appointment) => void;
   onCancel?: (appointment: Appointment) => void;
   onComplete?: (appointment: Appointment) => void;
+  startConsultationLoading?: boolean;
 }
 
 const TIME_COL_WIDTH = 52;
@@ -41,6 +42,7 @@ export function AppointmentsWeekGrid({
   onReschedule,
   onCancel,
   onComplete,
+  startConsultationLoading,
 }: AppointmentsWeekGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const slots = getTimeSlots(startHour, endHour, 30);
@@ -262,6 +264,7 @@ export function AppointmentsWeekGrid({
                         onReschedule={onReschedule}
                         onCancel={onCancel}
                         onComplete={onComplete}
+                        startConsultationLoading={startConsultationLoading}
                       >
                         <div style={{ height: "100%", position: "relative" }}>
                           <AppointmentEventCard event={ev} />
