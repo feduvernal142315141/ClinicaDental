@@ -8,11 +8,12 @@ import { ATTACHMENT_CATEGORIES, type AttachmentCategory } from "@/lib/entity/pat
 interface AttachmentUploadModalProps {
   open: boolean;
   onClose: () => void;
-  onUpload: (file: File, category: AttachmentCategory, notes?: string) => Promise<void>;
+  onUpload: (file: File, category: AttachmentCategory, notes?: string, appointmentId?: string) => Promise<void>;
   uploading: boolean;
+  appointmentId?: string;
 }
 
-export function AttachmentUploadModal({ open, onClose, onUpload, uploading }: AttachmentUploadModalProps) {
+export function AttachmentUploadModal({ open, onClose, onUpload, uploading, appointmentId }: AttachmentUploadModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [category, setCategory] = useState<AttachmentCategory | null>(null);
   const [notes, setNotes] = useState("");
@@ -37,7 +38,7 @@ export function AttachmentUploadModal({ open, onClose, onUpload, uploading }: At
       void message.warning("Selecciona una categoría");
       return;
     }
-    await onUpload(file, category, notes.trim() || undefined);
+    await onUpload(file, category, notes.trim() || undefined, appointmentId);
     reset();
     onClose();
   };

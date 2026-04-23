@@ -27,6 +27,7 @@ interface PatientInfoColumnProps {
   patientHeader: ClinicalHistoryPatientHeader | null;
   canUpload?: boolean;
   canDelete?: boolean;
+  activeAppointmentId?: string;
 }
 
 /** Extracts YYYY-MM-DD from any ISO date string, avoiding timezone shift */
@@ -90,6 +91,7 @@ export function PatientInfoColumn({
   patientHeader,
   canUpload = false,
   canDelete = false,
+  activeAppointmentId,
 }: PatientInfoColumnProps) {
   const router = useRouter();
 
@@ -176,6 +178,7 @@ export function PatientInfoColumn({
           patientId={patient.id}
           canUpload={canUpload}
           canDelete={canDelete}
+          activeAppointmentId={activeAppointmentId}
         />
       </SectionCard>
     </div>

@@ -13,11 +13,13 @@ async function uploadAttachment(
   file: File,
   category: AttachmentCategory,
   notes?: string,
+  appointmentId?: string,
 ): Promise<string> {
   const form = new FormData();
   form.append("file", file);
   form.append("category", category);
   if (notes) form.append("notes", notes);
+  if (appointmentId) form.append("appointmentId", appointmentId);
 
   const response = await apiInstance.post<string>(
     `/patients/${patientId}/attachments`,

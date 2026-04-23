@@ -22,10 +22,10 @@ export function usePatientAttachments(patientId: string) {
   }, [patientId]);
 
   const upload = useCallback(
-    async (file: File, category: AttachmentCategory, notes?: string) => {
+    async (file: File, category: AttachmentCategory, notes?: string, appointmentId?: string) => {
       setUploading(true);
       try {
-        await patientAttachmentsService.uploadAttachment(patientId, file, category, notes);
+        await patientAttachmentsService.uploadAttachment(patientId, file, category, notes, appointmentId);
         await load();
       } finally {
         setUploading(false);

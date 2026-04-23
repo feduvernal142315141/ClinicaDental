@@ -12,15 +12,16 @@ interface PatientAttachmentsSectionProps {
   patientId: string;
   canUpload: boolean;
   canDelete: boolean;
+  activeAppointmentId?: string;
 }
 
-export function PatientAttachmentsSection({ patientId, canUpload, canDelete }: PatientAttachmentsSectionProps) {
+export function PatientAttachmentsSection({ patientId, canUpload, canDelete, activeAppointmentId }: PatientAttachmentsSectionProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const { attachments, loading, uploading, upload, remove } = usePatientAttachments(patientId);
 
   const handleUpload = async (file: File, category: AttachmentCategory, notes?: string) => {
     try {
-      await upload(file, category, notes);
+      await upload(file, category, notes, activeAppointmentId);
       void message.success("Archivo subido correctamente");
     } catch {
       void message.error("Error al subir el archivo");
@@ -109,6 +110,7 @@ export function PatientAttachmentsSection({ patientId, canUpload, canDelete }: P
         onClose={() => setModalOpen(false)}
         onUpload={handleUpload}
         uploading={uploading}
+        appointmentId={activeAppointmentId}
       />
     </div>
   );

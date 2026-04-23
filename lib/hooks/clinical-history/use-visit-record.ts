@@ -46,7 +46,7 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
   }, [appointmentId, load]);
 
   const save = useCallback(
-    async (data: UpsertVisitRecordRequest) => {
+    async (data: UpsertVisitRecordRequest, options?: { silent?: boolean }) => {
       if (!appointmentId) return;
       setSaving(true);
       try {
@@ -69,7 +69,9 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
           }
           return { appointmentId: appointmentId!, patientId, ...data, currentPain: cleanPain };
         });
-        message.success("Registro de visita guardado");
+        if (!options?.silent) {
+          message.success("Registro de visita guardado");
+        }
       } catch (err: unknown) {
         const e = err as { message?: string };
         message.error(e?.message || "Error al guardar registro de visita");

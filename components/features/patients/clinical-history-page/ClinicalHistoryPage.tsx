@@ -156,6 +156,7 @@ export function ClinicalHistoryPage({
               patientHeader={snapshot?.patientHeader ?? null}
               canUpload={canManageAttachments}
               canDelete={canManageAttachments}
+              activeAppointmentId={activeAppointmentId}
             />
           )}
 
