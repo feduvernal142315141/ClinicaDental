@@ -448,6 +448,43 @@ async function startAppointment(id: string): Promise<{ appointmentAdjusted?: boo
   throw new Error(getErrorMessage(response, "Error al iniciar la cita"));
 }
 
+interface StartNowRequest {
+  patientId: string;
+  doctorId: string;
+  reason?: string;
+  serviceId?: string;
+}
+
+interface StartNowResponse {
+  appointmentId: string;
+  actualStartAt: string;
+}
+
+/**
+ * Creates and immediately starts an appointment atomically.
+ * POST /appointments/start-now → 201
+ */
+async function startNowAppointment(
+  data: StartNowRequest,
+): Promise<StartNowResponse> {
+  const response = (await apiInstance
+    .post<StartNowResponse>(`${endpoint}/start-now`, data)
+    .catch((err) => err.response as unknown)) as
+    | { status?: number; data?: StartNowResponse; message?: string }
+    | undefined;
+
+  if (
+    response &&
+    typeof response.status === "number" &&
+    response.status === 201 &&
+    response.data
+  ) {
+    return response.data;
+  }
+
+  throw new Error(getErrorMessage(response, "Error al iniciar consulta express"));
+}
+
 async function completeAppointment(id: string): Promise<boolean> {
   const response = (await apiInstance
     .patch<void>(`${endpoint}/${id}/complete`, {})
@@ -481,6 +518,7 @@ export const appointmentsService = {
   getDoctorAppointments,
   getPatientAppointments,
   getDoctorAvailability,
+  startNowAppointment,
 };
 
 export type { AppointmentStatus };

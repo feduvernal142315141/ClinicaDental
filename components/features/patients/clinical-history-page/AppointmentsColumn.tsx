@@ -13,7 +13,10 @@ interface AppointmentsColumnProps {
   patientId: string;
   activeAppointmentId?: string;
   onStartConsultation?: (appointmentId: string) => void;
+  /** @deprecated Use onViewVisitHistory instead */
   onViewOdontogram?: (visitId: string) => void;
+  onViewVisitHistory?: (appointment: Appointment) => void;
+  onNewConsultation?: () => void;
 }
 
 function parseDateParts(dateStr: string): {
@@ -75,11 +78,19 @@ function ScheduledCard({
 function CompletedCard({
   appointment,
   onViewOdontogram,
+  onViewVisitHistory,
 }: {
   appointment: Appointment;
+  /** @deprecated Use onViewVisitHistory instead */
   onViewOdontogram?: (visitId: string) => void;
+  onViewVisitHistory?: (appointment: Appointment) => void;
 }) {
   const { day, monthShort } = parseDateParts(appointment.date);
+  const handleViewHistory = onViewVisitHistory
+    ? () => onViewVisitHistory(appointment)
+    : onViewOdontogram
+      ? () => onViewOdontogram(appointment.id)
+      : undefined;
   return (
     <div className="p-5 flex gap-4 hover:bg-gray-50 transition-colors">
       <div className="w-12 h-12 bg-green-50 rounded-lg text-green-600 flex flex-col items-center justify-center shrink-0">
@@ -94,13 +105,13 @@ function CompletedCard({
           {appointment.time}
           {appointment.doctorName && ` · Dr. ${appointment.doctorName}`}
         </p>
-        {onViewOdontogram && (
+        {handleViewHistory && (
           <button
-            onClick={() => onViewOdontogram(appointment.id)}
+            onClick={handleViewHistory}
             className="mt-1 text-xs text-blue-500 hover:underline flex items-center gap-1"
           >
             <Stethoscope className="h-3 w-3" />
-            Ver odontograma de esta visita
+            Ver historial de esta visita
           </button>
         )}
       </div>
@@ -132,6 +143,8 @@ export function AppointmentsColumn({
   activeAppointmentId: _activeAppointmentId,
   onStartConsultation,
   onViewOdontogram,
+  onViewVisitHistory,
+  onNewConsultation,
 }: AppointmentsColumnProps) {
   const [cancelAppointment, setCancelAppointment] =
     useState<Appointment | null>(null);
@@ -162,9 +175,11 @@ export function AppointmentsColumn({
               onClick={() => {
                 if (startableAppointment && onStartConsultation) {
                   onStartConsultation(startableAppointment.id);
+                } else if (onNewConsultation) {
+                  onNewConsultation();
                 }
               }}
-              disabled={!startableAppointment || !onStartConsultation}
+              disabled={!startableAppointment && !onNewConsultation && !onStartConsultation}
               className="w-full group flex items-center justify-center gap-3 p-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-300 disabled:hover:text-gray-500 disabled:hover:bg-transparent"
             >
               <div className="bg-gray-100 group-hover:bg-blue-100 p-2 rounded-full transition-colors">
@@ -226,6 +241,7 @@ export function AppointmentsColumn({
                         key={appt.id}
                         appointment={appt}
                         onViewOdontogram={onViewOdontogram}
+                        onViewVisitHistory={onViewVisitHistory}
                       />
                     ))}
                   {completed.length > 5 && !showAll && (

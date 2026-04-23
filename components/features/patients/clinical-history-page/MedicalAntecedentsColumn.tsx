@@ -5,7 +5,7 @@ import { Badge } from "antd";
 import { AlertTriangle, Edit } from "lucide-react";
 import { MedicalHistoryDrawer } from "@/components/features/clinical-history/sections/MedicalHistoryDrawer";
 import { ClinicalNotesEditor } from "@/components/features/clinical-history/notes/ClinicalNotesEditor";
-import { useClinicalNotes } from "@/lib/hooks/clinical-history";
+import { useClinicalNotes, useVisitRecord } from "@/lib/hooks/clinical-history";
 import { TreatmentPlansPendingSection } from "./TreatmentPlansPendingSection";
 import type {
   ClinicalHistoryMedicalHistory,
@@ -28,6 +28,7 @@ interface MedicalAntecedentsColumnProps {
   medicalHistory: ClinicalHistoryMedicalHistory | null;
   patientHeader: ClinicalHistoryPatientHeader | null;
   patientId: string;
+  activeAppointmentId?: string;
   onMedicalHistoryUpdated?: () => void;
   onSaveMedicalHistory?: (data: UpdateMedicalHistoryRequest) => Promise<void>;
   canEdit?: boolean;
@@ -58,6 +59,7 @@ export function MedicalAntecedentsColumn({
   medicalHistory,
   patientHeader,
   patientId,
+  activeAppointmentId,
   onMedicalHistoryUpdated,
   onSaveMedicalHistory,
   canEdit = false,
@@ -68,6 +70,11 @@ export function MedicalAntecedentsColumn({
     patientId,
     medicalHistory?.clinicalNotes,
   );
+  const {
+    record: visitRecord,
+    saving: visitSaving,
+    saveNotes: saveVisitNotes,
+  } = useVisitRecord(patientId, activeAppointmentId);
 
   const handleSaveDrawer = async (data: UpdateMedicalHistoryRequest) => {
     setDrawerLoading(true);
@@ -171,7 +178,7 @@ export function MedicalAntecedentsColumn({
       {/* Notas de historial */}
       <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
         <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
-          Notas de historial
+          Notas permanentes del paciente
         </h3>
         <ClinicalNotesEditor
           patientId={patientId}
@@ -185,6 +192,31 @@ export function MedicalAntecedentsColumn({
           saving={saving}
         />
       </section>
+
+      {/* Notas de esta consulta — solo si hay consulta activa */}
+      {activeAppointmentId && (
+        <section className="bg-white rounded-xl border border-green-200 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+              Notas de esta consulta
+            </h3>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
+              En curso
+            </span>
+          </div>
+          <ClinicalNotesEditor
+            patientId={patientId}
+            initialContent={visitRecord?.clinicalNotes}
+            updatedAt={visitRecord?.clinicalNotesUpdatedAt}
+            updatedBy={visitRecord?.clinicalNotesUpdatedBy}
+            readOnly={!canEdit}
+            onSave={async (html) => {
+              await saveVisitNotes(html);
+            }}
+            saving={visitSaving}
+          />
+        </section>
+      )}
 
       <MedicalHistoryDrawer
         open={drawerOpen}

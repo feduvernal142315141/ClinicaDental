@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Tabs, Badge, Spin } from "antd";
 import { Stethoscope, ClipboardList } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { patientsService } from "@/lib/services/patients/patients.service";
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
 import { useClinicalHistory } from "@/lib/hooks/clinical-history";
@@ -11,6 +12,8 @@ import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { PatientInfoColumn } from "./PatientInfoColumn";
 import { MedicalAntecedentsColumn } from "./MedicalAntecedentsColumn";
 import { AppointmentsColumn } from "./AppointmentsColumn";
+import { VisitHistoryDrawer } from "./VisitHistoryDrawer";
+import { StartConsultationNowModal } from "@/components/features/appointments/StartConsultationNowModal";
 import { PatientOdontogramPanel } from "@/components/features/patients/detail/PatientOdontogramPanel";
 import type { Patient } from "@/lib/entity/patients/patients";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
@@ -27,8 +30,11 @@ export function ClinicalHistoryPage({
   initialTab = "historia-clinica",
   activeAppointmentId,
 }: ClinicalHistoryPageProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState(initialTab);
   const [historicVisitId, setHistoricVisitId] = useState<string | undefined>(undefined);
+  const [showStartNow, setShowStartNow] = useState(false);
+  const [visitHistoryAppointment, setVisitHistoryAppointment] = useState<Appointment | null>(null);
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [patientLoading, setPatientLoading] = useState(true);
@@ -82,6 +88,25 @@ export function ClinicalHistoryPage({
   useEffect(() => {
     loadAppointments();
   }, [loadAppointments]);
+
+  const handleStartConsultation = useCallback(
+    (appointmentId: string) => {
+      router.push(`/patients/${patientId}?tab=odontogram&appointmentId=${appointmentId}`);
+    },
+    [router, patientId],
+  );
+
+  const handleStartNow = useCallback(
+    (appointmentId: string) => {
+      setShowStartNow(false);
+      router.push(`/patients/${patientId}?tab=odontogram&appointmentId=${appointmentId}`);
+    },
+    [router, patientId],
+  );
+
+  const handleViewVisitHistory = useCallback((appointment: Appointment) => {
+    setVisitHistoryAppointment(appointment);
+  }, []);
 
   const handleViewOdontogram = useCallback((visitId: string) => {
     setHistoricVisitId(visitId);
@@ -144,6 +169,7 @@ export function ClinicalHistoryPage({
               medicalHistory={snapshot?.medicalHistory ?? null}
               patientHeader={snapshot?.patientHeader ?? null}
               patientId={patientId}
+              activeAppointmentId={activeAppointmentId}
               onMedicalHistoryUpdated={() => refresh()}
               onSaveMedicalHistory={async (data) => {
                 await updateMedicalHistory(patientId, data);
@@ -158,7 +184,9 @@ export function ClinicalHistoryPage({
             loading={appointmentsLoading}
             patientId={patientId}
             activeAppointmentId={activeAppointmentId}
-            onViewOdontogram={handleViewOdontogram}
+            onStartConsultation={handleStartConsultation}
+            onNewConsultation={() => setShowStartNow(true)}
+            onViewVisitHistory={handleViewVisitHistory}
           />
         </div>
       ),
@@ -202,6 +230,20 @@ export function ClinicalHistoryPage({
         onChange={setActiveTab}
         items={tabItems}
         className="flex-1 flex flex-col [&_.ant-tabs-content-holder]:flex-1 [&_.ant-tabs-content]:h-full [&_.ant-tabs-tabpane]:h-full"
+      />
+
+      <StartConsultationNowModal
+        open={showStartNow}
+        patientId={patientId}
+        onClose={() => setShowStartNow(false)}
+        onStarted={handleStartNow}
+      />
+
+      <VisitHistoryDrawer
+        open={!!visitHistoryAppointment}
+        patientId={patientId}
+        appointment={visitHistoryAppointment}
+        onClose={() => setVisitHistoryAppointment(null)}
       />
     </div>
   );

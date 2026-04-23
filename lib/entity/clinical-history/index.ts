@@ -111,6 +111,35 @@ export interface ClinicalHistorySnapshot {
 }
 
 // ---------------------------------------------------------------------------
+// Visit Record types (HU-CLIN-005)
+// ---------------------------------------------------------------------------
+
+export interface PatientVisitRecord {
+  appointmentId: string;
+  patientId: string;
+  chiefComplaint?: string;
+  currentPain?: {
+    location?: string;
+    intensity?: number;
+    type?: string;
+    duration?: string;
+  };
+  clinicalNotes?: string;
+  clinicalNotesUpdatedAt?: string;
+  clinicalNotesUpdatedBy?: string;
+}
+
+export interface UpsertVisitRecordRequest {
+  chiefComplaint?: string;
+  currentPain?: {
+    location?: string;
+    intensity?: number | null;
+    type?: string;
+    duration?: string;
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Request DTOs
 // ---------------------------------------------------------------------------
 
