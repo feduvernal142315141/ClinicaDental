@@ -1,5 +1,6 @@
 "use client";
 
+import dayjs from "dayjs";
 import { Typography, Tooltip } from "antd";
 import type { SchedulerEvent } from "@/lib/entity/appointment";
 import { LabelChip } from "@/components/app/labels";
@@ -24,9 +25,13 @@ export function AppointmentEventCard({
   onClick,
 }: AppointmentEventCardProps) {
   const { appointment, doctorColor, height } = event;
+  const displayTime =
+    appointment.status === "in_progress" && appointment.actualStartAt
+      ? dayjs(appointment.actualStartAt).format("HH:mm")
+      : appointment.time;
   const isCompact = height < 40;
 
-  const label = [appointment.time, appointment.patientName]
+  const label = [displayTime, appointment.patientName]
     .filter(Boolean)
     .join(" · ");
 
@@ -54,7 +59,7 @@ export function AppointmentEventCard({
             <strong>{appointment.patientName ?? "Paciente"}</strong>
           </div>
           <div>
-            {appointment.time} — {appointment.duration} min
+            {displayTime} — {appointment.duration} min
           </div>
           {appointment.doctorName && <div>Dr. {appointment.doctorName}</div>}
           {servicesLabel && <div>{servicesLabel}</div>}
