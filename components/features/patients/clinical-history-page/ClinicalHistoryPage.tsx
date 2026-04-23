@@ -245,6 +245,10 @@ export function ClinicalHistoryPage({
         patientId={patientId}
         appointment={visitHistoryAppointment}
         onClose={() => setVisitHistoryAppointment(null)}
+        onViewOdontogram={(visitId) => {
+          setVisitHistoryAppointment(null);
+          handleViewOdontogram(visitId);
+        }}
       />
     </div>
   );

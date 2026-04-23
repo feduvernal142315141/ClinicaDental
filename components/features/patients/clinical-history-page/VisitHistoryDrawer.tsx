@@ -14,6 +14,7 @@ interface VisitHistoryDrawerProps {
   patientId: string;
   appointment: Appointment | null;
   onClose: () => void;
+  onViewOdontogram?: (visitId: string) => void;
 }
 
 function formatDate(dateStr?: string): string {
@@ -44,6 +45,7 @@ export function VisitHistoryDrawer({
   patientId,
   appointment,
   onClose,
+  onViewOdontogram,
 }: VisitHistoryDrawerProps) {
   const appointmentId = appointment?.id;
 
@@ -216,7 +218,12 @@ export function VisitHistoryDrawer({
               <div className="flex items-center gap-3">
                 <Tag color="green">Odontograma guardado en esta visita</Tag>
                 <button
-                  onClick={onClose}
+                  onClick={() => {
+                    onClose();
+                    if (onViewOdontogram && appointmentId) {
+                      onViewOdontogram(appointmentId);
+                    }
+                  }}
                   className="text-xs text-blue-500 hover:underline"
                 >
                   Ver en pestaña Odontograma
