@@ -31,7 +31,9 @@ export function ClinicalHistoryPage({
   activeAppointmentId,
 }: ClinicalHistoryPageProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const normalizedInitialTab =
+    initialTab === "odontogram" ? "odontograma" : (initialTab ?? "historia-clinica");
+  const [activeTab, setActiveTab] = useState(normalizedInitialTab);
   const [historicVisitId, setHistoricVisitId] = useState<string | undefined>(undefined);
   const [showStartNow, setShowStartNow] = useState(false);
   const [visitHistoryAppointment, setVisitHistoryAppointment] = useState<Appointment | null>(null);
@@ -91,7 +93,7 @@ export function ClinicalHistoryPage({
 
   const handleStartConsultation = useCallback(
     (appointmentId: string) => {
-      router.push(`/patients/${patientId}?tab=odontogram&appointmentId=${appointmentId}`);
+      router.push(`/patients/${patientId}?tab=odontograma&appointmentId=${appointmentId}`);
     },
     [router, patientId],
   );
@@ -99,7 +101,7 @@ export function ClinicalHistoryPage({
   const handleStartNow = useCallback(
     (appointmentId: string) => {
       setShowStartNow(false);
-      router.push(`/patients/${patientId}?tab=odontogram&appointmentId=${appointmentId}`);
+      router.push(`/patients/${patientId}?tab=odontograma&appointmentId=${appointmentId}`);
     },
     [router, patientId],
   );

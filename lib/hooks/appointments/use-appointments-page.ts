@@ -71,7 +71,7 @@ export function useAppointmentsPage(options: UseAppointmentsPageOptions = {}) {
     (appointment: Appointment) => {
       if (!appointment.patientId) return;
       const query = new URLSearchParams({
-        tab: "odontogram",
+        tab: "odontograma",
         appointmentId: appointment.id,
       });
       router.push(`/patients/${appointment.patientId}?${query.toString()}`);
