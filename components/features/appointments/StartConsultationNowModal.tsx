@@ -76,8 +76,8 @@ export function StartConsultationNowModal({
       okText="Iniciar Consulta"
       cancelText="Cancelar"
       confirmLoading={loading}
-      maskClosable={!loading}
-      destroyOnClose
+      mask={{ closable: !loading }}
+      destroyOnHidden
     >
       <Form form={form} layout="vertical" className="mt-4">
         <Form.Item
