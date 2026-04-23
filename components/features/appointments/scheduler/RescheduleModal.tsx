@@ -9,7 +9,9 @@ import {
   Space,
   Alert,
   Spin,
+  Button,
 } from "antd";
+import { CloseCircleOutlined, CalendarOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import { useRescheduleAppointment } from "@/lib/hooks/appointments/use-reschedule-appointment";
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
@@ -167,10 +169,7 @@ export function RescheduleModal({
       title="Reagendar cita"
       open={isOpen}
       onCancel={onClose}
-      onOk={handleOk}
-      okText="Confirmar reagendo"
-      cancelText="Cancelar"
-      okButtonProps={{ loading, disabled: !isFormValid || loading }}
+      footer={null}
       destroyOnHidden
     >
       <Space direction="vertical" style={{ width: "100%" }} size="middle">
@@ -229,6 +228,29 @@ export function RescheduleModal({
         {error && !availabilityError && (
           <Alert message={error} type="error" showIcon />
         )}
+
+        <div className="flex gap-2 pt-2">
+          <Button
+            type="default"
+            danger
+            icon={<CloseCircleOutlined />}
+            style={{ flex: 1 }}
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="primary"
+            icon={<CalendarOutlined />}
+            style={{ flex: 1 }}
+            loading={loading}
+            disabled={!isFormValid || loading}
+            onClick={handleOk}
+          >
+            Confirmar nueva fecha
+          </Button>
+        </div>
       </Space>
     </Modal>
   );

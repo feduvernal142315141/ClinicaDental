@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Modal } from "antd";
+import { Modal, Button } from "antd";
+import { CloseCircleOutlined, PlayCircleOutlined } from "@ant-design/icons";
 import { toast } from "sonner";
 import { SectionTitle } from "@/components/ui/antd";
 import { AppointmentsSchedulerShell } from "@/components/features/appointments/scheduler/AppointmentsSchedulerShell";
@@ -94,18 +95,39 @@ export default function AppointmentsPage() {
       <Modal
         title="Iniciar consulta"
         open={!!pendingAppointment}
-        onOk={() => pendingAppointment && void doStartAndNavigate(pendingAppointment)}
-        onCancel={() => setPendingAppointment(null)}
-        okText="Iniciar de todas formas"
-        cancelText="Cancelar"
-        confirmLoading={startLoading}
+        onCancel={() => !startLoading && setPendingAppointment(null)}
+        footer={null}
+        maskClosable={!startLoading}
         destroyOnHidden
       >
         {pendingAppointment && (
-          <p>
-            Esta cita está programada para el{" "}
-            <strong>{pendingAppointment.date}</strong>. ¿Deseas iniciarla ahora de todas formas?
-          </p>
+          <>
+            <p className="mb-4">
+              Esta cita está programada para el{" "}
+              <strong>{pendingAppointment.date}</strong>. ¿Deseas iniciarla ahora de todas formas?
+            </p>
+            <div className="flex gap-2 pt-2">
+              <Button
+                type="default"
+                danger
+                icon={<CloseCircleOutlined />}
+                style={{ flex: 1 }}
+                onClick={() => setPendingAppointment(null)}
+                disabled={startLoading}
+              >
+                No, cancelar
+              </Button>
+              <Button
+                type="primary"
+                icon={<PlayCircleOutlined />}
+                style={{ flex: 1 }}
+                loading={startLoading}
+                onClick={() => void doStartAndNavigate(pendingAppointment)}
+              >
+                Sí, iniciar consulta
+              </Button>
+            </div>
+          </>
         )}
       </Modal>
     </>
