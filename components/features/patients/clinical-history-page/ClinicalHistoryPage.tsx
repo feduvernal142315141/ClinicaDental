@@ -149,7 +149,7 @@ export function ClinicalHistoryPage({
         </span>
       ),
       children: (
-        <div className="grid grid-cols-[280px_1fr_300px] gap-6 h-full min-h-0">
+        <div className={`overflow-x-auto grid gap-6 h-full min-h-0 ${antecedentesOpen ? 'grid-cols-[280px_1fr_300px_380px]' : 'grid-cols-[280px_1fr_300px]'}`}>
           {/* Col 1: Patient info */}
           {snapshotLoading ? (
             <div className="flex h-40 items-center justify-center">

@@ -107,7 +107,7 @@ export function usePatientForm({
         console.error("Error in handleSubmit:", error);
       }
     },
-    [isEdit, patientId, createPatient, updatePatient, router, basePath],
+    [isEdit, patientId, createPatient, updatePatient, router, basePath, onSuccess],
   );
 
   // Handle cancel
