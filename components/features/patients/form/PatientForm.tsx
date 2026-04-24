@@ -75,6 +75,21 @@ export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
       submit: () => form.submit(),
     }));
 
+    // When used inside a Drawer (hideActions=true), render plain form without Card wrapper
+    if (hideActions) {
+      return (
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          initialValues={{ agreement: true }}
+          disabled={loading || readOnly}
+        >
+          <PatientFormFields />
+        </Form>
+      );
+    }
+
     return (
       <Form
         form={form}
@@ -95,7 +110,7 @@ export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
             },
           }}
           actions={
-            readOnly || hideActions
+            readOnly
               ? undefined
               : [
                   <Flex key="actions" justify="end" style={{ padding: "0 16px" }}>
