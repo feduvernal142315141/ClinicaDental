@@ -14,6 +14,8 @@ import {
   ListOrdered,
   Heading2,
 } from "lucide-react";
+import { MicButton } from "@/components/ui/atomic/MicButton";
+import { useSpeechRecognition } from "@/lib/hooks/speech";
 
 interface ClinicalNotesEditorProps {
   patientId: string;
@@ -79,6 +81,20 @@ export function ClinicalNotesEditor({
       }
     }
   }, [initialContent, editor]);
+
+  const { isSupported, isListening, start, stop } = useSpeechRecognition({
+    onResult: (transcript) => {
+      editor?.commands.insertContent(transcript + " ");
+    },
+  });
+
+  const handleMicToggle = () => {
+    if (isListening) {
+      stop();
+    } else {
+      start();
+    }
+  };
 
   const handleSave = async () => {
     await onSave(content);
@@ -149,6 +165,12 @@ export function ClinicalNotesEditor({
           >
             <Heading2 className="h-3.5 w-3.5" />
           </ToolbarButton>
+          <span className="mx-1 text-border">|</span>
+          <MicButton
+            isListening={isListening}
+            isSupported={isSupported}
+            onToggle={handleMicToggle}
+          />
         </div>
       )}
 
