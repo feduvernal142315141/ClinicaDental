@@ -1,3 +1,4 @@
+/** @deprecated Use MedicalHistoryDrawer via ClinicalHistoryPage instead */
 "use client";
 
 import { useEffect, useState } from "react";

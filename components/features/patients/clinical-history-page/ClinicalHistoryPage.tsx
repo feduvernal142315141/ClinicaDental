@@ -13,7 +13,8 @@ import { PatientInfoColumn } from "./PatientInfoColumn";
 import { MedicalAntecedentsColumn } from "./MedicalAntecedentsColumn";
 import { AppointmentsColumn } from "./AppointmentsColumn";
 import { VisitHistoryDrawer } from "./VisitHistoryDrawer";
-import { AntecedentesPanel } from "./AntecedentesPanel";
+import { MedicalHistoryDrawer } from "@/components/features/clinical-history/sections/MedicalHistoryDrawer";
+import type { UpdateMedicalHistoryRequest } from "@/lib/entity/clinical-history";
 import { EditPatientDrawer } from "./EditPatientDrawer";
 import { StartConsultationNowModal } from "@/components/features/appointments/StartConsultationNowModal";
 import { PatientOdontogramPanel } from "@/components/features/patients/detail/PatientOdontogramPanel";
@@ -40,7 +41,8 @@ export function ClinicalHistoryPage({
   const [showStartNow, setShowStartNow] = useState(false);
   const [visitHistoryAppointment, setVisitHistoryAppointment] = useState<Appointment | null>(null);
 
-  const [antecedentesOpen, setAntecedentesOpen] = useState(false);
+  const [medicalHistoryDrawerOpen, setMedicalHistoryDrawerOpen] = useState(false);
+  const [savingMedicalHistory, setSavingMedicalHistory] = useState(false);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [patientLoading, setPatientLoading] = useState(true);
@@ -114,6 +116,16 @@ export function ClinicalHistoryPage({
     setVisitHistoryAppointment(appointment);
   }, []);
 
+  const handleSaveMedicalHistory = useCallback(async (data: UpdateMedicalHistoryRequest) => {
+    setSavingMedicalHistory(true);
+    try {
+      await updateMedicalHistory(patientId, data);
+      setMedicalHistoryDrawerOpen(false);
+    } finally {
+      setSavingMedicalHistory(false);
+    }
+  }, [updateMedicalHistory, patientId]);
+
   const handleViewOdontogram = useCallback((visitId: string) => {
     setHistoricVisitId(visitId);
     setActiveTab("odontograma");
@@ -149,7 +161,7 @@ export function ClinicalHistoryPage({
         </span>
       ),
       children: (
-        <div className={`overflow-x-auto grid gap-6 h-full min-h-0 ${antecedentesOpen ? 'grid-cols-[280px_1fr_300px_380px]' : 'grid-cols-[280px_1fr_300px]'}`}>
+        <div className="overflow-x-auto grid gap-6 h-full min-h-0 grid-cols-[280px_1fr_300px]">
           {/* Col 1: Patient info */}
           {snapshotLoading ? (
             <div className="flex h-40 items-center justify-center">
@@ -179,7 +191,7 @@ export function ClinicalHistoryPage({
               patientHeader={snapshot?.patientHeader ?? null}
               patientId={patientId}
               activeAppointmentId={activeAppointmentId}
-              onEditClick={() => setAntecedentesOpen(true)}
+              onEditClick={() => setMedicalHistoryDrawerOpen(true)}
               canEdit={canEditMedicalHistory}
             />
           )}
@@ -195,16 +207,6 @@ export function ClinicalHistoryPage({
             onViewVisitHistory={handleViewVisitHistory}
           />
 
-          {antecedentesOpen && (
-            <AntecedentesPanel
-              open={antecedentesOpen}
-              patientId={patientId}
-              medicalHistory={snapshot?.medicalHistory ?? null}
-              onSave={async (data) => { await updateMedicalHistory(patientId, data); }}
-              onClose={() => setAntecedentesOpen(false)}
-              onSaved={() => setAntecedentesOpen(false)}
-            />
-          )}
         </div>
       ),
     },
@@ -254,6 +256,14 @@ export function ClinicalHistoryPage({
         patientId={patientId}
         onClose={() => setShowStartNow(false)}
         onStarted={handleStartNow}
+      />
+
+      <MedicalHistoryDrawer
+        open={medicalHistoryDrawerOpen}
+        onClose={() => setMedicalHistoryDrawerOpen(false)}
+        onSave={handleSaveMedicalHistory}
+        medicalHistory={snapshot?.medicalHistory ?? null}
+        loading={savingMedicalHistory}
       />
 
       <VisitHistoryDrawer
