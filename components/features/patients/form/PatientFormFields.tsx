@@ -8,6 +8,11 @@ interface PatientFormFieldsProps {
   /** Column gutter spacing — allows the parent to control layout density */
   gutter?: [number, number];
   /**
+   * Force all fields to a single column (span=24).
+   * Use inside Drawers or any narrow container.
+   */
+  singleColumn?: boolean;
+  /**
    * Container for Select/DatePicker popups.
    * Useful inside modals to prevent click-through issues.
    * Defaults to the parent node of the trigger element.
@@ -40,15 +45,19 @@ interface PatientFormFieldsProps {
  */
 export function PatientFormFields({
   gutter = [24, 16],
+  singleColumn = false,
   popupContainer = "parent",
 }: PatientFormFieldsProps) {
+  const colProps = singleColumn
+    ? { span: 24 }
+    : { xs: 24, md: 12, lg: 8 };
   const getPopupContainer =
     popupContainer === "parent"
       ? (trigger: HTMLElement) => trigger.parentElement ?? document.body
       : undefined;
   return (
     <Row gutter={gutter}>
-      <Col xs={24} md={12} lg={8}>
+      <Col {...colProps}>
         <Form.Item
           name="name"
           label="Nombre Completo"
@@ -64,7 +73,7 @@ export function PatientFormFields({
         </Form.Item>
       </Col>
 
-      <Col xs={24} md={12} lg={8}>
+      <Col {...colProps}>
         <Form.Item
           name="email"
           label="Correo Electrónico"
@@ -77,7 +86,7 @@ export function PatientFormFields({
         </Form.Item>
       </Col>
 
-      <Col xs={24} md={12} lg={8}>
+      <Col {...colProps}>
         <Form.Item
           name="phone"
           label="Teléfono"
@@ -87,7 +96,7 @@ export function PatientFormFields({
         </Form.Item>
       </Col>
 
-      <Col xs={24} md={12} lg={8}>
+      <Col {...colProps}>
         <Form.Item
           name="dateOfBirth"
           label="Fecha de Nacimiento"
@@ -112,7 +121,7 @@ export function PatientFormFields({
         </Form.Item>
       </Col>
 
-      <Col xs={24} md={12} lg={8}>
+      <Col {...colProps}>
         <Form.Item
           name="gender"
           label="Género"
@@ -130,13 +139,13 @@ export function PatientFormFields({
         </Form.Item>
       </Col>
 
-      <Col xs={24} md={12} lg={8}>
+      <Col {...colProps}>
         <Form.Item name="address" label="Dirección">
           <Input placeholder="Ej: Calle Mayor 123, Madrid" size="large" />
         </Form.Item>
       </Col>
 
-      <Col xs={24} md={12} lg={8}>
+      <Col {...colProps}>
         <Form.Item name="agreement" label="Convenio" valuePropName="checked">
           <Switch checkedChildren="Sí" unCheckedChildren="No" />
         </Form.Item>

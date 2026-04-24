@@ -85,7 +85,7 @@ export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
           initialValues={{ agreement: true }}
           disabled={loading || readOnly}
         >
-          <PatientFormFields />
+          <PatientFormFields singleColumn />
         </Form>
       );
     }
