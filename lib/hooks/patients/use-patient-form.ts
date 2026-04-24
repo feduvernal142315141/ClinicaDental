@@ -14,6 +14,7 @@ interface UsePatientFormParams {
   initialData?: Patient;
   onSuccess?: () => void;
   onCancel?: () => void;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 /**
@@ -27,6 +28,7 @@ export function usePatientForm({
   initialData,
   onSuccess,
   onCancel,
+  onLoadingChange,
 }: UsePatientFormParams) {
   const router = useRouter();
   const [form] = Form.useForm();
@@ -64,6 +66,11 @@ export function usePatientForm({
       });
     }
   }, [isEdit, patientId, initialData, getPatientById, form]);
+
+  // Notify loading changes
+  useEffect(() => {
+    onLoadingChange?.(loading);
+  }, [loading, onLoadingChange]);
 
   // Handle form submission
   const handleSubmit = useCallback(

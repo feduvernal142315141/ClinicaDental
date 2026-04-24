@@ -1,5 +1,6 @@
 "use client";
 
+import { forwardRef, useImperativeHandle } from "react";
 import { Form, Flex } from "antd";
 import { usePatientForm } from "@/lib/hooks/patients";
 import { Card } from "@/components/ui/antd";
@@ -22,6 +23,14 @@ interface PatientFormProps {
   onCancel?: () => void;
   /** Compact mode: disables maxHeight on Card body */
   compact?: boolean;
+  /** Hide internal action buttons (used when parent provides its own actions) */
+  hideActions?: boolean;
+  /** Callback when loading state changes */
+  onLoadingChange?: (loading: boolean) => void;
+}
+
+export interface PatientFormRef {
+  submit: () => void;
 }
 
 /**
@@ -37,58 +46,71 @@ interface PatientFormProps {
  * // Edit patient
  * <PatientForm patientId="123" basePath="/patients" />
  */
-export function PatientForm({
-  patientId,
-  basePath = "/patients",
-  initialData,
-  readOnly = false,
-  onSuccess,
-  onCancel,
-  compact = false,
-}: PatientFormProps) {
-  const { form, isEdit, loading, handleSubmit, handleCancel } = usePatientForm({
-    patientId,
-    basePath,
-    initialData,
-    onSuccess,
-    onCancel,
-  });
+export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
+  function PatientForm(
+    {
+      patientId,
+      basePath = "/patients",
+      initialData,
+      readOnly = false,
+      onSuccess,
+      onCancel,
+      compact = false,
+      hideActions = false,
+      onLoadingChange,
+    },
+    ref
+  ) {
+    const { form, isEdit, loading, handleSubmit, handleCancel } =
+      usePatientForm({
+        patientId,
+        basePath,
+        initialData,
+        onSuccess,
+        onCancel,
+        onLoadingChange,
+      });
 
-  return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={handleSubmit}
-      initialValues={{
-        agreement: true,
-      }}
-      disabled={loading || readOnly}
-    >
-      <Card
-        title="Información del Paciente"
-        styles={{
-          body: {
-            ...(compact ? {} : { maxHeight: "calc(100vh - 320px)" }),
-            overflowY: "auto",
-            overflowX: "hidden",
-          },
+    useImperativeHandle(ref, () => ({
+      submit: () => form.submit(),
+    }));
+
+    return (
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={{
+          agreement: true,
         }}
-        actions={
-          readOnly
-            ? undefined
-            : [
-                <Flex key="actions" justify="end" style={{ padding: "0 16px" }}>
-                  <FormActions
-                    loading={loading}
-                    onCancel={handleCancel}
-                    submitText={isEdit ? "Actualizar" : "Guardar"}
-                  />
-                </Flex>,
-              ]
-        }
+        disabled={loading || readOnly}
       >
-        <PatientFormFields />
-      </Card>
-    </Form>
-  );
-}
+        <Card
+          title="Información del Paciente"
+          styles={{
+            body: {
+              ...(compact ? {} : { maxHeight: "calc(100vh - 320px)" }),
+              overflowY: "auto",
+              overflowX: "hidden",
+            },
+          }}
+          actions={
+            readOnly || hideActions
+              ? undefined
+              : [
+                  <Flex key="actions" justify="end" style={{ padding: "0 16px" }}>
+                    <FormActions
+                      loading={loading}
+                      onCancel={handleCancel}
+                      submitText={isEdit ? "Actualizar" : "Guardar"}
+                    />
+                  </Flex>,
+                ]
+          }
+        >
+          <PatientFormFields />
+        </Card>
+      </Form>
+    );
+  }
+);

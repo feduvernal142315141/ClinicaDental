@@ -1,7 +1,9 @@
 "use client";
 
-import { Drawer } from "antd";
-import { PatientForm } from "@/components/features/patients/form/PatientForm";
+import { useRef, useState } from "react";
+import { Drawer, Space, Button } from "antd";
+import { CloseOutlined, SaveOutlined } from "@ant-design/icons";
+import { PatientForm, type PatientFormRef } from "@/components/features/patients/form/PatientForm";
 import type { Patient } from "@/lib/entity/patients";
 
 interface EditPatientDrawerProps {
@@ -17,24 +19,49 @@ export function EditPatientDrawer({
   onClose,
   onSuccess,
 }: EditPatientDrawerProps) {
+  const formRef = useRef<PatientFormRef>(null);
+  const [saving, setSaving] = useState(false);
+
   return (
     <Drawer
+      title="Editar paciente"
       placement="right"
       width={600}
-      destroyOnClose
       open={open}
       onClose={onClose}
-      title="Editar paciente"
+      destroyOnClose
+      extra={
+        <Space>
+          <Button
+            icon={<CloseOutlined />}
+            type="default"
+            danger
+            onClick={onClose}
+            disabled={saving}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            loading={saving}
+            onClick={() => formRef.current?.submit()}
+          >
+            Guardar
+          </Button>
+        </Space>
+      }
     >
-      <div style={{ overflowY: "auto", height: "100%" }}>
-        <PatientForm
-          patientId={patient.id}
-          initialData={patient}
-          compact
-          onSuccess={onSuccess}
-          onCancel={onClose}
-        />
-      </div>
+      <PatientForm
+        ref={formRef}
+        patientId={patient.id}
+        initialData={patient}
+        compact
+        hideActions
+        onLoadingChange={setSaving}
+        onSuccess={onSuccess}
+        onCancel={onClose}
+      />
     </Drawer>
   );
 }
