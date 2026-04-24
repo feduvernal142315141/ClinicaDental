@@ -82,7 +82,7 @@ export function ClinicalNotesEditor({
     }
   }, [initialContent, editor]);
 
-  const { isSupported, isListening, start, stop } = useSpeechRecognition({
+  const { isSupported, isListening, interimTranscript, start, stop } = useSpeechRecognition({
     onResult: (transcript) => {
       editor?.commands.insertContent(transcript + " ");
     },
@@ -178,6 +178,14 @@ export function ClinicalNotesEditor({
       <div className="border rounded-md min-h-[160px] px-3 py-2 text-sm [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[140px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-4 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-4 [&_.ProseMirror_h2]:text-base [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:mt-2">
         <EditorContent editor={editor} />
       </div>
+
+      {/* Interim transcript preview — shown while dictating */}
+      {interimTranscript && (
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted/50 border border-dashed text-sm text-muted-foreground italic">
+          <span className="inline-block h-2 w-2 rounded-full bg-red-400 animate-pulse flex-shrink-0" />
+          {interimTranscript}
+        </div>
+      )}
 
       {/* Footer */}
       <div className="flex items-center justify-between">

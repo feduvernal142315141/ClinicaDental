@@ -12,6 +12,7 @@ export interface UseSpeechRecognitionOptions {
 export interface UseSpeechRecognitionReturn {
   isSupported: boolean;
   isListening: boolean;
+  interimTranscript: string;
   start: () => void;
   stop: () => void;
   error: string | null;
@@ -29,6 +30,7 @@ export function useSpeechRecognition({
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // Keep callbacks in refs to avoid stale closures
@@ -78,30 +80,45 @@ export function useSpeechRecognition({
     const recognition = new SpeechRecognitionAPI();
     recognition.lang = lang;
     recognition.continuous = continuous;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
 
     recognition.onstart = () => setIsListening(true);
 
+    recognition.onstart = () => {
+      setIsListening(true);
+      setInterimTranscript("");
+    };
+
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const last = event.results.length - 1;
-      const transcript = event.results[last][0].transcript;
-      onResultRef.current(transcript);
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          setInterimTranscript("");
+          onResultRef.current(result[0].transcript);
+        } else {
+          interim += result[0].transcript;
+        }
+      }
+      if (interim) setInterimTranscript(interim);
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       const msg = event.error;
       setError(msg);
       setIsListening(false);
+      setInterimTranscript("");
       onErrorRef.current?.(msg);
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      setInterimTranscript("");
     };
 
     recognitionRef.current = recognition;
     recognition.start();
   }, [isSupported, isListening, lang, continuous]);
 
-  return { isSupported, isListening, start, stop, error };
+  return { isSupported, isListening, interimTranscript, start, stop, error };
 }
