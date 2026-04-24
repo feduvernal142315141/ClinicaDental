@@ -172,7 +172,7 @@ export function RescheduleModal({
       footer={null}
       destroyOnHidden
     >
-      <Space direction="vertical" style={{ width: "100%" }} size="middle">
+      <Space orientation="vertical" style={{ width: "100%" }} size="middle">
         <div>
           <Text strong>Paciente: </Text>
           <Text>{appointment.patientName ?? "—"}</Text>
@@ -222,11 +222,11 @@ export function RescheduleModal({
         </div>
 
         {availabilityError && (
-          <Alert message={availabilityError} type="warning" showIcon />
+          <Alert title={availabilityError} type="warning" showIcon />
         )}
 
         {error && !availabilityError && (
-          <Alert message={error} type="error" showIcon />
+          <Alert title={error} type="error" showIcon />
         )}
 
         <div className="flex gap-2 pt-2">

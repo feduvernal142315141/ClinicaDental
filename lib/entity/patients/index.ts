@@ -9,6 +9,7 @@ export {
   genderOptions,
   agreementOptions,
   type PatientFormData,
+  type PatientLegacy,
 } from "./patients";
 export { calculateAge, formatDate } from "./patients-utils";
 

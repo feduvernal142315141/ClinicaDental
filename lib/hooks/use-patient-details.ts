@@ -1,4 +1,4 @@
-import { Patient } from "@/lib/entity/patients/patients";
+import { Patient } from "@/lib/entity/patients";
 import { createClient } from "@/lib/supabase/server";
 
 export async function usePatientDetails(id: string): Promise<Patient | null> {

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Patient } from "@/lib/entity/patients/patients";
+import { Patient } from "@/lib/entity/patients";
 import { LazyLoadingFallback } from "@/components/ui/atomic/feedback/lazy-loading-fallback";
 
 const PatientList = dynamic(

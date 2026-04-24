@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Patient } from "@/lib/entity/patients/patients";
+import { Patient } from "@/lib/entity/patients";
 
 type View = "list" | "form" | "details";
 

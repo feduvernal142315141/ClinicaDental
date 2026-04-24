@@ -17,7 +17,7 @@ import { AntecedentesPanel } from "./AntecedentesPanel";
 import { EditPatientDrawer } from "./EditPatientDrawer";
 import { StartConsultationNowModal } from "@/components/features/appointments/StartConsultationNowModal";
 import { PatientOdontogramPanel } from "@/components/features/patients/detail/PatientOdontogramPanel";
-import type { Patient } from "@/lib/entity/patients/patients";
+import type { Patient } from "@/lib/entity/patients";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
 
 interface ClinicalHistoryPageProps {

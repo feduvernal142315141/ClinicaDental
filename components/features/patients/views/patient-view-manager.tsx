@@ -1,4 +1,4 @@
-import { Patient } from "@/lib/entity/patients/patients";
+import { Patient } from "@/lib/entity/patients";
 
 interface PatientListViewProps {
   onNewPatient: () => void;

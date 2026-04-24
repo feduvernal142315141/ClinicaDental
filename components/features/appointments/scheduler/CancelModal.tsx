@@ -90,9 +90,9 @@ export function CancelModal({
       okButtonProps={{ danger: true, loading }}
       destroyOnHidden
     >
-      <Space direction="vertical" style={{ width: "100%" }} size="middle">
+      <Space orientation="vertical" style={{ width: "100%" }} size="middle">
         <Alert
-          message="Esta acción no se puede deshacer."
+          title="Esta acción no se puede deshacer."
           type="warning"
           showIcon
           icon={<WarningOutlined />}
@@ -100,7 +100,7 @@ export function CancelModal({
 
         {isInProgress && (
           <Alert
-            message="La cita está en curso"
+            title="La cita está en curso"
             description="El doctor ya inició esta cita. ¿Desea cancelarla de todos modos?"
             type="error"
             showIcon

@@ -1,4 +1,5 @@
-export interface Patient {
+/** @deprecated Use Patient from @/lib/entity/patients instead */
+export interface PatientLegacy {
   id: string;
   clinic_id?: string;
   name: string;

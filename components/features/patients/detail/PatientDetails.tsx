@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { genderOptions, type Patient } from "@/lib/entity/patients/patients";
+import { genderOptions, type Patient } from "@/lib/entity/patients";
 import { appointmentsService } from "@/lib/services/appointments";
 import type { Appointment } from "@/lib/entity/appointment";
 import { calculateAge, formatDate } from "@/lib/entity/patients/patients-utils";
@@ -203,7 +203,7 @@ export function PatientDetails({
                       <div>
                         <p className="text-sm font-medium">Fecha de Registro</p>
                         <p className="text-sm text-muted-foreground">
-                          {formatDate(patient.created_at || "")}
+                          {formatDate(patient.createAt || "")}
                         </p>
                       </div>
                     </div>

@@ -14,7 +14,7 @@ import {
   Edit,
 } from "lucide-react";
 import { PatientAttachmentsSection } from "@/components/features/patients/attachments/PatientAttachmentsSection";
-import type { Patient } from "@/lib/entity/patients/patients";
+import type { Patient } from "@/lib/entity/patients";
 import type {
   ClinicalHistoryMedicalHistory,
   ClinicalHistoryPatientHeader,
@@ -101,9 +101,9 @@ export function PatientInfoColumn({
   const age = calculateAge(patient.dateOfBirth);
 
   const genderLabel =
-    patient.gender === "male"
+    patient.gender === "M"
       ? "Masculino"
-      : patient.gender === "female"
+      : patient.gender === "F"
         ? "Femenino"
         : patient.gender ?? null;
 

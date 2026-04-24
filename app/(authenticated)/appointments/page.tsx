@@ -97,7 +97,7 @@ export default function AppointmentsPage() {
         open={!!pendingAppointment}
         onCancel={() => !startLoading && setPendingAppointment(null)}
         footer={null}
-        maskClosable={!startLoading}
+        mask={{ closable: !startLoading }}
         destroyOnHidden
       >
         {pendingAppointment && (

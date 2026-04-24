@@ -2,8 +2,7 @@
 
 import { Drawer } from "antd";
 import { PatientForm } from "@/components/features/patients/form/PatientForm";
-import type { Patient as PatientFull } from "@/lib/entity/patients";
-import type { Patient } from "@/lib/entity/patients/patients";
+import type { Patient } from "@/lib/entity/patients";
 
 interface EditPatientDrawerProps {
   open: boolean;
@@ -30,7 +29,7 @@ export function EditPatientDrawer({
       <div style={{ overflowY: "auto", height: "100%" }}>
         <PatientForm
           patientId={patient.id}
-          initialData={patient as unknown as PatientFull}
+          initialData={patient}
           compact
           onSuccess={onSuccess}
           onCancel={onClose}

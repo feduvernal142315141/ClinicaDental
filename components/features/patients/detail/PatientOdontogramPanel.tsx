@@ -14,7 +14,6 @@ interface PatientOdontogramPanelProps {
   patient: {
     id: string;
     clinicId?: string;
-    clinic_id?: string;
   };
   activeAppointmentId?: string;
   historicVisitId?: string;
@@ -31,7 +30,7 @@ export function PatientOdontogramPanel({
   const { can, isAdmin } = usePermission();
   const { user } = useAuth();
 
-  const clinicId = patient.clinicId ?? patient.clinic_id ?? "";
+  const clinicId = patient.clinicId ?? "";
 
   const { snapshot: historicSnapshot, loading: historicLoading, load: loadHistoric } =
     useOdontogramByVisit(historicVisitId);

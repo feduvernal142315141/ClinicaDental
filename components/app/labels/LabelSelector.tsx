@@ -88,7 +88,7 @@ export function LabelSelector({
       {atLimit && (
         <Alert
           type="warning"
-          message={`Límite de ${maxLabels} etiquetas por cita alcanzado`}
+          title={`Límite de ${maxLabels} etiquetas por cita alcanzado`}
           banner
           style={{ padding: "2px 8px", fontSize: 12 }}
         />

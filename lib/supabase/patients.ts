@@ -1,4 +1,4 @@
-import { Patient } from "../entity/patients/patients";
+import { PatientLegacy as Patient } from "../entity/patients/patients";
 import { supabase } from "../supabaseClient";
 
 
