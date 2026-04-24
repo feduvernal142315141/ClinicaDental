@@ -13,6 +13,8 @@ import { PatientInfoColumn } from "./PatientInfoColumn";
 import { MedicalAntecedentsColumn } from "./MedicalAntecedentsColumn";
 import { AppointmentsColumn } from "./AppointmentsColumn";
 import { VisitHistoryDrawer } from "./VisitHistoryDrawer";
+import { AntecedentesPanel } from "./AntecedentesPanel";
+import { EditPatientDrawer } from "./EditPatientDrawer";
 import { StartConsultationNowModal } from "@/components/features/appointments/StartConsultationNowModal";
 import { PatientOdontogramPanel } from "@/components/features/patients/detail/PatientOdontogramPanel";
 import type { Patient } from "@/lib/entity/patients/patients";
@@ -38,6 +40,8 @@ export function ClinicalHistoryPage({
   const [showStartNow, setShowStartNow] = useState(false);
   const [visitHistoryAppointment, setVisitHistoryAppointment] = useState<Appointment | null>(null);
 
+  const [antecedentesOpen, setAntecedentesOpen] = useState(false);
+  const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [patientLoading, setPatientLoading] = useState(true);
 
@@ -158,7 +162,9 @@ export function ClinicalHistoryPage({
               patientHeader={snapshot?.patientHeader ?? null}
               canUpload={canManageAttachments}
               canDelete={canManageAttachments}
+              canEdit={isAdmin || can('patients', PermissionAction.EDIT)}
               activeAppointmentId={activeAppointmentId}
+              onEditPatient={() => setEditPatientOpen(true)}
             />
           )}
 
@@ -173,10 +179,7 @@ export function ClinicalHistoryPage({
               patientHeader={snapshot?.patientHeader ?? null}
               patientId={patientId}
               activeAppointmentId={activeAppointmentId}
-              onMedicalHistoryUpdated={() => refresh()}
-              onSaveMedicalHistory={async (data) => {
-                await updateMedicalHistory(patientId, data);
-              }}
+              onEditClick={() => setAntecedentesOpen(true)}
               canEdit={canEditMedicalHistory}
             />
           )}
@@ -191,6 +194,17 @@ export function ClinicalHistoryPage({
             onNewConsultation={() => setShowStartNow(true)}
             onViewVisitHistory={handleViewVisitHistory}
           />
+
+          {antecedentesOpen && (
+            <AntecedentesPanel
+              open={antecedentesOpen}
+              patientId={patientId}
+              medicalHistory={snapshot?.medicalHistory ?? null}
+              onSave={async (data) => { await updateMedicalHistory(patientId, data); }}
+              onClose={() => setAntecedentesOpen(false)}
+              onSaved={() => setAntecedentesOpen(false)}
+            />
+          )}
         </div>
       ),
     },
@@ -252,6 +266,18 @@ export function ClinicalHistoryPage({
           handleViewOdontogram(visitId);
         }}
       />
+
+      {patient && (
+        <EditPatientDrawer
+          open={editPatientOpen}
+          patient={patient}
+          onClose={() => setEditPatientOpen(false)}
+          onSuccess={() => {
+            setEditPatientOpen(false);
+            patientsService.getPatientById(patientId).then(setPatient).catch(() => {});
+          }}
+        />
+      )}
     </div>
   );
 }

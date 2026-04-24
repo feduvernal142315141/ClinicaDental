@@ -16,6 +16,12 @@ interface PatientFormProps {
   initialData?: Patient;
   /** Read-only mode (for detail view) */
   readOnly?: boolean;
+  /** Callback on successful submit (overrides router navigation) */
+  onSuccess?: () => void;
+  /** Callback on cancel (overrides router navigation) */
+  onCancel?: () => void;
+  /** Compact mode: disables maxHeight on Card body */
+  compact?: boolean;
 }
 
 /**
@@ -36,11 +42,16 @@ export function PatientForm({
   basePath = "/patients",
   initialData,
   readOnly = false,
+  onSuccess,
+  onCancel,
+  compact = false,
 }: PatientFormProps) {
   const { form, isEdit, loading, handleSubmit, handleCancel } = usePatientForm({
     patientId,
     basePath,
     initialData,
+    onSuccess,
+    onCancel,
   });
 
   return (
@@ -57,7 +68,7 @@ export function PatientForm({
         title="Información del Paciente"
         styles={{
           body: {
-            maxHeight: "calc(100vh - 320px)",
+            ...(compact ? {} : { maxHeight: "calc(100vh - 320px)" }),
             overflowY: "auto",
             overflowX: "hidden",
           },

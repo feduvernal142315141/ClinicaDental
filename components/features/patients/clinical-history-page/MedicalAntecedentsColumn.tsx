@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { Badge, Input, Slider, Select } from "antd";
 import { AlertTriangle, Edit } from "lucide-react";
-import { MedicalHistoryDrawer } from "@/components/features/clinical-history/sections/MedicalHistoryDrawer";
 import { ClinicalNotesEditor } from "@/components/features/clinical-history/notes/ClinicalNotesEditor";
 import { useClinicalNotes, useVisitRecord } from "@/lib/hooks/clinical-history";
 import { TreatmentPlansPendingSection } from "./TreatmentPlansPendingSection";
@@ -11,7 +10,6 @@ import type {
   ClinicalHistoryMedicalHistory,
   ClinicalHistoryPatientHeader,
   AlertSeverity,
-  UpdateMedicalHistoryRequest,
 } from "@/lib/entity/clinical-history";
 import { ALERT_SEVERITY_COLORS } from "@/lib/entity/clinical-history";
 
@@ -29,8 +27,7 @@ interface MedicalAntecedentsColumnProps {
   patientHeader: ClinicalHistoryPatientHeader | null;
   patientId: string;
   activeAppointmentId?: string;
-  onMedicalHistoryUpdated?: () => void;
-  onSaveMedicalHistory?: (data: UpdateMedicalHistoryRequest) => Promise<void>;
+  onEditClick?: () => void;
   canEdit?: boolean;
 }
 
@@ -60,12 +57,9 @@ export function MedicalAntecedentsColumn({
   patientHeader,
   patientId,
   activeAppointmentId,
-  onMedicalHistoryUpdated,
-  onSaveMedicalHistory,
+  onEditClick,
   canEdit = false,
 }: MedicalAntecedentsColumnProps) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerLoading, setDrawerLoading] = useState(false);
   const { saving, save } = useClinicalNotes(
     patientId,
     medicalHistory?.clinicalNotes,
@@ -111,21 +105,6 @@ export function MedicalAntecedentsColumn({
     };
   }, []);
 
-  const handleSaveDrawer = async (data: UpdateMedicalHistoryRequest) => {
-    setDrawerLoading(true);
-    try {
-      if (onSaveMedicalHistory) {
-        await onSaveMedicalHistory(data);
-      }
-      onMedicalHistoryUpdated?.();
-      setDrawerOpen(false);
-    } catch {
-      // error handled upstream
-    } finally {
-      setDrawerLoading(false);
-    }
-  };
-
   const alerts = patientHeader?.alerts ?? [];
 
   return (
@@ -165,7 +144,7 @@ export function MedicalAntecedentsColumn({
           </div>
           {canEdit && (
             <button
-              onClick={() => setDrawerOpen(true)}
+              onClick={() => onEditClick?.()}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
             >
               <Edit className="h-4 w-4" />
@@ -374,13 +353,6 @@ export function MedicalAntecedentsColumn({
         </>
       )}
 
-      <MedicalHistoryDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onSave={handleSaveDrawer}
-        medicalHistory={medicalHistory}
-        loading={drawerLoading}
-      />
     </div>
   );
 }

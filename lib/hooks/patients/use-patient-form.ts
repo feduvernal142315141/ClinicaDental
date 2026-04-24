@@ -12,6 +12,8 @@ interface UsePatientFormParams {
   patientId?: string;
   basePath?: string;
   initialData?: Patient;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
 /**
@@ -23,6 +25,8 @@ export function usePatientForm({
   patientId,
   basePath = "/patients",
   initialData,
+  onSuccess,
+  onCancel,
 }: UsePatientFormParams) {
   const router = useRouter();
   const [form] = Form.useForm();
@@ -79,7 +83,8 @@ export function usePatientForm({
 
           const success = await updatePatient(updateData);
           if (success) {
-            router.push(`${basePath}/${patientId}`);
+            if (onSuccess) onSuccess();
+            else router.push(`${basePath}/${patientId}`);
           }
         } else {
           const createData: CreatePatientRequest = {
@@ -94,7 +99,8 @@ export function usePatientForm({
 
           const newPatientId = await createPatient(createData);
           if (newPatientId) {
-            router.push(basePath);
+            if (onSuccess) onSuccess();
+            else router.push(basePath);
           }
         }
       } catch (error: unknown) {
@@ -106,12 +112,14 @@ export function usePatientForm({
 
   // Handle cancel
   const handleCancel = useCallback(() => {
-    if (isEdit && patientId) {
+    if (onCancel) {
+      onCancel();
+    } else if (isEdit && patientId) {
       router.push(`${basePath}/${patientId}`);
     } else {
       router.push(basePath);
     }
-  }, [router, basePath, isEdit, patientId]);
+  }, [router, basePath, isEdit, patientId, onCancel]);
 
   // Handle back
   const handleBack = useCallback(() => {

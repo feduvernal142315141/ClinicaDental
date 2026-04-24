@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import {
   User,
@@ -27,7 +26,9 @@ interface PatientInfoColumnProps {
   patientHeader: ClinicalHistoryPatientHeader | null;
   canUpload?: boolean;
   canDelete?: boolean;
+  canEdit?: boolean;
   activeAppointmentId?: string;
+  onEditPatient?: () => void;
 }
 
 /** Extracts YYYY-MM-DD from any ISO date string, avoiding timezone shift */
@@ -91,9 +92,10 @@ export function PatientInfoColumn({
   patientHeader,
   canUpload = false,
   canDelete = false,
+  canEdit = true,
   activeAppointmentId,
+  onEditPatient,
 }: PatientInfoColumnProps) {
-  const router = useRouter();
 
   const dobShort = formatDateShort(patient.dateOfBirth);
   const age = calculateAge(patient.dateOfBirth);
@@ -124,15 +126,17 @@ export function PatientInfoColumn({
         {profileMeta && (
           <p className="text-sm text-muted-foreground mt-0.5">{profileMeta}</p>
         )}
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-4"
-          onClick={() => router.push(`/patients/${patient.id}/edit`)}
-        >
-          <Edit className="h-3.5 w-3.5 mr-1" />
-          Editar Perfil
-        </Button>
+        {canEdit && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => onEditPatient?.()}
+          >
+            <Edit className="h-3.5 w-3.5 mr-1" />
+            Editar Perfil
+          </Button>
+        )}
       </section>
 
       {/* Contacto */}

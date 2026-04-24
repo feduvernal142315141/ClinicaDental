@@ -1,3 +1,4 @@
+/** @deprecated Use AntecedentesPanel via ClinicalHistoryPage instead */
 "use client";
 
 import { useEffect } from "react";
