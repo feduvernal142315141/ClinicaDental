@@ -52,7 +52,7 @@ export function MobileDrawer({
       placement="left"
       open={open}
       onClose={onClose}
-      width={280}
+      size={280}
       closeIcon={null}
       styles={{
         header: { display: "none" },

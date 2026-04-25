@@ -26,10 +26,10 @@ export function EditPatientDrawer({
     <Drawer
       title="Editar paciente"
       placement="right"
-      width={600}
+      size={600}
       open={open}
       onClose={onClose}
-      destroyOnClose
+      destroyOnHidden
       extra={
         <Space>
           <Button

@@ -287,7 +287,7 @@ export function AppointmentsSchedulerShell({
             placement="left"
             open={drawerOpen}
             onClose={() => setDrawerOpen(false)}
-            width={280}
+            size={280}
             styles={{ body: { padding: 16 } }}
           >
             {sidebarContent}
