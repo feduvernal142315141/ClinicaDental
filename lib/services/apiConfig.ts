@@ -131,12 +131,25 @@ apiInstance.interceptors.response.use(
           break;
 
         case 401:
-          // Unauthorized - Usuario no autenticado
-          const message401 =
-            data?.message ||
-            "Sesión expirada. Por favor, inicia sesión nuevamente.";
-          interceptorHandlers.onNotification?.(message401, "warning");
-          interceptorHandlers.onUnauthorized?.();
+          // Unauthorized — handle differently for auth endpoints
+          // Auth endpoints (login, validate-otp) returning 401 means wrong credentials/code,
+          // NOT an expired session. Let the error propagate to the caller silently.
+          const authUrl = String(error.config?.url ?? "");
+          const isAuthEndpoint =
+            authUrl.includes("/auth/login") ||
+            authUrl.includes("/auth/validate-otp") ||
+            authUrl.includes("/auth/refresh-token") ||
+            authUrl.includes("/api/auth/");
+
+          if (!isAuthEndpoint) {
+            // Expired session on a protected endpoint — show global alert
+            const message401 =
+              data?.message ||
+              "Sesión expirada. Por favor, inicia sesión nuevamente.";
+            interceptorHandlers.onNotification?.(message401, "warning");
+            interceptorHandlers.onUnauthorized?.();
+          }
+          // For auth endpoints: error propagates to the calling service — form handles it
           console.error("Error 401 - Unauthorized:", data);
           break;
 
