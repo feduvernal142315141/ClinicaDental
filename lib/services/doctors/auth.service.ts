@@ -73,20 +73,17 @@ async function validateOtp(
     "/auth/validate-otp",
     data,
   );
+
+  // servicePost swallows errors and returns err.response — check status explicitly
+  if (response?.status === 401 || response?.status === 400) {
+    throw new Error("Código incorrecto. Verifica el código e inténtalo de nuevo.");
+  }
+
   if (response?.data) {
     return response.data;
   }
-  // Normalize error message to be user-friendly regardless of backend wording
-  const rawMessage = (response?.data as { message?: string })?.message ?? "";
-  const isInvalidCode =
-    rawMessage.toLowerCase().includes("inválido") ||
-    rawMessage.toLowerCase().includes("invalido") ||
-    rawMessage.toLowerCase().includes("invalid") ||
-    response?.status === 401;
-  const friendlyMessage = isInvalidCode
-    ? "Código incorrecto. Verifica el código e inténtalo de nuevo."
-    : rawMessage || "Error al validar el código OTP.";
-  handleServiceError(typeof response !== "undefined" ? response : null, friendlyMessage);
+
+  throw new Error("Código incorrecto. Verifica el código e inténtalo de nuevo.");
 }
 
 /**
