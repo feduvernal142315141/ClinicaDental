@@ -12,6 +12,7 @@ import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { PatientInfoColumn } from "./PatientInfoColumn";
 import { MedicalAntecedentsColumn } from "./MedicalAntecedentsColumn";
 import { AppointmentsColumn } from "./AppointmentsColumn";
+import { ActiveConsultationNotes } from "./ActiveConsultationNotes";
 import { VisitHistoryDrawer } from "./VisitHistoryDrawer";
 import { MedicalHistoryDrawer } from "@/components/features/clinical-history/sections/MedicalHistoryDrawer";
 import type { UpdateMedicalHistoryRequest } from "@/lib/entity/clinical-history";
@@ -37,10 +38,11 @@ export function ClinicalHistoryPage({
 }: ClinicalHistoryPageProps) {
   const router = useRouter();
   const normalizedInitialTab =
-    initialTab === "odontogram" ? "odontograma" : (initialTab ?? "historia-clinica");
+    initialTab === "odontogram" ? "odontograma" : (initialTab ?? (activeAppointmentId ? "workspace" : "historia-clinica"));
   const [activeTab, setActiveTab] = useState(normalizedInitialTab);
   const [historicVisitId, setHistoricVisitId] = useState<string | undefined>(undefined);
   const [showStartNow, setShowStartNow] = useState(false);
+  const [isFinalizeModalOpen, setIsFinalizeModalOpen] = useState(false);
   const [visitHistoryAppointment, setVisitHistoryAppointment] = useState<Appointment | null>(null);
 
   const [medicalHistoryDrawerOpen, setMedicalHistoryDrawerOpen] = useState(false);
@@ -56,7 +58,7 @@ export function ClinicalHistoryPage({
     useClinicalHistory();
 
   // US-01: Zustand store for active consultation — persisted in localStorage
-  const { start: startConsultation, isActiveFor } = useActiveConsultation();
+  const { start: startConsultation, end: endConsultation, isActiveFor } = useActiveConsultation();
 
   // Sync store when activeAppointmentId is provided via URL
   useEffect(() => {
@@ -135,7 +137,7 @@ export function ClinicalHistoryPage({
 
   const handleStartConsultation = useCallback(
     (appointmentId: string) => {
-      router.push(`/patients/${patientId}?tab=odontograma&appointmentId=${appointmentId}`);
+      router.push(`/patients/${patientId}?tab=workspace&appointmentId=${appointmentId}`);
     },
     [router, patientId],
   );
@@ -143,7 +145,7 @@ export function ClinicalHistoryPage({
   const handleStartNow = useCallback(
     (appointmentId: string) => {
       setShowStartNow(false);
-      router.push(`/patients/${patientId}?tab=odontograma&appointmentId=${appointmentId}`);
+      router.push(`/patients/${patientId}?tab=workspace&appointmentId=${appointmentId}`);
     },
     [router, patientId],
   );
@@ -187,66 +189,110 @@ export function ClinicalHistoryPage({
     );
   }
 
-  const tabItems = [
-    {
-      key: "historia-clinica",
+  const tabItems = [];
+
+  if (isCurrentlyActiveConsultation) {
+    tabItems.push({
+      key: "workspace",
       label: (
         <span className="flex items-center gap-2">
-          <ClipboardList className="h-4 w-4" />
-          Historia Clínica
+          <Stethoscope className="h-4 w-4" />
+          Workspace
         </span>
       ),
       children: (
-        <div className="overflow-x-auto grid gap-6 h-full min-h-0 grid-cols-[280px_1fr_300px]">
-          {/* Col 1: Patient info */}
-          {snapshotLoading ? (
-            <div className="flex h-40 items-center justify-center">
-              <Spin />
-            </div>
-          ) : (
-            <PatientInfoColumn
-              patient={patient}
-              medicalHistory={snapshot?.medicalHistory ?? null}
-              patientHeader={snapshot?.patientHeader ?? null}
-              canUpload={canManageAttachments}
-              canDelete={canManageAttachments}
-              canEdit={isAdmin || can('patients', PermissionAction.EDIT)}
-              activeAppointmentId={activeAppointmentId}
-              onEditPatient={() => setEditPatientOpen(true)}
-            />
-          )}
-
-          {/* Col 2: Medical antecedents */}
-          {snapshotLoading ? (
-            <div className="flex h-40 items-center justify-center">
-              <Spin />
-            </div>
-          ) : (
-            <MedicalAntecedentsColumn
-              medicalHistory={snapshot?.medicalHistory ?? null}
-              patientHeader={snapshot?.patientHeader ?? null}
-              patientId={patientId}
-              activeAppointmentId={activeAppointmentId}
-              onEditClick={() => setMedicalHistoryDrawerOpen(true)}
-              canEdit={canEditMedicalHistory}
-            />
-          )}
-
-          {/* Col 3: Appointments */}
-          <AppointmentsColumn
-            appointments={appointments}
-            loading={appointmentsLoading}
+        <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-6 h-full min-h-0">
+          <ActiveConsultationNotes
             patientId={patientId}
             activeAppointmentId={activeAppointmentId}
-            onStartConsultation={handleStartConsultation}
-            onNewConsultation={() => setShowStartNow(true)}
-            onViewVisitHistory={handleViewVisitHistory}
+            canEdit={canEditMedicalHistory}
           />
-
+          <PatientOdontogramPanel
+            patient={patient}
+            activeAppointmentId={activeAppointmentId}
+            historicVisitId={historicVisitId}
+            onClearHistoric={handleBackToCurrentOdontogram}
+            appointments={appointments}
+            onStartConsultation={() => setShowStartNow(true)}
+            onSelectHistoricVisit={(appointmentId) => {
+              setHistoricVisitId(appointmentId);
+            }}
+            finalizeOpen={isFinalizeModalOpen}
+            onFinalizeClose={() => setIsFinalizeModalOpen(false)}
+            onFinalizeSuccess={() => {
+              setIsFinalizeModalOpen(false);
+              endConsultation();
+              setActiveTab("historia-clinica");
+              loadAppointments();
+              router.replace(`/patients/${patientId}`);
+              router.refresh();
+            }}
+          />
         </div>
       ),
-    },
-    {
+    });
+  }
+
+  tabItems.push({
+    key: "historia-clinica",
+    label: (
+      <span className="flex items-center gap-2">
+        <ClipboardList className="h-4 w-4" />
+        {isCurrentlyActiveConsultation ? "Historia Clínica (Lectura)" : "Historia Clínica"}
+      </span>
+    ),
+    children: (
+      <div className="overflow-x-auto grid gap-6 h-full min-h-0 grid-cols-[280px_1fr_300px]">
+        {/* Col 1: Patient info */}
+        {snapshotLoading ? (
+          <div className="flex h-40 items-center justify-center">
+            <Spin />
+          </div>
+        ) : (
+          <PatientInfoColumn
+            patient={patient}
+            medicalHistory={snapshot?.medicalHistory ?? null}
+            patientHeader={snapshot?.patientHeader ?? null}
+            canUpload={canManageAttachments}
+            canDelete={canManageAttachments}
+            canEdit={isAdmin || can('patients', PermissionAction.EDIT)}
+            activeAppointmentId={activeAppointmentId}
+            onEditPatient={() => setEditPatientOpen(true)}
+          />
+        )}
+
+        {/* Col 2: Medical antecedents */}
+        {snapshotLoading ? (
+          <div className="flex h-40 items-center justify-center">
+            <Spin />
+          </div>
+        ) : (
+          <MedicalAntecedentsColumn
+            medicalHistory={snapshot?.medicalHistory ?? null}
+            patientHeader={snapshot?.patientHeader ?? null}
+            patientId={patientId}
+            activeAppointmentId={activeAppointmentId}
+            onEditClick={() => setMedicalHistoryDrawerOpen(true)}
+            canEdit={canEditMedicalHistory}
+          />
+        )}
+
+        {/* Col 3: Appointments */}
+        <AppointmentsColumn
+          appointments={appointments}
+          loading={appointmentsLoading}
+          patientId={patientId}
+          activeAppointmentId={activeAppointmentId}
+          onStartConsultation={handleStartConsultation}
+          onNewConsultation={() => setShowStartNow(true)}
+          onViewVisitHistory={handleViewVisitHistory}
+        />
+      </div>
+    ),
+  });
+
+  if (!isCurrentlyActiveConsultation) {
+    tabItems.push({
       key: "odontograma",
       label: (
         <span className="flex items-center gap-2">
@@ -267,28 +313,30 @@ export function ClinicalHistoryPage({
           }}
         />
       ),
-    },
-  ];
+    });
+  }
 
   return (
     <div className="flex flex-col h-full">
       {/* US-01: Active Consultation Banner — injected above Tabs when consultation is in progress */}
       <ActiveConsultationBanner
-        onFinalizeClick={() => setActiveTab("odontograma")}
+        onFinalizeClick={() => setIsFinalizeModalOpen(true)}
       />
 
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">{patient.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            Historia clínica del paciente
-          </p>
+      {!isCurrentlyActiveConsultation && (
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold">{patient.name}</h1>
+            <p className="text-sm text-muted-foreground">
+              Historia clínica del paciente
+            </p>
+          </div>
+          {isCurrentlyActiveConsultation && (
+            <Badge status="processing" color="green" text="Consulta en curso" />
+          )}
         </div>
-        {isCurrentlyActiveConsultation && (
-          <Badge status="processing" color="green" text="Consulta en curso" />
-        )}
-      </div>
+      )}
 
       <Tabs
         activeKey={activeTab}

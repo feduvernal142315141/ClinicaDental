@@ -27,6 +27,9 @@ interface PatientOdontogramPanelProps {
   onStartConsultation?: () => void;
   /** Called when user selects a historic visit from the timeline */
   onSelectHistoricVisit?: (appointmentId: string) => void;
+  finalizeOpen?: boolean;
+  onFinalizeClose?: () => void;
+  onFinalizeSuccess?: (result: { followUpId?: string }) => void;
 }
 
 export function PatientOdontogramPanel({
@@ -37,6 +40,9 @@ export function PatientOdontogramPanel({
   appointments,
   onStartConsultation,
   onSelectHistoricVisit,
+  finalizeOpen,
+  onFinalizeClose,
+  onFinalizeSuccess,
 }: PatientOdontogramPanelProps) {
   const { message } = App.useApp();
   const { can, isAdmin } = usePermission();
@@ -137,6 +143,9 @@ export function PatientOdontogramPanel({
           onError={() => {
             message.error("No se pudo sincronizar el odontograma del paciente");
           }}
+          finalizeOpen={finalizeOpen}
+          onFinalizeClose={onFinalizeClose}
+          onFinalizeSuccess={onFinalizeSuccess}
         />
         {/* Read-only overlay — shown when no active consultation and not in historic mode */}
         {!activeAppointmentId && !isHistoricMode && (

@@ -1,11 +1,15 @@
 "use client";
 
-import { Layout, Space, Badge } from "antd";
+import { Layout, Space, Badge, Tooltip } from "antd";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { BellOutlined } from "@ant-design/icons";
 import { ThemeSwitch } from "@/components/ui/antd/feedback/ThemeSwitch";
 import { UserDropdown } from "@/components/ui/antd/navigation/UserDropdown";
 import { AppBreadcrumb } from "@/components/ui/antd/navigation/AppBreadcrumb";
+import { useActiveConsultation } from "@/lib/store/useActiveConsultation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { Stethoscope } from "lucide-react";
 
 const { Header } = Layout;
 
@@ -39,6 +43,30 @@ export function AppHeaderAntd({
   onNotificationsClick,
   notificationCount = 0,
 }: AppHeaderAntdProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { appointmentId, patientId, patientName } = useActiveConsultation();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const hasActiveConsultation = mounted && appointmentId && patientId;
+  const isCurrentlyOnConsultation = 
+    pathname === `/patients/${patientId}` && 
+    searchParams.get("tab") === "workspace" && 
+    searchParams.get("appointmentId") === appointmentId;
+    
+  const shouldShowIcon = hasActiveConsultation && !isCurrentlyOnConsultation;
+
+  const handleReturnToConsultation = () => {
+    if (hasActiveConsultation) {
+      router.push(`/patients/${patientId}?tab=workspace&appointmentId=${appointmentId}`);
+    }
+  };
+
   return (
     <Header
       className="flex items-center justify-between px-4 lg:px-6 rounded-tl-4xl"
@@ -59,6 +87,22 @@ export function AppHeaderAntd({
 
       {/* Right section */}
       <Space size="middle" align="center">
+        {shouldShowIcon && (
+          <Tooltip title={`Volver a consulta: ${patientName}`}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+              onClick={handleReturnToConsultation}
+            >
+              <Stethoscope className="h-5 w-5" />
+              <span className="absolute top-2 right-2 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+            </Button>
+          </Tooltip>
+        )}
         <Badge count={notificationCount} size="small">
           <Button
             type="text"

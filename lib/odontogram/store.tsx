@@ -66,6 +66,9 @@ export interface OdontogramModuleProps {
     | "performed";
   onChange?: (snapshot: OdontogramSnapshot) => void;
   onError?: (error: unknown) => void;
+  finalizeOpen?: boolean;
+  onFinalizeClose?: () => void;
+  onFinalizeSuccess?: (result: { followUpId?: string }) => void;
 }
 
 interface OdontogramState extends OdontogramSnapshot {

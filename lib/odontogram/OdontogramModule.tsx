@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button } from "antd";
-import { FlagOutlined } from "@ant-design/icons";
 import {
   createEmptySnapshot,
   OdontogramStoreProvider,
@@ -21,13 +19,14 @@ function OdontogramModuleRuntime({
   initialTab,
   onChange,
   onError,
+  finalizeOpen,
+  onFinalizeClose,
+  onFinalizeSuccess,
 }: Omit<OdontogramModuleProps, "readOnly">) {
   const storeApi = useOdontogramStoreApi();
-  const readOnly = useOdontogramStore((state) => state.readOnly);
   const visitId = useOdontogramStore((state) => state.metadata.visitId);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [finalizeOpen, setFinalizeOpen] = useState(false);
   const hydratingRef = useRef(true);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -113,36 +112,17 @@ function OdontogramModuleRuntime({
         </div>
       ) : null}
 
-      {visitId && !readOnly ? (
-        <div className="flex items-center justify-between rounded-md border border-green-200 bg-green-50 px-4 py-3">
-          <div className="text-sm">
-            <p className="font-medium text-green-800">Cita activa</p>
-            <p className="text-xs text-green-700">
-              Registra procedimientos realizados y finaliza la cita cuando
-              termines.
-            </p>
-          </div>
-          <Button
-            type="primary"
-            icon={<FlagOutlined />}
-            style={{ background: "#22c55e", borderColor: "#22c55e" }}
-            onClick={() => setFinalizeOpen(true)}
-          >
-            Finalizar cita
-          </Button>
-        </div>
-      ) : null}
-
       <OdontogramModuleView initialTab={initialTab} showHeader={showHeader} />
 
       {visitId && patientId && clinicId ? (
         <FinalizarCitaModal
-          open={finalizeOpen}
-          onClose={() => setFinalizeOpen(false)}
+          open={!!finalizeOpen}
+          onClose={() => onFinalizeClose?.()}
           visitId={visitId}
           patientId={patientId}
           clinicId={clinicId}
           adapter={adapter}
+          onSuccess={onFinalizeSuccess}
         />
       ) : null}
     </div>
@@ -158,6 +138,9 @@ export function OdontogramModule({
   initialTab = "odontogram",
   onChange,
   onError,
+  finalizeOpen,
+  onFinalizeClose,
+  onFinalizeSuccess,
 }: OdontogramModuleProps) {
   return (
     <OdontogramStoreProvider
@@ -174,6 +157,9 @@ export function OdontogramModule({
         initialTab={initialTab}
         onChange={onChange}
         onError={onError}
+        finalizeOpen={finalizeOpen}
+        onFinalizeClose={onFinalizeClose}
+        onFinalizeSuccess={onFinalizeSuccess}
       />
     </OdontogramStoreProvider>
   );
