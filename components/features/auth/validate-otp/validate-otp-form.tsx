@@ -221,7 +221,7 @@ export function ValidateOtpForm() {
         variant="ghost"
         className="w-full text-black"
         onClick={() => router.push("/login")}
-        disabled={loading || resendLoading}
+        disabled={loading || resendLoading || validationState === "success"}
       >
         Volver al login
       </Button>
