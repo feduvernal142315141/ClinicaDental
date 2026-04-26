@@ -165,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.refresh();
       }
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : "OTP inválido");
+      setAuthError(err instanceof Error ? err.message : "Código OTP incorrecto. Verifica el código e inténtalo de nuevo.");
     } finally {
       setLoading(false);
     }

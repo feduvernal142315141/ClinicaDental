@@ -9,7 +9,7 @@ export async function POST(request: Request) {
 
   if (!body?.accessToken || !body?.refreshToken) {
     return NextResponse.json(
-      { code: "BAD_REQUEST", message: "Tokens requeridos" },
+      { code: "BAD_REQUEST", message: "Error interno de autenticación. Vuelve a iniciar sesión." },
       { status: 400 }
     );
   }

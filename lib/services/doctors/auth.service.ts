@@ -76,7 +76,17 @@ async function validateOtp(
   if (response?.data) {
     return response.data;
   }
-  handleServiceError(typeof response !== "undefined" ? response : null, "Error al validar OTP");
+  // Normalize error message to be user-friendly regardless of backend wording
+  const rawMessage = (response?.data as { message?: string })?.message ?? "";
+  const isInvalidCode =
+    rawMessage.toLowerCase().includes("inválido") ||
+    rawMessage.toLowerCase().includes("invalido") ||
+    rawMessage.toLowerCase().includes("invalid") ||
+    response?.status === 401;
+  const friendlyMessage = isInvalidCode
+    ? "Código incorrecto. Verifica el código e inténtalo de nuevo."
+    : rawMessage || "Error al validar el código OTP.";
+  handleServiceError(typeof response !== "undefined" ? response : null, friendlyMessage);
 }
 
 /**
