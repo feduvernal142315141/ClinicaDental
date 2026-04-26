@@ -1,10 +1,11 @@
-import { ActionButtons, DataTableColumn } from "@/components/ui/antd";
+import { DataTableColumn } from "@/components/ui/antd";
 import {
-  CheckCircleOutlined,
   EditOutlined,
   StopOutlined,
+  CheckCircleOutlined,
+  MoreOutlined,
 } from "@ant-design/icons";
-import { Tag } from "antd";
+import { Dropdown, Tag } from "antd";
 import type { ServiceListItem } from "@/lib/entity/services";
 import { SERVICE_TYPE_LABELS } from "@/lib/entity/services";
 import dayjs from "dayjs";
@@ -36,14 +37,18 @@ export function getServicesColumns({
       dataIndex: "code",
       sorter: true,
       width: 120,
-      render: (value) => <span className="font-mono text-xs">{value}</span>,
+      render: (value) => (
+        <span className="font-mono text-xs text-slate-600">{value}</span>
+      ),
     },
     {
       key: "name",
       title: "Nombre",
       dataIndex: "name",
       sorter: true,
-      render: (value) => <div className="font-medium">{value}</div>,
+      render: (value) => (
+        <div className="text-sm font-bold text-slate-900">{value}</div>
+      ),
     },
     {
       key: "type",
@@ -61,8 +66,11 @@ export function getServicesColumns({
       title: "Costo",
       dataIndex: "cost",
       align: "right",
-      render: (value: number) =>
-        typeof value === "number" ? `$${value.toFixed(2)}` : "-",
+      render: (value: number) => (
+        <span className="text-sm text-slate-600">
+          {typeof value === "number" ? `$${value.toFixed(2)}` : "-"}
+        </span>
+      ),
     },
     {
       key: "odontogramEnabled",
@@ -76,59 +84,80 @@ export function getServicesColumns({
       key: "active",
       title: "Estado",
       dataIndex: "active",
-      align: "center",
       render: (value: boolean) =>
         value ? (
-          <Tag color="success">Activo</Tag>
+          <span className="rounded-full border border-green-100 bg-green-50 px-2.5 py-0.5 text-[11px] font-bold text-green-700">
+            Activo
+          </span>
         ) : (
-          <Tag color="error">Inactivo</Tag>
+          <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
+            Inactivo
+          </span>
         ),
     },
     {
       key: "createAt",
       title: "Fecha Creación",
       dataIndex: "createAt",
-      render: (value) => (value ? dayjs(value).format("DD/MM/YYYY") : "-"),
+      render: (value) => (
+        <span className="text-sm text-slate-600">
+          {value ? dayjs(value).format("DD/MM/YYYY") : "-"}
+        </span>
+      ),
     },
     {
       key: "actions",
-      title: "Acciones",
+      title: "ACCIONES",
       align: "center",
       fixed: "right",
-      width: 130,
+      width: 100,
       render: (_, record) => {
-        const actions = [];
+        const dropdownItems = [];
 
-        if (canEdit) {
-          actions.push({
-            key: "edit",
-            label: "Editar",
-            icon: <EditOutlined />,
-            onClick: () => onEdit(record.id),
-          });
+        if (canBlock) {
+          if (record.active) {
+            dropdownItems.push({
+              key: "deactivate",
+              label: "Desactivar",
+              icon: <StopOutlined />,
+              danger: true,
+              onClick: () => onToggleStatus(record.id, true),
+            });
+          } else {
+            dropdownItems.push({
+              key: "activate",
+              label: "Activar",
+              icon: <CheckCircleOutlined />,
+              className: "menu-item-success",
+              onClick: () => onToggleStatus(record.id, false),
+            });
+          }
         }
 
-        if (canBlock && record.active) {
-          actions.push({
-            key: "inactivate",
-            label: "Desactivar",
-            icon: <StopOutlined />,
-            danger: true,
-            onClick: () => onToggleStatus(record.id, true),
-          });
-        }
-
-        if (canBlock && !record.active) {
-          actions.push({
-            key: "activate",
-            label: "Activar",
-            icon: <CheckCircleOutlined />,
-            success: true,
-            onClick: () => onToggleStatus(record.id, false),
-          });
-        }
-
-        return <ActionButtons actions={actions} />;
+        return (
+          <div className="flex items-center justify-center gap-2">
+            {canEdit && (
+              <button
+                onClick={() => onEdit(record.id)}
+                title="Editar Servicio"
+                className="btn-action-edit"
+              >
+                <EditOutlined className="text-sm" />
+              </button>
+            )}
+            {canBlock && dropdownItems.length > 0 && (
+              <Dropdown
+                menu={{ items: dropdownItems }}
+                trigger={["click"]}
+                placement="bottomRight"
+              >
+                <button title="Más acciones" className="btn-action-more">
+                  <MoreOutlined className="text-sm" />
+                </button>
+              </Dropdown>
+            )}
+          </div>
+        );
       },
     },
   ];

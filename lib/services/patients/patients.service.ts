@@ -4,6 +4,7 @@ import {
   servicePost,
   servicePut,
   serviceDelete,
+  servicePatch,
 } from "../baseService";
 import type {
   Patient,
@@ -150,6 +151,24 @@ async function deletePatient(id: string): Promise<boolean> {
 }
 
 /**
+ * Activate a patient (reactivate soft-deleted patient)
+ * PATCH /patients/:id/activate
+ *
+ * @returns void on success
+ */
+async function activatePatient(id: string): Promise<void> {
+  const response = await servicePatch<void, void>(
+    `${endpoint}/${id}/activate`,
+  );
+
+  if (response?.status === 200 || response?.status === 204) {
+    return;
+  }
+
+  handleServiceError(response, "Error al activar paciente");
+}
+
+/**
  * Restore a deleted patient
  * Convenience method that calls updatePatient with active: true
  */
@@ -163,5 +182,6 @@ export const patientsService = {
   createPatient,
   updatePatient,
   deletePatient,
+  activatePatient,
   restorePatient,
 };

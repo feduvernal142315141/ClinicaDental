@@ -154,3 +154,53 @@ html {
 .animate-otp-shake {
   animation: otp-shake 0.4s ease-in-out both;
 }
+
+/* ── Modern Clinical Table ──────────────────────────────────────── */
+.modern-clinical-table .ant-table-thead > tr > th {
+  background-color: #fafafa !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #64748b !important; /* slate-500 */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+/* Remove vertical column dividers */
+.modern-clinical-table .ant-table-thead > tr > th::before,
+.modern-clinical-table .ant-table-tbody > tr > td::before {
+  display: none !important;
+}
+
+.modern-clinical-table .ant-table-cell {
+  border-right: none !important;
+}
+
+/* Row hover: subtle blue tint */
+.modern-clinical-table .ant-table-tbody > tr:hover > td {
+  background-color: rgba(59, 130, 246, 0.06) !important; /* blue-500/6% */
+}
+
+/* ── AntD Dropdown success item (mirrors danger: true but in green) ── */
+.menu-item-success {
+  color: #059669 !important; /* emerald-600 */
+}
+.menu-item-success:hover {
+  background-color: #d1fae5 !important; /* emerald-100 */
+}
+
+@layer components {
+  /* Generic action buttons for data tables (Patients, Doctors, Services) */
+  .btn-action-view {
+    @apply w-7 h-7 inline-flex items-center justify-center rounded-md text-slate-400 bg-transparent hover:text-blue-600 hover:bg-blue-50 transition-colors;
+  }
+  .btn-action-edit {
+    @apply w-7 h-7 inline-flex items-center justify-center rounded-md text-slate-400 bg-transparent hover:text-emerald-600 hover:bg-emerald-50 transition-colors;
+  }
+  .btn-action-delete {
+    @apply w-7 h-7 inline-flex items-center justify-center rounded-md text-slate-400 bg-transparent hover:text-red-600 hover:bg-red-50 transition-colors;
+  }
+  .btn-action-more {
+    @apply w-7 h-7 inline-flex items-center justify-center rounded-md text-slate-400 bg-transparent hover:text-slate-700 hover:bg-slate-100 transition-colors;
+  }
+}

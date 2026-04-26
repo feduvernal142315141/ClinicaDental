@@ -172,7 +172,7 @@ export function DataTable<T extends object>({
       scroll={scroll}
       size={size}
       bordered={bordered}
-      className={className}
+      className={`modern-clinical-table ${className || ""}`.trim()}
       locale={{ emptyText: emptyText || defaultEmptyState }}
     />
   );

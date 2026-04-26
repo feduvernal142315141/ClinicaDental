@@ -136,6 +136,28 @@ export function usePatients() {
   );
 
   /**
+   * Activate a patient via the dedicated PATCH endpoint
+   */
+  const activatePatient = useCallback(
+    async (id: string) => {
+      setLoading(true);
+      try {
+        await patientsService.activatePatient(id);
+        message.success("Paciente activado exitosamente");
+        return true;
+      } catch (error: unknown) {
+        message.error(
+          (error as Error).message || "Error al activar paciente",
+        );
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [message],
+  );
+
+  /**
    * Restore a deleted patient
    */
   const restorePatient = useCallback(
@@ -186,6 +208,7 @@ export function usePatients() {
     createPatient,
     updatePatient,
     deletePatient,
+    activatePatient,
     restorePatient,
     togglePatientStatus,
   };

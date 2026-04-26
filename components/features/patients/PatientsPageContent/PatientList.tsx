@@ -31,7 +31,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
     basePath,
   });
 
-  const { patients, loading, pagination, fetchPatients, deletePatient } =
+  const { patients, loading, pagination, fetchPatients, deletePatient, activatePatient } =
     usePatients();
 
   // Persist active filters and current pageSize across re-renders
@@ -56,29 +56,56 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
 
   const handleDelete = (patient: Patient) => {
     modal.confirm({
-      title: "¿Eliminar paciente?",
+      title: "¿Desactivar paciente?",
       content: (
         <>
-          Esta acción no se puede deshacer. Se eliminará permanentemente la
-          información del paciente <strong>{patient.name}</strong> y todos sus
-          datos asociados.
+          El paciente <strong>{patient.name}</strong> ya no aparecerá en las
+          búsquedas activas, pero su historial clínico y de pagos se mantendrá
+          intacto.
         </>
       ),
-      okText: "Eliminar",
+      okText: "Desactivar",
       okType: "danger",
       cancelText: "Cancelar",
       onOk: async () => {
         try {
           await deletePatient(patient.id);
-          message.success("Paciente eliminado correctamente");
-          // Refetch current page
           fetchPatients({
             page: pagination.page,
             pageSize: pagination.pageSize,
+            filters: activeFiltersRef.current,
           });
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_e) {
-          message.error("No se pudo eliminar el paciente");
+          message.error("No se pudo desactivar el paciente");
+        }
+      },
+    });
+  };
+
+  const handleToggleStatus = (patient: Patient) => {
+    modal.confirm({
+      title: "¿Activar paciente?",
+      content: (
+        <>
+          El paciente <strong>{patient.name}</strong> volverá a aparecer en las
+          búsquedas activas.
+        </>
+      ),
+      okText: "Activar",
+      cancelText: "Cancelar",
+      cancelButtonProps: { danger: true, type: "default" },
+      onOk: async () => {
+        try {
+          await activatePatient(patient.id);
+          fetchPatients({
+            page: pagination.page,
+            pageSize: pagination.pageSize,
+            filters: activeFiltersRef.current,
+          });
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (_e) {
+          message.error("No se pudo activar el paciente");
         }
       },
     });
@@ -90,6 +117,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
         onView: handleViewPatient,
         onEdit: handleEditPatient,
         onDelete: handleDelete,
+        onToggleStatus: handleToggleStatus,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [handleViewPatient, handleEditPatient],
