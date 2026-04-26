@@ -40,7 +40,7 @@ function getSlotClassName(index: number, state: OtpValidationState): string {
     return `${base} border-green-500 !border-green-500 bg-green-50 shadow-[0_0_0_3px_rgba(34,197,94,0.25)] animate-otp-wave ${WAVE_DELAYS[index] ?? ""}`;
   }
   if (state === "error") {
-    return `${base} border-red-500 !border-red-500 animate-otp-shake`;
+    return `${base} border-red-500 !border-red-500`;
   }
   // idle | validating — sin cambio visual extra
   return `${base} border-blue-500`;
@@ -152,6 +152,13 @@ export function ValidateOtpForm() {
     >
       <div className="relative flex items-center justify-center">
         <InputOTP
+          containerClassName={`transition-transform duration-300 ${
+            validationState === "error"
+              ? "animate-otp-shake"
+              : validationState === "success"
+                ? "scale-[1.02]"
+                : ""
+          }`}
           maxLength={6}
           value={otp}
           onChange={(value) => {
