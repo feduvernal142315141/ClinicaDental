@@ -9,6 +9,9 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { useOdontogramByVisit } from "@/lib/hooks/odontogram/useOdontogramByVisit";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { RotateCcw } from "lucide-react";
+import { OdontogramReadOnlyOverlay } from "@/components/features/odontogram/ui/OdontogramReadOnlyOverlay";
+import { OdontogramHistoryTimeline } from "@/components/features/odontogram/ui/OdontogramHistoryTimeline";
+import type { Appointment } from "@/lib/entity/appointment/appointments";
 
 interface PatientOdontogramPanelProps {
   patient: {
@@ -18,6 +21,12 @@ interface PatientOdontogramPanelProps {
   activeAppointmentId?: string;
   historicVisitId?: string;
   onClearHistoric?: () => void;
+  /** All patient appointments — used to build the history timeline */
+  appointments?: Appointment[];
+  /** Called when user wants to start a consultation from the overlay */
+  onStartConsultation?: () => void;
+  /** Called when user selects a historic visit from the timeline */
+  onSelectHistoricVisit?: (appointmentId: string) => void;
 }
 
 export function PatientOdontogramPanel({
@@ -25,6 +34,9 @@ export function PatientOdontogramPanel({
   activeAppointmentId,
   historicVisitId,
   onClearHistoric,
+  appointments,
+  onStartConsultation,
+  onSelectHistoricVisit,
 }: PatientOdontogramPanelProps) {
   const { message } = App.useApp();
   const { can, isAdmin } = usePermission();
@@ -57,7 +69,8 @@ export function PatientOdontogramPanel({
   }, [historicSnapshot]);
 
   const isHistoricMode = !!historicVisitId;
-  const readOnly = isHistoricMode || !(isAdmin || can("patients", PermissionAction.EDIT));
+  // US-03: odontogram is read-only when no active consultation OR in historic mode
+  const readOnly = isHistoricMode || !activeAppointmentId || !(isAdmin || can("patients", PermissionAction.EDIT));
 
   // While loading historic snapshot, show nothing or loading
   if (isHistoricMode && historicLoading) {
@@ -106,7 +119,14 @@ export function PatientOdontogramPanel({
         </div>
       )}
 
-      <div className="flex-1 min-h-0">
+      {/* Odontogram + conditional read-only overlay */}
+      <div
+        className={[
+          "flex-1 min-h-0 relative",
+          // US-03: apply grayscale+opacity when no active consultation and not in historic mode
+          !activeAppointmentId && !isHistoricMode ? "opacity-60 grayscale" : "",
+        ].join(" ")}
+      >
         <OdontogramModule
           patientId={patient.id}
           clinicId={clinicId}
@@ -118,7 +138,28 @@ export function PatientOdontogramPanel({
             message.error("No se pudo sincronizar el odontograma del paciente");
           }}
         />
+        {/* Read-only overlay — shown when no active consultation and not in historic mode */}
+        {!activeAppointmentId && !isHistoricMode && (
+          <OdontogramReadOnlyOverlay onStartConsultation={onStartConsultation} />
+        )}
       </div>
+
+      {/* US-03: Historical navigation timeline — only when there are visits to navigate */}
+      {appointments && appointments.length > 1 && (
+        <OdontogramHistoryTimeline
+          appointments={appointments}
+          historicAppointmentId={historicVisitId}
+          activeAppointmentId={activeAppointmentId}
+          onSelectVisit={(appointmentId) => {
+            if (appointmentId === activeAppointmentId) {
+              onClearHistoric?.();
+            } else {
+              onSelectHistoricVisit?.(appointmentId);
+            }
+          }}
+          onReturnToCurrent={onClearHistoric ?? (() => {})}
+        />
+      )}
     </div>
   );
 }

@@ -18,6 +18,8 @@ import type { UpdateMedicalHistoryRequest } from "@/lib/entity/clinical-history"
 import { EditPatientDrawer } from "./EditPatientDrawer";
 import { StartConsultationNowModal } from "@/components/features/appointments/StartConsultationNowModal";
 import { PatientOdontogramPanel } from "@/components/features/patients/detail/PatientOdontogramPanel";
+import { ActiveConsultationBanner } from "@/components/features/clinical-history/ActiveConsultationBanner";
+import { useActiveConsultation } from "@/lib/store/useActiveConsultation";
 import type { Patient } from "@/lib/entity/patients";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
 
@@ -52,6 +54,40 @@ export function ClinicalHistoryPage({
 
   const { snapshot, loading: snapshotLoading, loadSnapshot, refresh, updateMedicalHistory } =
     useClinicalHistory();
+
+  // US-01: Zustand store for active consultation — persisted in localStorage
+  const { start: startConsultation, isActiveFor } = useActiveConsultation();
+
+  // Sync store when activeAppointmentId is provided via URL
+  useEffect(() => {
+    if (activeAppointmentId && patient) {
+      startConsultation({
+        appointmentId: activeAppointmentId,
+        patientId: patientId,
+        patientName: patient.name,
+        criticalAlerts: [],
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAppointmentId, patientId, patient?.name]);
+
+  // Update critical alerts once snapshot loads (allergies surface in banner)
+  useEffect(() => {
+    if (!activeAppointmentId || !snapshot || !patient) return;
+    const allergies = snapshot.medicalHistory?.allergies ?? [];
+    if (allergies.length > 0) {
+      startConsultation({
+        appointmentId: activeAppointmentId,
+        patientId: patientId,
+        patientName: patient.name,
+        criticalAlerts: allergies.map((a) => `Alergia: ${a}`),
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot?.medicalHistory?.allergies]);
+
+  const isCurrentlyActiveConsultation =
+    !!activeAppointmentId && isActiveFor(patientId, activeAppointmentId);
 
   const { isAdmin, can } = usePermission();
   const canManageAttachments = isAdmin || can('patients', PermissionAction.EDIT);
@@ -224,6 +260,11 @@ export function ClinicalHistoryPage({
           activeAppointmentId={activeAppointmentId}
           historicVisitId={historicVisitId}
           onClearHistoric={handleBackToCurrentOdontogram}
+          appointments={appointments}
+          onStartConsultation={() => setShowStartNow(true)}
+          onSelectHistoricVisit={(appointmentId) => {
+            setHistoricVisitId(appointmentId);
+          }}
         />
       ),
     },
@@ -231,6 +272,11 @@ export function ClinicalHistoryPage({
 
   return (
     <div className="flex flex-col h-full">
+      {/* US-01: Active Consultation Banner — injected above Tabs when consultation is in progress */}
+      <ActiveConsultationBanner
+        onFinalizeClick={() => setActiveTab("odontograma")}
+      />
+
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
@@ -239,7 +285,7 @@ export function ClinicalHistoryPage({
             Historia clínica del paciente
           </p>
         </div>
-        {activeAppointmentId && (
+        {isCurrentlyActiveConsultation && (
           <Badge status="processing" color="green" text="Consulta en curso" />
         )}
       </div>
