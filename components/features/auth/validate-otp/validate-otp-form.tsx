@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import {
@@ -23,6 +23,29 @@ function formatTime(seconds: number) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+type OtpValidationState = "idle" | "validating" | "success" | "error";
+
+const WAVE_DELAYS = [
+  "[animation-delay:0ms]",
+  "[animation-delay:75ms]",
+  "[animation-delay:150ms]",
+  "[animation-delay:225ms]",
+  "[animation-delay:300ms]",
+  "[animation-delay:375ms]",
+] as const;
+
+function getSlotClassName(index: number, state: OtpValidationState): string {
+  const base = "rounded-md border";
+  if (state === "success") {
+    return `${base} border-green-500 !border-green-500 bg-green-50 shadow-[0_0_0_3px_rgba(34,197,94,0.25)] animate-otp-wave ${WAVE_DELAYS[index] ?? ""}`;
+  }
+  if (state === "error") {
+    return `${base} border-red-500 !border-red-500 animate-otp-shake`;
+  }
+  // idle | validating — sin cambio visual extra
+  return `${base} border-blue-500`;
+}
+
 export function ValidateOtpForm() {
   const router = useRouter();
   const { loading, authError, completeOtpLogin } = useAuth();
@@ -31,6 +54,10 @@ export function ValidateOtpForm() {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [resendLoading, setResendLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [validationState, setValidationState] =
+    useState<OtpValidationState>("idle");
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+  const prevLoadingRef = useRef(false);
 
   const session = useMemo(() => loadOtpSession(), []);
   const email = session?.email ?? "";
@@ -55,7 +82,26 @@ export function ValidateOtpForm() {
     return () => window.clearInterval(id);
   }, [router, session]);
 
-  const canVerify = otp.length === 6 && !loading;
+  // Detección éxito/error (CR-1: NO chequear authError post-await)
+  useEffect(() => {
+    if (prevLoadingRef.current && !loading && validationState === "validating") {
+      if (authError) {
+        setValidationState("error");
+      } else {
+        setValidationState("success");
+      }
+    }
+    prevLoadingRef.current = loading;
+  }, [loading, authError, validationState]);
+
+  // Timer overlay éxito con cleanup (CR-6)
+  useEffect(() => {
+    if (validationState !== "success") return;
+    const timer = setTimeout(() => setShowSuccessOverlay(true), 600);
+    return () => clearTimeout(timer);
+  }, [validationState]);
+
+  const canVerify = otp.length === 6 && !loading && validationState !== "success";
   const canResend = timeLeft === 0 && !resendLoading;
 
   const handleVerify = async () => {
@@ -64,11 +110,13 @@ export function ValidateOtpForm() {
       setLocalError("Sesión OTP no encontrada. Vuelve a iniciar sesión.");
       return;
     }
-
+    setValidationState("validating");
     await completeOtpLogin(otp);
   };
 
   const handleResend = async () => {
+    setValidationState("idle");
+    setShowSuccessOverlay(false);
     setLocalError(null);
     const password = loadOtpPassword();
     if (!email || !password) {
@@ -102,42 +150,37 @@ export function ValidateOtpForm() {
         <>Ingresa el código de 6 dígitos enviado a {email || "tu correo"}.</>
       }
     >
-      <div className="flex items-center justify-center">
+      <div className="relative flex items-center justify-center">
         <InputOTP
           maxLength={6}
           value={otp}
-          onChange={setOtp}
+          onChange={(value) => {
+            setOtp(value);
+            if (validationState === "error") setValidationState("idle");
+          }}
           inputMode="numeric"
           pattern="^[0-9]*$"
-          disabled={loading}
+          disabled={loading || validationState === "success"}
         >
           <InputOTPGroup className="gap-2">
-            <InputOTPSlot
-              className="border border-blue-500 rounded-md"
-              index={0}
-            />
-            <InputOTPSlot
-              className="border border-blue-500 rounded-md"
-              index={1}
-            />
-            <InputOTPSlot
-              className="border border-blue-500 rounded-md"
-              index={2}
-            />
-            <InputOTPSlot
-              className="border border-blue-500 rounded-md"
-              index={3}
-            />
-            <InputOTPSlot
-              className="border border-blue-500 rounded-md"
-              index={4}
-            />
-            <InputOTPSlot
-              className="border border-blue-500 rounded-md"
-              index={5}
-            />
+            {[0, 1, 2, 3, 4, 5].map((index) => (
+              <InputOTPSlot
+                key={index}
+                index={index}
+                className={getSlotClassName(index, validationState)}
+              />
+            ))}
           </InputOTPGroup>
         </InputOTP>
+
+        {showSuccessOverlay && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 rounded-md gap-1.5">
+            <div className="h-5 w-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs font-semibold text-green-700">
+              Iniciando sesión...
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="text-center text-sm text-muted-foreground">
