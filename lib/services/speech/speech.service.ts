@@ -1,4 +1,4 @@
-import { apiInstance } from "@/lib/services/apiConfig";
+import apiInstance from "@/lib/services/apiConfig";
 
 export interface TranscribeResponse {
   text: string;

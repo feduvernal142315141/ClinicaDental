@@ -1,87 +1,203 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { speechService } from "@/lib/services/speech/speech.service";
 import { App } from "antd";
 
 export interface UseGroqDictationOptions {
+  /** Called with the final accurate transcription from Groq Whisper. */
   onResult?: (text: string) => void;
   onError?: (error: Error) => void;
 }
 
+/**
+ * Hybrid dictation hook — streaming preview + accurate final transcription.
+ *
+ * While recording:
+ * - `MediaRecorder` captures audio for Groq Whisper (the source of truth).
+ * - Browser `SpeechRecognition` provides live interim text for UX streaming feel.
+ *
+ * When the user stops:
+ * - Full audio is sent to Groq → accurate text with dental vocabulary.
+ * - `onResult` fires with the Groq text (the interim preview is discarded).
+ */
 export function useGroqDictation(options: UseGroqDictationOptions = {}) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [interimText, setInterimText] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const { message } = App.useApp();
+
+  // Stable ref to avoid re-creating recorder on every render
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
+  // Check if SpeechRecognition is available in this browser
+  const SpeechRecognitionAPI =
+    typeof window !== "undefined"
+      ? window.SpeechRecognition || window.webkitSpeechRecognition
+      : null;
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.abort();
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state === "recording"
+      ) {
+        mediaRecorderRef.current.stop();
+      }
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  const startSpeechRecognition = useCallback(() => {
+    if (!SpeechRecognitionAPI) return;
+
+    const recognition = new SpeechRecognitionAPI();
+    recognition.lang = "es-ES";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    let finalAccumulated = "";
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalAccumulated += transcript + " ";
+        } else {
+          interim += transcript;
+        }
+      }
+      setInterimText(finalAccumulated + interim);
+    };
+
+    recognition.onerror = (event) => {
+      // "no-speech" and "aborted" are expected — ignore silently
+      if (event.error !== "no-speech" && event.error !== "aborted") {
+        console.warn("[SpeechRecognition] error:", event.error);
+      }
+    };
+
+    // Auto-restart if the browser stops listening (silence timeout)
+    recognition.onend = () => {
+      // Only restart if we're still recording
+      if (mediaRecorderRef.current?.state === "recording") {
+        try {
+          recognition.start();
+        } catch {
+          // Already started or aborted — ignore
+        }
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch {
+      // Browser doesn't support it — that's OK, we still have Groq
+    }
+
+    recognitionRef.current = recognition;
+  }, [SpeechRecognitionAPI]);
 
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "audio/webm",
-      });
+      streamRef.current = stream;
+      chunksRef.current = [];
+      setInterimText("");
 
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+      // 1. Start MediaRecorder for Groq
+      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
       };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
 
-      mediaRecorder.onstop = async () => {
-        setIsRecording(false);
-        setIsProcessing(true);
-        try {
-          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-          if (audioBlob.size > 0) {
-            const text = await speechService.transcribeAudio(audioBlob);
-            if (options.onResult && text.trim()) {
-              options.onResult(text);
-            }
-          }
-        } catch (error) {
-          console.error("Transcription error:", error);
-          message.error("No se pudo procesar el dictado por voz");
-          if (options.onError && error instanceof Error) {
-            options.onError(error);
-          }
-        } finally {
-          setIsProcessing(false);
-          audioChunksRef.current = [];
-          stream.getTracks().forEach((track) => track.stop());
-        }
-      };
+      // 2. Start SpeechRecognition for live preview
+      startSpeechRecognition();
 
-      mediaRecorder.start();
       setIsRecording(true);
     } catch (error) {
-      console.error("Microphone access error:", error);
+      console.error("[useGroqDictation] mic access error:", error);
       message.error("No se pudo acceder al micrófono");
       if (options.onError && error instanceof Error) {
         options.onError(error);
       }
     }
-  }, [options, message]);
+  }, [message, options, startSpeechRecognition]);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop();
+    // Stop live preview
+    recognitionRef.current?.abort();
+    recognitionRef.current = null;
+
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state !== "recording") {
+      setIsRecording(false);
+      return;
     }
-  }, []);
+
+    recorder.onstop = async () => {
+      setIsRecording(false);
+      setIsProcessing(true);
+
+      try {
+        const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
+        if (audioBlob.size > 100) {
+          const text = await speechService.transcribeAudio(audioBlob);
+          if (text.trim() && optionsRef.current.onResult) {
+            optionsRef.current.onResult(text);
+          }
+        }
+      } catch (error) {
+        console.error("[useGroqDictation] Groq transcription error:", error);
+        message.error("No se pudo procesar el dictado por voz");
+        if (optionsRef.current.onError && error instanceof Error) {
+          optionsRef.current.onError(error);
+        }
+      } finally {
+        setIsProcessing(false);
+        setInterimText("");
+        chunksRef.current = [];
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+    };
+
+    recorder.stop();
+  }, [message]);
 
   const cancelRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      // Clear chunks before stopping so it doesn't process
-      audioChunksRef.current = [];
-      mediaRecorderRef.current.stop();
+    recognitionRef.current?.abort();
+    recognitionRef.current = null;
+    chunksRef.current = [];
+
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state === "recording") {
+      recorder.onstop = () => {
+        /* discard */
+      };
+      recorder.stop();
     }
+
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setIsRecording(false);
+    setIsProcessing(false);
+    setInterimText("");
   }, []);
 
   return {
     isRecording,
     isProcessing,
+    /** Live interim text from browser SpeechRecognition (streaming preview). */
+    interimText,
     startRecording,
     stopRecording,
     cancelRecording,

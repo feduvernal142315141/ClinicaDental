@@ -82,10 +82,9 @@ export function ClinicalNotesEditor({
     }
   }, [initialContent, editor]);
 
-  const { isRecording, isProcessing, startRecording, stopRecording } = useGroqDictation({
+  const { isRecording, isProcessing, interimText, startRecording, stopRecording } = useGroqDictation({
     onResult: (transcript) => {
       editor?.commands.insertContent(transcript + " ");
-      // focus editor at the end
       editor?.commands.focus();
     },
   });
@@ -183,15 +182,26 @@ export function ClinicalNotesEditor({
 
       {/* Status preview — shown while dictating or processing */}
       {isRecording && (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted/50 border border-dashed text-sm text-muted-foreground italic">
-          <span className="inline-block h-2 w-2 rounded-full bg-red-500 animate-ping flex-shrink-0" />
-          Grabando... (presiona nuevamente para transcribir)
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-50/50 border border-red-200 border-dashed text-sm text-red-600 italic">
+            <span className="inline-block h-2 w-2 rounded-full bg-red-500 animate-ping flex-shrink-0" />
+            Dictando... presiona de nuevo para finalizar
+          </div>
+          {interimText && (
+            <div className="px-3 py-2 rounded-md bg-muted/40 border border-dashed text-sm text-muted-foreground">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 block mb-0.5">
+                Preview en vivo
+              </span>
+              {interimText}
+              <span className="inline-block w-0.5 h-3.5 bg-foreground/40 animate-pulse ml-0.5 align-text-bottom" />
+            </div>
+          )}
         </div>
       )}
-      {isProcessing && (
+      {!isRecording && isProcessing && (
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-50/50 border border-blue-200 border-dashed text-sm text-blue-600 italic">
           <span className="inline-block h-3 w-3 rounded-full border-2 border-blue-600 border-t-transparent animate-spin flex-shrink-0" />
-          IA está procesando el audio...
+          Refinando con IA médica...
         </div>
       )}
 
