@@ -15,7 +15,7 @@ import {
   Heading2,
 } from "lucide-react";
 import { MicButton } from "@/components/ui/atomic/MicButton";
-import { useSpeechRecognition } from "@/lib/hooks/speech";
+import { useGroqDictation } from "@/lib/hooks/speech/use-groq-dictation";
 
 interface ClinicalNotesEditorProps {
   patientId: string;
@@ -82,17 +82,19 @@ export function ClinicalNotesEditor({
     }
   }, [initialContent, editor]);
 
-  const { isSupported, isListening, interimTranscript, start, stop } = useSpeechRecognition({
+  const { isRecording, isProcessing, startRecording, stopRecording } = useGroqDictation({
     onResult: (transcript) => {
       editor?.commands.insertContent(transcript + " ");
+      // focus editor at the end
+      editor?.commands.focus();
     },
   });
 
   const handleMicToggle = () => {
-    if (isListening) {
-      stop();
+    if (isRecording) {
+      stopRecording();
     } else {
-      start();
+      startRecording();
     }
   };
 
@@ -167,23 +169,29 @@ export function ClinicalNotesEditor({
           </ToolbarButton>
           <span className="mx-1 text-border">|</span>
           <MicButton
-            isListening={isListening}
-            isSupported={isSupported}
+            isListening={isRecording}
+            isSupported={true}
             onToggle={handleMicToggle}
           />
         </div>
       )}
 
       {/* Editor area */}
-      <div className="border rounded-md min-h-[160px] px-3 py-2 text-sm [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[140px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-4 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-4 [&_.ProseMirror_h2]:text-base [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:mt-2">
+      <div className="border rounded-md min-h-[160px] px-3 py-2 text-sm [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[140px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-4 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-4 [&_.ProseMirror_h2]:text-base [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:mt-2">
         <EditorContent editor={editor} />
       </div>
 
-      {/* Interim transcript preview — shown while dictating */}
-      {interimTranscript && (
+      {/* Status preview — shown while dictating or processing */}
+      {isRecording && (
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted/50 border border-dashed text-sm text-muted-foreground italic">
-          <span className="inline-block h-2 w-2 rounded-full bg-red-400 animate-pulse flex-shrink-0" />
-          {interimTranscript}
+          <span className="inline-block h-2 w-2 rounded-full bg-red-500 animate-ping flex-shrink-0" />
+          Grabando... (presiona nuevamente para transcribir)
+        </div>
+      )}
+      {isProcessing && (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-50/50 border border-blue-200 border-dashed text-sm text-blue-600 italic">
+          <span className="inline-block h-3 w-3 rounded-full border-2 border-blue-600 border-t-transparent animate-spin flex-shrink-0" />
+          IA está procesando el audio...
         </div>
       )}
 
