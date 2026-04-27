@@ -1,7 +1,8 @@
 import apiInstance from "@/lib/services/apiConfig";
 
 export interface TranscribeResponse {
-  text: string;
+  text: string;    // SOAP HTML structured
+  rawText: string; // Original dictation text
 }
 
 export const speechService = {
