@@ -63,68 +63,79 @@ export function OdontogramHistoryTimeline({
   const isViewingHistoric = !!historicAppointmentId;
 
   const handlePointClick = useCallback(
-    (point: TimelinePoint) => {
-      if (point.isCurrent) {
+    (point: TimelinePoint, idx: number) => {
+      // Clicking the last point (or the active consultation point) returns to current
+      if (point.isCurrent || idx === points.length - 1) {
         onReturnToCurrent();
       } else {
         onSelectVisit(point.appointmentId);
       }
     },
-    [onSelectVisit, onReturnToCurrent],
+    [onSelectVisit, onReturnToCurrent, points.length],
   );
+
+  // Calculate % position for each point
+  const total = Math.max(points.length - 1, 1);
+
+  // The "current" position: activeAppointmentId if in consultation, else last completed visit
+  const currentDefaultIdx = useMemo(() => {
+    if (activeAppointmentId) {
+      return points.findIndex((p) => p.isCurrent);
+    }
+    if (!historicAppointmentId) {
+      return points.length - 1;
+    }
+    return -1;
+  }, [activeAppointmentId, historicAppointmentId, points]);
+
+  // Fill pct: up to selected historic, or 100% for current/default view
+  const fillPct = useMemo(() => {
+    if (historicAppointmentId) {
+      const idx = points.findIndex(
+        (p) => p.appointmentId === historicAppointmentId,
+      );
+      return idx >= 0 && total > 0 ? (idx / total) * 100 : 0;
+    }
+    return 100;
+  }, [historicAppointmentId, points, total]);
 
   if (points.length < 2) return null; // nothing useful to show with 0–1 points
 
-  // Calculate % position for each point
-  const total = points.length - 1;
-
   return (
-    <div className="bg-white border-t border-gray-100 px-6 py-4 shrink-0">
+    <div className="bg-white border-b border-gray-100 px-6 pt-3 pb-4 shrink-0">
       <div className="max-w-3xl mx-auto flex flex-col gap-3">
-        {/* Labels: first + last + "Hoy" */}
-        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-          <span>{points[0]?.label}</span>
+        {/* Labels: first + middle + last */}
+        <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
+          <span className="text-slate-400">{points[0]?.label}</span>
           {points.length > 2 && (
-            <span>
+            <span className="text-slate-400">
               {points[Math.floor(points.length / 2)]?.label}
             </span>
           )}
-          <span
-            className={
-              activeAppointmentId ? "text-blue-600" : "text-slate-400"
-            }
-          >
+          <span className={activeAppointmentId ? "text-blue-600" : "text-blue-500 font-semibold"}>
             {points[points.length - 1]?.label}
           </span>
         </div>
 
         {/* Track */}
         <div className="relative h-1.5 w-full bg-slate-100 rounded-full">
-          {/* Filled region up to selected point */}
-          {historicAppointmentId && (() => {
-            const idx = points.findIndex(
-              (p) => p.appointmentId === historicAppointmentId,
-            );
-            if (idx < 0) return null;
-            const pct = total > 0 ? (idx / total) * 100 : 0;
-            return (
-              <div
-                className="absolute top-0 left-0 h-full bg-blue-200 rounded-full"
-                style={{ width: `${pct}%` }}
-              />
-            );
-          })()}
+          {/* Filled region */}
+          <div
+            className="absolute top-0 left-0 h-full bg-blue-200 rounded-full transition-all"
+            style={{ width: `${fillPct}%` }}
+          />
 
           {/* Points */}
           {points.map((point, idx) => {
             const pct = total > 0 ? (idx / total) * 100 : 0;
             const isSelected = point.appointmentId === historicAppointmentId;
             const isActive = point.isCurrent;
+            const isDefault = idx === currentDefaultIdx && !isActive;
 
             return (
               <Tooltip key={point.appointmentId} title={point.label}>
                 <button
-                  onClick={() => handlePointClick(point)}
+                  onClick={() => handlePointClick(point, idx)}
                   className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 focus:outline-none"
                   style={{ left: `${pct}%` }}
                 >
@@ -133,7 +144,7 @@ export function OdontogramHistoryTimeline({
                       "block rounded-full border-2 border-white shadow-sm transition-all",
                       isActive
                         ? "w-5 h-5 bg-blue-600 shadow-md"
-                        : isSelected
+                        : isSelected || isDefault
                         ? "w-4 h-4 bg-blue-500"
                         : "w-3.5 h-3.5 bg-slate-300 hover:bg-slate-400",
                     ].join(" ")}
@@ -143,20 +154,18 @@ export function OdontogramHistoryTimeline({
             );
           })}
         </div>
-      </div>
 
-      {/* "Volver al estado actual" floating action — visible only in historic mode */}
-      {isViewingHistoric && (
-        <div className="flex justify-end mt-3">
+        {/* Subtle "Volver al actual" link — only in historic mode */}
+        {isViewingHistoric && (
           <button
             onClick={onReturnToCurrent}
-            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-full shadow hover:bg-blue-700 active:scale-95 transition-all"
+            className="self-end flex items-center gap-1 text-[11px] text-slate-500 hover:text-blue-600 transition-colors"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Volver a Estado Actual
+            <RotateCcw className="h-3 w-3" />
+            Volver al actual
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

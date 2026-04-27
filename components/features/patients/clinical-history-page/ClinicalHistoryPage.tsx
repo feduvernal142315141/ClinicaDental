@@ -137,6 +137,7 @@ export function ClinicalHistoryPage({
 
   const handleStartConsultation = useCallback(
     (appointmentId: string) => {
+      setActiveTab("workspace");
       router.push(`/patients/${patientId}?tab=workspace&appointmentId=${appointmentId}`);
     },
     [router, patientId],
@@ -145,6 +146,7 @@ export function ClinicalHistoryPage({
   const handleStartNow = useCallback(
     (appointmentId: string) => {
       setShowStartNow(false);
+      setActiveTab("workspace");
       router.push(`/patients/${patientId}?tab=workspace&appointmentId=${appointmentId}`);
     },
     [router, patientId],

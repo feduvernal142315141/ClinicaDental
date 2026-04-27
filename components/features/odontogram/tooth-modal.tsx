@@ -180,6 +180,7 @@ export function ToothModal({
     updateToothDiagnosis,
     deleteClinicalEvent,
     clinicalEvents,
+    readOnly,
   } = useOdontogramStore();
   const visitId = useOdontogramStore((state) => state.metadata.visitId);
   const { message: antdMessage } = App.useApp();
@@ -1162,31 +1163,43 @@ export function ToothModal({
         title={`Diente ${tooth.number}`}
         description={getToothDescription(tooth.number)}
         footer={
-          <div className="flex justify-between items-center gap-4 pt-3 border-t">
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              className="px-6 py-2 text-sm bg-transparent"
-            >
-              Cancelar
-            </Button>
-            <div className="flex gap-3">
+          readOnly ? (
+            <div className="flex justify-end pt-3 border-t">
               <Button
-                variant="default"
-                onClick={handleSaveAndClose}
+                variant="outline"
+                onClick={onClose}
                 className="px-6 py-2 text-sm"
               >
-                Guardar
-              </Button>
-              <Button
-                variant="default"
-                onClick={handleSaveAndContinue}
-                className="px-6 py-2 text-sm"
-              >
-                {getContinueLabel()} →
+                Cerrar
               </Button>
             </div>
-          </div>
+          ) : (
+            <div className="flex justify-between items-center gap-4 pt-3 border-t">
+              <Button
+                variant="outline"
+                onClick={handleClose}
+                className="px-6 py-2 text-sm bg-transparent"
+              >
+                Cancelar
+              </Button>
+              <div className="flex gap-3">
+                <Button
+                  variant="default"
+                  onClick={handleSaveAndClose}
+                  className="px-6 py-2 text-sm"
+                >
+                  Guardar
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={handleSaveAndContinue}
+                  className="px-6 py-2 text-sm"
+                >
+                  {getContinueLabel()} →
+                </Button>
+              </div>
+            </div>
+          )
         }
       >
         <div className="space-y-2 pb-3 border-b">
@@ -1202,8 +1215,9 @@ export function ToothModal({
                     key={status}
                     variant={isSelected ? "default" : "outline"}
                     className="cursor-pointer px-3 py-1 text-xs font-medium transition-all hover:scale-105"
-                    style={
-                      isSelected
+                    onClick={() => !readOnly && handleStatusClick(status)}
+                    style={{
+                      ...(isSelected
                         ? {
                             backgroundColor: GLOBAL_STATUS_COLORS[status],
                             borderColor: GLOBAL_STATUS_COLORS[status],
@@ -1212,9 +1226,9 @@ export function ToothModal({
                         : {
                             borderColor: GLOBAL_STATUS_COLORS[status],
                             color: GLOBAL_STATUS_COLORS[status],
-                          }
-                    }
-                    onClick={() => handleStatusClick(status)}
+                          }),
+                      ...(readOnly ? { cursor: "default", opacity: 0.7 } : {}),
+                    }}
                   >
                     {GLOBAL_STATUS_LABELS[status]}
                   </Badge>
@@ -1222,9 +1236,14 @@ export function ToothModal({
               },
             )}
           </div>
-          {hasUnsavedChanges && (
+          {hasUnsavedChanges && !readOnly && (
             <p className="text-xs text-amber-600 font-semibold">
               ⚠️ Tienes cambios sin guardar
+            </p>
+          )}
+          {readOnly && (
+            <p className="text-xs text-slate-500 font-medium">
+              🔒 Solo lectura — inicia una consulta para editar
             </p>
           )}
           {saveErrors.length > 0 && (

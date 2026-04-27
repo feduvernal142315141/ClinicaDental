@@ -1,14 +1,12 @@
 "use client";
 
 import { useMemo, useEffect } from "react";
-import { App, Badge } from "antd";
+import { App } from "antd";
 import { OdontogramModule, createApiOdontogramAdapter, createHistoricOdontogramAdapter } from "@/lib/odontogram";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useOdontogramByVisit } from "@/lib/hooks/odontogram/useOdontogramByVisit";
-import { Button } from "@/components/ui/primitives/shadcn/button";
-import { RotateCcw } from "lucide-react";
 import { OdontogramReadOnlyOverlay } from "@/components/features/odontogram/ui/OdontogramReadOnlyOverlay";
 import { OdontogramHistoryTimeline } from "@/components/features/odontogram/ui/OdontogramHistoryTimeline";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
@@ -91,48 +89,32 @@ export function PatientOdontogramPanel({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Historic banner */}
-      {isHistoricMode && historicSnapshot && (
-        <div className="mb-3 flex items-center justify-between rounded-md border border-yellow-300 bg-yellow-50 px-4 py-2">
-          <Badge
-            color="gold"
-            text={`Vista histórica · ${new Date(historicSnapshot.createdAt).toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" })}`}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClearHistoric}
-            className="h-7 text-xs flex items-center gap-1"
-          >
-            <RotateCcw className="h-3 w-3" />
-            Volver al actual
-          </Button>
-        </div>
+      {/* US-03: Historical navigation timeline — moved to TOP for visibility */}
+      {appointments && appointments.length > 1 && (
+        <OdontogramHistoryTimeline
+          appointments={appointments}
+          historicAppointmentId={historicVisitId}
+          activeAppointmentId={activeAppointmentId}
+          onSelectVisit={(appointmentId) => {
+            if (appointmentId === activeAppointmentId) {
+              onClearHistoric?.();
+            } else {
+              onSelectHistoricVisit?.(appointmentId);
+            }
+          }}
+          onReturnToCurrent={onClearHistoric ?? (() => {})}
+        />
       )}
 
+      {/* Historic: "no data" notice — only if snapshot failed to load (timeline handles "Volver" action) */}
       {isHistoricMode && !historicSnapshot && (
-        <div className="mb-3 flex items-center justify-between rounded-md border border-yellow-300 bg-yellow-50 px-4 py-2">
-          <Badge color="gold" text="Vista histórica — Sin datos disponibles" />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClearHistoric}
-            className="h-7 text-xs flex items-center gap-1"
-          >
-            <RotateCcw className="h-3 w-3" />
-            Volver al actual
-          </Button>
+        <div className="mb-3 flex items-center justify-center rounded-md border border-yellow-300 bg-yellow-50 px-4 py-2 text-sm text-yellow-700">
+          Vista histórica — Sin datos disponibles para esta cita.
         </div>
       )}
 
       {/* Odontogram + conditional read-only overlay */}
-      <div
-        className={[
-          "flex-1 min-h-0 relative",
-          // US-03: apply grayscale+opacity when no active consultation and not in historic mode
-          !activeAppointmentId && !isHistoricMode ? "opacity-60 grayscale" : "",
-        ].join(" ")}
-      >
+      <div className="flex-1 min-h-0 relative">
         <OdontogramModule
           patientId={patient.id}
           clinicId={clinicId}
@@ -149,26 +131,9 @@ export function PatientOdontogramPanel({
         />
         {/* Read-only overlay — shown when no active consultation and not in historic mode */}
         {!activeAppointmentId && !isHistoricMode && (
-          <OdontogramReadOnlyOverlay onStartConsultation={onStartConsultation} />
+          <OdontogramReadOnlyOverlay />
         )}
       </div>
-
-      {/* US-03: Historical navigation timeline — only when there are visits to navigate */}
-      {appointments && appointments.length > 1 && (
-        <OdontogramHistoryTimeline
-          appointments={appointments}
-          historicAppointmentId={historicVisitId}
-          activeAppointmentId={activeAppointmentId}
-          onSelectVisit={(appointmentId) => {
-            if (appointmentId === activeAppointmentId) {
-              onClearHistoric?.();
-            } else {
-              onSelectHistoricVisit?.(appointmentId);
-            }
-          }}
-          onReturnToCurrent={onClearHistoric ?? (() => {})}
-        />
-      )}
     </div>
   );
 }

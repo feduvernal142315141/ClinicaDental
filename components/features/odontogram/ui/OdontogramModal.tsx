@@ -45,9 +45,10 @@ export function OdontogramModal({
       }
       footer={footer}
       width={width}
-      style={{ maxWidth: 1400, top: 20 }}
+      centered
+      style={{ maxWidth: 900 }}
       styles={{
-        body: { maxHeight: "calc(95vh - 120px)", overflowY: "auto" },
+        body: { maxHeight: "70vh", overflowY: "auto" },
       }}
       className={bodyClassName}
       destroyOnHidden
