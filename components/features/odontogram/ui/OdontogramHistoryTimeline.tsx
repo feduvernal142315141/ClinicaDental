@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useEffect, useState } from "react";
+import { useMemo, useCallback, useEffect, useState, useRef } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
@@ -96,10 +96,15 @@ export function OdontogramHistoryTimeline({
 
   const isViewingHistoric = !!historicAppointmentId;
 
+  // Track whether the current scroll was triggered programmatically (prop change)
+  const isProgrammaticScroll = useRef(false);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ── Sync embla state ───────────────────────────────────────────────
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
-    setSelectedIndex(emblaApi.selectedScrollSnap());
+    const newIndex = emblaApi.selectedScrollSnap();
+    setSelectedIndex(newIndex);
     setCanScrollPrev(emblaApi.canScrollPrev());
     setCanScrollNext(emblaApi.canScrollNext());
   }, [emblaApi]);
@@ -115,9 +120,47 @@ export function OdontogramHistoryTimeline({
     };
   }, [emblaApi, onSelect]);
 
+  // ── Debounced auto-select on scroll settle ─────────────────────────
+  // When the user swipes/arrows and the carousel settles, auto-fire
+  // the visit selection for the centered slide after 500ms.
+  useEffect(() => {
+    if (!emblaApi) return;
+
+    const onSettle = () => {
+      // Skip if this settle was triggered by a programmatic scroll (prop change)
+      if (isProgrammaticScroll.current) {
+        isProgrammaticScroll.current = false;
+        return;
+      }
+
+      // Clear previous debounce
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+      debounceTimer.current = setTimeout(() => {
+        const idx = emblaApi.selectedScrollSnap();
+        const point = points[idx];
+        if (!point) return;
+
+        // If it's the last slide or the active consultation, return to current
+        if (point.isCurrent || idx === points.length - 1) {
+          onReturnToCurrent();
+        } else {
+          onSelectVisit(point.appointmentId);
+        }
+      }, 500);
+    };
+
+    emblaApi.on("settle", onSettle);
+    return () => {
+      emblaApi.off("settle", onSettle);
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [emblaApi, points, onSelectVisit, onReturnToCurrent]);
+
   // ── Scroll to historic appointment when prop changes ───────────────
   useEffect(() => {
     if (!emblaApi) return;
+    isProgrammaticScroll.current = true; // Don't trigger auto-select for prop-driven scrolls
     if (historicAppointmentId) {
       const idx = points.findIndex(
         (p) => p.appointmentId === historicAppointmentId,
@@ -132,9 +175,11 @@ export function OdontogramHistoryTimeline({
   // ── Handle slide click ─────────────────────────────────────────────
   const handleSlideClick = useCallback(
     (point: TimelinePoint, idx: number) => {
-      // First scroll to center the clicked slide
+      // Clear any pending debounce — the click is the user's intent
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      // Scroll to center the clicked slide
       emblaApi?.scrollTo(idx);
-      // Then trigger the visit selection
+      // Fire the visit selection immediately
       if (point.isCurrent || idx === points.length - 1) {
         onReturnToCurrent();
       } else {
@@ -196,8 +241,6 @@ export function OdontogramHistoryTimeline({
             <div className="flex">
               {points.map((point, idx) => {
                 const isActive = idx === selectedIndex;
-                const isHistoric =
-                  point.appointmentId === historicAppointmentId;
 
                 return (
                   <div
@@ -210,10 +253,10 @@ export function OdontogramHistoryTimeline({
                       className={[
                         "w-full rounded-lg border px-3 py-2.5 text-center transition-all duration-300 cursor-pointer",
                         "focus:outline-none focus:ring-2 focus:ring-blue-300",
-                        isActive || isHistoric
+                        isActive
                           ? "border-blue-400 bg-blue-50 shadow-md scale-100"
                           : "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30 scale-[0.88] opacity-60",
-                        point.isCurrent && (isActive || isHistoric)
+                        point.isCurrent && isActive
                           ? "border-blue-500 bg-blue-500 text-white shadow-lg"
                           : "",
                       ].join(" ")}
@@ -222,9 +265,9 @@ export function OdontogramHistoryTimeline({
                       <p
                         className={[
                           "text-xs font-bold leading-tight",
-                          point.isCurrent && (isActive || isHistoric)
+                          point.isCurrent && isActive
                             ? "text-white"
-                            : isActive || isHistoric
+                            : isActive
                               ? "text-blue-700"
                               : "text-slate-500",
                         ].join(" ")}
@@ -237,7 +280,7 @@ export function OdontogramHistoryTimeline({
                         <p
                           className={[
                             "text-[10px] leading-tight mt-0.5",
-                            isActive || isHistoric
+                            isActive
                               ? "text-blue-500"
                               : "text-slate-400",
                           ].join(" ")}
@@ -252,10 +295,10 @@ export function OdontogramHistoryTimeline({
                           className={[
                             "block w-1.5 h-1.5 rounded-full",
                             point.isCurrent
-                              ? isActive || isHistoric
+                              ? isActive
                                 ? "bg-white"
                                 : "bg-blue-500"
-                              : isActive || isHistoric
+                              : isActive
                                 ? "bg-blue-400"
                                 : "bg-slate-300",
                           ].join(" ")}
@@ -264,10 +307,10 @@ export function OdontogramHistoryTimeline({
                           className={[
                             "text-[9px] uppercase tracking-wider font-medium",
                             point.isCurrent
-                              ? isActive || isHistoric
+                              ? isActive
                                 ? "text-blue-100"
                                 : "text-blue-500"
-                              : isActive || isHistoric
+                              : isActive
                                 ? "text-blue-400"
                                 : "text-slate-400",
                           ].join(" ")}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
-import { App } from "antd";
+import { useMemo, useEffect, useState, useCallback } from "react";
+import { App, Spin } from "antd";
 import { OdontogramModule, createApiOdontogramAdapter, createHistoricOdontogramAdapter } from "@/lib/odontogram";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
@@ -48,6 +48,9 @@ export function PatientOdontogramPanel({
 
   const clinicId = patient.clinicId ?? "";
 
+  // Local transitioning flag — set immediately on visit change for instant Spin
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
   const { snapshot: historicSnapshot, loading: historicLoading, load: loadHistoric } =
     useOdontogramByVisit(historicVisitId);
 
@@ -56,6 +59,31 @@ export function PatientOdontogramPanel({
       loadHistoric(historicVisitId);
     }
   }, [historicVisitId, loadHistoric]);
+
+  // Clear transitioning once the async load finishes
+  useEffect(() => {
+    if (!historicLoading) {
+      setIsTransitioning(false);
+    }
+  }, [historicLoading]);
+
+  // Wrap onSelectHistoricVisit to activate Spin immediately
+  const handleSelectVisit = useCallback(
+    (appointmentId: string) => {
+      if (appointmentId === activeAppointmentId) {
+        onClearHistoric?.();
+      } else {
+        setIsTransitioning(true); // Spin NOW, before the parent even updates the prop
+        onSelectHistoricVisit?.(appointmentId);
+      }
+    },
+    [activeAppointmentId, onClearHistoric, onSelectHistoricVisit],
+  );
+
+  const handleReturnToCurrent = useCallback(() => {
+    setIsTransitioning(false);
+    onClearHistoric?.();
+  }, [onClearHistoric]);
 
   const apiAdapter = useMemo(
     () =>
@@ -76,16 +104,10 @@ export function PatientOdontogramPanel({
   // US-03: odontogram is read-only when no active consultation OR in historic mode
   const readOnly = isHistoricMode || !activeAppointmentId || !(isAdmin || can("patients", PermissionAction.EDIT));
 
-  // While loading historic snapshot, show nothing or loading
-  if (isHistoricMode && historicLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground text-sm">
-        Cargando vista histórica...
-      </div>
-    );
-  }
-
   const adapter = isHistoricMode && historicAdapter ? historicAdapter : apiAdapter;
+
+  // Show spinner when transitioning OR when the hook is loading
+  const showSpinner = isTransitioning || (isHistoricMode && historicLoading);
 
   return (
     <div className="flex flex-col h-full">
@@ -95,40 +117,40 @@ export function PatientOdontogramPanel({
           appointments={appointments}
           historicAppointmentId={historicVisitId}
           activeAppointmentId={activeAppointmentId}
-          onSelectVisit={(appointmentId) => {
-            if (appointmentId === activeAppointmentId) {
-              onClearHistoric?.();
-            } else {
-              onSelectHistoricVisit?.(appointmentId);
-            }
-          }}
-          onReturnToCurrent={onClearHistoric ?? (() => {})}
+          onSelectVisit={handleSelectVisit}
+          onReturnToCurrent={handleReturnToCurrent}
         />
       )}
 
       {/* Historic: "no data" notice — only if snapshot failed to load (timeline handles "Volver" action) */}
-      {isHistoricMode && !historicSnapshot && (
+      {isHistoricMode && !historicLoading && !isTransitioning && !historicSnapshot && (
         <div className="mb-3 flex items-center justify-center rounded-md border border-yellow-300 bg-yellow-50 px-4 py-2 text-sm text-yellow-700">
           Vista histórica — Sin datos disponibles para esta cita.
         </div>
       )}
 
-      {/* Odontogram + conditional read-only overlay */}
+      {/* Odontogram + conditional overlays — always mounted to avoid flash */}
       <div className="flex-1 min-h-0 relative">
-        <OdontogramModule
-          patientId={patient.id}
-          clinicId={clinicId}
-          adapter={adapter}
-          readOnly={readOnly}
-          showHeader={false}
-          initialTab="odontogram"
-          onError={() => {
-            message.error("No se pudo sincronizar el odontograma del paciente");
-          }}
-          finalizeOpen={finalizeOpen}
-          onFinalizeClose={onFinalizeClose}
-          onFinalizeSuccess={onFinalizeSuccess}
-        />
+        <Spin
+          spinning={showSpinner}
+          delay={100}
+          size="large"
+        >
+          <OdontogramModule
+            patientId={patient.id}
+            clinicId={clinicId}
+            adapter={adapter}
+            readOnly={readOnly}
+            showHeader={false}
+            initialTab="odontogram"
+            onError={() => {
+              message.error("No se pudo sincronizar el odontograma del paciente");
+            }}
+            finalizeOpen={finalizeOpen}
+            onFinalizeClose={onFinalizeClose}
+            onFinalizeSuccess={onFinalizeSuccess}
+          />
+        </Spin>
         {/* Read-only overlay — shown when no active consultation and not in historic mode */}
         {!activeAppointmentId && !isHistoricMode && (
           <OdontogramReadOnlyOverlay />
@@ -137,3 +159,4 @@ export function PatientOdontogramPanel({
     </div>
   );
 }
+
