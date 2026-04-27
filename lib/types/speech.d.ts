@@ -29,10 +29,31 @@ interface SpeechRecognitionErrorEvent extends Event {
   readonly message: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface SpeechRecognition extends EventTarget {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  onstart: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  interface SpeechRecognitionConstructor {
+    new (): SpeechRecognition;
+    prototype: SpeechRecognition;
+  }
+
   interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
+    SpeechRecognition: SpeechRecognitionConstructor;
+    webkitSpeechRecognition: SpeechRecognitionConstructor;
   }
 }
 

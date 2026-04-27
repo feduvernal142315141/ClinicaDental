@@ -26,7 +26,7 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<InstanceType<typeof window.SpeechRecognition> | null>(null);
   const { message } = App.useApp();
 
   // Stable ref to avoid re-creating recorder on every render
@@ -63,7 +63,7 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
 
     let finalAccumulated = "";
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event) => {
       let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
