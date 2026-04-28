@@ -134,8 +134,31 @@ function adaptToothView(
 }
 
 /**
+ * Get the contralateral tooth number.
+ * Contralateral = same position, opposite side of the same arch.
+ * Q1 ↔ Q2 (upper right ↔ upper left), Q3 ↔ Q4 (lower right ↔ lower left).
+ *
+ * Example: 18 → 28, 28 → 18, 31 → 41, 47 → 37
+ */
+function getContralateralFDI(fdi: string): string {
+  const quadrant = parseInt(fdi[0], 10);
+  const position = fdi[1];
+  const contralateralQuadrant: Record<number, number> = {
+    1: 2,
+    2: 1,
+    3: 4,
+    4: 3,
+  };
+  return `${contralateralQuadrant[quadrant]}${position}`;
+}
+
+/**
  * Get the adapted ToothViewPaths for a specific tooth and view.
  * This is the main entry point for the rendering components.
+ *
+ * When a view is missing for a tooth (e.g., 18P not in the designer's SVG),
+ * the adapter falls back to the contralateral tooth (28P), which is the
+ * anatomical mirror on the same arch.
  *
  * @param toothNumber - FDI tooth number (11-48)
  * @param view - "frontal" | "oclusal" | "lateral"
@@ -155,7 +178,14 @@ export function getDesignedToothPaths(
   };
 
   const internalView = viewMap[view];
-  const viewData = getToothView(fdi, internalView);
+  let viewData = getToothView(fdi, internalView);
+
+  // Fallback: if the view is missing, use the contralateral tooth
+  // (same position on the opposite side of the arch — anatomical mirror)
+  if (!viewData) {
+    const contralateral = getContralateralFDI(fdi);
+    viewData = getToothView(contralateral, internalView);
+  }
 
   if (!viewData) return null;
 
