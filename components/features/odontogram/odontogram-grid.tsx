@@ -136,11 +136,11 @@ export function OdontogramGrid({
           {renderToothRow(upperLeft, "lateral")}
         </div>
 
-        {/* Números de dientes */}
-        <div className="flex justify-center gap-4 text-xs text-center font-mono">
+        {/* Números de dientes — same width as tooth cells for alignment */}
+        <div className="flex justify-center gap-4 text-xs text-center font-mono text-muted-foreground">
           <div className="flex gap-0.5">
             {upperRight.map((num) => (
-              <div key={num} className="w-12">
+              <div key={num} className="w-[3.2rem] text-center">
                 {num}
               </div>
             ))}
@@ -148,7 +148,7 @@ export function OdontogramGrid({
           <div className="w-px" />
           <div className="flex gap-0.5">
             {upperLeft.map((num) => (
-              <div key={num} className="w-12">
+              <div key={num} className="w-[3.2rem] text-center">
                 {num}
               </div>
             ))}
@@ -184,11 +184,11 @@ export function OdontogramGrid({
           {renderToothRow(lowerLeft, "frontal")}
         </div>
 
-        {/* Números de dientes */}
-        <div className="flex justify-center gap-4 text-xs text-center font-mono">
+        {/* Números de dientes — same width as tooth cells for alignment */}
+        <div className="flex justify-center gap-4 text-xs text-center font-mono text-muted-foreground">
           <div className="flex gap-0.5">
             {lowerRight.map((num) => (
-              <div key={num} className="w-12">
+              <div key={num} className="w-[3.2rem] text-center">
                 {num}
               </div>
             ))}
@@ -196,7 +196,7 @@ export function OdontogramGrid({
           <div className="w-px" />
           <div className="flex gap-0.5">
             {lowerLeft.map((num) => (
-              <div key={num} className="w-12">
+              <div key={num} className="w-[3.2rem] text-center">
                 {num}
               </div>
             ))}
