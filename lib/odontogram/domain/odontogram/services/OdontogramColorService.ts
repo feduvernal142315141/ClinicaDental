@@ -41,18 +41,18 @@ export class OdontogramColorService {
     surface: ToothSurface,
     allEvents: ClinicalEvent[],
   ): string {
-    // Filtrar eventos relevantes para esta superficie
+    // Filter events that EXPLICITLY target this surface.
+    // Tooth-level events (e.g., global status "Sano", tooth-diagnostic)
+    // should NOT colorize individual surfaces — they use symbols instead.
     const relevantEvents = allEvents.filter(
       (e) =>
         e.toothNumber === toothNumber &&
         e.visualState?.affectsOdontogram !== false &&
-        (e.surfaces.includes(surface) ||
-          e.surfaces.length === 0 ||
-          e.level === "tooth"),
+        e.surfaces.includes(surface),
     );
 
     if (relevantEvents.length === 0) {
-      return ODONTOGRAM_STATE_COLORS.HEALTHY;
+      return "transparent";
     }
 
     // Calcular prioridad y color para cada evento
@@ -70,7 +70,7 @@ export class OdontogramColorService {
     });
 
     // Retornar el color del evento con mayor prioridad
-    return eventWithPriority[0]?.color || ODONTOGRAM_STATE_COLORS.HEALTHY;
+    return eventWithPriority[0]?.color || "transparent";
   }
 
   /**

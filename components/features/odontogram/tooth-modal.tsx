@@ -300,7 +300,8 @@ export function ToothModal({
         );
         const performedEvent = events.find(
           (e) =>
-            (e.type === "performed" || e.status === "done") &&
+            (e.type === "performed" ||
+              (e.type === "plan" && e.status === "done")) &&
             e.surfaces.includes(surface),
         );
 
@@ -644,11 +645,14 @@ export function ToothModal({
     );
 
     existingSurfaceDiagnosisEvents.forEach((event) => {
-      const hasAnyTrackedSurface = event.surfaces.some((surface) =>
-        currentDiagnoses.has(surface),
+      // A surface event is orphaned if NONE of its surfaces are still selected.
+      // selectedSurfaces is the source of truth — if the user deselected a
+      // surface, its events must be removed regardless of diagnosis state.
+      const hasAnySelectedSurface = event.surfaces.some((surface) =>
+        selectedSurfaces.includes(surface),
       );
 
-      if (!hasAnyTrackedSurface) {
+      if (!hasAnySelectedSurface) {
         deleteClinicalEvent(event.id);
       }
     });
