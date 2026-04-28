@@ -189,7 +189,20 @@ export function getDesignedToothPaths(
 
   if (!viewData) return null;
 
-  return adaptToothView(viewData, internalView);
+  const result = adaptToothView(viewData, internalView);
+
+  // Fallback for missing roots: if the vestibular view exists but has no root,
+  // borrow the root data from the contralateral tooth (e.g., 13V has no ROOT
+  // in the SVG but 23V does — they are anatomical mirrors)
+  if (internalView === "vestibular" && result.roots.length === 0) {
+    const contralateral = getContralateralFDI(fdi);
+    const contralateralData = getToothView(contralateral, "vestibular");
+    if (contralateralData?.root && contralateralData.root.length > 0) {
+      result.roots = contralateralData.root;
+    }
+  }
+
+  return result;
 }
 
 /**
