@@ -29,8 +29,8 @@ type DentalSurface = "oclusal" | "facial" | "lingual" | "mesial" | "distal";
  * VESTIBULAR (frontal) view:
  *   -01 = mesial, -02 = distal, -03 = oclusal/incisal, -04 = cervical/facial
  *
- * OCCLUSAL view:
- *   -01 = mesial, -02 = distal, -03 = vestibular/facial, -04 = lingual/palatinal
+ * OCCLUSAL view (top-down):
+ *   -01 = mesial, -02 = distal, -03 = oclusal (center), -04 = lingual/palatinal
  *
  * LINGUAL/PALATINAL (lateral) view:
  *   -01 = mesial, -02 = distal, -03 = oclusal/incisal, -04 = cervical/lingual
@@ -52,7 +52,7 @@ const ZONE_SURFACE_MAP: Record<
   occlusal: {
     "01": "mesial",
     "02": "distal",
-    "03": "facial",
+    "03": "oclusal",
     "04": "lingual",
   },
   lateral: {
