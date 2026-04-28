@@ -258,19 +258,23 @@ for (const fdi of FDI_NUMBERS) {
     }
 
     // Root path (only for V view)
+    // Note: some teeth use lowercase 'root' (e.g., 22V-root vs 22V-ROOT)
     let root = null;
-    const rootKey = `${key}-ROOT`;
-    if (groups[rootKey]) {
-      const paths = extractPaths(groups[rootKey]);
-      if (paths.length > 0) {
-        root = paths;
+    for (const rootSuffix of ["ROOT", "root"]) {
+      const rootKey = `${key}-${rootSuffix}`;
+      if (groups[rootKey]) {
+        const paths = extractPaths(groups[rootKey]);
+        if (paths.length > 0) {
+          root = paths;
+          break;
+        }
       }
     }
 
     // Also check for alternative zone naming (some teeth have -011, -012, etc.)
     for (const altKey of Object.keys(groups)) {
       const decoded = altKey;
-      if (decoded.startsWith(key + "-") && !decoded.endsWith("-ROOT")) {
+      if (decoded.startsWith(key + "-") && !decoded.toUpperCase().endsWith("-ROOT")) {
         const suffix = decoded.slice(key.length + 1);
         if (suffix.length > 2 && !zones[suffix]) {
           const paths = extractPaths(groups[decoded]);
