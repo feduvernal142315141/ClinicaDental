@@ -122,7 +122,7 @@ export function OdontogramHistoryTimeline({
 
   // ── Debounced auto-select on scroll settle ─────────────────────────
   // When the user swipes/arrows and the carousel settles, auto-fire
-  // the visit selection for the centered slide after 500ms.
+  // the visit selection for the centered slide after 350ms.
   useEffect(() => {
     if (!emblaApi) return;
 
@@ -147,7 +147,7 @@ export function OdontogramHistoryTimeline({
         } else {
           onSelectVisit(point.appointmentId);
         }
-      }, 500);
+      }, 350);
     };
 
     emblaApi.on("settle", onSettle);
@@ -160,15 +160,24 @@ export function OdontogramHistoryTimeline({
   // ── Scroll to historic appointment when prop changes ───────────────
   useEffect(() => {
     if (!emblaApi) return;
-    isProgrammaticScroll.current = true; // Don't trigger auto-select for prop-driven scrolls
+
+    const currentIdx = emblaApi.selectedScrollSnap();
+    let targetIdx: number;
+
     if (historicAppointmentId) {
       const idx = points.findIndex(
         (p) => p.appointmentId === historicAppointmentId,
       );
-      if (idx >= 0) emblaApi.scrollTo(idx);
+      targetIdx = idx >= 0 ? idx : points.length - 1;
     } else {
-      // Return to last (current)
-      emblaApi.scrollTo(points.length - 1);
+      targetIdx = points.length - 1;
+    }
+
+    // Only mark as programmatic if we actually need to scroll
+    // (prevents isProgrammaticScroll from staying stuck when target === current)
+    if (targetIdx !== currentIdx) {
+      isProgrammaticScroll.current = true;
+      emblaApi.scrollTo(targetIdx);
     }
   }, [emblaApi, historicAppointmentId, points]);
 
@@ -197,14 +206,14 @@ export function OdontogramHistoryTimeline({
   if (points.length < 2) return null;
 
   return (
-    <div className="bg-white border-b border-gray-100 px-2 pt-3 pb-3 shrink-0">
+    <div className="bg-gradient-to-b from-white to-slate-50/80 border-b border-slate-200/60 px-2 pt-3.5 pb-3 shrink-0">
       <div className="max-w-3xl mx-auto">
         {/* Header with counter + return button */}
-        <div className="flex items-center justify-between mb-2 px-2">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+        <div className="flex items-center justify-between mb-2.5 px-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
             Historial de visitas
             {points.length > 5 && (
-              <span className="ml-1 text-slate-300">
+              <span className="ml-1.5 text-slate-400 font-normal">
                 ({selectedIndex + 1} de {points.length})
               </span>
             )}
@@ -212,9 +221,10 @@ export function OdontogramHistoryTimeline({
           {isViewingHistoric && (
             <button
               onClick={onReturnToCurrent}
-              className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-blue-600 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600
+                         transition-all duration-200 hover:gap-2 group"
             >
-              <RotateCcw className="h-3 w-3" />
+              <RotateCcw className="h-3.5 w-3.5 group-hover:rotate-[-45deg] transition-transform duration-300" />
               Volver al actual
             </button>
           )}
@@ -226,11 +236,12 @@ export function OdontogramHistoryTimeline({
           <button
             onClick={scrollPrev}
             disabled={!canScrollPrev}
-            className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full
+            className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full
                        bg-white border border-slate-200 text-slate-400
-                       hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200
+                       hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 hover:shadow-md
                        disabled:opacity-0 disabled:pointer-events-none
-                       transition-all duration-200 mr-1 shadow-sm"
+                       active:scale-90
+                       transition-all duration-200 ease-out mr-1.5 shadow-sm"
             aria-label="Visita anterior"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -241,6 +252,7 @@ export function OdontogramHistoryTimeline({
             <div className="flex">
               {points.map((point, idx) => {
                 const isActive = idx === selectedIndex;
+                const isCurrent = point.isCurrent;
 
                 return (
                   <div
@@ -251,37 +263,45 @@ export function OdontogramHistoryTimeline({
                     <button
                       onClick={() => handleSlideClick(point, idx)}
                       className={[
-                        "w-full rounded-lg border px-3 py-2.5 text-center transition-all duration-300 cursor-pointer",
-                        "focus:outline-none focus:ring-2 focus:ring-blue-300",
-                        isActive
-                          ? "border-blue-400 bg-blue-50 shadow-md scale-100"
-                          : "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30 scale-[0.88] opacity-60",
-                        point.isCurrent && isActive
-                          ? "border-blue-500 bg-blue-500 text-white shadow-lg"
-                          : "",
+                        "w-full rounded-xl border px-3 py-2.5 text-center cursor-pointer",
+                        "transition-all duration-300 ease-out",
+                        "focus:outline-none focus:ring-2 focus:ring-blue-400/40 focus:ring-offset-1",
+                        // — Current ("Hoy") + Active —
+                        isCurrent && isActive
+                          ? "border-transparent bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25 scale-100 ring-2 ring-blue-400/30 ring-offset-2"
+                          // — Current ("Hoy") + NOT active (scrolled away) —
+                          : isCurrent && !isActive
+                            ? "border-blue-300 bg-blue-50/60 scale-[0.93] opacity-80 hover:opacity-95 hover:border-blue-400"
+                            // — Historic + Active (selected) —
+                            : isActive
+                              ? "border-blue-300 bg-blue-50 shadow-md shadow-blue-100/50 scale-100"
+                              // — Historic + NOT active —
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 scale-[0.93] opacity-75 hover:opacity-90",
                       ].join(" ")}
                     >
                       {/* Date */}
                       <p
                         className={[
-                          "text-xs font-bold leading-tight",
-                          point.isCurrent && isActive
+                          "text-[13px] font-bold leading-tight",
+                          isCurrent && isActive
                             ? "text-white"
-                            : isActive
-                              ? "text-blue-700"
-                              : "text-slate-500",
+                            : isCurrent
+                              ? "text-blue-600"
+                              : isActive
+                                ? "text-blue-700"
+                                : "text-slate-600",
                         ].join(" ")}
                       >
                         {point.shortLabel}
                       </p>
 
                       {/* Year (only if not "Hoy") */}
-                      {!point.isCurrent && (
+                      {!isCurrent && (
                         <p
                           className={[
-                            "text-[10px] leading-tight mt-0.5",
+                            "text-[11px] leading-tight mt-0.5 font-medium",
                             isActive
-                              ? "text-blue-500"
+                              ? "text-blue-500/80"
                               : "text-slate-400",
                           ].join(" ")}
                         >
@@ -290,13 +310,13 @@ export function OdontogramHistoryTimeline({
                       )}
 
                       {/* Status indicator */}
-                      <div className="flex items-center justify-center gap-1 mt-1">
+                      <div className="flex items-center justify-center gap-1.5 mt-1.5">
                         <span
                           className={[
-                            "block w-1.5 h-1.5 rounded-full",
-                            point.isCurrent
+                            "block w-1.5 h-1.5 rounded-full transition-colors duration-200",
+                            isCurrent
                               ? isActive
-                                ? "bg-white"
+                                ? "bg-white animate-pulse"
                                 : "bg-blue-500"
                               : isActive
                                 ? "bg-blue-400"
@@ -305,17 +325,17 @@ export function OdontogramHistoryTimeline({
                         />
                         <span
                           className={[
-                            "text-[9px] uppercase tracking-wider font-medium",
-                            point.isCurrent
+                            "text-[10px] uppercase tracking-wider font-semibold",
+                            isCurrent
                               ? isActive
                                 ? "text-blue-100"
                                 : "text-blue-500"
                               : isActive
-                                ? "text-blue-400"
+                                ? "text-blue-500"
                                 : "text-slate-400",
                           ].join(" ")}
                         >
-                          {point.isCurrent ? "Activa" : `#${point.index}`}
+                          {isCurrent ? "Activa" : `#${point.index}`}
                         </span>
                       </div>
                     </button>
@@ -329,11 +349,12 @@ export function OdontogramHistoryTimeline({
           <button
             onClick={scrollNext}
             disabled={!canScrollNext}
-            className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full
+            className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full
                        bg-white border border-slate-200 text-slate-400
-                       hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200
+                       hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 hover:shadow-md
                        disabled:opacity-0 disabled:pointer-events-none
-                       transition-all duration-200 ml-1 shadow-sm"
+                       active:scale-90
+                       transition-all duration-200 ease-out ml-1.5 shadow-sm"
             aria-label="Visita siguiente"
           >
             <ChevronRight className="h-4 w-4" />
@@ -342,9 +363,9 @@ export function OdontogramHistoryTimeline({
 
         {/* Mini progress bar */}
         {points.length > 5 && (
-          <div className="mt-2 mx-8 h-0.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className="mt-2.5 mx-8 h-1 bg-slate-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-blue-400 rounded-full transition-all duration-300"
+              className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full transition-all duration-500 ease-out"
               style={{
                 width: `${Math.max(
                   5,
