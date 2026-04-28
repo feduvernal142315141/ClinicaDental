@@ -4,12 +4,9 @@ import dynamic from "next/dynamic";
 import { useOdontogramStore } from "@/lib/odontogram/store";
 import type { ToothSurface } from "./types";
 import { useMemo } from "react";
-import { getToothType } from "./tooth-svg-definitions";
 import { ToothSymbolService } from "@/lib/odontogram/domain/odontogram/services/ToothSymbolService";
-import { toothSquarePaths } from "./tooth-square-paths";
 import type { ToothViewPaths, SurfacePath } from "./tooth-square-paths";
-// TEMPORAL: Prueba pieza 18 con SVG preliminar — eliminar tras validación
-import { Tooth18FrontalView, Tooth18OclusalView } from "./tooth-18-preview";
+import { getDesignedToothPaths } from "./teeth-svg-adapter";
 
 interface ToothSVGMultiViewProps {
   toothNumber: number;
@@ -19,18 +16,20 @@ interface ToothSVGMultiViewProps {
   onSurfaceClick: (surface: ToothSurface) => void;
 }
 
-/* ---- Colores del tema lineal ---- */
+/* ---- Colores del tema – diseño profesional ---- */
 const THEME = {
   /** Color base de superficie sin tratamiento */
-  surfaceDefault: "#F5F0E8",
+  surfaceDefault: "#FFFFFF",
   /** Stroke del contorno principal */
-  outlineStroke: "#8B7E6A",
+  outlineStroke: "#4A5568",
   /** Fill de las raíces */
-  rootFill: "#E8DCC8",
+  rootFill: "#F7FAFC",
   /** Stroke de las raíces */
-  rootStroke: "#B8A889",
+  rootStroke: "#718096",
   /** Stroke de líneas de detalle */
   highlightStroke: "#C4B89A",
+  /** Fill hover feedback */
+  hoverOpacity: 0.85,
 } as const;
 
 function _ToothSVGMultiView({
@@ -75,34 +74,13 @@ function _ToothSVGMultiView({
     return ToothSymbolService.getToothSymbol(toothNumber, clinicalEvents);
   }, [toothNumber, clinicalEvents, isClient]);
 
-  // TEMPORAL: Pieza 18 usa SVG preliminar para vistas frontal y oclusal
-  if (toothNumber === 18 && view === "frontal") {
-    return (
-      <Tooth18FrontalView
-        surfaceColors={surfaceColors}
-        onSurfaceClick={onSurfaceClick}
-        symbol={toothSymbol}
-      />
-    );
-  }
-  if (toothNumber === 18 && view === "oclusal") {
-    return (
-      <Tooth18OclusalView
-        surfaceColors={surfaceColors}
-        onSurfaceClick={onSurfaceClick}
-        symbol={toothSymbol}
-      />
-    );
-  }
+  // Use the professionally designed SVG paths
+  const viewPaths = getDesignedToothPaths(toothNumber, view);
 
-  const toothType = getToothType(toothNumber);
-  const paths = toothSquarePaths[toothType];
-  if (!paths) return null;
-
-  const viewPaths: ToothViewPaths = paths[view];
+  if (!viewPaths) return null;
 
   return (
-    <ToothView
+    <DesignedToothView
       viewPaths={viewPaths}
       surfaceColors={surfaceColors}
       symbol={toothSymbol}
@@ -112,8 +90,8 @@ function _ToothSVGMultiView({
   );
 }
 
-/* ---------- Componente genérico de renderizado para cualquier vista ---------- */
-function ToothView({
+/* ---------- Componente de renderizado para las piezas diseñadas ---------- */
+function DesignedToothView({
   viewPaths,
   surfaceColors,
   symbol,
@@ -130,8 +108,10 @@ function ToothView({
 
   // Calcular centro del viewBox para posicionar el símbolo
   const vbParts = viewBox.split(" ").map(Number);
-  const cx = vbParts[2] / 2;
-  const cy = vbParts[3] / 2;
+  const cx = vbParts[0] + vbParts[2] / 2;
+  const cy = vbParts[1] + vbParts[3] / 2;
+  // Scale font size relative to viewBox width
+  const fontSize = Math.round(vbParts[2] * 0.22);
 
   return (
     <svg
@@ -139,21 +119,23 @@ function ToothView({
       className="w-full h-full"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Raíces (debajo de la corona) */}
+      {/* Raíces (debajo de la corona, siempre visibles en vestibular) */}
       {roots.map((rootD, i) => (
         <path
           key={`root-${i}`}
           d={rootD}
           fill={THEME.rootFill}
           stroke={THEME.rootStroke}
-          strokeWidth="1.5"
+          strokeWidth="0.8"
           strokeLinecap="round"
           strokeLinejoin="round"
+          pointerEvents="none"
         />
       ))}
 
-      {/* Superficies clickeables (5 zonas) */}
+      {/* Superficies clickeables (zonas del diseño) */}
       {surfaces.map((sp: SurfacePath) => {
+        if (!sp.d) return null; // Skip empty paths (non-visible surface)
         const color = surfaceColors[sp.surface];
         const hasTreatment = color !== "transparent";
         return (
@@ -161,11 +143,12 @@ function ToothView({
             key={sp.surface}
             d={sp.d}
             fill={hasTreatment ? color : THEME.surfaceDefault}
-            fillOpacity={hasTreatment ? 0.85 : 1}
+            fillOpacity={hasTreatment ? 0.75 : 1}
             stroke={THEME.outlineStroke}
-            strokeWidth="0.8"
+            strokeWidth="0.5"
             strokeLinejoin="round"
-            className="cursor-pointer transition-all duration-150 hover:brightness-110 hover:opacity-90"
+            strokeOpacity="0.3"
+            className="cursor-pointer transition-all duration-150 hover:brightness-105 hover:fill-opacity-80"
             onClick={(e) => {
               e.stopPropagation();
               onSurfaceClick(sp.surface);
@@ -174,12 +157,12 @@ function ToothView({
         );
       })}
 
-      {/* Contorno principal (encima, solo stroke) */}
+      {/* Contorno principal (encima, solo stroke – el diseño profesional) */}
       <path
         d={outline}
         fill="none"
         stroke={THEME.outlineStroke}
-        strokeWidth="1.5"
+        strokeWidth="1"
         strokeLinecap="round"
         strokeLinejoin="round"
         pointerEvents="none"
@@ -203,8 +186,8 @@ function ToothView({
       {symbol && view === "oclusal" && (
         <text
           x={cx}
-          y={cy + 3}
-          fontSize="10"
+          y={cy + fontSize * 0.35}
+          fontSize={fontSize}
           fontWeight="700"
           textAnchor="middle"
           fill="#1F2937"

@@ -74,11 +74,15 @@ export function OdontogramGrid({
     toothNumbers: number[],
     view: "frontal" | "oclusal" | "lateral",
   ) => {
-    // La vista oclusal es cuadrada; frontal y lateral son más altas
-    const containerClass =
-      view === "oclusal"
-        ? "w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity"
-        : "w-12 h-16 cursor-pointer hover:opacity-80 transition-opacity";
+    // Proportions adapted to the professional SVG designs.
+    // - frontal (vestibular): includes roots, so taller
+    // - oclusal: nearly square aspect ratio
+    // - lateral: moderate height
+    const containerClass = {
+      frontal: "w-[3.2rem] h-[4.5rem] cursor-pointer hover:opacity-80 transition-opacity",
+      oclusal: "w-[3.2rem] h-[3.2rem] cursor-pointer hover:opacity-80 transition-opacity",
+      lateral: "w-[3.2rem] h-[4rem] cursor-pointer hover:opacity-80 transition-opacity",
+    }[view];
 
     return (
       <div className="flex gap-0.5">
