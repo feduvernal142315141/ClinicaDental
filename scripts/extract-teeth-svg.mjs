@@ -37,11 +37,12 @@ function decodeId(raw) {
 //    Illustrator nests: <g id="XXX"> ... <path .../> ... </g>
 function extractGroups(svgText) {
   const groups = {};
+  const groupOrder = []; // track insertion order for adjacency
 
   // Match top-level groups with our tooth IDs (starting with _x3)
-  // We need to handle nested <g> properly
+  // AND Capa_XX groups (Illustrator layer names, may contain orphaned roots)
   const groupRegex =
-    /<g\s+id="(_x3[^"]+)">\s*([\s\S]*?)\s*<\/g>/g;
+    /<g\s+id="(_x3[^"]+|Capa_\d+)">\s*([\s\S]*?)\s*<\/g>/g;
 
   let match;
   while ((match = groupRegex.exec(svgText)) !== null) {
@@ -49,9 +50,10 @@ function extractGroups(svgText) {
     const content = match[2];
     const decoded = decodeId(rawId);
     groups[decoded] = content;
+    groupOrder.push(decoded);
   }
 
-  return groups;
+  return { groups, groupOrder };
 }
 
 // ── 4. Extract <path> d attributes from group content ────────────────────────
@@ -208,9 +210,24 @@ function combineBounds(boundsArr) {
 }
 
 // ── 6. Main extraction ──────────────────────────────────────────────────────
-const groups = extractGroups(svg);
+const { groups, groupOrder } = extractGroups(svg);
 
-console.log(`Extracted ${Object.keys(groups).length} groups from SVG`);
+// Build adjacency map: for each {fdi}V group, find the Capa_XX group right after it.
+// This handles cases where the designer put the root in a generic Capa_XX layer
+// instead of a properly named {fdi}V-ROOT group (e.g., tooth 13's root is in Capa_96).
+const orphanRootMap = {};
+for (let i = 0; i < groupOrder.length - 1; i++) {
+  const current = groupOrder[i];
+  const next = groupOrder[i + 1];
+  // If current is a V outline (e.g., "13V") and next is a Capa_XX
+  if (/^\d{2}V$/.test(current) && /^Capa_\d+$/.test(next)) {
+    // Verify this tooth doesn't already have a ROOT group
+    const hasExplicitRoot = groups[`${current}-ROOT`] || groups[`${current}-root`];
+    if (!hasExplicitRoot) {
+      orphanRootMap[current] = next;
+    }
+  }
+}
 
 // Organize by tooth number
 const FDI_NUMBERS = [];
@@ -268,6 +285,17 @@ for (const fdi of FDI_NUMBERS) {
           root = paths;
           break;
         }
+      }
+    }
+
+    // Fallback: check if there's an orphaned Capa_XX group that contains
+    // the root (e.g., tooth 13 has root in Capa_96 instead of _x31_3V-ROOT)
+    if (!root && view === "V" && orphanRootMap[key]) {
+      const capaKey = orphanRootMap[key];
+      const paths = extractPaths(groups[capaKey]);
+      if (paths.length > 0) {
+        root = paths;
+        console.log(`  ⚠ Found orphaned root for ${key} in ${capaKey}`);
       }
     }
 
