@@ -138,7 +138,7 @@ function LabelCard({
         flexDirection: "column",
         height: "100%"
       }}
-      bodyStyle={{ padding: "16px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-start" }}
+      styles={{ body: { padding: "16px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-start" } }}
       actions={
         isArchived
           ? undefined
