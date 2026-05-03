@@ -250,7 +250,7 @@ export function LabelFormModal({
             </div>
             <div>
               <ColorPicker
-                value={previewColor}
+                value={previewColor?.split(",")[0]?.substring(0, 7) || "#3498DB"}
                 format="hex"
                 disabledAlpha
                 onChange={(color) => {
