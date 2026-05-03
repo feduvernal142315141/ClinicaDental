@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Modal, Form, Input, Button, Tooltip } from "antd";
+import { Modal, Form, Input, Button, Tooltip, ColorPicker } from "antd";
 import { DynamicIcon } from "./DynamicIcon";
 import { LabelChip } from "./LabelChip";
 import { useCreateLabel } from "@/lib/hooks/labels";
@@ -222,7 +222,7 @@ export function LabelFormModal({
           label="Color"
           rules={[{ required: true, message: "El color es requerido" }]}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {PRESET_COLORS.map((c) => (
                 <button
@@ -248,16 +248,19 @@ export function LabelFormModal({
                 />
               ))}
             </div>
-            <Input
-              value={previewColor}
-              onChange={(e) => {
-                form.setFieldValue("color", e.target.value);
-                setPreviewColor(e.target.value);
-              }}
-              placeholder="#FF5733"
-              maxLength={7}
-              style={{ width: 120 }}
-            />
+            <div>
+              <ColorPicker
+                value={previewColor}
+                format="hex"
+                disabledAlpha
+                onChange={(color) => {
+                  const hexValue = color.toHexString();
+                  form.setFieldValue("color", hexValue);
+                  setPreviewColor(hexValue);
+                }}
+                showText
+              />
+            </div>
           </div>
         </Form.Item>
 
