@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intro Animado - Clinic Flow 360</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background-color: #0f172a;
+        }
+        .text-line {
+            /* Handled by GSAP */
+        }
+
+        .gradient-text {
+            color: transparent;
+            background-clip: text;
+            -webkit-background-clip: text;
+            background-image: linear-gradient(to right, #60a5fa, #34d399);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="stage" class="relative flex w-full h-screen overflow-hidden bg-[#0f172a]" data-composition-id="promo-intro" data-start="0" data-duration="6" data-width="1920" data-height="1080" style="width: 1920px; height: 1080px;">
+        
+        <!-- Left Side: Typography -->
+        <div class="w-[55%] h-full flex flex-col justify-center px-32 relative z-10 bg-[#0f172a]">
+            
+            <!-- Ambient Glows -->
+            <div class="absolute top-0 left-0 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+            <div class="absolute bottom-0 right-0 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] translate-x-1/3 translate-y-1/3 pointer-events-none"></div>
+
+            <div class="flex items-center gap-4 mb-10 overflow-hidden text-line" id="brand-line">
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-emerald-400 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <i data-lucide="activity" class="w-7 h-7 text-white"></i>
+                </div>
+                <h2 class="text-3xl font-bold tracking-tight text-white">Clinic Flow <span class="gradient-text">360</span></h2>
+            </div>
+
+            <h1 class="text-white text-[4.5rem] leading-[1.1] font-black tracking-tight z-10">
+                <div class="text-line overflow-hidden"><span class="inline-block" id="line1">¿Caos en tu recepción?</span></div>
+                <div class="text-line overflow-hidden mt-6"><span class="inline-block text-slate-400 font-medium text-[3.5rem]" id="line2">Simplifica tu día a día.</span></div>
+                <div class="text-line overflow-hidden mt-12"><span class="inline-block text-white" id="line4">Tu clínica, <span class="gradient-text">bajo control.</span></span></div>
+            </h1>
+        </div>
+
+        <!-- Right Side: Imagery -->
+        <div class="w-[45%] h-full relative overflow-hidden bg-slate-900 border-l border-slate-800 shadow-2xl z-0">
+            <img id="chaos-img" src="caos_recepcion.png" alt="Caos en recepción" class="w-full h-full object-cover origin-center opacity-0 scale-125">
+            <!-- Overlay to darken image slightly and blend with dark theme -->
+            <div class="absolute inset-0 bg-slate-900/40 mix-blend-multiply"></div>
+            <!-- Gradient blend edge -->
+            <div class="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#0f172a] to-transparent z-10"></div>
+        </div>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+        window.__timelines["promo-intro"] = tl;
+
+        // 1. Imagen entra y hace un zoom out lento (Ken Burns effect)
+        tl.to("#chaos-img", { opacity: 1, duration: 2.0, ease: "power2.out" }, 0);
+        tl.to("#chaos-img", { scale: 1.0, x: "0%", duration: 6, ease: "sine.out" }, 0);
+
+        // 2. Textos entran de forma secuencial
+        // En lugar de selectores extraños, usamos un simple stagger con tl.from
+        tl.from(".text-line", { 
+            y: 40, 
+            opacity: 0, 
+            duration: 1.2, 
+            stagger: 0.6, 
+            ease: "back.out(1.2)" 
+        }, 0.5);
+
+        // Arrancar animación
+        setTimeout(() => {
+            if (!window.__hyperframes) {
+                tl.play();
+            }
+        }, 100);
+    </script>
+</body>
+</html>

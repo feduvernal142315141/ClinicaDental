@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinic Flow 360 - Agenda Animation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.344.0/lucide.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff;
+            color: #1E1E1E;
+            
+        }
+
+        .tag-red { background-color: #fef2f2; border: 1px solid #fca5a5; color: #ef4444; }
+        .tag-blue { background-color: #eff6ff; border: 1px solid #93c5fd; color: #3b82f6; }
+        .tag-purple { background-color: #faf5ff; border: 1px solid #d8b4fe; color: #a855f7; }
+        .tag-green { background-color: #f0fdf4; border: 1px solid #86efac; color: #22c55e; }
+        .tag-orange { background-color: #fff7ed; border: 1px solid #fdba74; color: #f97316; }
+        .tag-pink { background-color: #fdf2f8; border: 1px solid #f9a8d4; color: #ec4899; }
+        .tag-gray { background-color: #f8fafc; border: 1px solid #cbd5e1; color: #64748b; }
+
+        .card-red { background-color: #fef2f2; border-left: 3px solid #ef4444; }
+        .card-blue { background-color: #eff6ff; border-left: 3px solid #3b82f6; }
+        .card-purple { background-color: #faf5ff; border-left: 3px solid #a855f7; }
+        .card-green { background-color: #f0fdf4; border-left: 3px solid #22c55e; }
+        .card-orange { background-color: #fff7ed; border-left: 3px solid #f97316; }
+        .card-pink { background-color: #fdf2f8; border-left: 3px solid #ec4899; }
+
+        .calendar-wrapper {
+            display: grid;
+            grid-template-columns: 60px repeat(7, 1fr);
+            grid-template-rows: auto repeat(12, 60px); 
+            flex-grow: 1;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .grid-header {
+            border-bottom: 1px solid #f1f5f9;
+            text-align: center;
+            padding: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .grid-time {
+            border-right: 1px solid #f1f5f9;
+            text-align: right;
+            padding-right: 0.5rem;
+            font-size: 0.65rem;
+            color: #94a3b8;
+            margin-top: -0.5rem;
+        }
+
+        .grid-cell {
+            border-bottom: 1px solid #f1f5f9;
+            border-right: 1px solid #f1f5f9;
+        }
+
+        .events-layer {
+            position: absolute;
+            top: 41px; 
+            left: 60px; 
+            right: 0;
+            bottom: 0;
+            pointer-events: none; 
+        }
+
+        .event-card {
+            position: absolute;
+            border-radius: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            pointer-events: auto;
+            width: calc(14.28% - 6px); 
+            margin: 0 3px;
+        }
+
+        /* --- Animaciones removidas para delegar a GSAP --- */
+        
+            40% { opacity: 1; filter: blur(0px); }
+            100% { transform: translateY(0) skewY(0); opacity: 1; filter: blur(0px); }
+        }
+
+        
+            100% { transform: scale(1); opacity: 1; filter: blur(0px); }
+        }
+
+        .text-mask-wrapper { 
+            overflow: hidden; 
+            padding-bottom: 0.5rem; 
+            margin-bottom: -0.5rem;
+        }
+
+        
+        
+        
+        
+
+    </style>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen m-0">
+    <div id="stage" class="flex flex-col relative" data-composition-id="promo-citas" data-start="0" data-duration="16" data-width="1920" data-height="1080" style="width: 1920px; height: 1080px; background-color: #ffffff; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden;">
+
+    <!-- Escena Citas -->
+    <div id="scene-citas" class="absolute inset-0 flex flex-col bg-white">
+
+
+
+
+    <header id="app-header" class="border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Gestión de Citas</h1>
+            <p class="text-sm text-slate-500">Agenda de citas por especialista</p>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        
+        <aside id="app-sidebar" class="w-[280px] border-r border-slate-200 flex flex-col">
+            <div class="p-4 border-b border-slate-100 space-y-4">
+                <button class="w-full bg-blue-600 text-white rounded-md py-2 font-medium flex justify-center items-center gap-2 hover:bg-blue-700 transition">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Nueva cita
+                </button>
+                <div class="flex justify-between text-sm">
+                    <button class="text-blue-600 hover:underline">Ver todos</button>
+                    <button class="text-slate-400 hover:text-slate-600">Limpiar</button>
+                </div>
+            </div>
+
+            <div class="p-4 border-b border-slate-100 overflow-y-auto space-y-2">
+                <div class="flex items-center gap-3 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                    <div class="bg-blue-600 rounded-full p-0.5 text-white"><i data-lucide="check" class="w-3 h-3"></i></div>
+                    <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">D</div>
+                    <span class="text-sm font-medium">Diego Torres</span>
+                </div>
+                <div class="flex items-center gap-3 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                    <div class="bg-blue-600 rounded-full p-0.5 text-white"><i data-lucide="check" class="w-3 h-3"></i></div>
+                    <div class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">A</div>
+                    <span class="text-sm font-medium">Ana Ruiz</span>
+                </div>
+                <div class="flex items-center gap-3 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                    <div class="bg-blue-600 rounded-full p-0.5 text-white"><i data-lucide="check" class="w-3 h-3"></i></div>
+                    <div class="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center text-xs font-bold">P</div>
+                    <span class="text-sm font-medium">Pedro Sánchez</span>
+                </div>
+                <div class="flex items-center gap-3 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                    <div class="bg-blue-600 rounded-full p-0.5 text-white"><i data-lucide="check" class="w-3 h-3"></i></div>
+                    <div class="w-6 h-6 rounded-full bg-pink-500 text-white flex items-center justify-center text-xs font-bold">L</div>
+                    <span class="text-sm font-medium">Laura Martinez</span>
+                </div>
+                <div class="flex items-center gap-3 p-1 rounded bg-slate-50 cursor-pointer">
+                    <div class="bg-blue-600 rounded-full p-0.5 text-white"><i data-lucide="check" class="w-3 h-3"></i></div>
+                    <div class="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs font-bold">A</div>
+                    <span class="text-sm font-medium">Admin</span>
+                </div>
+                <div class="flex items-center gap-3 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                    <div class="bg-blue-600 rounded-full p-0.5 text-white"><i data-lucide="check" class="w-3 h-3"></i></div>
+                    <div class="w-6 h-6 rounded-full bg-teal-500 text-white flex items-center justify-center text-xs font-bold">L</div>
+                    <span class="text-sm font-medium truncate w-32">LUIS ENRIQUE BALLAGAS...</span>
+                </div>
+            </div>
+
+            <div class="p-4">
+                <h3 class="text-xs font-bold text-slate-400 mb-3 uppercase">Etiquetas</h3>
+                <div class="flex flex-wrap gap-2">
+                    <span class="gs-tag tag-red rounded-full px-2 py-1 flex items-center gap-1 text-[10px]"><i data-lucide="zap" class="w-3 h-3"></i> Urgencia</span>
+                    <span class="gs-tag tag-blue rounded-full px-2 py-1 flex items-center gap-1 text-[10px]"><i data-lucide="star" class="w-3 h-3"></i> Primera vez</span>
+                    <span class="gs-tag tag-purple rounded-full px-2 py-1 flex items-center gap-1 text-[10px]"><i data-lucide="smile" class="w-3 h-3"></i> Ortodoncia</span>
+                    <span class="gs-tag tag-green rounded-full px-2 py-1 flex items-center gap-1 text-[10px]"><i data-lucide="droplet" class="w-3 h-3"></i> Limpieza</span>
+                    <span class="gs-tag tag-orange rounded-full px-2 py-1 flex items-center gap-1 text-[10px]"><i data-lucide="scissors" class="w-3 h-3"></i> Extracción</span>
+                    <span class="gs-tag tag-pink rounded-full px-2 py-1 flex items-center gap-1 text-[10px]"><i data-lucide="activity" class="w-3 h-3"></i> Endodoncia</span>
+                    <span class="gs-tag tag-blue rounded-full px-2 py-1 flex items-center gap-1 text-[10px] bg-white"><i data-lucide="anchor" class="w-3 h-3"></i> Implante</span>
+                    <span class="gs-tag tag-gray rounded-full px-2 py-1 flex items-center gap-1 text-[10px] bg-white"><i data-lucide="eye" class="w-3 h-3"></i> Revisión</span>
+                    <span class="gs-tag tag-orange rounded-full px-2 py-1 flex items-center gap-1 text-[10px] bg-white text-orange-400 border-orange-200">Sin seguro</span>
+                    <span class="gs-tag tag-blue rounded-full px-2 py-1 flex items-center gap-1 text-[10px] bg-white text-cyan-500 border-cyan-200"><i data-lucide="baby" class="w-3 h-3"></i> Pediátrico</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col bg-slate-50/30">
+            
+            <div id="app-toolbar" class="px-4 py-2 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="flex border rounded-md overflow-hidden bg-white text-sm">
+                        <button class="px-3 py-1 hover:bg-slate-50 border-r">Día</button>
+                        <button class="px-3 py-1 hover:bg-slate-50 border-r">Semana</button>
+                        <button class="px-3 py-1 hover:bg-slate-50">Mes</button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="border rounded px-2 py-1 bg-white hover:bg-slate-50"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                        <button class="border rounded px-3 py-1 bg-white hover:bg-slate-50 text-sm">Hoy</button>
+                        <button class="border rounded px-2 py-1 bg-white hover:bg-slate-50"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                    </div>
+                    <span class="font-semibold text-slate-800 text-sm ml-2">27 De Abr – 3 De May De 2026</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="border rounded px-2 py-1 bg-white text-slate-700 flex items-center gap-2 text-sm">
+                        03/05/2026 <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div id="app-calendar" class="calendar-wrapper m-4 border border-slate-200 bg-white rounded-lg shadow-sm">
+                
+                <div class="grid-header"></div> 
+                <div class="grid-header flex flex-col"><span class="text-slate-400 text-xs">Lun.</span><span class="text-lg">27</span></div>
+                <div class="grid-header flex flex-col"><span class="text-slate-400 text-xs">Mar.</span><span class="text-lg">28</span></div>
+                <div class="grid-header flex flex-col"><span class="text-slate-400 text-xs">Mié.</span><span class="text-lg">29</span></div>
+                <div class="grid-header flex flex-col"><span class="text-slate-400 text-xs">Jue.</span><span class="text-lg">30</span></div>
+                <div class="grid-header flex flex-col"><span class="text-slate-400 text-xs">Vie.</span><span class="text-lg">1</span></div>
+                <div class="grid-header flex flex-col"><span class="text-slate-400 text-xs">Sáb.</span><span class="text-lg">2</span></div>
+                <div class="grid-header flex flex-col items-center"><span class="text-blue-600 text-xs font-bold">Dom.</span><span class="text-lg bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center mt-1">3</span></div>
+
+                <div class="grid-time mt-14">08:30</div> <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+                <div class="grid-time mt-14">09:00</div> <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+                <div class="grid-time mt-14">09:30</div> <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+                <div class="grid-time mt-14">10:00</div> <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+                <div class="grid-time mt-14">10:30</div> <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+                <div class="grid-time mt-14">11:00</div> <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+                <div class="grid-time mt-14">11:30</div> <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+                <div class="grid-time mt-14">12:00</div> <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+                <div class="grid-time mt-14">12:30</div> <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+                <div class="grid-time mt-14">13:00</div> <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+                <div class="grid-time mt-14">13:30</div> <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+                <div class="grid-time mt-14">14:00</div> <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+                <div class="grid-time mt-14">14:30</div> <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+
+                <div class="events-layer">
+                    
+                    <!-- LUNES (left: 0%) -->
+                    <div class="event-card gs-card card-green flex flex-col gap-1" style="top: 300px; height: 110px; left: 0%;">
+                        <div class="font-bold">11:00 · María García</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Extracció...</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-pink rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="activity" class="w-2 h-2"></i> Endodoncia</span>
+                            <span class="gs-tag tag-blue rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="star" class="w-2 h-2"></i> Primera vez</span>
+                        </div>
+                    </div>
+
+                    <!-- MARTES (left: 14.28%) -->
+                    <div class="event-card gs-card card-pink flex flex-col gap-1" style="top: 60px; height: 110px; left: 14.28%;"> 
+                        <div class="font-bold">09:00 · Carlos López</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Resina Si...</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-pink rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="activity" class="w-2 h-2"></i> Endodoncia</span>
+                        </div>
+                    </div>
+                    <div class="event-card gs-card card-green flex flex-col gap-1" style="top: 180px; height: 110px; left: 14.28%;"> 
+                        <div class="font-bold">10:00 · Juan Pérez</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Limpieza</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-green rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="droplet" class="w-2 h-2"></i> Limpieza</span>
+                        </div>
+                    </div>
+                    <div class="event-card gs-card card-orange flex flex-col gap-1" style="top: 660px; height: 110px; left: 14.28%;"> 
+                        <div class="font-bold">14:00 · María García</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Extracció...</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-orange rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="scissors" class="w-2 h-2"></i> Extracción</span>
+                        </div>
+                    </div>
+
+                    <!-- MIERCOLES (left: 28.56%) -->
+                    <div class="event-card gs-card card-orange flex flex-col gap-1" style="top: 180px; height: 110px; left: 28.56%;"> 
+                        <div class="font-bold">10:00 · Carlos López</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Resina Si...</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-orange rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="scissors" class="w-2 h-2"></i> Extracción</span>
+                        </div>
+                    </div>
+                    <div class="event-card gs-card card-green flex flex-col gap-1" style="top: 300px; height: 110px; left: 28.56%;"> 
+                        <div class="font-bold">11:00 · Carlos López</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Limpieza</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-green rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="droplet" class="w-2 h-2"></i> Limpieza</span>
+                        </div>
+                    </div>
+                    <div class="event-card gs-card card-pink flex flex-col gap-1" style="top: 420px; height: 110px; left: 28.56%;"> 
+                        <div class="font-bold">12:00 · María García</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Extracció...</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-pink rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="activity" class="w-2 h-2"></i> Endodoncia</span>
+                            <span class="gs-tag tag-green rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="droplet" class="w-2 h-2"></i> Limpieza</span>
+                        </div>
+                    </div>
+                    <div class="event-card gs-card card-purple flex flex-col gap-1" style="top: 660px; height: 110px; left: 28.56%;"> 
+                        <div class="font-bold">14:00 · María García</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Resina Si...</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-purple rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="smile" class="w-2 h-2"></i> Ortodoncia</span>
+                        </div>
+                    </div>
+
+                    <!-- VIERNES (left: 57.12%) -->
+                    <div class="event-card gs-card card-pink flex flex-col gap-1" style="top: 60px; height: 110px; left: 57.12%;"> 
+                        <div class="font-bold">09:00 · Juan Pérez</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Extracció...</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-pink rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="activity" class="w-2 h-2"></i> Endodoncia</span>
+                        </div>
+                    </div>
+                    <div class="event-card gs-card card-purple flex flex-col gap-1" style="top: 300px; height: 110px; left: 57.12%;"> 
+                        <div class="font-bold">11:00 · Juan Pérez</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Limpieza</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-purple rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="smile" class="w-2 h-2"></i> Ortodoncia</span>
+                            <span class="gs-tag tag-blue rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="star" class="w-2 h-2"></i> Primera vez</span>
+                        </div>
+                    </div>
+                    <div class="event-card gs-card card-orange flex flex-col gap-1" style="top: 420px; height: 110px; left: 57.12%;"> 
+                        <div class="font-bold">12:00 · Carlos López</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Limpieza</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-orange rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="scissors" class="w-2 h-2"></i> Extracción</span>
+                            <span class="gs-tag tag-purple rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="smile" class="w-2 h-2"></i> Ortodoncia</span>
+                        </div>
+                    </div>
+                    <div class="event-card gs-card card-pink flex flex-col gap-1" style="top: 660px; height: 110px; left: 57.12%;"> 
+                        <div class="font-bold">14:00 · María García</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Resina Si...</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-pink rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="activity" class="w-2 h-2"></i> Endodoncia</span>
+                            <span class="gs-tag tag-blue rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="star" class="w-2 h-2"></i> Primera vez</span>
+                        </div>
+                    </div>
+
+                    <!-- SABADO (left: 71.4%) -->
+                    <div class="event-card gs-card card-orange flex flex-col gap-1" style="top: 60px; height: 110px; left: 71.4%;"> 
+                        <div class="font-bold">09:00 · Juan Pérez</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Limpieza</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-orange rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="scissors" class="w-2 h-2"></i> Extracción</span>
+                            <span class="gs-tag tag-blue rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="star" class="w-2 h-2"></i> Primera vez</span>
+                        </div>
+                    </div>
+                    <div class="event-card gs-card card-pink flex flex-col gap-1" style="top: 180px; height: 110px; left: 71.4%;"> 
+                        <div class="font-bold">10:00 · Juan Pérez</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Limpieza</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-pink rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="activity" class="w-2 h-2"></i> Endodoncia</span>
+                            <span class="gs-tag tag-purple rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="smile" class="w-2 h-2"></i> Ortodoncia</span>
+                        </div>
+                    </div>
+                    <div class="event-card gs-card card-green flex flex-col gap-1" style="top: 300px; height: 110px; left: 71.4%;"> 
+                        <div class="font-bold">11:00 · Juan Pérez</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Extracció...</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-orange rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="scissors" class="w-2 h-2"></i> Extracción</span>
+                            <span class="gs-tag tag-green rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="droplet" class="w-2 h-2"></i> Limpieza</span>
+                        </div>
+                    </div>
+
+                    <!-- DOMINGO (left: 85.68%) -->
+                    <div class="event-card gs-card card-purple flex flex-col gap-1" style="top: 60px; height: 110px; left: 85.68%;"> 
+                        <div class="font-bold">09:00 · Carlos López</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Resina Si...</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-purple rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="smile" class="w-2 h-2"></i> Ortodoncia</span>
+                        </div>
+                    </div>
+                    <div class="event-card gs-card card-green flex flex-col gap-1" style="top: 180px; height: 110px; left: 85.68%;"> 
+                        <div class="font-bold">10:00 · Juan Pérez</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Resina Si...</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-green rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="droplet" class="w-2 h-2"></i> Limpieza</span>
+                            <span class="gs-tag tag-blue rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="star" class="w-2 h-2"></i> Primera vez</span>
+                        </div>
+                    </div>
+                    <div class="event-card gs-card card-orange flex flex-col gap-1" style="top: 420px; height: 110px; left: 85.68%;"> 
+                        <div class="font-bold">12:00 · Carlos López</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Extracció...</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-orange rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="scissors" class="w-2 h-2"></i> Extracción</span>
+                            <span class="gs-tag tag-blue rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="star" class="w-2 h-2"></i> Primera vez</span>
+                        </div>
+                    </div>
+                    <div class="event-card gs-card card-green flex flex-col gap-1" style="top: 660px; height: 110px; left: 85.68%;"> 
+                        <div class="font-bold">14:00 · Carlos López</div>
+                        <div class="text-slate-500 text-[10px]">60 min · Consulta · Extracció...</div>
+                        <div class="flex flex-wrap gap-1 mt-auto">
+                            <span class="gs-tag tag-green rounded px-1 flex items-center gap-1 text-[9px]"><i data-lucide="droplet" class="w-2 h-2"></i> Limpieza</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+    </div> <!-- /#scene-citas -->
+
+    <!-- Escena Historial Clínico -->
+    <div id="scene-historial" class="absolute inset-0 bg-slate-50 flex flex-col opacity-0 pointer-events-none">
+        
+        <!-- Header Historial -->
+        <header id="hist-header" class="bg-white border-b border-slate-200 px-8 py-4 flex flex-col gap-4 z-10 drop-shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Juan Pérez</h1>
+                    <p class="text-sm text-slate-500">Historia clínica del paciente</p>
+                </div>
+            </div>
+            <div class="flex gap-6 border-b border-slate-200 w-full mt-2">
+                <div class="border-b-2 border-blue-600 pb-2 text-blue-600 font-semibold flex items-center gap-2">
+                    <i data-lucide="file-text" class="w-4 h-4"></i> Historia Clínica
+                </div>
+                <div class="pb-2 text-slate-500 font-medium flex items-center gap-2">
+                    <i data-lucide="activity" class="w-4 h-4"></i> Odontograma
+                </div>
+            </div>
+        </header>
+
+        <!-- Contenido Historial -->
+        <div class="flex-1 overflow-hidden flex p-6 gap-6">
+            
+            <!-- Columna Izquierda -->
+            <div class="historial-col-left flex flex-col gap-6 w-[320px]">
+                
+                <!-- Perfil -->
+                <div class="bg-white border border-slate-200 rounded-xl p-6 flex flex-col items-center">
+                    <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 mb-4">
+                        <i data-lucide="user" class="w-10 h-10"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-900">Juan Pérez</h2>
+                    <p class="text-xs text-slate-500 mt-1">1990-01-15 • 36 años • Masculino</p>
+                    <button class="mt-4 px-4 py-2 border border-slate-200 rounded-md text-sm font-medium text-slate-700 flex items-center gap-2 hover:bg-slate-50">
+                        <i data-lucide="edit" class="w-4 h-4"></i> Editar Perfil
+                    </button>
+                </div>
+
+                <!-- Contacto -->
+                <div class="bg-white border border-slate-200 rounded-xl p-6">
+                    <h3 class="text-[10px] font-bold text-slate-500 mb-4 tracking-wider">CONTACTO</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3 text-sm text-slate-600">
+                            <i data-lucide="mail" class="w-4 h-4 text-slate-400"></i> juan.perez@email.com
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-slate-600">
+                            <i data-lucide="phone" class="w-4 h-4 text-slate-400"></i> +1234567890
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-slate-600">
+                            <i data-lucide="map-pin" class="w-4 h-4 text-slate-400"></i> Calle Principal 123
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Archivos -->
+                <div class="bg-white border border-slate-200 rounded-xl p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-[10px] font-bold text-slate-500 tracking-wider">ARCHIVOS</h3>
+                    </div>
+                    <div class="flex items-center justify-between text-sm text-slate-700 mb-4">
+                        <div class="flex items-center gap-2"><i data-lucide="paperclip" class="w-4 h-4"></i> Archivos</div>
+                        <button class="text-slate-500 hover:text-slate-800 flex items-center gap-1"><i data-lucide="plus" class="w-4 h-4"></i> Agregar</button>
+                    </div>
+                    <div class="border border-dashed border-slate-300 rounded-lg p-6 flex flex-col items-center justify-center text-center">
+                        <i data-lucide="file-up" class="w-6 h-6 text-slate-400 mb-2"></i>
+                        <p class="text-xs text-slate-500">Sin archivos adjuntos</p>
+                        <p class="text-xs text-blue-600 font-medium mt-1">Subir primer archivo</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna Central -->
+            <div class="historial-col-center flex-1 flex flex-col gap-6">
+                
+                <!-- Antecedentes -->
+                <div class="bg-white border border-slate-200 rounded-xl p-6">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h3 class="text-[10px] font-bold text-slate-500 tracking-wider">ANTECEDENTES MÉDICOS</h3>
+                            <p class="text-xs text-slate-400 mt-1">Información general y clínica del paciente</p>
+                        </div>
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium flex items-center gap-2">
+                            <i data-lucide="edit" class="w-4 h-4"></i> Editar historia clínica
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-8">
+                        <div>
+                            <h4 class="text-[10px] font-bold text-slate-500 mb-2">ALERGIAS</h4>
+                            <p class="text-sm text-slate-800">Penicilina, Ibuprofeno</p>
+                        </div>
+                        <div>
+                            <h4 class="text-[10px] font-bold text-slate-500 mb-2">MEDICAMENTOS ACTUALES</h4>
+                            <p class="text-sm text-slate-800">Losartán 50mg/día, Aspirina Protect</p>
+                        </div>
+                        <div>
+                            <h4 class="text-[10px] font-bold text-slate-500 mb-2">CIRUGÍAS PREVIAS</h4>
+                            <p class="text-sm text-slate-800">Apendicectomía (2015), Colecistectomía (2018)</p>
+                        </div>
+                        <div>
+                            <h4 class="text-[10px] font-bold text-slate-500 mb-2">ENFERMEDADES SISTÉMICAS</h4>
+                            <p class="text-sm text-slate-800">Hipertensión Arterial (Controlada)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Planes -->
+                <div class="bg-white border border-slate-200 rounded-xl p-6">
+                    <h3 class="text-[10px] font-bold text-slate-500 mb-4 tracking-wider">PLANES PENDIENTES</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between text-sm">
+                            <div class="flex items-center gap-2 text-slate-700">
+                                <div class="w-2 h-2 rounded-full bg-orange-500"></div> Reemplazo de amalgamas por resinas (Cuadrante 2)
+                            </div>
+                            <span class="text-xs font-medium bg-orange-50 text-orange-600 px-2 py-0.5 rounded">Pendiente</span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <div class="flex items-center gap-2 text-slate-700">
+                                <div class="w-2 h-2 rounded-full bg-blue-500"></div> Exodoncia de terceros molares
+                            </div>
+                            <span class="text-xs font-medium bg-blue-50 text-blue-600 px-2 py-0.5 rounded">En progreso</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notas -->
+                <div class="bg-white border border-slate-200 rounded-xl p-6 flex-1 flex flex-col">
+                    <h3 class="text-[10px] font-bold text-slate-500 mb-4 tracking-wider">NOTAS PERMANENTES DEL PACIENTE</h3>
+                    <div class="border border-slate-200 rounded-lg flex-1 flex flex-col overflow-hidden">
+                        <div class="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center gap-4 text-slate-500">
+                            <i data-lucide="bold" class="w-4 h-4"></i>
+                            <i data-lucide="italic" class="w-4 h-4"></i>
+                            <i data-lucide="underline" class="w-4 h-4"></i>
+                            <div class="w-px h-4 bg-slate-300"></div>
+                            <i data-lucide="list" class="w-4 h-4"></i>
+                            <i data-lucide="list-ordered" class="w-4 h-4"></i>
+                            <div class="w-px h-4 bg-slate-300"></div>
+                            <i data-lucide="heading-2" class="w-4 h-4"></i>
+                            <div class="w-px h-4 bg-slate-300"></div>
+                            <i data-lucide="paperclip" class="w-4 h-4"></i>
+                            <div class="relative group cursor-pointer" id="btn-dictado">
+                                <div class="p-1 rounded-md bg-slate-100 hover:bg-slate-200 transition-colors" id="mic-icon-bg">
+                                    <i data-lucide="mic" class="w-4 h-4 text-slate-700"></i>
+                                </div>
+                                <!-- Tooltip animado -->
+                                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-xs rounded opacity-0 pointer-events-none whitespace-nowrap drop-shadow-md z-20 flex flex-col items-center" id="tooltip-dictado">
+                                    Dictar por voz
+                                    <div class="w-2 h-2 bg-slate-800 rotate-45 absolute -bottom-1"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-4 flex-1 text-sm flex flex-col" id="typing-area">
+                            <span class="text-slate-400" id="typing-placeholder">Escribe aquí las notas del historial...</span>
+                            <span class="text-slate-700 leading-relaxed whitespace-pre-wrap" id="typing-text"></span>
+                        </div>
+                        <div class="p-4 flex justify-end">
+                            <button class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium">Guardar notas</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Columna Derecha -->
+            <div class="historial-col-right flex flex-col gap-6 w-[350px]">
+                
+                <button class="w-full bg-white border border-slate-300 border-dashed rounded-xl py-4 flex items-center justify-center gap-3 text-slate-600 font-medium hover:bg-slate-50 transition-colors">
+                    <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><i data-lucide="plus" class="w-4 h-4"></i></div> Iniciar Nueva Consulta
+                </button>
+
+                <div class="flex-1 overflow-y-auto pr-2 flex flex-col gap-6" id="right-scroll-area">
+                    
+                    <!-- Consultas Agendadas -->
+                    <div class="bg-white border border-slate-200 rounded-xl flex flex-col shrink-0">
+                        <div class="p-5 border-b border-slate-100">
+                            <h3 class="text-[10px] font-bold text-slate-500 tracking-wider">CONSULTAS AGENDADAS</h3>
+                        </div>
+                        
+                        <div class="flex-1 p-2">
+                            <!-- Agendada 1 -->
+                            <div class="flex gap-4 p-3 border-b border-slate-100">
+                                <div class="flex flex-col items-center justify-center w-12 h-14 shrink-0 bg-blue-50 rounded-lg">
+                                    <span class="text-blue-600 font-bold text-lg leading-none">06</span>
+                                    <span class="text-blue-600 text-[10px] font-bold mt-0.5">JUN</span>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-slate-800 text-sm">Aplicación de Flúor</h4>
+                                    <p class="text-xs text-slate-500 mt-1">12:00 · Dr. Admin</p>
+                                    <div class="flex gap-3 mt-2">
+                                        <span class="text-red-500 text-[10px] font-medium cursor-pointer">Cancelar</span>
+                                        <span class="text-blue-600 text-[10px] font-medium cursor-pointer">Reagendar</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Agendada 2 -->
+                            <div class="flex gap-4 p-3 border-b border-slate-100">
+                                <div class="flex flex-col items-center justify-center w-12 h-14 shrink-0 bg-blue-50 rounded-lg">
+                                    <span class="text-blue-600 font-bold text-lg leading-none">19</span>
+                                    <span class="text-blue-600 text-[10px] font-bold mt-0.5">MAY</span>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-slate-800 text-sm">Corona Zirconio</h4>
+                                    <p class="text-xs text-slate-500 mt-1">16:00 · Dr. Pedro Sánchez</p>
+                                    <div class="flex gap-3 mt-2">
+                                        <span class="text-red-500 text-[10px] font-medium cursor-pointer">Cancelar</span>
+                                        <span class="text-blue-600 text-[10px] font-medium cursor-pointer">Reagendar</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Agendada 3 -->
+                            <div class="flex gap-4 p-3">
+                                <div class="flex flex-col items-center justify-center w-12 h-14 shrink-0 bg-blue-50 rounded-lg">
+                                    <span class="text-blue-600 font-bold text-lg leading-none">18</span>
+                                    <span class="text-blue-600 text-[10px] font-bold mt-0.5">ABR</span>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-slate-800 text-sm">Carilla Composite</h4>
+                                    <p class="text-xs text-slate-500 mt-1">13:00 · Dr. Diego Torres</p>
+                                    <div class="flex gap-3 mt-2">
+                                        <span class="text-red-500 text-[10px] font-medium cursor-pointer">Cancelar</span>
+                                        <span class="text-blue-600 text-[10px] font-medium cursor-pointer">Reagendar</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Consultas Realizadas -->
+                    <div class="bg-white border border-slate-200 rounded-xl flex flex-col shrink-0">
+                        <div class="p-5 border-b border-slate-100">
+                            <h3 class="text-[10px] font-bold text-slate-500 tracking-wider">CONSULTAS REALIZADAS</h3>
+                        </div>
+                        
+                        <div class="flex-1 p-2">
+                            <!-- Realizada 1 -->
+                            <div class="flex gap-4 p-3 border-b border-slate-100">
+                                <div class="flex flex-col items-center justify-center w-12 h-14 shrink-0 bg-green-50 rounded-lg">
+                                    <span class="text-green-600 font-bold text-lg leading-none">29</span>
+                                    <span class="text-green-600 text-[10px] font-bold mt-0.5">ABR</span>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-slate-800 text-sm">Consulta</h4>
+                                    <p class="text-xs text-slate-500 mt-1">17:11 · Dr. Ana Ruiz</p>
+                                    <div class="mt-2 text-blue-500 text-xs font-medium cursor-pointer flex items-center gap-1 hover:underline">
+                                        <i data-lucide="history" class="w-3 h-3"></i> Ver historial de esta visita
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Realizada 2 -->
+                            <div class="flex gap-4 p-3 border-b border-slate-100">
+                                <div class="flex flex-col items-center justify-center w-12 h-14 shrink-0 bg-green-50 rounded-lg">
+                                    <span class="text-green-600 font-bold text-lg leading-none">26</span>
+                                    <span class="text-green-600 text-[10px] font-bold mt-0.5">ABR</span>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-slate-800 text-sm">Consulta</h4>
+                                    <p class="text-xs text-slate-500 mt-1">23:12 · Dr. LUIS ENRIQUE BALLAGAS GONZALEZ</p>
+                                    <div class="mt-2 text-blue-500 text-xs font-medium cursor-pointer flex items-center gap-1 hover:underline">
+                                        <i data-lucide="history" class="w-3 h-3"></i> Ver historial de esta visita
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+        <!-- Texto Promocional Animado -->
+        <div id="promo-text-container" class="absolute bottom-40 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+            <div class="bg-slate-900/85 backdrop-blur-lg text-white px-10 py-5 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/10 text-center flex flex-col items-center">
+                <p id="promo-text-1" class="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-300">
+                    Tu agenda, tus pacientes y su historial. Todo a un clic.
+                </p>
+                <p id="promo-text-2" class="text-lg text-blue-400 font-medium mt-1.5 flex items-center gap-2">
+                    <i data-lucide="zap" class="w-5 h-5"></i> Sin tiempos de carga que te hagan envejecer.
+                </p>
+            </div>
+        </div>
+
+    <script>
+        lucide.createIcons();
+
+        // Inicializar Timeline GSAP para HyperFrames
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+        window.__timelines["promo-citas"] = tl;
+
+        // Base UI
+        tl.from("#app-header", { opacity: 0, y: -20, duration: 0.8, ease: "power2.out" }, 0.5);
+        tl.from("#app-sidebar", { opacity: 0, x: -40, duration: 0.8, ease: "power2.out" }, 0.6);
+        tl.from("#app-toolbar", { opacity: 0, duration: 0.8, ease: "power2.out" }, 0.7);
+        tl.from("#app-calendar", { opacity: 0, duration: 0.8, ease: "power2.out" }, 0.8);
+
+        // Grid contents
+        tl.from(".grid-header", { opacity: 0, y: 10, duration: 0.5, stagger: 0.05, ease: "power2.out" }, 1.0);
+        tl.from(".grid-time", { opacity: 0, x: -10, duration: 0.5, stagger: 0.02, ease: "power2.out" }, 1.2);
+
+
+
+        // Tarjetas
+        tl.from(".gs-card", {
+            y: 40,
+            opacity: 0,
+            duration: 1.0,
+            stagger: { amount: 1.5, from: "random" },
+            ease: "power3.out"
+        }, 2.0);
+
+        // Etiquetas
+        tl.from(".gs-tag", {
+            scale: 0.5,
+            opacity: 0,
+            duration: 0.6,
+            stagger: { amount: 1.0, from: "start" },
+            ease: "back.out(1.5)"
+        }, 5.0);
+
+
+
+        // Transición a Historial Clínico (t = 8.0s)
+        tl.to("#scene-citas", { opacity: 0, duration: 0.8, ease: "power2.inOut" }, 8.0);
+        tl.to("#scene-historial", { opacity: 1, duration: 0.8, ease: "power2.inOut" }, 8.0);
+        
+        // Animaciones de entrada del historial
+        tl.from("#hist-header", { y: -20, opacity: 0, duration: 0.8, ease: "power2.out" }, 8.4);
+        tl.from(".historial-col-left", { y: 30, opacity: 0, duration: 0.8, ease: "power3.out" }, 8.6);
+        tl.from(".historial-col-center", { y: 30, opacity: 0, duration: 0.8, ease: "power3.out" }, 8.8);
+        tl.from(".historial-col-right", { y: 30, opacity: 0, duration: 0.8, ease: "power3.out" }, 9.0);
+
+        // Animación de Dictado por Voz (t = 10.0s)
+        tl.to("#mic-icon-bg", { backgroundColor: "#fee2e2", duration: 0.3 }, 10.0);
+        tl.to("#mic-icon-bg i", { color: "#ef4444", duration: 0.3 }, 10.0);
+        tl.to("#mic-icon-bg", { scale: 1.2, repeat: 14, yoyo: true, duration: 0.3, ease: "power1.inOut" }, 10.3);
+        tl.to("#tooltip-dictado", { opacity: 1, y: -5, duration: 0.3, ease: "power2.out" }, 10.0);
+        tl.set("#typing-placeholder", { display: "none" }, 10.5);
+        
+        const dictationText = "Paciente acude a revisión por molestia leve en la zona del implante (pieza 46).\n\nSe observa buena cicatrización de los tejidos blandos sin signos de infección. Se recomienda continuar con enjuagues de clorhexidina al 0.12% por 3 días más.";
+        const typeObj = { length: 0 };
+        
+        tl.to(typeObj, {
+            length: dictationText.length,
+            duration: 4.5,
+            ease: "none",
+            onUpdate: function() {
+                const textEl = document.getElementById("typing-text");
+                if (textEl) textEl.innerText = dictationText.substring(0, Math.floor(typeObj.length));
+            }
+        }, 10.5);
+        
+        tl.to("#tooltip-dictado", { opacity: 0, y: 0, duration: 0.3 }, 15.2);
+        tl.to("#mic-icon-bg", { backgroundColor: "#f1f5f9", duration: 0.3 }, 15.2);
+        tl.to("#mic-icon-bg i", { color: "#334155", duration: 0.3 }, 15.2);
+
+        // Animación de Texto Promocional
+        tl.from("#promo-text-container", { y: 60, opacity: 0, scale: 0.9, duration: 1.0, ease: "back.out(1.2)" }, 3.5);
+        tl.from("#promo-text-1", { y: 20, opacity: 0, duration: 0.8, ease: "power3.out" }, 3.8);
+        tl.from("#promo-text-2", { y: 20, opacity: 0, duration: 0.8, ease: "power3.out" }, 4.1);
+
+        // Fallback: auto-play si se abre el HTML directamente en el navegador
+        // sin usar el comando `npx hyperframes preview`.
+        setTimeout(() => {
+            if (!window.__hyperframes) {
+                tl.play();
+            }
+        }, 100);
+
+    </script>
+    </div>
+</body>
+</html>
