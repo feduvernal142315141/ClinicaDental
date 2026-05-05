@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Spin } from "antd";
 import { Plus, Stethoscope, ClipboardList } from "lucide-react";
 import { CancelModal } from "@/components/features/appointments/scheduler/CancelModal";
 import { RescheduleModal } from "@/components/features/appointments/scheduler/RescheduleModal";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
+import { useAppointmentsColumn } from "@/lib/hooks/patients/clinical-history-page/use-appointments-column";
 
 interface AppointmentsColumnProps {
   appointments: Appointment[];
@@ -19,40 +19,26 @@ interface AppointmentsColumnProps {
   onNewConsultation?: () => void;
 }
 
-function parseDateParts(dateStr: string): {
-  day: string;
-  monthShort: string;
-} {
-  const MONTHS = [
-    "ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
-    "JUL", "AGO", "SEP", "OCT", "NOV", "DIC",
-  ];
-  try {
-    const d = new Date(dateStr + "T00:00:00");
-    return {
-      day: String(d.getDate()).padStart(2, "0"),
-      monthShort: MONTHS[d.getMonth()],
-    };
-  } catch {
-    return { day: "--", monthShort: "---" };
-  }
-}
-
 function ScheduledCard({
+  day,
+  monthShort,
   appointment,
   onCancel,
   onReschedule,
 }: {
+  day: string;
+  monthShort: string;
   appointment: Appointment;
   onCancel: () => void;
   onReschedule: () => void;
 }) {
-  const { day, monthShort } = parseDateParts(appointment.date);
   return (
     <div className="p-5 flex gap-4 hover:bg-gray-50 transition-colors">
       <div className="w-12 h-12 bg-blue-50 rounded-lg text-blue-600 flex flex-col items-center justify-center shrink-0">
         <span className="text-lg font-bold leading-none">{day}</span>
-        <span className="text-[10px] font-semibold uppercase">{monthShort}</span>
+        <span className="text-[10px] font-semibold uppercase">
+          {monthShort}
+        </span>
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground truncate">
@@ -66,7 +52,10 @@ function ScheduledCard({
           <button onClick={onCancel} className="text-red-500 hover:underline">
             Cancelar
           </button>
-          <button onClick={onReschedule} className="text-blue-500 hover:underline">
+          <button
+            onClick={onReschedule}
+            className="text-blue-500 hover:underline"
+          >
             Reagendar
           </button>
         </div>
@@ -76,16 +65,19 @@ function ScheduledCard({
 }
 
 function CompletedCard({
+  day,
+  monthShort,
   appointment,
   onViewOdontogram,
   onViewVisitHistory,
 }: {
+  day: string;
+  monthShort: string;
   appointment: Appointment;
   /** @deprecated Use onViewVisitHistory instead */
   onViewOdontogram?: (visitId: string) => void;
   onViewVisitHistory?: (appointment: Appointment) => void;
 }) {
-  const { day, monthShort } = parseDateParts(appointment.date);
   const handleViewHistory = onViewVisitHistory
     ? () => onViewVisitHistory(appointment)
     : onViewOdontogram
@@ -95,7 +87,9 @@ function CompletedCard({
     <div className="p-5 flex gap-4 hover:bg-gray-50 transition-colors">
       <div className="w-12 h-12 bg-green-50 rounded-lg text-green-600 flex flex-col items-center justify-center shrink-0">
         <span className="text-lg font-bold leading-none">{day}</span>
-        <span className="text-[10px] font-semibold uppercase">{monthShort}</span>
+        <span className="text-[10px] font-semibold uppercase">
+          {monthShort}
+        </span>
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground truncate">
@@ -146,20 +140,27 @@ export function AppointmentsColumn({
   onViewVisitHistory,
   onNewConsultation,
 }: AppointmentsColumnProps) {
-  const [cancelAppointment, setCancelAppointment] =
-    useState<Appointment | null>(null);
-  const [rescheduleAppointment, setRescheduleAppointment] =
-    useState<Appointment | null>(null);
-  const [showAll, setShowAll] = useState(false);
-
-  const today = new Date().toISOString().slice(0, 10);
-
-  const inProgress = appointments.filter((a) => a.status === "in_progress");
-  const scheduled = appointments.filter((a) => a.status === "scheduled");
-  const completed = appointments.filter((a) => a.status === "completed");
-
-  const todayScheduled = scheduled.filter((a) => a.date === today);
-  const startableAppointment = inProgress[0] ?? todayScheduled[0] ?? null;
+  const {
+    cancelAppointment,
+    rescheduleAppointment,
+    inProgress,
+    scheduledItems,
+    completedItems,
+    visibleCompletedItems,
+    showAll,
+    startableAppointment,
+    canTriggerPrimaryAction,
+    openCancelAppointment,
+    closeCancelAppointment,
+    openRescheduleAppointment,
+    closeRescheduleAppointment,
+    showAllCompleted,
+    handlePrimaryAction,
+  } = useAppointmentsColumn({
+    appointments,
+    onStartConsultation,
+    onNewConsultation,
+  });
 
   return (
     <div className="flex flex-col h-full overflow-y-auto pl-3">
@@ -172,14 +173,8 @@ export function AppointmentsColumn({
           {/* Botón iniciar consulta — siempre al tope */}
           <div className="py-4">
             <button
-              onClick={() => {
-                if (startableAppointment && onStartConsultation) {
-                  onStartConsultation(startableAppointment.id);
-                } else if (onNewConsultation) {
-                  onNewConsultation();
-                }
-              }}
-              disabled={!startableAppointment && !onNewConsultation && !onStartConsultation}
+              onClick={handlePrimaryAction}
+              disabled={!canTriggerPrimaryAction}
               className="w-full group flex items-center justify-center gap-3 p-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-300 disabled:hover:text-gray-500 disabled:hover:bg-transparent"
             >
               <div className="bg-gray-100 group-hover:bg-blue-100 p-2 rounded-full transition-colors">
@@ -200,17 +195,19 @@ export function AppointmentsColumn({
               </h3>
             </div>
             <div className="divide-y divide-gray-50">
-              {scheduled.length === 0 ? (
+              {scheduledItems.length === 0 ? (
                 <p className="text-xs text-muted-foreground p-5">
                   Sin consultas agendadas
                 </p>
               ) : (
-                scheduled.map((appt) => (
+                scheduledItems.map(({ appointment, day, monthShort }) => (
                   <ScheduledCard
-                    key={appt.id}
-                    appointment={appt}
-                    onCancel={() => setCancelAppointment(appt)}
-                    onReschedule={() => setRescheduleAppointment(appt)}
+                    key={appointment.id}
+                    day={day}
+                    monthShort={monthShort}
+                    appointment={appointment}
+                    onCancel={() => openCancelAppointment(appointment)}
+                    onReschedule={() => openRescheduleAppointment(appointment)}
                   />
                 ))
               )}
@@ -225,31 +222,35 @@ export function AppointmentsColumn({
               </h3>
             </div>
             <div className="divide-y divide-gray-50">
-              {completed.length === 0 ? (
+              {completedItems.length === 0 ? (
                 <div className="p-8 flex flex-col items-center text-center">
                   <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center mb-3">
                     <ClipboardList className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  <p className="text-sm text-muted-foreground">Sin consultas realizadas</p>
+                  <p className="text-sm text-muted-foreground">
+                    Sin consultas realizadas
+                  </p>
                 </div>
               ) : (
                 <>
-                  {completed
-                    .slice(0, showAll ? undefined : 5)
-                    .map((appt) => (
+                  {visibleCompletedItems.map(
+                    ({ appointment, day, monthShort }) => (
                       <CompletedCard
-                        key={appt.id}
-                        appointment={appt}
+                        key={appointment.id}
+                        day={day}
+                        monthShort={monthShort}
+                        appointment={appointment}
                         onViewOdontogram={onViewOdontogram}
                         onViewVisitHistory={onViewVisitHistory}
                       />
-                    ))}
-                  {completed.length > 5 && !showAll && (
+                    ),
+                  )}
+                  {completedItems.length > 5 && !showAll && (
                     <button
-                      onClick={() => setShowAll(true)}
+                      onClick={showAllCompleted}
                       className="text-xs text-blue-500 hover:underline py-3 text-center w-full"
                     >
-                      Ver {completed.length - 5} más
+                      Ver {completedItems.length - 5} más
                     </button>
                   )}
                 </>
@@ -264,16 +265,16 @@ export function AppointmentsColumn({
         <CancelModal
           appointment={cancelAppointment}
           isOpen={true}
-          onClose={() => setCancelAppointment(null)}
-          onSuccess={() => setCancelAppointment(null)}
+          onClose={closeCancelAppointment}
+          onSuccess={closeCancelAppointment}
         />
       )}
       {rescheduleAppointment && (
         <RescheduleModal
           appointment={rescheduleAppointment}
           isOpen={true}
-          onClose={() => setRescheduleAppointment(null)}
-          onSuccess={() => setRescheduleAppointment(null)}
+          onClose={closeRescheduleAppointment}
+          onSuccess={closeRescheduleAppointment}
         />
       )}
     </div>

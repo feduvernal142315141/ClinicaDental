@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
 import { Spin, Tag } from "antd";
-import { App } from "antd";
-import { useTreatmentPlans } from "@/lib/hooks/odontogram/useTreatmentPlans";
+import { useTreatmentPlansPendingSection } from "@/lib/hooks/patients/clinical-history-page/use-treatment-plans-pending-section";
 
 interface TreatmentPlansPendingSectionProps {
   patientId: string;
@@ -12,15 +10,7 @@ interface TreatmentPlansPendingSectionProps {
 export function TreatmentPlansPendingSection({
   patientId,
 }: TreatmentPlansPendingSectionProps) {
-  const { plans, fetchPlans, loading } = useTreatmentPlans();
-
-  useEffect(() => {
-    fetchPlans(patientId, { page: 0, pageSize: 50 });
-  }, [patientId, fetchPlans]);
-
-  const pending = plans.filter(
-    (p) => p.status !== "completed" && p.status !== "cancelled",
-  );
+  const { loading, pendingPlans } = useTreatmentPlansPendingSection(patientId);
 
   if (loading) {
     return (
@@ -30,7 +20,7 @@ export function TreatmentPlansPendingSection({
     );
   }
 
-  if (pending.length === 0) {
+  if (pendingPlans.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">Sin planes pendientes</p>
     );
@@ -38,34 +28,24 @@ export function TreatmentPlansPendingSection({
 
   return (
     <div className="space-y-2">
-      {pending.map((plan) => {
-        let eventCount = 0;
-        try {
-          const parsed = JSON.parse(plan.eventIds ?? "[]");
-          eventCount = Array.isArray(parsed) ? parsed.length : 0;
-        } catch {
-          eventCount = 0;
-        }
-
-        return (
-          <div key={plan.id} className="rounded-md border p-2 text-xs">
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-medium truncate">{plan.name}</span>
-              <Tag color="blue">Activo</Tag>
-            </div>
-            {plan.description && (
-              <p className="text-muted-foreground mt-0.5 truncate">
-                {plan.description}
-              </p>
-            )}
-            {eventCount > 0 && (
-              <p className="text-muted-foreground mt-0.5">
-                {eventCount} tratamiento{eventCount !== 1 ? "s" : ""}
-              </p>
-            )}
+      {pendingPlans.map((plan) => (
+        <div key={plan.id} className="rounded-md border p-2 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium truncate">{plan.name}</span>
+            <Tag color="blue">Activo</Tag>
           </div>
-        );
-      })}
+          {plan.description && (
+            <p className="text-muted-foreground mt-0.5 truncate">
+              {plan.description}
+            </p>
+          )}
+          {eventCount > 0 && (
+            <p className="text-muted-foreground mt-0.5">
+              {plan.eventCount} tratamiento{plan.eventCount !== 1 ? "s" : ""}
+            </p>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

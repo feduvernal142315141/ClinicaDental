@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
 import { Drawer, Space, Button } from "antd";
 import { CloseOutlined, SaveOutlined } from "@ant-design/icons";
-import { PatientForm, type PatientFormRef } from "@/components/features/patients/form/PatientForm";
+import { PatientForm } from "@/components/features/patients/form/PatientForm";
 import type { Patient } from "@/lib/entity/patients";
+import { useEditPatientDrawer } from "@/lib/hooks/patients/clinical-history-page/use-edit-patient-drawer";
 
 interface EditPatientDrawerProps {
   open: boolean;
@@ -19,8 +19,17 @@ export function EditPatientDrawer({
   onClose,
   onSuccess,
 }: EditPatientDrawerProps) {
-  const formRef = useRef<PatientFormRef>(null);
-  const [saving, setSaving] = useState(false);
+  const {
+    formRef,
+    saving,
+    handleClose,
+    handleSubmit,
+    handleLoadingChange,
+    handleSuccess,
+  } = useEditPatientDrawer({
+    onClose,
+    onSuccess,
+  });
 
   return (
     <Drawer
@@ -28,7 +37,7 @@ export function EditPatientDrawer({
       placement="right"
       size={600}
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       destroyOnHidden
       extra={
         <Space>
@@ -36,7 +45,7 @@ export function EditPatientDrawer({
             icon={<CloseOutlined />}
             type="default"
             danger
-            onClick={onClose}
+            onClick={handleClose}
             disabled={saving}
           >
             Cancelar
@@ -45,7 +54,7 @@ export function EditPatientDrawer({
             type="primary"
             icon={<SaveOutlined />}
             loading={saving}
-            onClick={() => formRef.current?.submit()}
+            onClick={handleSubmit}
           >
             Guardar
           </Button>
@@ -58,9 +67,9 @@ export function EditPatientDrawer({
         initialData={patient}
         compact
         hideActions
-        onLoadingChange={setSaving}
-        onSuccess={onSuccess}
-        onCancel={onClose}
+        onLoadingChange={handleLoadingChange}
+        onSuccess={handleSuccess}
+        onCancel={handleClose}
       />
     </Drawer>
   );

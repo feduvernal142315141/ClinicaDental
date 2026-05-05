@@ -4,7 +4,17 @@ import { useState, useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Popover } from "antd";
 import { SurfaceSelector } from "./surface-selector";
+import {
+  X,
+  CheckSquare,
+  Square,
+  Columns2,
+  ArrowRight,
+  HelpCircle,
+  Zap,
+} from "lucide-react";
 import type {
   Tooth,
   ToothSurface,
@@ -51,6 +61,9 @@ export function SurfacesTab({
 }: SurfacesTabProps) {
   const [selectedSurfaces, setSelectedSurfaces] = useState<SurfaceState[]>([]);
   const [lastUsedTemplate, setLastUsedTemplate] = useState<string | null>(null);
+  const [flashedSurfaces, setFlashedSurfaces] = useState<Set<string>>(
+    new Set(),
+  );
   const isInitialized = useRef<number | null>(null);
   const pendingInit = useRef(false);
   const anterior = isAnterior(tooth.number);
@@ -166,6 +179,10 @@ export function SurfacesTab({
     });
   };
 
+  const handleRemoveSurface = (surface: ToothSurface) => {
+    setSelectedSurfaces((prev) => prev.filter((s) => s.surface !== surface));
+  };
+
   const handleSelectAll = () => {
     const allSurfaces: ToothSurface[] = [
       "mesial",
@@ -193,76 +210,40 @@ export function SurfacesTab({
     setSelectedSurfaces([]);
   };
 
-  const handleToggleProximal = () => {
-    const hasProximal = selectedSurfaces.some(
-      (s) => s.surface === "mesial" || s.surface === "distal",
+  /** Toggle a zone group (fills or clears based on current state) */
+  const handleToggleZone = (zoneSurfaces: ToothSurface[]) => {
+    const allSelected = zoneSurfaces.every((s) =>
+      selectedSurfaces.some((ss) => ss.surface === s),
     );
-    if (hasProximal) {
+    if (allSelected) {
       setSelectedSurfaces((prev) =>
-        prev.filter((s) => s.surface !== "mesial" && s.surface !== "distal"),
+        prev.filter((s) => !zoneSurfaces.includes(s.surface)),
       );
     } else {
-      const mesial: SurfaceState = {
-        surface: "mesial",
-        status: "healthy",
-        icdasScore: 0,
-        color: SURFACE_STATUS_COLORS.healthy,
-        lastUpdate: new Date().toISOString(),
-      };
-      const distal: SurfaceState = {
-        surface: "distal",
-        status: "healthy",
-        icdasScore: 0,
-        color: SURFACE_STATUS_COLORS.healthy,
-        lastUpdate: new Date().toISOString(),
-      };
-      setSelectedSurfaces((prev) => [
-        ...prev.filter((s) => s.surface !== "mesial" && s.surface !== "distal"),
-        mesial,
-        distal,
-      ]);
+      setSelectedSurfaces((prev) => {
+        const existing = new Set(prev.map((s) => s.surface));
+        const toAdd = zoneSurfaces
+          .filter((s) => !existing.has(s))
+          .map(
+            (surface) =>
+              ({
+                surface,
+                status: "healthy" as SurfaceStatus,
+                icdasScore: 0,
+                color: SURFACE_STATUS_COLORS.healthy,
+                lastUpdate: new Date().toISOString(),
+              }) as SurfaceState,
+          );
+        return [...prev, ...toAdd];
+      });
     }
   };
 
-  const handleToggleVestibular = () => {
-    const hasFacial = selectedSurfaces.some((s) => s.surface === "facial");
-    if (hasFacial) {
-      setSelectedSurfaces((prev) => prev.filter((s) => s.surface !== "facial"));
-    } else {
-      const facial: SurfaceState = {
-        surface: "facial",
-        status: "healthy",
-        icdasScore: 0,
-        color: SURFACE_STATUS_COLORS.healthy,
-        lastUpdate: new Date().toISOString(),
-      };
-      setSelectedSurfaces((prev) => [
-        ...prev.filter((s) => s.surface !== "facial"),
-        facial,
-      ]);
-    }
-  };
-
-  const handleToggleLingual = () => {
-    const hasLingual = selectedSurfaces.some((s) => s.surface === "lingual");
-    if (hasLingual) {
-      setSelectedSurfaces((prev) =>
-        prev.filter((s) => s.surface !== "lingual"),
-      );
-    } else {
-      const lingual: SurfaceState = {
-        surface: "lingual",
-        status: "healthy",
-        icdasScore: 0,
-        color: SURFACE_STATUS_COLORS.healthy,
-        lastUpdate: new Date().toISOString(),
-      };
-      setSelectedSurfaces((prev) => [
-        ...prev.filter((s) => s.surface !== "lingual"),
-        lingual,
-      ]);
-    }
-  };
+  /** Check if a zone group is fully selected */
+  const isZoneSelected = (zoneSurfaces: ToothSurface[]): boolean =>
+    zoneSurfaces.every((s) =>
+      selectedSurfaces.some((ss) => ss.surface === s),
+    );
 
   const handleApplyTemplate = (template: ToothTemplate) => {
     console.group(`[SurfacesTab] 🎨 Aplicando plantilla: ${template.name}`);
@@ -280,6 +261,11 @@ export function SurfacesTab({
         color: s.color,
       })),
     );
+
+    // Flash animation
+    setFlashedSurfaces(new Set(template.applicableSurfaces));
+    setTimeout(() => setFlashedSurfaces(new Set()), 600);
+
     setSelectedSurfaces((prev) => {
       const next = prev.map((surface) => {
         if (template.applicableSurfaces.includes(surface.surface)) {
@@ -332,21 +318,56 @@ export function SurfacesTab({
     return templates.slice(0, 6);
   };
 
+  // Legend popover content
+  const legendContent = (
+    <div className="grid grid-cols-1 gap-1.5 p-1">
+      {Object.entries(SURFACE_STATUS_LABELS).map(([status, label]) => (
+        <div key={status} className="flex items-center gap-2">
+          <div
+            className="w-3 h-3 rounded"
+            style={{
+              backgroundColor:
+                SURFACE_STATUS_COLORS[status as SurfaceStatus],
+            }}
+          />
+          <span className="text-xs">{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="space-y-4 h-full">
+    <div className="space-y-3 h-full">
+      {/* Compact header with tooth info + surface count */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-bold">Diente {tooth.number}</h3>
-          <p className="text-sm text-muted-foreground">
+          <h3 className="text-base font-bold leading-tight">
+            Diente {tooth.number}
+          </h3>
+          <p className="text-xs text-muted-foreground">
             {anterior ? "Anterior" : "Posterior"} ·{" "}
             {getQuadrantName(tooth.number)}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-xs font-medium text-muted-foreground">
-            Superficies
-          </p>
-          <p className="text-2xl font-bold">{selectedSurfaces.length}</p>
+        <div className="flex items-center gap-3">
+          <Popover
+            content={legendContent}
+            title="Escala de colores"
+            placement="bottomRight"
+            trigger="hover"
+          >
+            <button className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground">
+              <HelpCircle className="w-4 h-4" />
+            </button>
+          </Popover>
+          <div className="text-right">
+            <p className="text-xs font-medium text-muted-foreground">
+              Superficies
+            </p>
+            <p className="text-2xl font-bold leading-none">
+              {selectedSurfaces.length}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -360,34 +381,9 @@ export function SurfacesTab({
         </Card>
       )}
 
-      <Card className="p-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium mr-2">Selección actual:</span>
-          {selectedSurfaces.length === 0 ? (
-            <span className="text-sm text-muted-foreground">
-              Ninguna superficie seleccionada
-            </span>
-          ) : (
-            selectedSurfaces.map((surface) => (
-              <Badge
-                key={surface.surface}
-                className="text-xs px-2 py-1"
-                style={{
-                  backgroundColor: surface.color,
-                  color: "white",
-                }}
-              >
-                {surface.surface.charAt(0).toUpperCase()} ·{" "}
-                {surface.status === "pathology" && (surface.icdasScore ?? 0) > 0
-                  ? `ICDAS ${surface.icdasScore}`
-                  : SURFACE_STATUS_LABELS[surface.status]}
-              </Badge>
-            ))
-          )}
-        </div>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
+      {/* Main 2-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
+        {/* Left column: SVG oclusal with surface selector */}
         <Card className="p-4 flex items-center justify-center">
           <SurfaceSelector
             toothNumber={tooth.number}
@@ -397,120 +393,181 @@ export function SurfacesTab({
           />
         </Card>
 
-        <Card className="p-4 flex flex-col">
-          <h4 className="font-semibold text-sm mb-3">Acciones rápidas</h4>
-          <div className="space-y-2 flex-1">
-            <div className="grid grid-cols-2 gap-2">
+        {/* Right column: Compact panel */}
+        <div className="space-y-3">
+          {/* Selection chips */}
+          <Card className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Selección actual
+              </span>
+            </div>
+            {selectedSurfaces.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-1">
+                Ninguna superficie seleccionada
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {selectedSurfaces.map((surface) => (
+                  <Badge
+                    key={surface.surface}
+                    className="text-xs px-2 py-0.5 inline-flex items-center gap-1 transition-all"
+                    style={{
+                      backgroundColor: surface.color,
+                      color: "white",
+                      ...(flashedSurfaces.has(surface.surface)
+                        ? { transform: "scale(1.15)", boxShadow: `0 0 8px ${surface.color}` }
+                        : {}),
+                    }}
+                  >
+                    {surface.surface.charAt(0).toUpperCase()} ·{" "}
+                    {surface.status === "pathology" &&
+                    (surface.icdasScore ?? 0) > 0
+                      ? `ICDAS ${surface.icdasScore}`
+                      : SURFACE_STATUS_LABELS[surface.status]}
+                    {!isDisabled && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveSurface(surface.surface);
+                        }}
+                        className="ml-0.5 opacity-80 hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Quick actions - grouped */}
+          <Card className="p-3">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
+              Acciones rápidas
+            </span>
+
+            {/* Mass selection */}
+            <div className="grid grid-cols-2 gap-1.5 mb-2">
               <Button
                 variant="outline"
                 size="sm"
+                className="text-xs h-8 bg-transparent"
                 onClick={handleSelectAll}
                 disabled={isDisabled}
               >
+                <CheckSquare className="w-3 h-3 mr-1" />
                 Marcar todas
               </Button>
               <Button
                 variant="outline"
                 size="sm"
+                className="text-xs h-8 bg-transparent"
                 onClick={handleDeselectAll}
                 disabled={isDisabled}
               >
+                <Square className="w-3 h-3 mr-1" />
                 Desmarcar
               </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full bg-transparent"
-              onClick={handleToggleProximal}
-              disabled={isDisabled}
-            >
-              Proximales (M+D)
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full bg-transparent"
-              onClick={handleToggleVestibular}
-              disabled={isDisabled}
-            >
-              {anterior ? "Labial" : "Vestibular"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full bg-transparent"
-              onClick={handleToggleLingual}
-              disabled={isDisabled}
-            >
-              {anterior ? "Palatino" : "Lingual"}
-            </Button>
-          </div>
-        </Card>
+
+            {/* Zone selection */}
+            <div className="space-y-1.5">
+              <Button
+                variant={
+                  isZoneSelected(["mesial", "distal"])
+                    ? "default"
+                    : "outline"
+                }
+                size="sm"
+                className="w-full text-xs h-8 bg-transparent"
+                onClick={() =>
+                  handleToggleZone(["mesial", "distal"])
+                }
+                disabled={isDisabled}
+              >
+                <Columns2 className="w-3 h-3 mr-1" />
+                Proximales (M+D)
+              </Button>
+              <Button
+                variant={
+                  isZoneSelected(["facial"]) ? "default" : "outline"
+                }
+                size="sm"
+                className="w-full text-xs h-8 bg-transparent"
+                onClick={() => handleToggleZone(["facial"])}
+                disabled={isDisabled}
+              >
+                {anterior ? "Labial" : "Vestibular"}
+              </Button>
+              <Button
+                variant={
+                  isZoneSelected(["lingual"]) ? "default" : "outline"
+                }
+                size="sm"
+                className="w-full text-xs h-8 bg-transparent"
+                onClick={() => handleToggleZone(["lingual"])}
+                disabled={isDisabled}
+              >
+                {anterior ? "Palatino" : "Lingual"}
+              </Button>
+            </div>
+          </Card>
+
+          {/* Templates - always visible */}
+          <Card className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <Zap className="w-3 h-3 inline mr-1" />
+                Plantillas
+              </span>
+              {selectedSurfaces.length > 0 && !isDisabled && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-xs h-auto p-0"
+                    onClick={() => onNavigateToTab?.("diagnostico")}
+                  >
+                    <ArrowRight className="w-3 h-3 mr-0.5" />
+                    Diagnóstico
+                  </Button>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-xs h-auto p-0"
+                    onClick={() => onNavigateToTab?.("plan")}
+                  >
+                    <ArrowRight className="w-3 h-3 mr-0.5" />
+                    Plan
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {getRelevantTemplates().map((template) => (
+                <Button
+                  key={template.id}
+                  variant="outline"
+                  size="sm"
+                  className="justify-start text-left h-auto py-1.5 px-2 bg-transparent"
+                  onClick={() => handleApplyTemplate(template)}
+                  disabled={isDisabled || selectedSurfaces.length === 0}
+                >
+                  <div className="flex items-center gap-1.5 w-full">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: template.color }}
+                    />
+                    <span className="text-xs truncate">{template.name}</span>
+                  </div>
+                </Button>
+              ))}
+            </div>
+          </Card>
+        </div>
       </div>
-
-      <Card className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="font-semibold text-sm">Plantillas sugeridas</h4>
-          {selectedSurfaces.length > 0 && !isDisabled && (
-            <div className="flex gap-2">
-              <Button
-                variant="link"
-                size="sm"
-                className="text-xs h-auto p-0"
-                onClick={() => onNavigateToTab?.("diagnostico")}
-              >
-                → Ir a Diagnóstico
-              </Button>
-              <Button
-                variant="link"
-                size="sm"
-                className="text-xs h-auto p-0"
-                onClick={() => onNavigateToTab?.("plan")}
-              >
-                → Ir a Plan
-              </Button>
-            </div>
-          )}
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-          {getRelevantTemplates().map((template) => (
-            <Button
-              key={template.id}
-              variant="outline"
-              size="sm"
-              className="justify-start text-left h-auto py-2 bg-transparent"
-              onClick={() => handleApplyTemplate(template)}
-              disabled={isDisabled || selectedSurfaces.length === 0}
-            >
-              <div className="flex items-center gap-2 w-full">
-                <div
-                  className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: template.color }}
-                />
-                <span className="text-xs truncate">{template.name}</span>
-              </div>
-            </Button>
-          ))}
-        </div>
-      </Card>
-
-      <Card className="p-3 bg-muted/30">
-        <div className="flex flex-wrap gap-4 justify-center text-xs">
-          {Object.entries(SURFACE_STATUS_LABELS).map(([status, label]) => (
-            <div key={status} className="flex items-center gap-2">
-              <div
-                className="w-3 h-3 rounded"
-                style={{
-                  backgroundColor:
-                    SURFACE_STATUS_COLORS[status as SurfaceStatus],
-                }}
-              />
-              <span>{label}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
     </div>
   );
 }

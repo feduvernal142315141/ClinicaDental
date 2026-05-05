@@ -343,24 +343,26 @@ export function PlanTab({
     );
   }
 
+  // Track which plan cards are expanded for editing
+  const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
+
   return (
-    <div className="space-y-4 h-full">
-      {/* Header compacto */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-bold">Plan · Diente {tooth.number}</h3>
-          <p className="text-sm text-muted-foreground">
-            {getToothTypeName(tooth.number)} · {selectedSurfaces.length}{" "}
-            superficie
-            {selectedSurfaces.length !== 1 ? "s" : ""}
-          </p>
+    <div className="space-y-3 h-full">
+      {/* Compact inline header - only risk + status since tooth info is in modal header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-muted-foreground">
+            {plans.length} procedimiento{plans.length !== 1 ? "s" : ""}
+          </span>
+          {plans.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              · {totals.totalDuration} min · {formatCurrency(totals.totalCost)}
+            </span>
+          )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Badge variant="outline" className={getRiskColor(patientRisk)}>
             Riesgo: {patientRisk.charAt(0).toUpperCase() + patientRisk.slice(1)}
-          </Badge>
-          <Badge variant="outline" className="bg-muted">
-            {GLOBAL_STATUS_LABELS[tooth.globalStatus]}
           </Badge>
           <OdontogramSelect
             value={currency}
@@ -369,143 +371,387 @@ export function PlanTab({
               { value: "USD", label: "USD" },
               { value: "NIO", label: "NIO" },
             ]}
-            style={{ width: 96 }}
+            style={{ width: 80 }}
           />
         </div>
       </div>
 
       {hasCoherenceIssue && (
-        <Card className="p-3 bg-red-50 border-red-200">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-red-600 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-900">
-                Revisa el estado del diente
-              </p>
-              <p className="text-xs text-red-700">
-                El diente está marcado como{" "}
-                {GLOBAL_STATUS_LABELS[tooth.globalStatus]} pero tienes
-                procedimientos restauradores planificados
-              </p>
-            </div>
+        <Card className="p-2.5 bg-red-50 border-red-200">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+            <p className="text-xs text-red-700">
+              El diente está marcado como{" "}
+              {GLOBAL_STATUS_LABELS[tooth.globalStatus]} pero tienes
+              procedimientos restauradores planificados.
+            </p>
           </div>
         </Card>
       )}
 
-      {/* Panel principal: dos columnas */}
-      <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4">
-        {/* Columna izquierda: Catálogo & Sugerencias */}
-        <div className="space-y-4">
-          {/* Sugerencias inteligentes */}
+      {/* Main 2-column layout — Plan primary (left), Suggestions sidebar (right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 items-start">
+        {/* === LEFT COLUMN: Plan actual (PRIMARY) === */}
+        <div className="space-y-3">
+          <Card className="p-3 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <Label className="text-sm font-semibold">
+                Plan actual
+              </Label>
+              {plans.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handlePlansUpdate([])}
+                  className="text-xs h-7 text-red-500 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3 h-3 mr-1" />
+                  Limpiar
+                </Button>
+              )}
+            </div>
+
+            {plans.length === 0 ? (
+              <div className="py-6 text-center text-muted-foreground border-2 border-dashed rounded-lg">
+                <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">Sin procedimientos</p>
+                <p className="text-xs mt-1">
+                  Añade desde las sugerencias o el catálogo →
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {plans.map((plan) => {
+                  const isExpanded = expandedPlanId === plan.id;
+                  return (
+                    <div
+                      key={plan.id}
+                      className="rounded-lg border-2 overflow-hidden transition-all"
+                      style={{
+                        borderColor: PLAN_STATUS_COLORS[plan.status],
+                        backgroundColor: `${PLAN_STATUS_COLORS[plan.status]}06`,
+                      }}
+                    >
+                      {/* Compact row — always visible */}
+                      <div
+                        className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-muted/20 transition-colors"
+                        onClick={() =>
+                          setExpandedPlanId(isExpanded ? null : plan.id)
+                        }
+                      >
+                        {/* Color indicator */}
+                        <div
+                          className="w-1 h-8 rounded-full shrink-0"
+                          style={{
+                            backgroundColor:
+                              PROCEDURE_CATEGORY_COLORS[plan.category],
+                          }}
+                        />
+                        {/* Name + surfaces */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {plan.displayName}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {plan.surfaces.length > 0 && (
+                              <span className="text-[10px] text-muted-foreground">
+                                {plan.surfaces
+                                  .map((s) => s.charAt(0).toUpperCase())
+                                  .join("·")}
+                              </span>
+                            )}
+                            {plan.status === "done" && (
+                              <span className="flex items-center gap-0.5 text-[10px] text-blue-600">
+                                <CheckCircle2 className="w-3 h-3" />
+                                Realizado
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {/* Price + actions */}
+                        <span className="text-sm font-semibold whitespace-nowrap">
+                          {formatCurrency(plan.cost)}
+                        </span>
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            className="p-1 rounded hover:bg-muted transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDuplicatePlan(plan.id);
+                            }}
+                            title="Duplicar"
+                          >
+                            <Copy className="w-3.5 h-3.5 text-slate-400" />
+                          </button>
+                          <button
+                            className="p-1 rounded hover:bg-red-50 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemovePlan(plan.id);
+                            }}
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                          </button>
+                        </div>
+                        <ChevronDown
+                          className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${
+                            isExpanded ? "rotate-180" : ""
+                          }`}
+                        />
+                      </div>
+
+                      {/* Expanded details — edit fields */}
+                      {isExpanded && (
+                        <div className="px-3 pb-3 pt-1 border-t bg-muted/10 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-medium text-muted-foreground uppercase">
+                                Estado
+                              </Label>
+                              <OdontogramSelect
+                                value={plan.status}
+                                onChange={(v) =>
+                                  handleUpdatePlan(plan.id, {
+                                    status: v as ClinicalEventStatus,
+                                  })
+                                }
+                                options={(
+                                  Object.entries(PLAN_STATUS_LABELS) as [
+                                    ClinicalEventStatus,
+                                    string,
+                                  ][]
+                                ).map(([status, label]) => ({
+                                  value: status,
+                                  label,
+                                }))}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-medium text-muted-foreground uppercase">
+                                Prioridad
+                              </Label>
+                              <OdontogramSelect
+                                value={plan.priority}
+                                onChange={(v) =>
+                                  handleUpdatePlan(plan.id, {
+                                    priority: v as ProcedurePriority,
+                                  })
+                                }
+                                options={[
+                                  { value: "alta", label: "Alta" },
+                                  { value: "media", label: "Media" },
+                                  { value: "baja", label: "Baja" },
+                                ]}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-medium text-muted-foreground uppercase">
+                                Tiempo (min)
+                              </Label>
+                              <OdontogramInput
+                                type="number"
+                                value={String(plan.durationMin)}
+                                onChange={(e) =>
+                                  handleUpdatePlan(plan.id, {
+                                    durationMin: Number(e.target.value),
+                                  })
+                                }
+                                className="h-7 text-xs"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-medium text-muted-foreground uppercase">
+                                Costo ({currency})
+                              </Label>
+                              <OdontogramInput
+                                type="number"
+                                value={String(plan.cost)}
+                                onChange={(e) =>
+                                  handleUpdatePlan(plan.id, {
+                                    cost: Number(e.target.value),
+                                  })
+                                }
+                                className="h-7 text-xs"
+                              />
+                            </div>
+                          </div>
+
+                          {plan.material && (
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-medium text-muted-foreground uppercase">
+                                Material
+                              </Label>
+                              <OdontogramInput
+                                value={plan.material}
+                                onChange={(e) =>
+                                  handleUpdatePlan(plan.id, {
+                                    material: e.target.value,
+                                  })
+                                }
+                                className="h-7 text-xs"
+                              />
+                            </div>
+                          )}
+
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-medium text-muted-foreground uppercase">
+                              Notas
+                            </Label>
+                            <OdontogramInput
+                              value={plan.notes || ""}
+                              onChange={(e) =>
+                                handleUpdatePlan(plan.id, {
+                                  notes: e.target.value,
+                                })
+                              }
+                              placeholder="Observaciones..."
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
+          {/* Sticky totals bar */}
+          {plans.length > 0 && (
+            <div className="sticky bottom-0 z-10">
+              <Card className="p-3 shadow-lg bg-white/95 backdrop-blur-sm border-t-2 border-primary/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Clock className="w-3.5 h-3.5" />
+                      {totals.totalDuration} min
+                    </span>
+                    {Object.keys(totals.byCategory).length > 0 && (
+                      <div className="hidden sm:flex gap-3">
+                        {(
+                          Object.entries(totals.byCategory) as [
+                            ProcedureCategory,
+                            number,
+                          ][]
+                        ).map(([cat, cost]) => (
+                          <span
+                            key={cat}
+                            className="flex items-center gap-1 text-xs text-muted-foreground"
+                          >
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  PROCEDURE_CATEGORY_COLORS[cat],
+                              }}
+                            />
+                            {formatCurrency(cost)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-lg font-bold">
+                    {formatCurrency(totals.totalCost)}
+                  </span>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <AntdButton
+                    type="default"
+                    style={{ flex: 1 }}
+                    onClick={() => onSchedulePlans?.(plans)}
+                    icon={<Calendar className="w-4 h-4" />}
+                  >
+                    Programar
+                  </AntdButton>
+                  <AntdButton
+                    type="primary"
+                    style={{ flex: 1 }}
+                    onClick={() => {
+                      const now = new Date().toISOString();
+                      const updatedPlans = plans.map((p) =>
+                        p.status !== "done" && p.status !== "canceled"
+                          ? {
+                              ...p,
+                              status: "done" as ClinicalEventStatus,
+                              appointmentAt: now,
+                              updatedAt: now,
+                            }
+                          : p,
+                      );
+                      handlePlansUpdate(updatedPlans);
+                    }}
+                    icon={<Play className="w-4 h-4" />}
+                  >
+                    Realizar ahora
+                  </AntdButton>
+                </div>
+              </Card>
+            </div>
+          )}
+        </div>
+
+        {/* === RIGHT COLUMN: Suggestions + Catalog sidebar === */}
+        <div className="space-y-3 lg:max-h-[min(500px,calc(100vh-340px))] lg:overflow-y-auto lg:pr-1.5">
+          {/* Smart suggestions */}
           {suggestions.length > 0 && (
-            <Card className="p-4 shadow-sm">
-              <Label className="text-sm font-semibold mb-3 block">
+            <Card className="p-3 shadow-sm">
+              <Label className="text-xs font-semibold mb-2 block uppercase tracking-wide text-muted-foreground">
+                <Sparkles className="w-3 h-3 inline mr-1" />
                 Sugerencias inteligentes
               </Label>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {suggestions.map((suggestion, idx) => (
                   <div
                     key={idx}
-                    className="p-3 rounded-lg border shadow-sm hover:shadow-md transition-shadow"
+                    className="flex items-center gap-2 p-2 rounded-md border hover:shadow-sm transition-shadow cursor-pointer"
                     style={{
                       borderColor:
                         PROCEDURE_CATEGORY_COLORS[
                           suggestion.procedure.category
                         ],
-                      backgroundColor: `${PROCEDURE_CATEGORY_COLORS[suggestion.procedure.category]}10`,
+                      backgroundColor: `${PROCEDURE_CATEGORY_COLORS[suggestion.procedure.category]}08`,
                     }}
+                    onClick={() =>
+                      handleAddProcedure(
+                        suggestion.procedure,
+                        suggestion.surfaces,
+                      )
+                    }
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="text-sm font-medium">
-                          {suggestion.procedure.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {suggestion.reason}
-                        </p>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className="text-xs"
-                        style={{
-                          borderColor:
-                            PROCEDURE_CATEGORY_COLORS[
-                              suggestion.procedure.category
-                            ],
-                          color:
-                            PROCEDURE_CATEGORY_COLORS[
-                              suggestion.procedure.category
-                            ],
-                        }}
-                      >
-                        {PROCEDURE_CATEGORIES[suggestion.procedure.category]}
-                      </Badge>
+                    <Plus className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">
+                        {suggestion.procedure.name}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {suggestion.reason}
+                      </p>
                     </div>
-                    {suggestion.surfaces.length > 0 && (
-                      <div className="flex gap-1 mb-2">
-                        {suggestion.surfaces.map((s) => (
-                          <Badge key={s} variant="outline" className="text-xs">
-                            {s.charAt(0).toUpperCase()}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {suggestion.procedure.estimatedDuration} min
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <DollarSign className="w-3 h-3" />
-                        {formatCurrency(suggestion.procedure.baseCost)}
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        className="flex-1 text-xs"
-                        onClick={() =>
-                          handleAddProcedure(
-                            suggestion.procedure,
-                            suggestion.surfaces,
-                          )
-                        }
-                      >
-                        <Plus className="w-3 h-3 mr-1" />
-                        Añadir
-                      </Button>
-                      {selectedSurfaces.length > 1 && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 text-xs bg-transparent"
-                          onClick={() =>
-                            handleAddProcedure(
-                              suggestion.procedure,
-                              selectedSurfaces,
-                            )
-                          }
-                        >
-                          <Plus className="w-3 h-3 mr-1" />A todas
-                        </Button>
-                      )}
-                    </div>
+                    <span className="text-xs font-semibold whitespace-nowrap">
+                      {formatCurrency(suggestion.procedure.baseCost)}
+                    </span>
                   </div>
                 ))}
               </div>
             </Card>
           )}
 
-          {/* Plantillas sugeridas según ICDAS (backend) */}
+          {/* ICDAS template suggestions */}
           {maxIcdasScore !== null && (
-            <Card className="p-4 shadow-sm">
+            <Card className="p-3 shadow-sm">
               <button
-                className="w-full flex items-center justify-between mb-1"
-                onClick={() => setIcdasSectionOpen((v) => !v)}
+                className="w-full flex items-center justify-between text-left"
+                onClick={() => setIcdasSectionOpen(!icdasSectionOpen)}
               >
-                <Label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
-                  <Sparkles className="w-4 h-4 text-amber-500" />
-                  Plantillas sugeridas · ICDAS {maxIcdasScore}
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer">
+                  <Sparkles className="w-3 h-3 inline mr-1 text-amber-500" />
+                  Plantillas ICDAS · {maxIcdasScore}
                 </Label>
                 {icdasSectionOpen ? (
                   <ChevronUp className="w-4 h-4 text-muted-foreground" />
@@ -515,27 +761,18 @@ export function PlanTab({
               </button>
 
               {icdasSectionOpen && (
-                <div className="space-y-2 mt-2">
+                <div className="space-y-1.5 mt-2">
                   {icdasLoading && (
                     <p className="text-xs text-muted-foreground py-2">
-                      Cargando plantillas…
+                      Cargando…
                     </p>
                   )}
                   {!icdasLoading && icdasTemplateSuggestions.length === 0 && (
-                    <p className="text-xs text-muted-foreground py-2">
-                      No hay plantillas sugeridas para ICDAS {maxIcdasScore}.
+                    <p className="text-xs text-muted-foreground py-1">
+                      Sin plantillas para ICDAS {maxIcdasScore}.
                     </p>
                   )}
                   {icdasTemplateSuggestions.map((suggestion) => {
-                    const totalDuration = suggestion.items.reduce(
-                      (sum, item) => {
-                        const svc = serviceCatalog.find(
-                          (s) => s.id === item.serviceId,
-                        );
-                        return sum + (svc?.estimatedDuration ?? 0);
-                      },
-                      0,
-                    );
                     const totalCost = suggestion.items.reduce((sum, item) => {
                       const svc = serviceCatalog.find(
                         (s) => s.id === item.serviceId,
@@ -546,39 +783,25 @@ export function PlanTab({
                     return (
                       <div
                         key={suggestion.templateId}
-                        className="p-3 rounded-lg border bg-amber-50/50 border-amber-200"
+                        className="p-2 rounded-md border border-amber-200 bg-amber-50/50"
                       >
-                        <div className="flex items-start justify-between mb-1">
-                          <p className="text-sm font-medium">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs font-medium">
                             {suggestion.templateName}
                           </p>
                           <Badge
                             variant="outline"
-                            className="text-xs border-amber-400 text-amber-700"
+                            className="text-[10px] border-amber-400 text-amber-700"
                           >
                             P{suggestion.priority}
                           </Badge>
                         </div>
                         {suggestion.templateDescription && (
-                          <p className="text-xs text-muted-foreground mb-2">
+                          <p className="text-[10px] text-muted-foreground mb-1.5">
                             {suggestion.templateDescription}
                           </p>
                         )}
-                        <div className="flex gap-3 text-xs text-muted-foreground mb-2">
-                          {totalDuration > 0 && (
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {totalDuration} min
-                            </span>
-                          )}
-                          {totalCost > 0 && (
-                            <span className="flex items-center gap-1">
-                              <DollarSign className="w-3 h-3" />
-                              {formatCurrency(totalCost)}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-1 mb-2">
+                        <div className="flex flex-wrap gap-1 mb-1.5">
                           {suggestion.items
                             .sort((a, b) => a.itemOrder - b.itemOrder)
                             .map((item, idx) => {
@@ -589,7 +812,7 @@ export function PlanTab({
                                 <Badge
                                   key={item.id}
                                   variant="outline"
-                                  className="text-xs"
+                                  className="text-[10px] px-1.5"
                                 >
                                   {idx + 1}.{" "}
                                   {svc?.name ?? item.serviceId.slice(0, 8)}
@@ -600,7 +823,7 @@ export function PlanTab({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="w-full text-xs border-amber-400 text-amber-700 hover:bg-amber-50 bg-transparent"
+                          className="w-full text-xs h-7 border-amber-400 text-amber-700 hover:bg-amber-50 bg-transparent"
                           onClick={() =>
                             handleApplyIcdasTemplate(
                               suggestion.templateName,
@@ -611,7 +834,7 @@ export function PlanTab({
                           }
                         >
                           <Plus className="w-3 h-3 mr-1" />
-                          Aplicar plantilla
+                          Aplicar
                         </Button>
                       </div>
                     );
@@ -621,60 +844,58 @@ export function PlanTab({
             </Card>
           )}
 
-          {/* Plantillas */}
+          {/* Pre-built templates */}
           {PROCEDURE_TEMPLATES.length > 0 && (
-            <Card className="p-4 shadow-sm">
-              <Label className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                <Package className="w-4 h-4" />
+            <Card className="p-3 shadow-sm">
+              <Label className="text-xs font-semibold mb-2 block uppercase tracking-wide text-muted-foreground">
+                <Package className="w-3 h-3 inline mr-1" />
                 Plantillas
               </Label>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {PROCEDURE_TEMPLATES.map((template) => (
                   <div
                     key={template.id}
-                    className="p-3 rounded-lg border bg-muted/30"
+                    className="flex items-center gap-2 p-2 rounded-md border bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                    onClick={() => handleAddTemplate(template.id)}
                   >
-                    <p className="text-sm font-medium mb-1">{template.name}</p>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {template.description}
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full text-xs bg-transparent"
-                      onClick={() => handleAddTemplate(template.id)}
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      Añadir plantilla
-                    </Button>
+                    <Plus className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">
+                        {template.name}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {template.description}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
             </Card>
           )}
 
-          {/* Buscador y catálogo */}
-          <Card className="p-4 shadow-sm">
-            <Label className="text-sm font-semibold mb-3 block">
-              Catálogo de procedimientos
+          {/* Catalog search */}
+          <Card className="p-3 shadow-sm">
+            <Label className="text-xs font-semibold mb-2 block uppercase tracking-wide text-muted-foreground">
+              <Search className="w-3 h-3 inline mr-1" />
+              Catálogo
             </Label>
 
-            {/* Buscador */}
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            {/* Search */}
+            <div className="relative mb-2">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <OdontogramInput
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Buscar procedimiento..."
-                className="pl-9 text-sm"
+                className="pl-8 text-xs h-8"
               />
             </div>
 
-            {/* Chips de categorías */}
-            <div className="flex flex-wrap gap-2 mb-3">
+            {/* Category chips */}
+            <div className="flex flex-wrap gap-1.5 mb-2">
               <Badge
                 variant={selectedCategory === "all" ? "default" : "outline"}
-                className="cursor-pointer text-xs"
+                className="cursor-pointer text-[10px] px-2 py-0.5"
                 onClick={() => setSelectedCategory("all")}
               >
                 Todos
@@ -688,7 +909,7 @@ export function PlanTab({
                 <Badge
                   key={cat}
                   variant={selectedCategory === cat ? "default" : "outline"}
-                  className="cursor-pointer text-xs"
+                  className="cursor-pointer text-[10px] px-2 py-0.5"
                   style={
                     selectedCategory === cat
                       ? {
@@ -707,370 +928,38 @@ export function PlanTab({
               ))}
             </div>
 
-            {/* Lista de procedimientos */}
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            {/* Procedure list */}
+            <div className="space-y-1 max-h-[220px] overflow-y-auto">
               {filteredCatalog.map((procedure) => (
                 <div
                   key={procedure.id}
-                  className="p-2 rounded border hover:bg-muted/50 transition-colors"
+                  className="flex items-center gap-2 p-2 rounded-md border hover:bg-muted/30 transition-colors cursor-pointer"
+                  onClick={() => handleAddProcedure(procedure)}
                 >
-                  <div className="flex items-start justify-between mb-1">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{procedure.name}</p>
-                      {procedure.description && (
-                        <p className="text-xs text-muted-foreground">
-                          {procedure.description}
-                        </p>
+                  <Plus className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-medium truncate">
+                        {procedure.name}
+                      </p>
+                      {procedure.isFavorite && (
+                        <Star className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
                       )}
                     </div>
-                    {procedure.isFavorite && (
-                      <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {procedure.estimatedDuration} min
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <DollarSign className="w-3 h-3" />
+                    <p className="text-[10px] text-muted-foreground">
+                      {procedure.estimatedDuration} min ·{" "}
                       {formatCurrency(procedure.baseCost)}
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1 text-xs bg-transparent"
-                      onClick={() => handleAddProcedure(procedure)}
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      Añadir
-                    </Button>
-                    {selectedSurfaces.length > 1 && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 text-xs bg-transparent"
-                        onClick={() =>
-                          handleAddProcedure(procedure, selectedSurfaces)
-                        }
-                      >
-                        <Plus className="w-3 h-3 mr-1" />A todas
-                      </Button>
-                    )}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
           </Card>
         </div>
-
-        {/* Columna derecha: Plan actual */}
-        <div className="space-y-4">
-          <Card className="p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <Label className="text-sm font-semibold">
-                Plan actual ({plans.length})
-              </Label>
-              {plans.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handlePlansUpdate([])}
-                  className="text-xs"
-                >
-                  <Trash2 className="w-3 h-3 mr-1" />
-                  Limpiar todo
-                </Button>
-              )}
-            </div>
-
-            {plans.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground border-2 border-dashed rounded-lg">
-                <p className="text-sm">No hay procedimientos en el plan</p>
-                <p className="text-xs mt-1">
-                  Añade procedimientos desde el catálogo o sugerencias
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {plans.map((plan) => (
-                  <Card
-                    key={plan.id}
-                    className="shadow-sm border-2 overflow-hidden"
-                    style={{
-                      borderColor: PLAN_STATUS_COLORS[plan.status],
-                      backgroundColor: `${PLAN_STATUS_COLORS[plan.status]}08`,
-                    }}
-                  >
-                    <CardHeader className="p-3 pb-0">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-sm font-medium text-foreground">
-                            {plan.displayName}
-                          </CardTitle>
-                          {plan.surfaces.length > 0 && (
-                            <div className="flex gap-1 mt-1">
-                              {plan.surfaces.map((s) => (
-                                <Badge
-                                  key={s}
-                                  variant="outline"
-                                  className="text-[10px] px-1.5 py-0"
-                                >
-                                  {s.charAt(0).toUpperCase()}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                          {plan.status === "done" && (
-                            <div className="flex items-center gap-1 mt-1.5">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                              <span className="text-xs text-blue-700 font-medium">
-                                Movido a Realizado
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex gap-1.5">
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-7 w-7 bg-background/50 hover:bg-background"
-                            onClick={() => handleDuplicatePlan(plan.id)}
-                            title="Duplicar"
-                          >
-                            <Copy className="w-3.5 h-3.5 text-slate-600" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-7 w-7 bg-background/50 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                            onClick={() => handleRemovePlan(plan.id)}
-                            title="Eliminar"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-3">
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium text-muted-foreground">
-                            Estado
-                          </Label>
-                          <OdontogramSelect
-                            value={plan.status}
-                            onChange={(v) =>
-                              handleUpdatePlan(plan.id, {
-                                status: v as ClinicalEventStatus,
-                              })
-                            }
-                            options={(
-                              Object.entries(PLAN_STATUS_LABELS) as [
-                                ClinicalEventStatus,
-                                string,
-                              ][]
-                            ).map(([status, label]) => ({
-                              value: status,
-                              label,
-                            }))}
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium text-muted-foreground">
-                            Prioridad
-                          </Label>
-                          <OdontogramSelect
-                            value={plan.priority}
-                            onChange={(v) =>
-                              handleUpdatePlan(plan.id, {
-                                priority: v as ProcedurePriority,
-                              })
-                            }
-                            options={[
-                              { value: "alta", label: "Alta" },
-                              { value: "media", label: "Media" },
-                              { value: "baja", label: "Baja" },
-                            ]}
-                          />
-                        </div>
-                      </div>
-
-                      {plan.material && (
-                        <div className="mb-3 space-y-1.5">
-                          <Label className="text-xs font-medium text-muted-foreground">
-                            Material
-                          </Label>
-                          <OdontogramInput
-                            value={plan.material}
-                            onChange={(e) =>
-                              handleUpdatePlan(plan.id, {
-                                material: e.target.value,
-                              })
-                            }
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium text-muted-foreground">
-                            Tiempo (min)
-                          </Label>
-                          <OdontogramInput
-                            type="number"
-                            value={String(plan.durationMin)}
-                            onChange={(e) =>
-                              handleUpdatePlan(plan.id, {
-                                durationMin: Number(e.target.value),
-                              })
-                            }
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium text-muted-foreground">
-                            Costo
-                          </Label>
-                          <OdontogramInput
-                            type="number"
-                            value={String(plan.cost)}
-                            onChange={(e) =>
-                              handleUpdatePlan(plan.id, {
-                                cost: Number(e.target.value),
-                              })
-                            }
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-medium text-muted-foreground">
-                          Notas
-                        </Label>
-                        <OdontogramInput
-                          value={plan.notes || ""}
-                          onChange={(e) =>
-                            handleUpdatePlan(plan.id, {
-                              notes: e.target.value,
-                            })
-                          }
-                          placeholder="Observaciones..."
-                          className="h-8 text-xs"
-                        />
-                      </div>
-                    </CardContent>
-                    {plan.dependencies && plan.dependencies.length > 0 && (
-                      <div className="px-3 pb-3 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3 text-amber-600" />
-                        <span className="text-xs text-amber-700">
-                          Depende de otros procedimientos
-                        </span>
-                      </div>
-                    )}
-                  </Card>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* Totales */}
-          {plans.length > 0 && (
-            <Card className="p-4 shadow-sm bg-muted/30">
-              <Label className="text-sm font-semibold mb-3 block">
-                Totales
-              </Label>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Tiempo total
-                  </span>
-                  <span className="text-sm font-medium">
-                    {totals.totalDuration} min (
-                    {Math.ceil(totals.totalDuration / 60)} sesiones aprox.)
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm flex items-center gap-2">
-                    <DollarSign className="w-4 h-4" />
-                    Costo total
-                  </span>
-                  <span className="text-lg font-bold">
-                    {formatCurrency(totals.totalCost)}
-                  </span>
-                </div>
-
-                {Object.keys(totals.byCategory).length > 0 && (
-                  <div className="pt-2 border-t">
-                    <Label className="text-xs mb-2 block">Por categoría</Label>
-                    <div className="space-y-1">
-                      {(
-                        Object.entries(totals.byCategory) as [
-                          ProcedureCategory,
-                          number,
-                        ][]
-                      ).map(([cat, cost]) => (
-                        <div
-                          key={cat}
-                          className="flex items-center justify-between text-xs"
-                        >
-                          <span className="flex items-center gap-2">
-                            <div
-                              className="w-2 h-2 rounded-full"
-                              style={{
-                                backgroundColor: PROCEDURE_CATEGORY_COLORS[cat],
-                              }}
-                            />
-                            {PROCEDURE_CATEGORIES[cat]}
-                          </span>
-                          <span>{formatCurrency(cost)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-2 mt-4">
-                <AntdButton
-                  type="default"
-                  style={{ flex: 1 }}
-                  onClick={() => onSchedulePlans?.(plans)}
-                  icon={<Calendar className="w-4 h-4" />}
-                >
-                  Programar
-                </AntdButton>
-                <AntdButton
-                  type="primary"
-                  style={{ flex: 1 }}
-                  onClick={() => {
-                    const now = new Date().toISOString();
-                    const updatedPlans = plans.map((p) =>
-                      p.status !== "done" && p.status !== "canceled"
-                        ? {
-                            ...p,
-                            status: "done" as ClinicalEventStatus,
-                            appointmentAt: now,
-                            updatedAt: now,
-                          }
-                        : p,
-                    );
-                    handlePlansUpdate(updatedPlans);
-                  }}
-                  icon={<Play className="w-4 h-4" />}
-                >
-                  Realizar ahora
-                </AntdButton>
-              </div>
-            </Card>
-          )}
-        </div>
       </div>
     </div>
   );
+
+
 }
+

@@ -28,7 +28,7 @@ import {
   GLOBAL_STATUS_COLORS,
   SURFACE_STATUS_COLORS,
 } from "./types";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react";
 import { SurfacesTab } from "./surfaces-tab";
 import { DiagnosisTab } from "./diagnosis-tab";
 import { PlanTab } from "./plan-tab";
@@ -37,6 +37,16 @@ import { App } from "antd";
 import { SchedulePlanModal } from "./schedule-plan-modal";
 import { useOdontogramStore } from "@/lib/odontogram/store";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services";
+import { getDesignedToothPaths } from "./teeth-svg-adapter";
+import {
+  AlertTriangle,
+  Lock,
+  CheckCircle,
+  XCircle,
+  Minus,
+  Crown,
+  Wrench,
+} from "lucide-react";
 
 interface ToothModalProps {
   tooth: Tooth | null;
@@ -474,6 +484,17 @@ export function ToothModal({
     },
     [selectedSurfaces, tooth],
   );
+
+  // --- Hooks that must be above early return ---
+  const performedDot = useMemo(() => {
+    const events = tooth ? getToothEvents(tooth.number) : [];
+    return events.some((e) => e.type === "performed") ? "green" as const : null;
+  }, [tooth, getToothEvents]);
+
+  const headerSvgPaths = useMemo(() => {
+    if (!tooth) return null;
+    return getDesignedToothPaths(tooth.number, "frontal");
+  }, [tooth]);
 
   if (!tooth) return null;
 
@@ -996,9 +1017,9 @@ export function ToothModal({
   };
 
   const getContinueLabel = () => {
-    if (activeTab === "superficies") return "Guardar e ir a diagnóstico";
-    if (activeTab === "diagnostico") return "Guardar e ir a plan";
-    if (activeTab === "plan") return "Guardar e ir a realizado";
+    if (activeTab === "superficies") return "Continuar a Diagnóstico →";
+    if (activeTab === "diagnostico") return "Continuar a Plan →";
+    if (activeTab === "plan") return "Continuar a Realizado →";
     return "Guardar y cerrar";
   };
 
@@ -1070,10 +1091,20 @@ export function ToothModal({
     setHasUnsavedChanges(false);
   };
 
+  // --- Compute tab status dots (non-hook, safe after early return) ---
+  const surfacesDot = selectedSurfaces.length > 0 ? "green" as const : null;
+  const diagnosisDot = hasMeaningfulToothDiagnosis(toothDiagnosis)
+    ? "green" as const
+    : diagnoses.size > 0
+      ? "amber" as const
+      : null;
+  const planDot = plans.length > 0 ? "blue" as const : null;
+
   const tabItems: OdontogramTabItem[] = [
     {
       key: "superficies",
       label: "Superficies",
+      statusDot: surfacesDot,
       children: (
         <SurfacesTab
           tooth={tooth}
@@ -1088,6 +1119,7 @@ export function ToothModal({
     {
       key: "diagnostico",
       label: "Diagnóstico (ICDAS)",
+      statusDot: diagnosisDot,
       children: (
         <DiagnosisTab
           tooth={tooth}
@@ -1103,6 +1135,7 @@ export function ToothModal({
     {
       key: "plan",
       label: "Plan",
+      statusDot: planDot,
       children: (
         <PlanTab
           tooth={tooth}
@@ -1128,6 +1161,7 @@ export function ToothModal({
     {
       key: "realizado",
       label: "Realizado",
+      statusDot: performedDot,
       children: (
         <PerformedTab
           tooth={tooth}
@@ -1142,30 +1176,119 @@ export function ToothModal({
     {
       key: "perio",
       label: "Perio",
+      disabled: true,
+      statusDot: "muted",
       children: (
-        <div className="p-12 border-2 border-dashed rounded-lg text-center text-muted-foreground">
-          <p className="text-base">Contenido de Perio (próximamente)</p>
+        <div className="p-10 border-2 border-dashed rounded-xl text-center text-muted-foreground space-y-2">
+          <p className="text-sm font-medium">Periodontograma</p>
+          <p className="text-xs">Próximamente: profundidad de sondaje, sangrado, movilidad, furcación.</p>
         </div>
       ),
     },
     {
       key: "historial",
       label: "Historial",
+      disabled: true,
+      statusDot: "muted",
       children: (
-        <div className="p-12 border-2 border-dashed rounded-lg text-center text-muted-foreground">
-          <p className="text-base">Contenido de Historial (próximamente)</p>
+        <div className="p-10 border-2 border-dashed rounded-xl text-center text-muted-foreground space-y-2">
+          <p className="text-sm font-medium">Historial del diente</p>
+          <p className="text-xs">Próximamente: timeline completa de diagnósticos, planes y tratamientos.</p>
         </div>
       ),
     },
   ];
+
+  // --- Icons for global status ---
+  const STATUS_ICONS: Record<ToothGlobalStatus, ReactNode> = {
+    healthy: <CheckCircle className="w-3 h-3" />,
+    absent: <XCircle className="w-3 h-3" />,
+    implant: <Wrench className="w-3 h-3" />,
+    endodontic: <Minus className="w-3 h-3" />,
+    crown: <Crown className="w-3 h-3" />,
+  };
+
+  // --- Top banner ---
+  const topBanner = (() => {
+    if (readOnly) {
+      return (
+        <div className="flex items-center gap-2 rounded-lg bg-slate-50 border border-slate-200 px-4 py-2.5 text-xs text-slate-600">
+          <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+          <span className="font-medium">Solo lectura</span>
+          <span className="text-slate-400">—</span>
+          <span>Inicia una consulta para editar este diente</span>
+        </div>
+      );
+    }
+    if (hasUnsavedChanges) {
+      return (
+        <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 text-xs text-amber-700">
+          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+          <span className="font-semibold">Cambios sin guardar</span>
+          <span className="text-amber-500">—</span>
+          <span>Guarda antes de cerrar para no perder tu trabajo</span>
+        </div>
+      );
+    }
+    return null;
+  })();
 
   return (
     <>
       <OdontogramModal
         open={isOpen}
         onClose={handleClose}
-        title={`Diente ${tooth.number}`}
-        description={getToothDescription(tooth.number)}
+        title={
+          <div className="flex items-center gap-3">
+            {/* SVG thumbnail */}
+            {headerSvgPaths && (
+              <div className="flex-shrink-0 w-10 h-14 flex items-center justify-center">
+                <svg
+                  viewBox={headerSvgPaths.viewBox}
+                  className="w-full h-full"
+                  style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))" }}
+                >
+                  {/* Outline */}
+                  <path
+                    d={headerSvgPaths.outline}
+                    fill="none"
+                    stroke="#64748b"
+                    strokeWidth={0.8}
+                  />
+                  {/* Surfaces */}
+                  {headerSvgPaths.surfaces.map((sp, i) => (
+                    <path
+                      key={i}
+                      d={sp.d}
+                      fill="#e5e7eb"
+                      stroke="#94a3b8"
+                      strokeWidth={0.3}
+                    />
+                  ))}
+                  {/* Roots */}
+                  {headerSvgPaths.roots.map((r, i) => (
+                    <path
+                      key={`r-${i}`}
+                      d={r}
+                      fill="none"
+                      stroke="#94a3b8"
+                      strokeWidth={0.5}
+                    />
+                  ))}
+                </svg>
+              </div>
+            )}
+            <div className="flex flex-col">
+              <span className="text-lg font-bold leading-tight">
+                Diente {tooth.number}
+              </span>
+              <span className="text-xs text-gray-500 font-normal">
+                {getToothDescription(tooth.number)}
+              </span>
+            </div>
+          </div>
+        }
+        topBanner={topBanner}
         footer={
           readOnly ? (
             <div className="flex justify-end pt-3 border-t">
@@ -1199,18 +1322,19 @@ export function ToothModal({
                   onClick={handleSaveAndContinue}
                   className="px-6 py-2 text-sm"
                 >
-                  {getContinueLabel()} →
+                  {getContinueLabel()}
                 </Button>
               </div>
             </div>
           )
         }
       >
-        <div className="space-y-2 pb-3 border-b">
-          <p className="text-xs font-semibold text-muted-foreground">
-            Estado Global del Diente
-          </p>
-          <div className="flex flex-wrap gap-2">
+        {/* Compact global status bar */}
+        <div className="flex items-center gap-3 pb-3 mb-1 border-b">
+          <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
+            Estado:
+          </span>
+          <div className="flex flex-wrap gap-1.5">
             {(Object.keys(GLOBAL_STATUS_LABELS) as ToothGlobalStatus[]).map(
               (status) => {
                 const isSelected = tempGlobalStatus === status;
@@ -1218,7 +1342,7 @@ export function ToothModal({
                   <Badge
                     key={status}
                     variant={isSelected ? "default" : "outline"}
-                    className="cursor-pointer px-3 py-1 text-xs font-medium transition-all hover:scale-105"
+                    className="cursor-pointer px-2.5 py-0.5 text-xs font-medium transition-all hover:scale-105 inline-flex items-center gap-1"
                     onClick={() => !readOnly && handleStatusClick(status)}
                     style={{
                       ...(isSelected
@@ -1234,24 +1358,15 @@ export function ToothModal({
                       ...(readOnly ? { cursor: "default", opacity: 0.7 } : {}),
                     }}
                   >
+                    {STATUS_ICONS[status]}
                     {GLOBAL_STATUS_LABELS[status]}
                   </Badge>
                 );
               },
             )}
           </div>
-          {hasUnsavedChanges && !readOnly && (
-            <p className="text-xs text-amber-600 font-semibold">
-              ⚠️ Tienes cambios sin guardar
-            </p>
-          )}
-          {readOnly && (
-            <p className="text-xs text-slate-500 font-medium">
-              🔒 Solo lectura — inicia una consulta para editar
-            </p>
-          )}
           {saveErrors.length > 0 && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            <div className="ml-auto rounded-md border border-red-200 bg-red-50 px-3 py-1 text-xs text-red-700">
               {saveErrors.map((error) => (
                 <p key={error}>{error}</p>
               ))}

@@ -1,13 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Drawer, Spin, Tag, Empty } from "antd";
 import { FileText, Stethoscope, Paperclip } from "lucide-react";
-import { useVisitRecord } from "@/lib/hooks/clinical-history";
-import { useOdontogramByVisit } from "@/lib/hooks/odontogram/useOdontogramByVisit";
-import { clinicalHistoryService } from "@/lib/services/clinical-history";
+import { useVisitHistoryDrawer } from "@/lib/hooks/patients/clinical-history-page/use-visit-history-drawer";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
-import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 
 interface VisitHistoryDrawerProps {
   open: boolean;
@@ -15,21 +11,6 @@ interface VisitHistoryDrawerProps {
   appointment: Appointment | null;
   onClose: () => void;
   onViewOdontogram?: (visitId: string) => void;
-}
-
-function formatDate(dateStr?: string): string {
-  if (!dateStr) return "—";
-  try {
-    const d = new Date(dateStr + "T00:00:00");
-    return d.toLocaleDateString("es-ES", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -47,29 +28,22 @@ export function VisitHistoryDrawer({
   onClose,
   onViewOdontogram,
 }: VisitHistoryDrawerProps) {
-  const appointmentId = appointment?.id;
-
-  const { record, loading } = useVisitRecord(patientId, appointmentId);
-  const { snapshot: odontogramSnapshot, load: loadOdontogram } =
-    useOdontogramByVisit(appointmentId);
-
-  const [attachments, setAttachments] = useState<PatientAttachment[]>([]);
-
-  // Load odontogram when appointment changes
-  useEffect(() => {
-    if (open && appointmentId) {
-      loadOdontogram(appointmentId);
-      clinicalHistoryService
-        .getVisitAttachments(patientId, appointmentId)
-        .then(setAttachments)
-        .catch(() => setAttachments([]));
-    }
-  }, [open, appointmentId, patientId, loadOdontogram]);
-
-  const pain = record?.currentPain;
-  const hasPain =
-    pain &&
-    (pain.location || pain.intensity !== undefined || pain.type || pain.duration);
+  const {
+    record,
+    loading,
+    attachments,
+    pain,
+    hasPain,
+    formattedVisitDate,
+    hasOdontogram,
+    handleViewOdontogram,
+  } = useVisitHistoryDrawer({
+    open,
+    patientId,
+    appointment,
+    onClose,
+    onViewOdontogram,
+  });
 
   return (
     <Drawer
@@ -78,7 +52,7 @@ export function VisitHistoryDrawer({
           <p className="font-semibold text-base">Historial de Visita</p>
           {appointment && (
             <p className="text-xs text-muted-foreground font-normal mt-0.5">
-              {formatDate(appointment.date)}
+              {formattedVisitDate}
               {appointment.time && ` · ${appointment.time}`}
             </p>
           )}
@@ -214,16 +188,11 @@ export function VisitHistoryDrawer({
                 Odontograma
               </span>
             </SectionTitle>
-            {odontogramSnapshot ? (
+            {hasOdontogram ? (
               <div className="flex items-center gap-3">
                 <Tag color="green">Odontograma guardado en esta visita</Tag>
                 <button
-                  onClick={() => {
-                    onClose();
-                    if (onViewOdontogram && appointmentId) {
-                      onViewOdontogram(appointmentId);
-                    }
-                  }}
+                  onClick={handleViewOdontogram}
                   className="text-xs text-blue-500 hover:underline"
                 >
                   Ver en pestaña Odontograma

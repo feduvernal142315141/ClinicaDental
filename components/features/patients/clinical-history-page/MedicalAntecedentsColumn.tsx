@@ -1,26 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
 import { Badge } from "antd";
 import { AlertTriangle, Edit } from "lucide-react";
 import { ClinicalNotesEditor } from "@/components/features/clinical-history/notes/ClinicalNotesEditor";
-import { useClinicalNotes } from "@/lib/hooks/clinical-history";
 import { TreatmentPlansPendingSection } from "./TreatmentPlansPendingSection";
 import type {
   ClinicalHistoryMedicalHistory,
   ClinicalHistoryPatientHeader,
-  AlertSeverity,
 } from "@/lib/entity/clinical-history";
-import { ALERT_SEVERITY_COLORS } from "@/lib/entity/clinical-history";
-
-const SEVERITY_BADGE_STATUS: Record<
-  AlertSeverity,
-  "error" | "warning" | "processing"
-> = {
-  critical: "error",
-  warning: "warning",
-  info: "processing",
-};
+import { useMedicalAntecedentsColumn } from "@/lib/hooks/patients/clinical-history-page/use-medical-antecedents-column";
 
 interface MedicalAntecedentsColumnProps {
   medicalHistory: ClinicalHistoryMedicalHistory | null;
@@ -56,22 +44,21 @@ export function MedicalAntecedentsColumn({
   medicalHistory,
   patientHeader,
   patientId,
-  activeAppointmentId,
+  activeAppointmentId: _activeAppointmentId,
   onEditClick,
   canEdit = false,
 }: MedicalAntecedentsColumnProps) {
-  const { saving, save } = useClinicalNotes(
-    patientId,
-    medicalHistory?.clinicalNotes,
-  );
-
-
-  const alerts = patientHeader?.alerts ?? [];
+  const { saving, alertBadges, antecedentItems, handleSaveNotes } =
+    useMedicalAntecedentsColumn({
+      patientId,
+      medicalHistory,
+      patientHeader,
+    });
 
   return (
     <div className="flex flex-col h-full overflow-y-auto px-4 gap-4">
       {/* Alertas — banner al tope */}
-      {alerts.length > 0 && (
+      {alertBadges.length > 0 && (
         <div className="py-3 rounded-md bg-red-50 border border-red-200 px-3 mt-3">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -80,11 +67,11 @@ export function MedicalAntecedentsColumn({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {alerts.map((alert) => (
+            {alertBadges.map((alert) => (
               <Badge
                 key={alert.id}
-                status={SEVERITY_BADGE_STATUS[alert.severity]}
-                color={ALERT_SEVERITY_COLORS[alert.severity]}
+                status={alert.status}
+                color={alert.color}
                 text={alert.message}
               />
             ))}
@@ -115,26 +102,14 @@ export function MedicalAntecedentsColumn({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <AntecedentItem
-            label="Alergias"
-            items={medicalHistory?.allergies}
-            empty="Sin alergias registradas"
-          />
-          <AntecedentItem
-            label="Medicamentos actuales"
-            items={medicalHistory?.currentMedications}
-            empty="Sin medicamentos registrados"
-          />
-          <AntecedentItem
-            label="Cirugías previas"
-            items={medicalHistory?.previousSurgeries}
-            empty="Sin cirugías registradas"
-          />
-          <AntecedentItem
-            label="Enfermedades sistémicas"
-            items={medicalHistory?.systemicDiseases}
-            empty="Sin enfermedades sistémicas registradas"
-          />
+          {antecedentItems.map((item) => (
+            <AntecedentItem
+              key={item.label}
+              label={item.label}
+              items={item.items}
+              empty={item.empty}
+            />
+          ))}
         </div>
       </section>
 
@@ -161,15 +136,10 @@ export function MedicalAntecedentsColumn({
           updatedAt={medicalHistory?.clinicalNotesUpdatedAt}
           updatedBy={medicalHistory?.clinicalNotesUpdatedBy}
           readOnly={!canEdit}
-          onSave={async (html) => {
-            await save(html);
-          }}
+          onSave={handleSaveNotes}
           saving={saving}
         />
       </section>
-
-
-
     </div>
   );
 }

@@ -19,6 +19,8 @@ import {
   Upload,
   Copy,
   ArrowRight,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import type {
   Tooth,
@@ -123,6 +125,7 @@ export function DiagnosisTab({
   ]);
   const [painScore, setPainScore] = useState<number>(0);
   const [generalNotes, setGeneralNotes] = useState("");
+  const [evidenceExpanded, setEvidenceExpanded] = useState(false);
 
   const buildToothDiagnosisRecord = (
     nextDiagnoses: Map<ToothSurface, SurfaceDiagnosis>,
@@ -315,13 +318,11 @@ export function DiagnosisTab({
     type: VitalityTestType,
     result: VitalityTestResult,
   ) => {
-    setVitalityTests((prev) => {
-      const nextTests = prev.map((test) =>
-        test.type === type ? { ...test, result } : test,
-      );
-      emitToothDiagnosisChange(surfaceDiagnoses, { vitalityTests: nextTests });
-      return nextTests;
-    });
+    const nextTests = vitalityTests.map((test) =>
+      test.type === type ? { ...test, result } : test,
+    );
+    setVitalityTests(nextTests);
+    emitToothDiagnosisChange(surfaceDiagnoses, { vitalityTests: nextTests });
   };
 
   const getRiskColor = (risk: PatientRiskLevel) => {
@@ -644,145 +645,231 @@ export function DiagnosisTab({
             </div>
           </Card>
 
-          {/* 2.4 Estado pulpar/periapical */}
+          {/* 2.4 Estado pulpar/periapical — Segmented controls */}
           <Card className="p-4 shadow-sm">
-            <Label className="text-sm font-semibold mb-3 block">
-              Estado pulpar/periapical{" "}
-              <Badge variant="outline">Nivel pieza</Badge>
+            <Label className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">3</span>
+              Estado pulpar / periapical{" "}
+              <Badge variant="outline" className="text-[10px]">Nivel pieza</Badge>
             </Label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Pulpar — Segmented */}
               <div>
-                <Label htmlFor="pulpal-status" className="text-xs mb-2 block">
-                  Estado pulpar
-                </Label>
-                <OdontogramSelect
-                  value={pulpalStatus}
-                  onChange={(value) => handlePulpalStatusChange(value)}
-                  options={(
+                <Label className="text-xs mb-2 block text-muted-foreground">Estado pulpar</Label>
+                <div className="flex flex-wrap gap-1">
+                  {(
                     Object.entries(PULPAL_STATUS_LABELS) as [
                       PulpalStatus,
                       string,
                     ][]
-                  ).map(([status, label]) => ({
-                    value: status,
-                    label,
-                  }))}
-                />
+                  ).map(([status, label]) => {
+                    const isActive = pulpalStatus === status;
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => handlePulpalStatusChange(status)}
+                        className={`px-2.5 py-1 text-xs rounded-md border transition-all font-medium ${
+                          isActive
+                            ? "bg-primary text-white border-primary shadow-sm"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+              {/* Periapical — Segmented */}
               <div>
-                <Label
-                  htmlFor="periapical-status"
-                  className="text-xs mb-2 block"
-                >
-                  Estado periapical
-                </Label>
-                <OdontogramSelect
-                  value={periapicalStatus}
-                  onChange={(value) => {
-                    const nextStatus = value as PeriapicalStatus;
-                    setPeriapicalStatus(nextStatus);
-                    emitToothDiagnosisChange(surfaceDiagnoses, {
-                      periapicalStatus: nextStatus,
-                    });
-                  }}
-                  options={(
+                <Label className="text-xs mb-2 block text-muted-foreground">Estado periapical</Label>
+                <div className="flex flex-wrap gap-1">
+                  {(
                     Object.entries(PERIAPICAL_STATUS_LABELS) as [
                       PeriapicalStatus,
                       string,
                     ][]
-                  ).map(([status, label]) => ({
-                    value: status,
-                    label,
-                  }))}
-                />
+                  ).map(([status, label]) => {
+                    const isActive = periapicalStatus === status;
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => {
+                          const nextStatus = status as PeriapicalStatus;
+                          setPeriapicalStatus(nextStatus);
+                          emitToothDiagnosisChange(surfaceDiagnoses, {
+                            periapicalStatus: nextStatus,
+                          });
+                        }}
+                        className={`px-2.5 py-1 text-xs rounded-md border transition-all font-medium ${
+                          isActive
+                            ? "bg-primary text-white border-primary shadow-sm"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </Card>
 
-          {/* 2.5 Vitalidad y pruebas */}
+          {/* 2.5 Vitalidad y pruebas — Compact table */}
           <Card className="p-4 shadow-sm">
-            <Label className="text-sm font-semibold mb-3 block">
+            <Label className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">4</span>
               Vitalidad y pruebas
             </Label>
             <div className="space-y-3">
-              <div className="grid grid-cols-5 gap-2">
-                {vitalityTests.map((test) => (
-                  <div key={test.type} className="space-y-1">
-                    <Label className="text-xs">
-                      {VITALITY_TEST_LABELS[test.type]}
-                    </Label>
-                    <OdontogramSelect
-                      value={test.result}
-                      onChange={(value) =>
-                        handleVitalityTestChange(
-                          test.type,
-                          value as VitalityTestResult,
-                        )
-                      }
-                      options={[
-                        { value: "no-realizado", label: "-" },
-                        { value: "positivo", label: "+" },
-                        { value: "negativo", label: "−" },
-                      ]}
-                    />
-                  </div>
-                ))}
+              {/* Vitality table */}
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-muted/50">
+                      <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">Prueba</th>
+                      <th className="text-center px-2 py-1.5 font-medium text-muted-foreground w-20">Resultado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vitalityTests.map((test) => (
+                      <tr key={test.type} className="border-t">
+                        <td className="px-3 py-2 font-medium">
+                          {VITALITY_TEST_LABELS[test.type]}
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <div className="flex justify-center gap-0.5">
+                            {([
+                              { value: "positivo", label: "+", color: "#10B981" },
+                              { value: "negativo", label: "−", color: "#EF4444" },
+                              { value: "no-realizado", label: "NR", color: "#9CA3AF" },
+                            ] as const).map(({ value, label, color }) => {
+                              const isActive = test.result === value;
+                              return (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  onClick={() =>
+                                    handleVitalityTestChange(
+                                      test.type,
+                                      value as VitalityTestResult,
+                                    )
+                                  }
+                                  className={`w-8 h-6 rounded text-xs font-bold transition-all ${
+                                    isActive
+                                      ? "text-white shadow-sm"
+                                      : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                                  }`}
+                                  style={
+                                    isActive
+                                      ? { backgroundColor: color }
+                                      : undefined
+                                  }
+                                >
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="pain-score" className="text-xs mb-2 block">
-                    Dolor (NRS 0-10)
-                  </Label>
-                  <OdontogramInput
-                    id="pain-score"
-                    type="number"
-                    value={String(painScore)}
-                    onChange={(e) => {
-                      const nextPainScore = Number(e.target.value);
-                      setPainScore(nextPainScore);
-                      emitToothDiagnosisChange(surfaceDiagnoses, {
-                        painScore: nextPainScore,
-                      });
-                    }}
-                    className="text-sm"
-                  />
+
+              {/* Pain scale — Wong-Baker FACES */}
+              <div>
+                <Label className="text-xs mb-2 block">
+                  Dolor
+                </Label>
+                <div className="flex items-center gap-1">
+                  {([
+                    { score: 0,  emoji: "😊", label: "Sin dolor",    bg: "#dcfce7", border: "#86efac", text: "#166534" },
+                    { score: 2,  emoji: "🙂", label: "Leve",         bg: "#fef9c3", border: "#fde047", text: "#854d0e" },
+                    { score: 4,  emoji: "😐", label: "Moderado",     bg: "#fed7aa", border: "#fdba74", text: "#9a3412" },
+                    { score: 6,  emoji: "😟", label: "Considerable", bg: "#fecaca", border: "#fca5a5", text: "#991b1b" },
+                    { score: 8,  emoji: "😢", label: "Severo",       bg: "#fda4af", border: "#fb7185", text: "#881337" },
+                    { score: 10, emoji: "😭", label: "Insoportable", bg: "#f87171", border: "#ef4444", text: "#fff" },
+                  ] as const).map(({ score, emoji, label, bg, border, text }) => {
+                    const isSelected = painScore === score;
+                    return (
+                      <button
+                        key={score}
+                        type="button"
+                        onClick={() => {
+                          setPainScore(score);
+                          emitToothDiagnosisChange(surfaceDiagnoses, {
+                            painScore: score,
+                          });
+                        }}
+                        className="flex flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 transition-all cursor-pointer"
+                        style={{
+                          backgroundColor: isSelected ? bg : "transparent",
+                          border: isSelected ? `2px solid ${border}` : "2px solid transparent",
+                          transform: isSelected ? "scale(1.12)" : "scale(1)",
+                          opacity: isSelected ? 1 : 0.6,
+                        }}
+                        title={`${score} — ${label}`}
+                      >
+                        <span className="text-xl leading-none">{emoji}</span>
+                        <span
+                          className="text-[9px] font-medium leading-tight"
+                          style={{ color: isSelected ? text : "#6b7280" }}
+                        >
+                          {score}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-                <div>
-                  <Label htmlFor="general-notes" className="text-xs mb-2 block">
-                    Notas generales
-                  </Label>
-                  <OdontogramInput
-                    id="general-notes"
-                    value={generalNotes}
-                    onChange={(e) => {
-                      const nextGeneralNotes = e.target.value;
-                      setGeneralNotes(nextGeneralNotes);
-                      emitToothDiagnosisChange(surfaceDiagnoses, {
-                        generalNotes: nextGeneralNotes,
-                      });
-                    }}
-                    placeholder="Observaciones..."
-                    className="text-sm"
-                  />
-                </div>
+                {painScore > 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {painScore === 2 && "Dolor leve — molestia menor"}
+                    {painScore === 4 && "Dolor moderado — interfiere levemente"}
+                    {painScore === 6 && "Dolor considerable — dificulta actividad"}
+                    {painScore === 8 && "Dolor severo — muy difícil de tolerar"}
+                    {painScore === 10 && "Dolor insoportable — el peor posible"}
+                  </p>
+                )}
               </div>
             </div>
           </Card>
 
-          {/* 2.6 Evidencia */}
+          {/* 2.6 Evidencia — Collapsed by default */}
           <Card className="p-4 shadow-sm">
-            <Label className="text-sm font-semibold mb-3 block">
-              Evidencia
-            </Label>
-            <div className="border-2 border-dashed rounded-lg p-6 text-center text-muted-foreground hover:border-primary/50 transition-colors cursor-pointer">
-              <Upload className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">
-                Arrastra archivos aquí o haz clic para seleccionar
-              </p>
-              <p className="text-xs mt-1">
-                Fotos intraorales, radiografías, etc.
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={() => setEvidenceExpanded(!evidenceExpanded)}
+              className="flex items-center gap-2 w-full text-left"
+            >
+              {evidenceExpanded ? (
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              )}
+              <Label className="text-sm font-semibold cursor-pointer flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">5</span>
+                Evidencia
+              </Label>
+              <span className="text-xs text-muted-foreground ml-auto">
+                {evidenceExpanded ? "Ocultar" : "Adjuntar archivos"}
+              </span>
+            </button>
+            {evidenceExpanded && (
+              <div className="mt-3 border-2 border-dashed rounded-lg p-6 text-center text-muted-foreground hover:border-primary/50 transition-colors cursor-pointer">
+                <Upload className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">
+                  Arrastra archivos aquí o haz clic para seleccionar
+                </p>
+                <p className="text-xs mt-1">
+                  Fotos intraorales, radiografías, etc.
+                </p>
+              </div>
+            )}
           </Card>
         </div>
 

@@ -1,24 +1,14 @@
 "use client";
 
 import { Button } from "@/components/ui/primitives/shadcn/button";
-import {
-  User,
-  Mail,
-  Phone,
-  MapPin,
-  Briefcase,
-  Heart,
-  Droplets,
-  Shield,
-  AlertCircle,
-  Edit,
-} from "lucide-react";
+import { User, Edit } from "lucide-react";
 import { PatientAttachmentsSection } from "@/components/features/patients/attachments/PatientAttachmentsSection";
 import type { Patient } from "@/lib/entity/patients";
 import type {
   ClinicalHistoryMedicalHistory,
   ClinicalHistoryPatientHeader,
 } from "@/lib/entity/clinical-history";
+import { usePatientInfoColumn } from "@/lib/hooks/patients/clinical-history-page/use-patient-info-column";
 
 interface PatientInfoColumnProps {
   patient: Patient;
@@ -29,28 +19,6 @@ interface PatientInfoColumnProps {
   canEdit?: boolean;
   activeAppointmentId?: string;
   onEditPatient?: () => void;
-}
-
-/** Extracts YYYY-MM-DD from any ISO date string, avoiding timezone shift */
-function formatDateShort(isoDate?: string | null): string | null {
-  if (!isoDate) return null;
-  // Slice the first 10 chars is safe for all ISO formats: YYYY-MM-DDTHH:... or YYYY-MM-DD
-  return isoDate.slice(0, 10);
-}
-
-/** Accurate age calculation that accounts for birth month/day */
-function calculateAge(isoDate?: string | null): number | null {
-  if (!isoDate) return null;
-  const dateStr = isoDate.slice(0, 10); // YYYY-MM-DD
-  const [year, month, day] = dateStr.split("-").map(Number);
-  if (!year || !month || !day) return null;
-  const today = new Date();
-  let age = today.getFullYear() - year;
-  const hasBirthdayPassed =
-    today.getMonth() + 1 > month ||
-    (today.getMonth() + 1 === month && today.getDate() >= day);
-  if (!hasBirthdayPassed) age -= 1;
-  return age;
 }
 
 function InfoRow({
@@ -96,24 +64,12 @@ export function PatientInfoColumn({
   activeAppointmentId,
   onEditPatient,
 }: PatientInfoColumnProps) {
-
-  const dobShort = formatDateShort(patient.dateOfBirth);
-  const age = calculateAge(patient.dateOfBirth);
-
-  const genderLabel =
-    patient.gender === "M"
-      ? "Masculino"
-      : patient.gender === "F"
-        ? "Femenino"
-        : patient.gender ?? null;
-
-  const profileMeta = [
-    dobShort,
-    age !== null ? `${age} años` : null,
-    genderLabel,
-  ]
-    .filter(Boolean)
-    .join(" • ");
+  const { profileMeta, contactItems, personalItems, clinicalItems } =
+    usePatientInfoColumn({
+      patient,
+      medicalHistory,
+      patientHeader,
+    });
 
   return (
     <div className="flex flex-col h-full overflow-y-auto pr-3 gap-5 py-2">
@@ -142,39 +98,45 @@ export function PatientInfoColumn({
       {/* Contacto */}
       <SectionCard title="Contacto">
         <ul className="space-y-3">
-          <InfoRow icon={Mail} value={patient.email} />
-          <InfoRow icon={Phone} value={patient.phone} />
-          <InfoRow icon={MapPin} value={patient.address} />
+          {contactItems.map((item) => (
+            <InfoRow
+              key={`${item.icon.displayName ?? item.icon.name}-${item.value}`}
+              icon={item.icon}
+              value={item.value}
+            />
+          ))}
         </ul>
       </SectionCard>
 
       {/* Datos personales (de antecedentes) */}
-      {medicalHistory &&
-        (medicalHistory.occupation || medicalHistory.maritalStatus) && (
-          <SectionCard title="Datos Personales">
-            <ul className="space-y-3">
-              <InfoRow icon={Briefcase} value={medicalHistory.occupation} />
-              <InfoRow icon={Heart} value={medicalHistory.maritalStatus} />
-            </ul>
-          </SectionCard>
-        )}
+      {personalItems.length > 0 && (
+        <SectionCard title="Datos Personales">
+          <ul className="space-y-3">
+            {personalItems.map((item) => (
+              <InfoRow
+                key={`${item.icon.displayName ?? item.icon.name}-${item.value}`}
+                icon={item.icon}
+                value={item.value}
+              />
+            ))}
+          </ul>
+        </SectionCard>
+      )}
 
       {/* Clínico (de patientHeader) */}
-      {patientHeader &&
-        (patientHeader.bloodType ||
-          patientHeader.insurancePlan ||
-          patientHeader.emergencyContact) && (
-          <SectionCard title="Clínico">
-            <ul className="space-y-3">
-              <InfoRow icon={Droplets} value={patientHeader.bloodType} />
-              <InfoRow icon={Shield} value={patientHeader.insurancePlan} />
+      {clinicalItems.length > 0 && (
+        <SectionCard title="Clínico">
+          <ul className="space-y-3">
+            {clinicalItems.map((item) => (
               <InfoRow
-                icon={AlertCircle}
-                value={patientHeader.emergencyContact}
+                key={`${item.icon.displayName ?? item.icon.name}-${item.value}`}
+                icon={item.icon}
+                value={item.value}
               />
-            </ul>
-          </SectionCard>
-        )}
+            ))}
+          </ul>
+        </SectionCard>
+      )}
 
       {/* Archivos */}
       <SectionCard title="Archivos">
