@@ -55,6 +55,8 @@ const THEME = {
   highlightStroke: "#C4B89A",
 } as const;
 
+type SelectorView = "frontal" | "oclusal" | "lateral";
+
 export function SurfaceSelector({
   toothNumber,
   surfaces,
@@ -86,127 +88,208 @@ export function SurfaceSelector({
     hoveredSurface ??
     (surfaces.length > 0 ? surfaces[surfaces.length - 1].surface : null);
 
-  // Obtener los paths reales del diente para la vista oclusal
-  // (la vista oclusal muestra las 5 superficies completas desde arriba)
-  const viewPaths = getDesignedToothPaths(toothNumber, "oclusal");
+  const views: Array<{
+    key: SelectorView;
+    label: string;
+    helper: string;
+  }> = [
+    {
+      key: "frontal",
+      label: "Frontal",
+      helper: anterior ? "Labial visible" : "Vestibular visible",
+    },
+    {
+      key: "oclusal",
+      label: anterior ? "Incisal" : "Oclusal",
+      helper: "Superficie central",
+    },
+    {
+      key: "lateral",
+      label: "Lateral",
+      helper: anterior ? "Palatino visible" : "Lingual visible",
+    },
+  ];
 
-  return (
-    <div className="flex flex-col items-center gap-3 w-full max-w-xs mx-auto">
-      {/* Título */}
-      <p className="text-xs text-muted-foreground text-center">
-        Haga clic en la región anatómica para seleccionar la superficie.
-      </p>
+  const renderView = (view: SelectorView) => {
+    const viewPaths = getDesignedToothPaths(toothNumber, view);
+    const viewMeta = views.find((item) => item.key === view);
 
-      {/* SVG real del diente — reutiliza el mismo sistema del odontograma */}
-      <div className="w-full max-w-55 relative group">
-        {viewPaths ? (
-          <svg
-            viewBox={viewPaths.viewBox}
-            className="w-full h-auto"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            {/* Raíces decorativas */}
-            {viewPaths.roots.map((rootD, i) => (
-              <path
-                key={`root-${i}`}
-                d={rootD}
-                fill={THEME.rootFill}
-                stroke={THEME.rootStroke}
-                strokeWidth="0.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                pointerEvents="none"
-              />
-            ))}
+    if (!viewMeta) return null;
 
-            {/* Superficies clickeables */}
-            {viewPaths.surfaces.map((sp: SurfacePath) => {
-              if (!sp.d) return null;
-              const selected = isSelected(sp.surface as ToothSurface);
-              const hovered = hoveredSurface === sp.surface;
-              const color = getSurfaceColor(sp.surface as ToothSurface);
+    if (!viewPaths) {
+      return (
+        <div
+          key={view}
+          className="flex h-full min-h-56 flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+        >
+          <div className="mb-3 space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">
+              {viewMeta.label}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              {viewMeta.helper}
+            </p>
+          </div>
 
-              return (
-                <path
-                  key={sp.surface}
-                  d={sp.d}
-                  fill={selected ? color : THEME.surfaceDefault}
-                  fillOpacity={selected ? 0.85 : 1}
-                  stroke={selected ? "#0369A1" : THEME.outlineStroke}
-                  strokeWidth={selected ? "1.5" : "0.5"}
-                  strokeLinejoin="round"
-                  className={cn(
-                    "transition-all duration-150",
-                    disabled
-                      ? "cursor-not-allowed opacity-50"
-                      : "cursor-pointer hover:brightness-95",
-                    hovered && !disabled && "brightness-90",
-                  )}
-                  onClick={() => handleSurfaceClick(sp.surface as ToothSurface)}
-                  onMouseEnter={() =>
-                    setHoveredSurface(sp.surface as ToothSurface)
-                  }
-                  onMouseLeave={() => setHoveredSurface(null)}
-                />
-              );
-            })}
+          <div className="flex min-h-40 flex-1 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-center text-xs text-muted-foreground">
+            SVG no disponible para esta vista
+          </div>
+        </div>
+      );
+    }
 
-            {/* Contorno principal */}
-            <path
-              d={viewPaths.outline}
-              fill="none"
-              stroke={THEME.outlineStroke}
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              pointerEvents="none"
-            />
+    const visibleSurfaceLabels = viewPaths.surfaces
+      .filter((surfacePath) => Boolean(surfacePath.d))
+      .map(
+        (surfacePath) =>
+          getSurfaceLabel(surfacePath.surface as ToothSurface, anterior).short,
+      )
+      .join(" · ");
 
-            {/* Líneas de detalle anatómico */}
-            {viewPaths.highlights.map((hlD, i) => (
-              <path
-                key={`hl-${i}`}
-                d={hlD}
-                fill="none"
-                stroke={THEME.highlightStroke}
-                strokeWidth="0.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                pointerEvents="none"
-              />
-            ))}
-          </svg>
-        ) : (
-          <p className="text-xs text-muted-foreground text-center py-8">
-            SVG no disponible para este diente
-          </p>
-        )}
-
-        {/* Leyenda overlay para la superficie hovered */}
-        {hoveredSurface && (
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            <span className="bg-white/80 backdrop-blur-sm text-slate-800 font-bold px-2 py-0.5 rounded shadow-sm text-sm">
-              {getSurfaceLabel(hoveredSurface, anterior).short} –{" "}
-              {getSurfaceLabel(hoveredSurface, anterior).full}
+    return (
+      <div
+        key={view}
+        className="flex h-full min-h-56 flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+      >
+        <div className="mb-3 space-y-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">
+              {viewMeta.label}
+            </p>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+              {viewMeta.helper}
             </span>
           </div>
-        )}
+          <p className="text-[11px] text-muted-foreground">
+            {visibleSurfaceLabels}
+          </p>
+        </div>
+
+        <div className="flex flex-1 items-center justify-center rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+          <div
+            className={cn(
+              "mx-auto w-full",
+              view === "oclusal" ? "max-w-40" : "max-w-35",
+            )}
+          >
+            <svg
+              viewBox={viewPaths.viewBox}
+              className={cn(
+                "h-auto w-full",
+                view === "oclusal" ? "aspect-square" : "aspect-4/5",
+              )}
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {viewPaths.roots.map((rootD, index) => (
+                <path
+                  key={`${view}-root-${index}`}
+                  d={rootD}
+                  fill={THEME.rootFill}
+                  stroke={THEME.rootStroke}
+                  strokeWidth="0.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  pointerEvents="none"
+                />
+              ))}
+
+              {viewPaths.surfaces.map((surfacePath: SurfacePath) => {
+                if (!surfacePath.d) return null;
+
+                const surface = surfacePath.surface as ToothSurface;
+                const selected = isSelected(surface);
+                const highlighted = activeSurface === surface;
+                const color = getSurfaceColor(surface);
+
+                return (
+                  <path
+                    key={`${view}-${surfacePath.surface}`}
+                    d={surfacePath.d}
+                    fill={selected ? color : THEME.surfaceDefault}
+                    fillOpacity={selected ? 0.88 : highlighted ? 0.94 : 1}
+                    stroke={
+                      selected || highlighted ? "#0369A1" : THEME.outlineStroke
+                    }
+                    strokeWidth={selected || highlighted ? "1.4" : "0.5"}
+                    strokeLinejoin="round"
+                    className={cn(
+                      "transition-all duration-150",
+                      disabled
+                        ? "cursor-not-allowed opacity-50"
+                        : "cursor-pointer hover:brightness-95",
+                      highlighted && !disabled && "brightness-95",
+                    )}
+                    onClick={() => handleSurfaceClick(surface)}
+                    onMouseEnter={() => setHoveredSurface(surface)}
+                    onMouseLeave={() => setHoveredSurface(null)}
+                  />
+                );
+              })}
+
+              <path
+                d={viewPaths.outline}
+                fill="none"
+                stroke={THEME.outlineStroke}
+                strokeWidth="1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                pointerEvents="none"
+              />
+
+              {viewPaths.highlights.map((highlightPath, index) => (
+                <path
+                  key={`${view}-highlight-${index}`}
+                  d={highlightPath}
+                  fill="none"
+                  stroke={THEME.highlightStroke}
+                  strokeWidth="0.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  pointerEvents="none"
+                />
+              ))}
+            </svg>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="w-full max-w-4xl space-y-4">
+      <div className="space-y-1 text-center">
+        <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+          Seleccion de caras
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Haz clic sobre cualquiera de las tres vistas del diente para marcar
+          las superficies clinicamente visibles en el odontograma.
+        </p>
       </div>
 
-      {/* Indicador de selección estilo pill */}
-      <div
-        className={cn(
-          "px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all",
-          activeSurface
-            ? "bg-sky-100 text-sky-700"
-            : "bg-muted text-muted-foreground",
-        )}
-      >
-        {activeSurface
-          ? `${isSelected(activeSurface) ? "✓" : ""} ${
-              getSurfaceLabel(activeSurface, anterior).full
-            }`
-          : "Esperando selección..."}
+      <div className="grid gap-3 lg:grid-cols-3">
+        {views.map((view) => renderView(view.key))}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <div
+          className={cn(
+            "rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-all",
+            activeSurface
+              ? "bg-sky-100 text-sky-700"
+              : "bg-muted text-muted-foreground",
+          )}
+        >
+          {activeSurface
+            ? `${isSelected(activeSurface) ? "✓" : ""} ${
+                getSurfaceLabel(activeSurface, anterior).full
+              }`
+            : "Esperando selección..."}
+        </div>
+
+        <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm">
+          {surfaces.length} superficie{surfaces.length === 1 ? "" : "s"} activas
+        </div>
       </div>
     </div>
   );
