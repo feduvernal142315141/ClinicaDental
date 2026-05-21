@@ -87,6 +87,34 @@ function getLesionIcon(lesion: NonCariousLesion): string {
   return icons[lesion] || "•";
 }
 
+/**
+ * Lista canónica de pruebas de vitalidad (v2 — 7 pruebas).
+ * Usada para inicializar el estado y para fusionar datos guardados
+ * con versiones anteriores que solo tenían 5 pruebas.
+ */
+const CANONICAL_VITALITY_DEFAULTS: VitalityTest[] = [
+  { type: "frio",               result: "no-realizado" },
+  { type: "calor",              result: "no-realizado" },
+  { type: "ept",                result: "no-realizado" },
+  { type: "percusion-horizontal", result: "no-realizado" },
+  { type: "percusion-vertical",   result: "no-realizado" },
+  { type: "palpacion",          result: "no-realizado" },
+  { type: "dulce",              result: "no-realizado" },
+];
+
+/**
+ * Fusiona los resultados guardados sobre la lista canónica.
+ * Garantiza que siempre aparezcan las 7 pruebas, preservando
+ * resultados ya registrados para los tipos que coincidan.
+ * Tipos obsoletos (p.ej. "percusion") se descartan silenciosamente.
+ */
+function mergeVitalityTests(stored: VitalityTest[] | undefined): VitalityTest[] {
+  const storedMap = new Map(stored?.map((t) => [t.type, t]) ?? []);
+  return CANONICAL_VITALITY_DEFAULTS.map(
+    (def) => storedMap.get(def.type) ?? def,
+  );
+}
+
 export function DiagnosisTab({
   tooth,
   selectedSurfaces,
@@ -116,14 +144,11 @@ export function DiagnosisTab({
   const [pulpalStatus, setPulpalStatus] = useState<PulpalStatus>("normal");
   const [periapicalStatus, setPeriapicalStatus] =
     useState<PeriapicalStatus>("normal");
-  const [vitalityTests, setVitalityTests] = useState<VitalityTest[]>([
-    { type: "frio", result: "no-realizado" },
-    { type: "calor", result: "no-realizado" },
-    { type: "ept", result: "no-realizado" },
-    { type: "percusion", result: "no-realizado" },
-    { type: "palpacion", result: "no-realizado" },
-  ]);
+  const [vitalityTests, setVitalityTests] = useState<VitalityTest[]>(
+    CANONICAL_VITALITY_DEFAULTS,
+  );
   const [painScore, setPainScore] = useState<number>(0);
+  const [painDescription, setPainDescription] = useState<string>("");
   const [generalNotes, setGeneralNotes] = useState("");
   const [evidenceExpanded, setEvidenceExpanded] = useState(false);
 
@@ -137,6 +162,7 @@ export function DiagnosisTab({
     periapicalStatus: overrides?.periapicalStatus ?? periapicalStatus,
     vitalityTests: overrides?.vitalityTests ?? vitalityTests,
     painScore: overrides?.painScore ?? painScore,
+    painDescription: overrides?.painDescription ?? painDescription,
     generalNotes: overrides?.generalNotes ?? generalNotes,
     attachments: overrides?.attachments ?? initialToothDiagnosis?.attachments,
     evidenceRefs:
@@ -180,18 +206,9 @@ export function DiagnosisTab({
 
     setPulpalStatus(initialToothDiagnosis.pulpalStatus || "normal");
     setPeriapicalStatus(initialToothDiagnosis.periapicalStatus || "normal");
-    setVitalityTests(
-      initialToothDiagnosis.vitalityTests?.length > 0
-        ? initialToothDiagnosis.vitalityTests
-        : [
-            { type: "frio", result: "no-realizado" },
-            { type: "calor", result: "no-realizado" },
-            { type: "ept", result: "no-realizado" },
-            { type: "percusion", result: "no-realizado" },
-            { type: "palpacion", result: "no-realizado" },
-          ],
-    );
+    setVitalityTests(mergeVitalityTests(initialToothDiagnosis.vitalityTests));
     setPainScore(initialToothDiagnosis.painScore ?? 0);
+    setPainDescription(initialToothDiagnosis.painDescription ?? "");
     setGeneralNotes(initialToothDiagnosis.generalNotes || "");
   }, [initialToothDiagnosis]);
 
@@ -835,6 +852,25 @@ export function DiagnosisTab({
                     {painScore === 10 && "Dolor insoportable — el peor posible"}
                   </p>
                 )}
+                {/* Descripción libre del dolor */}
+                <div className="mt-2">
+                  <Label className="text-xs mb-1 block text-muted-foreground">
+                    Descripción del dolor
+                  </Label>
+                  <textarea
+                    value={painDescription}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setPainDescription(next);
+                      emitToothDiagnosisChange(surfaceDiagnoses, {
+                        painDescription: next,
+                      });
+                    }}
+                    placeholder="Ej: dolor punzante al morder, irradiado al oído derecho…"
+                    rows={2}
+                    className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                  />
+                </div>
               </div>
             </div>
           </Card>
