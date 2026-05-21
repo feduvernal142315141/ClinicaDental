@@ -29,5 +29,8 @@ export const VITALITY_TEST_LABELS: Record<VitalityTestType, string> = {
   calor: "Calor",
   ept: "EPT",
   percusion: "Percusión",
+  "percusion-horizontal": "Percusión Horizontal",
+  "percusion-vertical": "Percusión Vertical",
   palpacion: "Palpación",
+  dulce: "Dulce / Azúcar",
 }

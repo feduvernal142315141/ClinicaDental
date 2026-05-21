@@ -43,6 +43,7 @@ export interface ClinicalEventDiagnosisPayload {
   periapicalStatus?: PeriapicalStatus;
   vitalityTests?: VitalityTest[];
   painScore?: number;
+  painDescription?: string;
   generalNotes?: string;
   evidenceRefs?: EvidenceRef[];
 }

@@ -36,8 +36,11 @@ export type VitalityTestType =
   | "frio"
   | "calor"
   | "ept"
-  | "percusion"
-  | "palpacion";
+  | "percusion" // conservado para compatibilidad con datos existentes
+  | "percusion-horizontal"
+  | "percusion-vertical"
+  | "palpacion"
+  | "dulce";
 export type VitalityTestResult = "positivo" | "negativo" | "no-realizado";
 export type EvidenceOwnerLevel = "surface" | "tooth" | "visit";
 
@@ -107,6 +110,7 @@ export interface ToothDiagnosis {
   periapicalStatus?: PeriapicalStatus;
   vitalityTests: VitalityTest[];
   painScore?: number;
+  painDescription?: string;
   generalNotes?: string;
   attachments?: string[];
   evidenceRefs?: EvidenceRef[];
