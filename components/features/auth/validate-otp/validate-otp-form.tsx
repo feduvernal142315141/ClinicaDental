@@ -65,7 +65,7 @@ export function ValidateOtpForm() {
   useEffect(() => {
     if (!session?.otpExpiresAt) {
       setLocalError(
-        "Sesión OTP no encontrada. Puedes probar el formulario sin redirección."
+        "Sesión OTP no encontrada. Puedes probar el formulario sin redirección.",
       );
       return;
     }
@@ -84,7 +84,11 @@ export function ValidateOtpForm() {
 
   // Detección éxito/error (CR-1: NO chequear authError post-await)
   useEffect(() => {
-    if (prevLoadingRef.current && !loading && validationState === "validating") {
+    if (
+      prevLoadingRef.current &&
+      !loading &&
+      validationState === "validating"
+    ) {
       if (authError) {
         setValidationState("error");
       } else {
@@ -101,7 +105,8 @@ export function ValidateOtpForm() {
     return () => clearTimeout(timer);
   }, [validationState]);
 
-  const canVerify = otp.length === 6 && !loading && validationState !== "success";
+  const canVerify =
+    otp.length === 6 && !loading && validationState !== "success";
   const canResend = timeLeft === 0 && !resendLoading;
 
   const handleVerify = async () => {
@@ -136,7 +141,7 @@ export function ValidateOtpForm() {
       router.refresh();
     } catch (e) {
       setLocalError(
-        e instanceof Error ? e.message : "No se pudo reenviar el código"
+        e instanceof Error ? e.message : "No se pudo reenviar el código",
       );
     } finally {
       setResendLoading(false);
@@ -150,44 +155,53 @@ export function ValidateOtpForm() {
         <>Ingresa el código de 6 dígitos enviado a {email || "tu correo"}.</>
       }
     >
-      <div className="relative flex items-center justify-center">
-        <InputOTP
-          containerClassName={`transition-transform duration-300 ${
-            validationState === "error"
-              ? "animate-otp-shake"
-              : validationState === "success"
-                ? "scale-[1.02]"
-                : ""
+      <div className="flex flex-col items-center gap-3">
+        <div
+          className={`transition-all duration-300 ${
+            showSuccessOverlay ? "scale-[0.99] opacity-35" : "opacity-100"
           }`}
-          maxLength={6}
-          value={otp}
-          onChange={(value) => {
-            setOtp(value);
-            if (validationState === "error") setValidationState("idle");
-          }}
-          inputMode="numeric"
-          pattern="^[0-9]*$"
-          disabled={loading || validationState === "success"}
         >
-          <InputOTPGroup className="gap-2">
-            {[0, 1, 2, 3, 4, 5].map((index) => (
-              <InputOTPSlot
-                key={index}
-                index={index}
-                className={getSlotClassName(index, validationState)}
-              />
-            ))}
-          </InputOTPGroup>
-        </InputOTP>
+          <InputOTP
+            containerClassName={`transition-transform duration-300 ${
+              validationState === "error"
+                ? "animate-otp-shake"
+                : validationState === "success"
+                  ? "scale-[1.02]"
+                  : ""
+            }`}
+            maxLength={6}
+            value={otp}
+            onChange={(value) => {
+              setOtp(value);
+              if (validationState === "error") setValidationState("idle");
+            }}
+            inputMode="numeric"
+            pattern="^[0-9]*$"
+            disabled={loading || validationState === "success"}
+          >
+            <InputOTPGroup className="gap-2">
+              {[0, 1, 2, 3, 4, 5].map((index) => (
+                <InputOTPSlot
+                  key={index}
+                  index={index}
+                  className={getSlotClassName(index, validationState)}
+                />
+              ))}
+            </InputOTPGroup>
+          </InputOTP>
+        </div>
 
-        {showSuccessOverlay && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 rounded-md gap-1.5">
-            <div className="h-5 w-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-semibold text-green-700">
-              Iniciando sesión...
-            </span>
-          </div>
-        )}
+        <div
+          className="flex min-h-10 items-center justify-center"
+          aria-live="polite"
+        >
+          {showSuccessOverlay ? (
+            <div className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1.5 text-sm font-semibold text-green-700 shadow-sm ring-1 ring-green-100">
+              <div className="h-4.5 w-4.5 rounded-full border-2 border-green-500 border-t-transparent animate-spin" />
+              <span>Iniciando sesión...</span>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="text-center text-sm text-muted-foreground">
