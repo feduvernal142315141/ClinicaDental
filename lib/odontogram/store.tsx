@@ -137,8 +137,10 @@ const getDefaultVitalityTests = (): VitalityTest[] => [
   { type: "frio", result: "no-realizado" },
   { type: "calor", result: "no-realizado" },
   { type: "ept", result: "no-realizado" },
-  { type: "percusion", result: "no-realizado" },
+  { type: "percusion-horizontal", result: "no-realizado" },
+  { type: "percusion-vertical", result: "no-realizado" },
   { type: "palpacion", result: "no-realizado" },
+  { type: "dulce", result: "no-realizado" },
 ];
 
 const createEmptyDiagnosisRecord = (toothNumber: number): ToothDiagnosis => ({
@@ -321,6 +323,8 @@ const normalizeToothDiagnosis = (
     : result.vitalityTests;
   result.painScore =
     toothDiagnosisEvent?.diagnosisPayload?.painScore ?? result.painScore;
+  result.painDescription =
+    toothDiagnosisEvent?.diagnosisPayload?.painDescription ?? result.painDescription;
   result.generalNotes =
     toothDiagnosisEvent?.diagnosisPayload?.generalNotes ?? result.generalNotes;
   result.evidenceRefs =
@@ -597,6 +601,7 @@ const createOdontogramStore = ({
           periapicalStatus: diagnosis.periapicalStatus,
           vitalityTests: diagnosis.vitalityTests,
           painScore: diagnosis.painScore,
+          painDescription: diagnosis.painDescription,
           generalNotes: diagnosis.generalNotes,
           evidenceRefs: diagnosis.evidenceRefs,
         },
