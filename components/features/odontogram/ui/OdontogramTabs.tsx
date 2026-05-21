@@ -45,29 +45,30 @@ export function OdontogramTabs({
 }: OdontogramTabsProps) {
   const enhancedItems = items.map((item) => ({
     ...item,
-    label:
-      item.statusDot ? (
-        <span className="inline-flex items-center gap-1.5">
-          {item.label}
-          <span
-            className="inline-block w-2 h-2 rounded-full shrink-0"
-            style={{ backgroundColor: DOT_COLORS[item.statusDot] ?? DOT_COLORS.muted }}
-            title={
-              item.statusDot === "green"
-                ? "Datos registrados"
-                : item.statusDot === "blue"
-                  ? "Planes agregados"
-                  : item.statusDot === "amber"
-                    ? "Pendiente revisión"
-                    : item.statusDot === "muted"
-                      ? "Próximamente"
-                      : ""
-            }
-          />
-        </span>
-      ) : (
-        item.label
-      ),
+    label: item.statusDot ? (
+      <span className="inline-flex items-center gap-1.5">
+        {item.label}
+        <span
+          className="inline-block w-2 h-2 rounded-full shrink-0"
+          style={{
+            backgroundColor: DOT_COLORS[item.statusDot] ?? DOT_COLORS.muted,
+          }}
+          title={
+            item.statusDot === "green"
+              ? "Datos registrados"
+              : item.statusDot === "blue"
+                ? "Planes agregados"
+                : item.statusDot === "amber"
+                  ? "Pendiente revisión"
+                  : item.statusDot === "muted"
+                    ? "Próximamente"
+                    : ""
+          }
+        />
+      </span>
+    ) : (
+      item.label
+    ),
   }));
 
   return (
