@@ -11,7 +11,6 @@ import {
   CheckSquare,
   Square,
   Columns2,
-  ArrowRight,
   HelpCircle,
   Zap,
 } from "lucide-react";
@@ -241,9 +240,7 @@ export function SurfacesTab({
 
   /** Check if a zone group is fully selected */
   const isZoneSelected = (zoneSurfaces: ToothSurface[]): boolean =>
-    zoneSurfaces.every((s) =>
-      selectedSurfaces.some((ss) => ss.surface === s),
-    );
+    zoneSurfaces.every((s) => selectedSurfaces.some((ss) => ss.surface === s));
 
   const handleApplyTemplate = (template: ToothTemplate) => {
     console.group(`[SurfacesTab] 🎨 Aplicando plantilla: ${template.name}`);
@@ -326,8 +323,7 @@ export function SurfacesTab({
           <div
             className="w-3 h-3 rounded"
             style={{
-              backgroundColor:
-                SURFACE_STATUS_COLORS[status as SurfaceStatus],
+              backgroundColor: SURFACE_STATUS_COLORS[status as SurfaceStatus],
             }}
           />
           <span className="text-xs">{label}</span>
@@ -349,24 +345,28 @@ export function SurfacesTab({
             {getQuadrantName(tooth.number)}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Popover
-            content={legendContent}
-            title="Escala de colores"
-            placement="bottomRight"
-            trigger="hover"
-          >
-            <button className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground">
-              <HelpCircle className="w-4 h-4" />
-            </button>
-          </Popover>
-          <div className="text-right">
-            <p className="text-xs font-medium text-muted-foreground">
+        <div className="flex items-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 shadow-sm">
+            <Popover
+              content={legendContent}
+              title="Escala de colores"
+              placement="bottomRight"
+              trigger="hover"
+            >
+              <button
+                type="button"
+                aria-label="Ver escala de colores"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white hover:text-foreground"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </Popover>
+            <span className="text-xs font-medium text-muted-foreground">
               Superficies
-            </p>
-            <p className="text-2xl font-bold leading-none">
+            </span>
+            <span className="text-lg font-bold leading-none text-slate-950">
               {selectedSurfaces.length}
-            </p>
+            </span>
           </div>
         </div>
       </div>
@@ -382,9 +382,9 @@ export function SurfacesTab({
       )}
 
       {/* Main 2-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
-        {/* Left column: SVG oclusal with surface selector */}
-        <Card className="p-4 flex items-center justify-center">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
+        {/* Left column: selector multi-vista */}
+        <Card className="p-4 lg:p-5">
           <SurfaceSelector
             toothNumber={tooth.number}
             surfaces={selectedSurfaces}
@@ -416,7 +416,10 @@ export function SurfacesTab({
                       backgroundColor: surface.color,
                       color: "white",
                       ...(flashedSurfaces.has(surface.surface)
-                        ? { transform: "scale(1.15)", boxShadow: `0 0 8px ${surface.color}` }
+                        ? {
+                            transform: "scale(1.15)",
+                            boxShadow: `0 0 8px ${surface.color}`,
+                          }
                         : {}),
                     }}
                   >
@@ -445,8 +448,12 @@ export function SurfacesTab({
           {/* Quick actions - grouped */}
           <Card className="p-3">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
-              Acciones rápidas
+              Atajos secundarios
             </span>
+            <p className="mb-3 text-xs leading-5 text-muted-foreground">
+              La seleccion principal ocurre sobre las tres vistas del diente.
+              Usa estos atajos solo para acelerar acciones repetidas.
+            </p>
 
             {/* Mass selection */}
             <div className="grid grid-cols-2 gap-1.5 mb-2">
@@ -474,26 +481,23 @@ export function SurfacesTab({
 
             {/* Zone selection */}
             <div className="space-y-1.5">
+              <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+                Zonas derivadas
+              </p>
               <Button
                 variant={
-                  isZoneSelected(["mesial", "distal"])
-                    ? "default"
-                    : "outline"
+                  isZoneSelected(["mesial", "distal"]) ? "default" : "outline"
                 }
                 size="sm"
                 className="w-full text-xs h-8 bg-transparent"
-                onClick={() =>
-                  handleToggleZone(["mesial", "distal"])
-                }
+                onClick={() => handleToggleZone(["mesial", "distal"])}
                 disabled={isDisabled}
               >
                 <Columns2 className="w-3 h-3 mr-1" />
                 Proximales (M+D)
               </Button>
               <Button
-                variant={
-                  isZoneSelected(["facial"]) ? "default" : "outline"
-                }
+                variant={isZoneSelected(["facial"]) ? "default" : "outline"}
                 size="sm"
                 className="w-full text-xs h-8 bg-transparent"
                 onClick={() => handleToggleZone(["facial"])}
@@ -502,9 +506,7 @@ export function SurfacesTab({
                 {anterior ? "Labial" : "Vestibular"}
               </Button>
               <Button
-                variant={
-                  isZoneSelected(["lingual"]) ? "default" : "outline"
-                }
+                variant={isZoneSelected(["lingual"]) ? "default" : "outline"}
                 size="sm"
                 className="w-full text-xs h-8 bg-transparent"
                 onClick={() => handleToggleZone(["lingual"])}
@@ -517,32 +519,34 @@ export function SurfacesTab({
 
           {/* Templates - always visible */}
           <Card className="p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                <Zap className="w-3 h-3 inline mr-1" />
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                <Zap className="h-3.5 w-3.5 shrink-0" />
                 Plantillas
               </span>
               {selectedSurfaces.length > 0 && !isDisabled && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="text-xs h-auto p-0"
+                <nav
+                  aria-label="Navegacion rapida"
+                  className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs"
+                >
+                  <button
+                    type="button"
+                    className="font-medium leading-none text-primary transition-colors hover:text-primary/80"
                     onClick={() => onNavigateToTab?.("diagnostico")}
                   >
-                    <ArrowRight className="w-3 h-3 mr-0.5" />
                     Diagnóstico
-                  </Button>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="text-xs h-auto p-0"
+                  </button>
+                  <span aria-hidden="true" className="text-slate-300">
+                    /
+                  </span>
+                  <button
+                    type="button"
+                    className="font-medium leading-none text-primary transition-colors hover:text-primary/80"
                     onClick={() => onNavigateToTab?.("plan")}
                   >
-                    <ArrowRight className="w-3 h-3 mr-0.5" />
                     Plan
-                  </Button>
-                </div>
+                  </button>
+                </nav>
               )}
             </div>
             <div className="grid grid-cols-2 gap-1.5">
@@ -557,7 +561,7 @@ export function SurfacesTab({
                 >
                   <div className="flex items-center gap-1.5 w-full">
                     <div
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: template.color }}
                     />
                     <span className="text-xs truncate">{template.name}</span>
