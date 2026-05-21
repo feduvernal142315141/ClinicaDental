@@ -28,7 +28,14 @@ import {
   GLOBAL_STATUS_COLORS,
   SURFACE_STATUS_COLORS,
 } from "./types";
-import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  type ReactNode,
+} from "react";
 import { SurfacesTab } from "./surfaces-tab";
 import { DiagnosisTab } from "./diagnosis-tab";
 import { PlanTab } from "./plan-tab";
@@ -99,8 +106,10 @@ function getDefaultVitalityTests(): VitalityTest[] {
     { type: "frio", result: "no-realizado" },
     { type: "calor", result: "no-realizado" },
     { type: "ept", result: "no-realizado" },
-    { type: "percusion", result: "no-realizado" },
+    { type: "percusion-horizontal", result: "no-realizado" },
+    { type: "percusion-vertical", result: "no-realizado" },
     { type: "palpacion", result: "no-realizado" },
+    { type: "dulce", result: "no-realizado" },
   ];
 }
 
@@ -213,6 +222,43 @@ export function ToothModal({
   const [saveErrors, setSaveErrors] = useState<string[]>([]);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [schedulePlans, setSchedulePlans] = useState<ProcedurePlan[]>([]);
+  const performedProcedures = useMemo(() => {
+    if (!tooth) return [];
+
+    return getToothEvents(tooth.number)
+      .filter((event) => event.type === "performed")
+      .map((event) => ({
+        id: event.id,
+        visitId: event.visitId,
+        toothNumber: tooth.number,
+        surfaces: event.surfaces,
+        level: event.level === "surface" ? "surface" : "tooth",
+        procedureId: event.procedureId,
+        adHocName: event.procedureName,
+        fromPlanId: event.id.startsWith("performed:")
+          ? event.id.slice("performed:".length)
+          : undefined,
+        status:
+          event.status === "in_progress"
+            ? "in_progress"
+            : event.status === "canceled"
+              ? "canceled"
+              : "done",
+        materials: [],
+        durationMin: event.durationMin || 0,
+        attachments: event.attachments || [],
+        notes: event.notes,
+        outcome: "ok",
+        operatorId: event.authorId,
+        createdAt: event.createdAt,
+        updatedAt: event.updatedAt,
+      }))
+      .sort(
+        (left, right) =>
+          new Date(right.updatedAt).getTime() -
+          new Date(left.updatedAt).getTime(),
+      );
+  }, [tooth, getToothEvents]);
   const surfaceStatesRef = useRef<SurfaceState[]>([]);
   const handleSurfaceStatesChange = useCallback((states: SurfaceState[]) => {
     surfaceStatesRef.current = states;
@@ -443,14 +489,7 @@ export function ToothModal({
 
       if ((e.ctrlKey || e.metaKey) && e.key === "Tab") {
         e.preventDefault();
-        const tabs = [
-          "superficies",
-          "diagnostico",
-          "plan",
-          "realizado",
-          "perio",
-          "historial",
-        ];
+        const tabs = ["superficies", "diagnostico", "plan", "realizado"];
         const currentIndex = tabs.indexOf(activeTab);
         const nextIndex = (currentIndex + 1) % tabs.length;
         setActiveTab(tabs[nextIndex]);
@@ -488,7 +527,9 @@ export function ToothModal({
   // --- Hooks that must be above early return ---
   const performedDot = useMemo(() => {
     const events = tooth ? getToothEvents(tooth.number) : [];
-    return events.some((e) => e.type === "performed") ? "green" as const : null;
+    return events.some((e) => e.type === "performed")
+      ? ("green" as const)
+      : null;
   }, [tooth, getToothEvents]);
 
   const headerSvgPaths = useMemo(() => {
@@ -842,11 +883,9 @@ export function ToothModal({
       const stillExists = currentPlans.some(
         (plan) =>
           plan.id === event.id ||
-          (
-            event.procedureId === plan.procedureId &&
+          (event.procedureId === plan.procedureId &&
             event.surfaces.length === plan.surfaces.length &&
-            event.surfaces.every((surface) => plan.surfaces.includes(surface))
-          ),
+            event.surfaces.every((surface) => plan.surfaces.includes(surface))),
       );
 
       if (!stillExists) {
@@ -859,14 +898,10 @@ export function ToothModal({
         const existingPlanEvent = getToothEvents(tooth.number).find(
           (e) =>
             e.type === "plan" &&
-            (
-              e.id === plan.id ||
-              (
-                e.procedureId === plan.procedureId &&
+            (e.id === plan.id ||
+              (e.procedureId === plan.procedureId &&
                 e.surfaces.length === plan.surfaces.length &&
-                e.surfaces.every((s) => plan.surfaces.includes(s))
-              )
-            ),
+                e.surfaces.every((s) => plan.surfaces.includes(s)))),
         );
 
         const eventNotes = plan.notes?.trim() ? plan.notes : plan.displayName;
@@ -1092,13 +1127,13 @@ export function ToothModal({
   };
 
   // --- Compute tab status dots (non-hook, safe after early return) ---
-  const surfacesDot = selectedSurfaces.length > 0 ? "green" as const : null;
+  const surfacesDot = selectedSurfaces.length > 0 ? ("green" as const) : null;
   const diagnosisDot = hasMeaningfulToothDiagnosis(toothDiagnosis)
-    ? "green" as const
+    ? ("green" as const)
     : diagnoses.size > 0
-      ? "amber" as const
+      ? ("amber" as const)
       : null;
-  const planDot = plans.length > 0 ? "blue" as const : null;
+  const planDot = plans.length > 0 ? ("blue" as const) : null;
 
   const tabItems: OdontogramTabItem[] = [
     {
@@ -1167,34 +1202,12 @@ export function ToothModal({
           tooth={tooth}
           selectedSurfaces={selectedSurfaces}
           plans={plans}
+          performed={performedProcedures}
+          readOnly={readOnly}
           onNavigateToTab={handleNavigateToTab}
           onSave={handlePerformedSave}
           onPlansChange={handlePlansChange}
         />
-      ),
-    },
-    {
-      key: "perio",
-      label: "Perio",
-      disabled: true,
-      statusDot: "muted",
-      children: (
-        <div className="p-10 border-2 border-dashed rounded-xl text-center text-muted-foreground space-y-2">
-          <p className="text-sm font-medium">Periodontograma</p>
-          <p className="text-xs">Próximamente: profundidad de sondaje, sangrado, movilidad, furcación.</p>
-        </div>
-      ),
-    },
-    {
-      key: "historial",
-      label: "Historial",
-      disabled: true,
-      statusDot: "muted",
-      children: (
-        <div className="p-10 border-2 border-dashed rounded-xl text-center text-muted-foreground space-y-2">
-          <p className="text-sm font-medium">Historial del diente</p>
-          <p className="text-xs">Próximamente: timeline completa de diagnósticos, planes y tratamientos.</p>
-        </div>
       ),
     },
   ];
@@ -1213,7 +1226,7 @@ export function ToothModal({
     if (readOnly) {
       return (
         <div className="flex items-center gap-2 rounded-lg bg-slate-50 border border-slate-200 px-4 py-2.5 text-xs text-slate-600">
-          <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+          <Lock className="w-3.5 h-3.5 shrink-0" />
           <span className="font-medium">Solo lectura</span>
           <span className="text-slate-400">—</span>
           <span>Inicia una consulta para editar este diente</span>
@@ -1223,7 +1236,7 @@ export function ToothModal({
     if (hasUnsavedChanges) {
       return (
         <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 text-xs text-amber-700">
-          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
           <span className="font-semibold">Cambios sin guardar</span>
           <span className="text-amber-500">—</span>
           <span>Guarda antes de cerrar para no perder tu trabajo</span>
@@ -1242,7 +1255,7 @@ export function ToothModal({
           <div className="flex items-center gap-3">
             {/* SVG thumbnail */}
             {headerSvgPaths && (
-              <div className="flex-shrink-0 w-10 h-14 flex items-center justify-center">
+              <div className="shrink-0 w-10 h-14 flex items-center justify-center">
                 <svg
                   viewBox={headerSvgPaths.viewBox}
                   className="w-full h-full"
