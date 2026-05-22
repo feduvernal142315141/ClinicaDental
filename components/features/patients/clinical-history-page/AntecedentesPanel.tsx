@@ -61,7 +61,7 @@ export function AntecedentesPanel({
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-5 py-4">
         {error && (
-          <Alert type="error" message={error} showIcon className="mb-4" />
+          <Alert type="error" title={error} showIcon className="mb-4" />
         )}
 
         <Form

@@ -7,7 +7,7 @@ type SpinSize = "small" | "medium" | "large";
 
 export interface LoadingSpinnerProps {
   /** Loading message to display */
-  tip?: string;
+  description?: string;
   /** Size of the spinner */
   size?: SpinSize;
   /** Additional CSS class */
@@ -25,23 +25,23 @@ export interface LoadingSpinnerProps {
  *
  * @example Basic
  * ```tsx
- * <LoadingSpinner tip="Cargando..." />
+ * <LoadingSpinner description="Cargando..." />
  * ```
  *
  * @example Full page
  * ```tsx
- * <LoadingSpinner tip="Cargando aplicación..." fullPage size="large" />
+ * <LoadingSpinner description="Cargando aplicación..." fullPage size="large" />
  * ```
  *
  * @example As overlay
  * ```tsx
- * <LoadingSpinner tip="Guardando..." overlay>
+ * <LoadingSpinner description="Guardando..." overlay>
  *   <YourContent />
  * </LoadingSpinner>
  * ```
  */
 export function LoadingSpinner({
-  tip = "Cargando...",
+  description = "Cargando...",
   size = "medium",
   className,
   fullPage = false,
@@ -57,19 +57,19 @@ export function LoadingSpinner({
     />
   );
 
-  // Full page loading - use fullscreen mode for tip to work
+  // Full page loading - use fullscreen mode for description to work
   if (fullPage) {
     return (
-      <Spin fullscreen indicator={antIcon} description={tip} size={size} />
+      <Spin fullscreen indicator={antIcon} description={description} size={size} />
     );
   }
 
-  // Overlay mode - wraps content (nested pattern, tip works here)
+  // Overlay mode - wraps content (nested pattern, description works here)
   if (overlay && children) {
     return (
       <Spin
         indicator={antIcon}
-        description={tip}
+        description={description}
         size={size}
         spinning={true}
         className={className}
@@ -79,10 +79,10 @@ export function LoadingSpinner({
     );
   }
 
-  // Simple inline spinner - wrap with empty div for tip to work (nested pattern)
+  // Simple inline spinner - wrap with empty div for description to work (nested pattern)
   return (
     <div className={`flex items-center justify-center p-8 ${className || ""}`}>
-      <Spin indicator={antIcon} description={tip} size={size}>
+      <Spin indicator={antIcon} description={description} size={size}>
         <div style={{ padding: "50px" }} />
       </Spin>
     </div>

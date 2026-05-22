@@ -5,7 +5,7 @@ import { Spin } from "antd";
 
 const GeneralSettings = dynamic(
   () =>
-    import("@/components/settings/general-settings").then(
+    import("@/components/features/settings/general-settings").then(
       (mod) => mod.GeneralSettings,
     ),
   {

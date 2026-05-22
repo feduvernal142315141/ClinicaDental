@@ -39,7 +39,7 @@ export function CampaignList() {
   const isInitialLoading = loading && campaign.length === 0;
 
   if (isInitialLoading) {
-    return <LoadingSpinner tip="Cargando campañas..." />;
+    return <LoadingSpinner description="Cargando campañas..." />;
   }
 
   return (
