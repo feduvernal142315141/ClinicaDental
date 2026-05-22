@@ -25,7 +25,6 @@ dayjs.extend(isoWeek);
 // Constants
 // ---------------------------------------------------------------------------
 
-const MAX_CONCURRENT = 6;
 const SLOT_HEIGHT = 48; // px per 30-min slot
 const START_HOUR = 7;
 const END_HOUR = 21;
@@ -34,8 +33,12 @@ const END_HOUR = 21;
 // Helpers
 // ---------------------------------------------------------------------------
 
-function buildCacheKey(doctorId: string, date: string): string {
-  return `${doctorId}-${date}`;
+function buildRangeCacheKey(
+  startDate: string,
+  endDate: string,
+  doctorIds: string[],
+): string {
+  return `${startDate}|${endDate}|${[...doctorIds].sort().join(",")}`;
 }
 
 function computeDateRange(
@@ -75,20 +78,6 @@ function getDatesInRange(range: SchedulerDateRange): string[] {
   return dates;
 }
 
-/** Run async tasks with a concurrency limit. */
-async function batchedAllSettled<T>(
-  tasks: (() => Promise<T>)[],
-  limit: number,
-): Promise<PromiseSettledResult<T>[]> {
-  const results: PromiseSettledResult<T>[] = [];
-  for (let i = 0; i < tasks.length; i += limit) {
-    const batch = tasks.slice(i, i + limit);
-    const batchResults = await Promise.allSettled(batch.map((fn) => fn()));
-    results.push(...batchResults);
-  }
-  return results;
-}
-
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
@@ -115,9 +104,18 @@ export function useAppointmentsScheduler(
   const [doctorsLoading, setDoctorsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // We use a ref for the cache so that writes inside async closures always
-  // read the latest version without triggering re-renders per entry.
+  /**
+   * Cache keyed by `${startDate}|${endDate}|${sortedDoctorIds}`.
+   * Each entry stores all appointments returned for that range.
+   */
   const cacheRef = useRef<Map<string, Appointment[]>>(new Map());
+
+  /**
+   * Monotonically-increasing sequence number used as a stale-request guard.
+   * Each call to fetchRange increments it; the async closure captures its
+   * value at the time of the call and aborts if it no longer matches.
+   */
+  const fetchSeqRef = useRef(0);
 
   // Trigger to force re-computation of events from cache
   const [cacheVersion, setCacheVersion] = useState(0);
@@ -178,94 +176,96 @@ export function useAppointmentsScheduler(
     };
   }, []);
 
-  // ---- Fetch appointments for the visible range ----------------------------
+  // ---- Fetch appointments for the visible range (single request) -----------
   const fetchRange = useCallback(
-    async (doctorIds: Set<string>, dates: string[]) => {
-      if (doctorIds.size === 0 || dates.length === 0) return;
+    async (doctorIds: Set<string>, range: SchedulerDateRange) => {
+      const ids = [...doctorIds];
+      if (ids.length === 0) return;
 
-      const cache = cacheRef.current;
-      const tasks: (() => Promise<void>)[] = [];
+      const cacheKey = buildRangeCacheKey(range.start, range.end, ids);
 
-      for (const doctorId of doctorIds) {
-        for (const date of dates) {
-          const key = buildCacheKey(doctorId, date);
-          if (cache.has(key)) continue;
-
-          tasks.push(async () => {
-            try {
-              const data = await appointmentsService.getDoctorAppointments(
-                doctorId,
-                date,
-              );
-              cache.set(key, data);
-            } catch {
-              // On failure keep the key absent so it retries next time.
-            }
-          });
-        }
-      }
-
-      if (tasks.length === 0) {
-        // Everything was already cached — just bump version to recompute
+      // Already cached — just bump version to recompute events
+      if (cacheRef.current.has(cacheKey)) {
         setCacheVersion((v) => v + 1);
         return;
       }
 
+      // Capture sequence number to detect stale responses
+      fetchSeqRef.current += 1;
+      const seq = fetchSeqRef.current;
+
       setLoading(true);
       setError(null);
 
-      await batchedAllSettled(tasks, MAX_CONCURRENT);
+      try {
+        const data = await appointmentsService.getAppointmentsByRange({
+          startDate: range.start,
+          endDate: range.end,
+          doctorIds: ids,
+        });
 
-      setCacheVersion((v) => v + 1);
-      setLoading(false);
+        // Discard if a newer request has already been fired
+        if (seq !== fetchSeqRef.current) return;
+
+        cacheRef.current.set(cacheKey, data);
+        setCacheVersion((v) => v + 1);
+      } catch {
+        if (seq === fetchSeqRef.current) {
+          setError("Error al cargar citas del calendario");
+        }
+      } finally {
+        if (seq === fetchSeqRef.current) {
+          setLoading(false);
+        }
+      }
     },
     [],
   );
 
   // Auto-fetch when range or visible doctors change
   useEffect(() => {
-    fetchRange(visibleDoctorIds, datesInRange);
-  }, [visibleDoctorIds, datesInRange, fetchRange]);
+    fetchRange(visibleDoctorIds, dateRange);
+  }, [visibleDoctorIds, dateRange, fetchRange]);
 
   // ---- Build events from cache ---------------------------------------------
   const events: SchedulerEvent[] = useMemo(() => {
-    // cacheVersion used to trigger recalc
     void cacheVersion;
 
-    const cache = cacheRef.current;
+    const ids = [...visibleDoctorIds];
+    if (ids.length === 0) return [];
+
+    const cacheKey = buildRangeCacheKey(dateRange.start, dateRange.end, ids);
+    const appointments = cacheRef.current.get(cacheKey) ?? [];
+
     const allEvents: SchedulerEvent[] = [];
 
-    for (const doctorId of visibleDoctorIds) {
+    for (const appt of appointments) {
+      if (appt.status === "cancelled") continue;
+
+      const doctorId = appt.doctorId ?? appt.doctor_id ?? "";
+      if (!visibleDoctorIds.has(doctorId)) continue;
+
       const doc = doctors.find((d) => d.id === doctorId);
       const color = doc?.color ?? "#999";
 
-      for (const date of datesInRange) {
-        const key = buildCacheKey(doctorId, date);
-        const appointments = cache.get(key);
-        if (!appointments) continue;
-
-        for (const appt of appointments) {
-          if (appt.status === "cancelled") continue;
-          const pos = calcEventPosition(
-            appt.time,
-            appt.duration,
-            START_HOUR,
-            SLOT_HEIGHT,
-          );
-          allEvents.push({
-            appointment: appt,
-            doctorColor: color,
-            top: pos.top,
-            height: pos.height,
-            column: 0,
-            totalColumns: 1,
-          });
-        }
-      }
+      const pos = calcEventPosition(
+        appt.time,
+        appt.duration,
+        START_HOUR,
+        SLOT_HEIGHT,
+      );
+      allEvents.push({
+        appointment: appt,
+        doctorColor: color,
+        top: pos.top,
+        height: pos.height,
+        column: 0,
+        totalColumns: 1,
+      });
     }
 
     return allEvents;
-  }, [cacheVersion, visibleDoctorIds, doctors, datesInRange]);
+  }, [cacheVersion, visibleDoctorIds, doctors, dateRange]);
 
   /** Events grouped by date with overlaps resolved. */
   const eventsByDay = useMemo(() => {
@@ -357,23 +357,23 @@ export function useAppointmentsScheduler(
 
   // ---- Cache invalidation --------------------------------------------------
   const invalidateCache = useCallback(
-    (doctorId?: string, date?: string) => {
+    (doctorId?: string) => {
       const cache = cacheRef.current;
 
-      if (doctorId && date) {
-        cache.delete(buildCacheKey(doctorId, date));
-      } else if (doctorId) {
+      if (doctorId) {
+        // Drop all range keys that include this doctorId
         for (const key of cache.keys()) {
-          if (key.startsWith(`${doctorId}-`)) cache.delete(key);
+          const parts = key.split("|");
+          const ids = parts[2]?.split(",") ?? [];
+          if (ids.includes(doctorId)) cache.delete(key);
         }
       } else {
         cache.clear();
       }
 
-      // Re-fetch the current range
-      fetchRange(visibleDoctorIds, datesInRange);
+      fetchRange(visibleDoctorIds, dateRange);
     },
-    [fetchRange, visibleDoctorIds, datesInRange],
+    [fetchRange, visibleDoctorIds, dateRange],
   );
 
   // ---- Cancel appointment --------------------------------------------------
@@ -388,24 +388,15 @@ export function useAppointmentsScheduler(
         onOk: async () => {
           try {
             await appointmentsService.cancelAppointment(appointment.id);
-            // Invalidate this specific doctor + date and refetch
-            const doctorId =
-              appointment.doctorId ?? appointment.doctor_id ?? "";
-            if (doctorId && appointment.date) {
-              cacheRef.current.delete(
-                buildCacheKey(doctorId, appointment.date),
-              );
-              fetchRange(new Set([doctorId]), [appointment.date]);
-            } else {
-              invalidateCache();
-            }
+            const doctorId = appointment.doctorId ?? appointment.doctor_id;
+            invalidateCache(doctorId);
           } catch {
             // Error notification handled by interceptor
           }
         },
       });
     },
-    [modal, fetchRange, invalidateCache],
+    [modal, invalidateCache],
   );
 
   // ---- Complete appointment ------------------------------------------------
@@ -420,24 +411,15 @@ export function useAppointmentsScheduler(
         onOk: async () => {
           try {
             await appointmentsService.completeAppointment(appointment.id);
-            // Invalidate this specific doctor + date and refetch
-            const doctorId =
-              appointment.doctorId ?? appointment.doctor_id ?? "";
-            if (doctorId && appointment.date) {
-              cacheRef.current.delete(
-                buildCacheKey(doctorId, appointment.date),
-              );
-              fetchRange(new Set([doctorId]), [appointment.date]);
-            } else {
-              invalidateCache();
-            }
+            const doctorId = appointment.doctorId ?? appointment.doctor_id;
+            invalidateCache(doctorId);
           } catch {
             // Error notification handled by interceptor
           }
         },
       });
     },
-    [modal, fetchRange, invalidateCache],
+    [modal, invalidateCache],
   );
 
   // ---- Return --------------------------------------------------------------

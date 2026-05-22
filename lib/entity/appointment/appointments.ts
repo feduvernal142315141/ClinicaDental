@@ -188,6 +188,18 @@ export interface AvailabilitySlot {
 }
 
 /**
+ * Query params for the calendar range endpoint.
+ * GET /appointments/range
+ */
+export interface AppointmentsRangeParams {
+  startDate: string;  // YYYY-MM-DD
+  endDate: string;    // YYYY-MM-DD
+  doctorIds: string[];
+  includeCancelled?: boolean;
+  statuses?: AppointmentStatus[];
+}
+
+/**
  * Filters for availability exploration.
  */
 export interface AvailabilityFilters {
@@ -195,3 +207,4 @@ export interface AvailabilityFilters {
   date?: string; // YYYY-MM-DD
   interval?: number; // minutes
 }
+

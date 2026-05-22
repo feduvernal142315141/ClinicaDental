@@ -12,6 +12,7 @@ import type {
   AppointmentServiceSnapshot,
   AppointmentStatus,
   AppointmentsQueryParams,
+  AppointmentsRangeParams,
   AvailabilityResponse,
   CancellationReasonCode,
   CreateAppointmentRequest,
@@ -490,6 +491,36 @@ async function startNowAppointment(
   throw new Error(getErrorMessage(response, "Error al iniciar consulta express"));
 }
 
+/**
+ * Obtiene todas las citas dentro de un rango de fechas para uno o varios doctores.
+ * Una sola request reemplaza N requests por doctor × día.
+ * Endpoint: GET /appointments/range
+ */
+async function getAppointmentsByRange(
+  params: AppointmentsRangeParams,
+): Promise<Appointment[]> {
+  const query = new URLSearchParams();
+  query.set("startDate", params.startDate);
+  query.set("endDate", params.endDate);
+  params.doctorIds.forEach((id) => query.append("doctorIds", id));
+  if (params.includeCancelled !== undefined)
+    query.set("includeCancelled", String(params.includeCancelled));
+  params.statuses?.forEach((s) => query.append("statuses", s));
+
+  const response = await serviceGet<Appointment[]>(
+    `${endpoint}/range?${query.toString()}`,
+  );
+
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
+    const items = Array.isArray(response.data) ? response.data : [];
+    return items.map((item) => normalizeAppointment(item));
+  }
+
+  throw new Error(
+    getErrorMessage(response, "Error al obtener citas del calendario"),
+  );
+}
+
 async function completeAppointment(id: string): Promise<boolean> {
   const response = (await apiInstance
     .patch<void>(`${endpoint}/${id}/complete`, {})
@@ -524,6 +555,7 @@ export const appointmentsService = {
   getPatientAppointments,
   getDoctorAvailability,
   startNowAppointment,
+  getAppointmentsByRange,
 };
 
 export type { AppointmentStatus };
