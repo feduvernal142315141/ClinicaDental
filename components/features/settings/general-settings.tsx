@@ -1,475 +1,469 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/primitives/shadcn/button";
-import { Input } from "@/components/ui/atomic/forms/input";
-import { Label } from "@/components/ui/atomic/forms/label";
+import { useEffect } from "react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/atomic/data-display/card";
+  Alert,
+  Button,
+  Col,
+  Divider,
+  Form,
+  InputNumber,
+  Row,
+  Skeleton,
+  Space,
+  Tag,
+  Typography,
+} from "antd";
+import { SaveOutlined, ReloadOutlined } from "@ant-design/icons";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/atomic/forms/select";
-import { Switch } from "@/components/ui/atomic/forms/switch";
-import { Separator } from "@/components/ui/primitives/shadcn/separator";
-import {
-  getClinicSettings,
-  updateClinicSettings,
-  type ClinicSettings,
-} from "@/lib/clinic-settings";
-import { useToast } from "@/lib/hooks/use-toast";
+  FormInput,
+  FormSelect,
+  FormSwitch,
+  FormTimePicker,
+  PageCard,
+  SectionTitle,
+} from "@/components/ui/antd";
+import { useClinicGeneralSettings } from "@/lib/hooks/settings";
+import { usePermission } from "@/lib/hooks/use-permission";
+import { PermissionAction } from "@/lib/permissions/permission-actions";
+import type {
+  ClinicScheduleDayKey,
+  UpdateClinicGeneralSettingsRequest,
+} from "@/lib/entity/settings";
+import { CLINIC_SCHEDULE_DAYS } from "@/lib/entity/settings";
 
-const currencies = [
-  { value: "USD", label: "USD - Dólar Estadounidense" },
+const { Text } = Typography;
+
+const currencyOptions = [
+  { value: "USD", label: "USD - Dólar estadounidense" },
+  { value: "BOB", label: "BOB - Boliviano" },
+  { value: "COP", label: "COP - Peso colombiano" },
+  { value: "MXN", label: "MXN - Peso mexicano" },
   { value: "EUR", label: "EUR - Euro" },
-  { value: "MXN", label: "MXN - Peso Mexicano" },
-  { value: "COP", label: "COP - Peso Colombiano" },
-  { value: "ARS", label: "ARS - Peso Argentino" },
 ];
 
-const timezones = [
+const timezoneOptions = [
+  { value: "America/La_Paz", label: "Bolivia (La Paz)" },
+  { value: "America/Bogota", label: "Colombia (Bogotá)" },
+  { value: "America/Mexico_City", label: "México (Ciudad de México)" },
   { value: "America/New_York", label: "Este (New York)" },
   { value: "America/Chicago", label: "Central (Chicago)" },
-  { value: "America/Denver", label: "Montaña (Denver)" },
   { value: "America/Los_Angeles", label: "Pacífico (Los Angeles)" },
-  { value: "America/Mexico_City", label: "México (Ciudad de México)" },
-  { value: "America/Bogota", label: "Colombia (Bogotá)" },
-  {
-    value: "America/Argentina/Buenos_Aires",
-    label: "Argentina (Buenos Aires)",
-  },
+  { value: "America/Argentina/Buenos_Aires", label: "Argentina (Buenos Aires)" },
 ];
 
-const daysOfWeek = [
-  { key: "monday", label: "Lunes" },
-  { key: "tuesday", label: "Martes" },
-  { key: "wednesday", label: "Miércoles" },
-  { key: "thursday", label: "Jueves" },
-  { key: "friday", label: "Viernes" },
-  { key: "saturday", label: "Sábado" },
-  { key: "sunday", label: "Domingo" },
-];
+function normalizeScheduleForSave(values: UpdateClinicGeneralSettingsRequest) {
+  const schedule = { ...values.schedule };
+
+  for (const { key } of CLINIC_SCHEDULE_DAYS) {
+    const day = schedule[key];
+    if (!day?.enabled) {
+      schedule[key] = { enabled: false, startTime: null, endTime: null };
+    }
+  }
+
+  return schedule;
+}
+
+function findInvalidScheduleDay(values: UpdateClinicGeneralSettingsRequest): {
+  dayKey: ClinicScheduleDayKey;
+  message: string;
+} | null {
+  for (const { key, label } of CLINIC_SCHEDULE_DAYS) {
+    const day = values.schedule?.[key];
+    if (!day?.enabled) continue;
+
+    if (!day.startTime || !day.endTime) {
+      return {
+        dayKey: key,
+        message: `${label}: debe indicar hora de apertura y cierre.`,
+      };
+    }
+
+    if (day.startTime >= day.endTime) {
+      return {
+        dayKey: key,
+        message: `${label}: la apertura debe ser menor que el cierre.`,
+      };
+    }
+  }
+
+  return null;
+}
 
 export function GeneralSettings() {
-  const [settings, setSettings] = useState<ClinicSettings | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const { toast } = useToast();
+  const [form] = Form.useForm<UpdateClinicGeneralSettingsRequest>();
+  const { settings, loading, saving, error, reload, saveSettings } =
+    useClinicGeneralSettings();
+  const { can, isAdmin } = usePermission();
+
+  const canEdit = isAdmin || can("general_option", PermissionAction.EDIT);
 
   useEffect(() => {
-    loadSettings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadSettings = async () => {
-    try {
-      const data = await getClinicSettings();
-      setSettings(data);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (_error) {
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar las configuraciones",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
     if (!settings) return;
 
-    setSaving(true);
-    try {
-      await updateClinicSettings(settings);
-      toast({
-        title: "Configuración guardada",
-        description: "Los cambios se han guardado correctamente",
-      });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (_error) {
-      toast({
-        title: "Error",
-        description: "No se pudieron guardar los cambios",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
+    form.setFieldsValue({
+      name: settings.name,
+      address: settings.address ?? undefined,
+      phone: settings.phone ?? undefined,
+      timezone: settings.timezone,
+      currency: settings.currency,
+      schedule: settings.schedule,
+      minimumAdvanceNoticePeriod: settings.minimumAdvanceNoticePeriod ?? 120,
+      standardAppointmentDuration: settings.standardAppointmentDuration ?? 30,
+      cancellationLimitPerMonth: settings.cancellationLimitPerMonth ?? 3,
+      allowOnlineReservations: settings.allowOnlineReservations ?? true,
+      requireConfirmation: settings.requireConfirmation ?? false,
+      sendReminders: settings.sendReminders ?? false,
+      reminderTime: settings.reminderTime ?? 1440,
+    });
+  }, [form, settings]);
 
-  const updateSettings = (updates: Partial<ClinicSettings>) => {
-    if (!settings) return;
-    setSettings({ ...settings, ...updates });
-  };
-
-  const updateBusinessHours = (
-    day: string,
-    field: string,
-    value: string | boolean,
-  ) => {
-    if (!settings) return;
-    setSettings({
-      ...settings,
-      businessHours: {
-        ...settings.businessHours,
-        [day]: {
-          ...settings.businessHours[day as keyof typeof settings.businessHours],
-          [field]: value,
+  const handleFinish = async (values: UpdateClinicGeneralSettingsRequest) => {
+    const scheduleError = findInvalidScheduleDay(values);
+    if (scheduleError) {
+      form.setFields([
+        {
+          name: ["schedule", scheduleError.dayKey, "startTime"],
+          errors: [scheduleError.message],
         },
-      },
-    });
+      ]);
+      form.scrollToField(["schedule", scheduleError.dayKey, "startTime"]);
+      return;
+    }
+
+    const payload: UpdateClinicGeneralSettingsRequest = {
+      ...values,
+      name: values.name.trim(),
+      address: values.address?.trim() || null,
+      phone: values.phone?.trim() || null,
+      schedule: normalizeScheduleForSave(values),
+    };
+
+    await saveSettings(payload);
   };
 
-  const updateAppointmentPolicies = (
-    field: string,
-    value: number | boolean,
-  ) => {
-    if (!settings) return;
-    setSettings({
-      ...settings,
-      appointmentPolicies: {
-        ...settings.appointmentPolicies,
-        [field]: value,
-      },
-    });
-  };
-
-  if (loading) {
+  if (loading && !settings) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="space-y-6">
+        <SectionTitle
+          title="Opciones Generales"
+          subtitle="Administra la configuración institucional y operativa de la clínica."
+        />
+        <PageCard>
+          <Skeleton active paragraph={{ rows: 8 }} />
+        </PageCard>
       </div>
     );
   }
 
-  if (!settings) return null;
-
   return (
     <div className="space-y-6">
-      {/* Datos de la Clínica */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Datos de la Clínica</CardTitle>
-          <CardDescription>
-            Información básica que aparecerá en documentos y comunicaciones
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="clinic-name">Nombre de la Clínica</Label>
-              <Input
-                id="clinic-name"
-                value={settings.name}
-                onChange={(e) => updateSettings({ name: e.target.value })}
-                placeholder="Nombre de la clínica"
+      <SectionTitle
+        title="Opciones Generales"
+        subtitle="Administra datos de la clínica, horarios y políticas base para la operación diaria."
+      />
+
+      {error && (
+        <Alert
+          type="error"
+          showIcon
+          title="No se pudo sincronizar la configuración"
+          description={error}
+          action={
+            <Button size="small" icon={<ReloadOutlined />} onClick={reload}>
+              Reintentar
+            </Button>
+          }
+        />
+      )}
+
+      {!canEdit && (
+        <Alert
+          type="warning"
+          showIcon
+          title="Solo lectura"
+          description="No tienes permiso para editar las opciones generales. Puedes revisar la configuración actual."
+        />
+      )}
+
+      <Form<UpdateClinicGeneralSettingsRequest>
+        form={form}
+        layout="vertical"
+        disabled={!canEdit || saving}
+        onFinish={handleFinish}
+        onFinishFailed={(info) => {
+          const firstError = info.errorFields[0]?.errors[0];
+          if (firstError) {
+            // AntD already marks the field; reject only prevents silent submits.
+            return;
+          }
+        }}
+      >
+        <PageCard
+          title="Datos de la clínica"
+          subtitle="Información institucional visible en documentos internos y operación diaria."
+        >
+          <Row gutter={[16, 0]}>
+            <Col xs={24} md={12}>
+              <FormInput
+                name="name"
+                label="Nombre de la clínica"
+                placeholder="Ej: Clínica Dental San José"
+                required
+                maxLength={120}
+                rules={[
+                  { min: 2, message: "El nombre debe tener al menos 2 caracteres" },
+                ]}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="clinic-phone">Teléfono</Label>
-              <Input
-                id="clinic-phone"
-                value={settings.phone}
-                onChange={(e) => updateSettings({ phone: e.target.value })}
-                placeholder="+1 (555) 123-4567"
+            </Col>
+            <Col xs={24} md={12}>
+              <FormInput
+                name="phone"
+                label="Teléfono"
+                placeholder="Ej: +591 70000000"
+                type="tel"
+                maxLength={30}
               />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="clinic-email">Email</Label>
-              <Input
-                id="clinic-email"
-                type="email"
-                value={settings.email}
-                onChange={(e) => updateSettings({ email: e.target.value })}
-                placeholder="info@clinica.com"
+            </Col>
+            <Col xs={24}>
+              <FormInput
+                name="address"
+                label="Dirección"
+                placeholder="Dirección principal de la clínica"
+                maxLength={255}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="clinic-website">Sitio Web (opcional)</Label>
-              <Input
-                id="clinic-website"
-                value={settings.website || ""}
-                onChange={(e) => updateSettings({ website: e.target.value })}
-                placeholder="www.clinica.com"
+            </Col>
+          </Row>
+        </PageCard>
+
+        <PageCard
+          title="Configuración regional"
+          subtitle="Valores base para interpretar fechas, horarios y moneda de la clínica."
+        >
+          <Alert
+            type="info"
+            showIcon
+            className="mb-4"
+            title="Alcance de HU-SET-001A"
+            description="Esta entrega guarda moneda y zona horaria como fuente de verdad. Su aplicación completa en agenda, dashboard y reportes continúa en HU-SET-001B y HU-SET-001C."
+          />
+          <Row gutter={[16, 0]}>
+            <Col xs={24} md={12}>
+              <FormSelect
+                name="currency"
+                label="Moneda"
+                required
+                allowClear={false}
+                options={currencyOptions}
               />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="clinic-address">Dirección</Label>
-            <Input
-              id="clinic-address"
-              value={settings.address}
-              onChange={(e) => updateSettings({ address: e.target.value })}
-              placeholder="Dirección completa de la clínica"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Configuración Regional */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Configuración Regional</CardTitle>
-          <CardDescription>
-            Moneda y zona horaria para la clínica
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Moneda</Label>
-              <Select
-                value={settings.currency}
-                onValueChange={(value) => updateSettings({ currency: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {currencies.map((currency) => (
-                    <SelectItem key={currency.value} value={currency.value}>
-                      {currency.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Zona Horaria</Label>
-              <Select
-                value={settings.timezone}
-                onValueChange={(value) => updateSettings({ timezone: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {timezones.map((timezone) => (
-                    <SelectItem key={timezone.value} value={timezone.value}>
-                      {timezone.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Horarios de Atención */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Horarios de Atención</CardTitle>
-          <CardDescription>
-            Configure los horarios de operación de la clínica
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {daysOfWeek.map((day) => {
-            const dayData =
-              settings.businessHours[
-                day.key as keyof typeof settings.businessHours
-              ];
-            return (
-              <div key={day.key} className="flex items-center space-x-4">
-                <div className="w-20">
-                  <Label>{day.label}</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={!dayData.closed}
-                    onCheckedChange={(checked) =>
-                      updateBusinessHours(day.key, "closed", !checked)
-                    }
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    {dayData.closed ? "Cerrado" : "Abierto"}
-                  </span>
-                </div>
-                {!dayData.closed && (
-                  <>
-                    <Input
-                      type="time"
-                      value={dayData.open}
-                      onChange={(e) =>
-                        updateBusinessHours(day.key, "open", e.target.value)
-                      }
-                      className="w-32"
-                    />
-                    <span className="text-muted-foreground">a</span>
-                    <Input
-                      type="time"
-                      value={dayData.close}
-                      onChange={(e) =>
-                        updateBusinessHours(day.key, "close", e.target.value)
-                      }
-                      className="w-32"
-                    />
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-
-      {/* Políticas de Citas */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Políticas de Citas</CardTitle>
-          <CardDescription>
-            Configure las reglas para el manejo de citas
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="advance-time">
-                Tiempo mínimo de anticipación (horas)
-              </Label>
-              <Input
-                id="advance-time"
-                type="number"
-                min="0"
-                value={settings.appointmentPolicies.minimumAdvanceTime}
-                onChange={(e) =>
-                  updateAppointmentPolicies(
-                    "minimumAdvanceTime",
-                    Number.parseInt(e.target.value) || 0,
-                  )
-                }
+            </Col>
+            <Col xs={24} md={12}>
+              <FormSelect
+                name="timezone"
+                label="Zona horaria"
+                required
+                allowClear={false}
+                options={timezoneOptions}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cancellation-limit">
-                Límite de cancelaciones por mes
-              </Label>
-              <Input
-                id="cancellation-limit"
-                type="number"
-                min="0"
-                value={settings.appointmentPolicies.cancellationLimit}
-                onChange={(e) =>
-                  updateAppointmentPolicies(
-                    "cancellationLimit",
-                    Number.parseInt(e.target.value) || 0,
-                  )
-                }
-              />
-            </div>
-          </div>
+            </Col>
+          </Row>
+          <Text type="secondary">
+            Plan actual: <Tag>{settings?.subscriptionPlan || "Sin plan"}</Tag>
+          </Text>
+        </PageCard>
 
-          <div className="space-y-2">
-            <Label htmlFor="standard-duration">
-              Duración estándar de citas (minutos)
-            </Label>
-            <Input
-              id="standard-duration"
-              type="number"
-              min="15"
-              step="15"
-              value={settings.appointmentPolicies.standardDuration}
-              onChange={(e) =>
-                updateAppointmentPolicies(
-                  "standardDuration",
-                  Number.parseInt(e.target.value) || 30,
-                )
-              }
-              className="w-32"
-            />
-          </div>
-
-          <Separator />
-
+        <PageCard
+          title="Horarios de atención"
+          subtitle="Horario global de la clínica. El horario efectivo de citas se define junto con el horario de cada doctor."
+        >
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Permitir reservas en línea</Label>
-                <p className="text-sm text-muted-foreground">
-                  Los pacientes pueden agendar citas por sí mismos
-                </p>
-              </div>
-              <Switch
-                checked={settings.appointmentPolicies.allowOnlineBooking}
-                onCheckedChange={(checked) =>
-                  updateAppointmentPolicies("allowOnlineBooking", checked)
-                }
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Requerir confirmación</Label>
-                <p className="text-sm text-muted-foreground">
-                  Las citas deben ser confirmadas por el personal
-                </p>
-              </div>
-              <Switch
-                checked={settings.appointmentPolicies.requireConfirmation}
-                onCheckedChange={(checked) =>
-                  updateAppointmentPolicies("requireConfirmation", checked)
-                }
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Enviar recordatorios</Label>
-                <p className="text-sm text-muted-foreground">
-                  Enviar recordatorios automáticos a los pacientes
-                </p>
-              </div>
-              <Switch
-                checked={settings.appointmentPolicies.sendReminders}
-                onCheckedChange={(checked) =>
-                  updateAppointmentPolicies("sendReminders", checked)
-                }
-              />
-            </div>
-
-            {settings.appointmentPolicies.sendReminders && (
-              <div className="ml-6 space-y-2">
-                <Label htmlFor="reminder-time">
-                  Tiempo de recordatorio (horas antes)
-                </Label>
-                <Input
-                  id="reminder-time"
-                  type="number"
-                  min="1"
-                  value={settings.appointmentPolicies.reminderTime}
-                  onChange={(e) =>
-                    updateAppointmentPolicies(
-                      "reminderTime",
-                      Number.parseInt(e.target.value) || 24,
-                    )
-                  }
-                  className="w-32"
-                />
-              </div>
-            )}
+            {CLINIC_SCHEDULE_DAYS.map(({ key, label }) => (
+              <ScheduleDayRow key={key} dayKey={key} label={label} />
+            ))}
           </div>
-        </CardContent>
-      </Card>
+        </PageCard>
 
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? "Guardando..." : "Guardar Configuración"}
-        </Button>
-      </div>
+        <PageCard
+          title="Políticas base de citas"
+          subtitle="Parámetros guardados para reglas operativas prospectivas. El enforcement completo continúa en HU-SET-001B."
+        >
+          <Row gutter={[16, 0]}>
+            <Col xs={24} md={8}>
+              <Form.Item
+                name="minimumAdvanceNoticePeriod"
+                label="Anticipación mínima (minutos)"
+                rules={[
+                  {
+                    type: "number",
+                    min: 0,
+                    message: "Debe ser mayor o igual a 0",
+                  },
+                ]}
+              >
+                <InputNumber min={0} precision={0} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item
+                name="standardAppointmentDuration"
+                label="Duración estándar (minutos)"
+                rules={[
+                  { required: true, message: "La duración estándar es requerida" },
+                  {
+                    type: "number",
+                    min: 1,
+                    message: "Debe ser mayor que 0",
+                  },
+                ]}
+              >
+                <InputNumber min={1} precision={0} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item
+                name="cancellationLimitPerMonth"
+                label="Cancelaciones por mes"
+                rules={[
+                  {
+                    type: "number",
+                    min: 0,
+                    message: "Debe ser mayor o igual a 0",
+                  },
+                ]}
+              >
+                <InputNumber min={0} precision={0} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider />
+
+          <Row gutter={[16, 0]}>
+            <Col xs={24} md={8}>
+              <FormSwitch
+                name="allowOnlineReservations"
+                label="Reservas en línea"
+                checkedText="Activas"
+                uncheckedText="Inactivas"
+                help="Define si la clínica acepta reservas online."
+              />
+            </Col>
+            <Col xs={24} md={8}>
+              <FormSwitch
+                name="requireConfirmation"
+                label="Requiere confirmación"
+                checkedText="Sí"
+                uncheckedText="No"
+                help="Aplica a reservas online futuras."
+              />
+            </Col>
+            <Col xs={24} md={8}>
+              <FormSwitch
+                name="sendReminders"
+                label="Enviar recordatorios"
+                checkedText="Sí"
+                uncheckedText="No"
+                help="Activa recordatorios automáticos futuros."
+              />
+            </Col>
+          </Row>
+
+          <Form.Item noStyle shouldUpdate>
+            {({ getFieldValue }) =>
+              getFieldValue("sendReminders") ? (
+                <Row gutter={[16, 0]}>
+                  <Col xs={24} md={8}>
+                    <Form.Item
+                      name="reminderTime"
+                      label="Recordatorio antes de la cita (minutos)"
+                      rules={[
+                        {
+                          required: true,
+                          message: "El tiempo de recordatorio es requerido",
+                        },
+                        {
+                          type: "number",
+                          min: 1,
+                          message: "Debe ser mayor que 0",
+                        },
+                      ]}
+                    >
+                      <InputNumber min={1} precision={0} style={{ width: "100%" }} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              ) : null
+            }
+          </Form.Item>
+        </PageCard>
+
+        <div className="flex justify-end">
+          <Space>
+            <Button icon={<ReloadOutlined />} onClick={reload} disabled={saving}>
+              Recargar
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<SaveOutlined />}
+              loading={saving}
+              disabled={!canEdit}
+            >
+              Guardar configuración
+            </Button>
+          </Space>
+        </div>
+      </Form>
     </div>
+  );
+}
+
+function ScheduleDayRow({
+  dayKey,
+  label,
+}: {
+  dayKey: ClinicScheduleDayKey;
+  label: string;
+}) {
+  return (
+    <Form.Item noStyle shouldUpdate>
+      {({ getFieldValue }) => {
+        const enabled = getFieldValue(["schedule", dayKey, "enabled"]);
+
+        return (
+          <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-4">
+            <Row gutter={[16, 12]} align="middle">
+              <Col xs={24} md={6}>
+                <Text strong>{label}</Text>
+              </Col>
+              <Col xs={24} md={6}>
+                <FormSwitch
+                  name={["schedule", dayKey, "enabled"]}
+                  checkedText="Abierto"
+                  uncheckedText="Cerrado"
+                />
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <FormTimePicker
+                  name={["schedule", dayKey, "startTime"]}
+                  label="Apertura"
+                  disabled={!enabled}
+                  required={Boolean(enabled)}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <FormTimePicker
+                  name={["schedule", dayKey, "endTime"]}
+                  label="Cierre"
+                  disabled={!enabled}
+                  required={Boolean(enabled)}
+                />
+              </Col>
+            </Row>
+          </div>
+        );
+      }}
+    </Form.Item>
   );
 }
