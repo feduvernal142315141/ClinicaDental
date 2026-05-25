@@ -13,12 +13,14 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/ui/atomic/layout/header";
 import { DashboardSummary } from "@/lib/entity/dashboard";
+import { formatClinicCurrency } from "@/lib/utils/clinic-regional-format";
 
 interface OverviewSectionProps {
   data: DashboardSummary;
+  currency: string;
 }
 
-export function OverviewSection({ data }: OverviewSectionProps) {
+export function OverviewSection({ data, currency }: OverviewSectionProps) {
   const { kpis, doctorProductivity, serviceDemand, monthlyAppointments } = data;
   const cancellationAlert = `${kpis.todayCancelled} hoy · ${kpis.cancellationRate}% periodo`;
   const lowDemandCount = serviceDemand.bottom.filter(
@@ -101,14 +103,15 @@ export function OverviewSection({ data }: OverviewSectionProps) {
         <KpiCard
           variant="featured"
           title="Producción Estimada"
-          value={formatCurrency(kpis.estimatedProductionCompleted)}
+          value={formatClinicCurrency(kpis.estimatedProductionCompleted, currency)}
           icon={DollarSign}
           iconColor="text-white"
           description="Servicios completados, no cobrado"
           trend={{
             value: 0,
             label:
-              "pipeline " + formatCurrency(kpis.estimatedPipelineScheduled),
+              "pipeline " +
+              formatClinicCurrency(kpis.estimatedPipelineScheduled, currency),
             color: "positive",
           }}
         />
@@ -172,12 +175,4 @@ export function OverviewSection({ data }: OverviewSectionProps) {
       </div>
     </div>
   );
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(value ?? 0);
 }

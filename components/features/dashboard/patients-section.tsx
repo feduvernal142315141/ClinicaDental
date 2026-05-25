@@ -23,14 +23,19 @@ import {
 } from "recharts";
 import { Users, UserPlus, Briefcase, AlertTriangle } from "lucide-react";
 import { DashboardSummary, ServiceDemandItem } from "@/lib/entity/dashboard";
+import {
+  formatClinicCurrency,
+  formatClinicCurrencyShort,
+} from "@/lib/utils/clinic-regional-format";
 
 type DemandSource = "consolidated" | "appointments" | "plans" | "performed";
 
 interface PatientsSectionProps {
   data: DashboardSummary;
+  currency: string;
 }
 
-export function PatientsSection({ data }: PatientsSectionProps) {
+export function PatientsSection({ data, currency }: PatientsSectionProps) {
   const { patientSignals, serviceDemand } = data;
   const [topSource, setTopSource] = useState<DemandSource>("consolidated");
   const [bottomSource, setBottomSource] =
@@ -290,9 +295,11 @@ export function PatientsSection({ data }: PatientsSectionProps) {
                   yAxisId="right"
                   orientation="right"
                   tick={{ fontSize: 11 }}
-                  tickFormatter={(v) => formatCurrencyShort(Number(v))}
+                  tickFormatter={(v) =>
+                    formatClinicCurrencyShort(Number(v), currency)
+                  }
                 />
-                <Tooltip formatter={formatDemandTooltip} />
+                <Tooltip formatter={(value, name) => formatDemandTooltip(value, name, currency)} />
                 <Legend
                   verticalAlign="bottom"
                   height={28}
@@ -383,9 +390,11 @@ export function PatientsSection({ data }: PatientsSectionProps) {
                   yAxisId="right"
                   orientation="right"
                   tick={{ fontSize: 11 }}
-                  tickFormatter={(v) => formatCurrencyShort(Number(v))}
+                  tickFormatter={(v) =>
+                    formatClinicCurrencyShort(Number(v), currency)
+                  }
                 />
-                <Tooltip formatter={formatDemandTooltip} />
+                <Tooltip formatter={(value, name) => formatDemandTooltip(value, name, currency)} />
                 <Legend
                   verticalAlign="bottom"
                   height={28}
@@ -461,7 +470,7 @@ export function PatientsSection({ data }: PatientsSectionProps) {
               {
                 title: "Ticket Promedio",
                 description: "Estimado sobre citas completadas",
-                badgeValue: formatCurrency(data.kpis.averageTicket),
+                badgeValue: formatClinicCurrency(data.kpis.averageTicket, currency),
                 variant: "info",
                 badgeVariant: "outline",
               },
@@ -538,24 +547,12 @@ function SourceTabs({ tabs, active, onChange }: SourceTabsProps) {
   );
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(value ?? 0);
-}
-
-function formatCurrencyShort(value: number): string {
-  const v = value ?? 0;
-  if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(v) >= 1_000) return `$${(v / 1_000).toFixed(0)}k`;
-  return `$${v}`;
-}
-
-function formatDemandTooltip(value: number | string, name: string) {
+function formatDemandTooltip(value: number | string, name: string, currency: string) {
   if (name === "Estimado") {
-    return [formatCurrency(Number(value)), "Estimado no cobrado"];
+    return [
+      formatClinicCurrency(Number(value), currency),
+      "Estimado no cobrado",
+    ];
   }
   return [value, name];
 }

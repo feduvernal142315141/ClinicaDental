@@ -242,13 +242,6 @@ export function GeneralSettings() {
           title="Configuración regional"
           subtitle="Valores base para interpretar fechas, horarios y moneda de la clínica."
         >
-          <Alert
-            type="info"
-            showIcon
-            className="mb-4"
-            title="Alcance de HU-SET-001A"
-            description="Esta entrega guarda moneda y zona horaria como fuente de verdad. Su aplicación completa en agenda, dashboard y reportes continúa en HU-SET-001B y HU-SET-001C."
-          />
           <Row gutter={[16, 0]}>
             <Col xs={24} md={12}>
               <FormSelect
@@ -287,7 +280,7 @@ export function GeneralSettings() {
 
         <PageCard
           title="Políticas base de citas"
-          subtitle="Parámetros guardados para reglas operativas prospectivas. El enforcement completo continúa en HU-SET-001B."
+          subtitle="Parámetros activos para disponibilidad, creación, actualización y reagenda de citas futuras."
           actions={[
             <Flex key="actions" justify="end" style={{ padding: "0 16px" }}>
               <Space>

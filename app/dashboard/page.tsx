@@ -6,6 +6,9 @@ import { useDashboardSummary } from "@/lib/hooks/dashboard/use-dashboard-summary
 import { Button, Input } from "@/components/ui";
 import { Spin, Alert } from "antd";
 import { RefreshCw } from "lucide-react";
+import { useClinicGeneralSettings } from "@/lib/hooks/settings";
+import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
+import { formatClinicTimezone } from "@/lib/utils/clinic-regional-format";
 
 const OverviewSection = dynamic(
   () =>
@@ -34,6 +37,11 @@ const PatientsSection = dynamic(
 export default function DashboardPage() {
   const { data, loading, error, params, refresh, updatePeriod } =
     useDashboardSummary();
+  const { settings, loading: loadingSettings, error: settingsError, reload } =
+    useClinicGeneralSettings();
+
+  const currency = settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency;
+  const timezone = settings?.timezone ?? DEFAULT_CLINIC_GENERAL_SETTINGS.timezone;
 
   const today = toIsoDate(new Date());
   const selectedFrom = params?.from ?? data?.period.from ?? "";
@@ -111,6 +119,20 @@ export default function DashboardPage() {
           <p className="text-sm text-muted-foreground">
             Estado operativo de la clínica basado en citas reales.
           </p>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <span className="rounded-full border bg-background px-2.5 py-1 font-medium text-foreground">
+              Moneda {currency}
+            </span>
+            <span className="rounded-full border bg-background px-2.5 py-1 font-medium text-foreground">
+              Zona {formatClinicTimezone(timezone)}
+            </span>
+            {loadingSettings && <span>Sincronizando configuración regional...</span>}
+            {settingsError && (
+              <span className="text-amber-600">
+                Configuración regional por defecto
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 md:flex-row md:items-end">
@@ -178,19 +200,24 @@ export default function DashboardPage() {
             type="button"
             variant="outline"
             size="icon"
-            disabled={loading}
-            onClick={refresh}
+            disabled={loading || loadingSettings}
+            onClick={() => {
+              refresh();
+              reload();
+            }}
             aria-label="Actualizar dashboard"
           >
             <RefreshCw
-              className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"}
+              className={
+                loading || loadingSettings ? "h-4 w-4 animate-spin" : "h-4 w-4"
+              }
             />
           </Button>
         </div>
       </div>
-      <OverviewSection data={data} />
+      <OverviewSection data={data} currency={currency} />
       <ProductivitySection data={data} />
-      <PatientsSection data={data} />
+      <PatientsSection data={data} currency={currency} />
     </div>
   );
 }
