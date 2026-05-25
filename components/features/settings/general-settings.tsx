@@ -6,6 +6,7 @@ import {
   Button,
   Col,
   Divider,
+  Flex,
   Form,
   InputNumber,
   Row,
@@ -287,6 +288,24 @@ export function GeneralSettings() {
         <PageCard
           title="Políticas base de citas"
           subtitle="Parámetros guardados para reglas operativas prospectivas. El enforcement completo continúa en HU-SET-001B."
+          actions={[
+            <Flex key="actions" justify="end" style={{ padding: "0 16px" }}>
+              <Space>
+                <Button icon={<ReloadOutlined />} onClick={reload} disabled={saving}>
+                  Recargar
+                </Button>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  icon={<SaveOutlined />}
+                  loading={saving}
+                  disabled={!canEdit}
+                >
+                  Guardar configuración
+                </Button>
+              </Space>
+            </Flex>,
+          ]}
         >
           <Row gutter={[16, 0]}>
             <Col xs={24} md={8}>
@@ -397,23 +416,6 @@ export function GeneralSettings() {
             }
           </Form.Item>
         </PageCard>
-
-        <div className="flex justify-end">
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={reload} disabled={saving}>
-              Recargar
-            </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              icon={<SaveOutlined />}
-              loading={saving}
-              disabled={!canEdit}
-            >
-              Guardar configuración
-            </Button>
-          </Space>
-        </div>
       </Form>
     </div>
   );
