@@ -37,10 +37,19 @@ export function createApiOdontogramAdapter(
       const response = await odontogramService.getOdontogram(patientId);
 
       if (!response) {
-        return createEmptySnapshot({
+        const emptySnapshot = createEmptySnapshot({
           patientId,
           clinicId: clinicId ?? options.clinicId,
         });
+
+        return {
+          ...emptySnapshot,
+          metadata: {
+            ...emptySnapshot.metadata,
+            authorId: options.authorId,
+            visitId: options.visitId,
+          },
+        };
       }
 
       // Parse the JSON string stored in `state`.

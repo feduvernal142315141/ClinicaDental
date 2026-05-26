@@ -24,7 +24,7 @@ interface AppShellAntdProps {
  * - Main content area
  * - Theme integration with next-themes
  *
- * Note: Public routes (login, register) will render without the shell
+ * Note: Public auth routes render without the shell
  */
 export function AppShellAntd({ children }: AppShellAntdProps) {
   const { theme: currentTheme } = useTheme();

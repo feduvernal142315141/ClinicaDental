@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Interactivo - Clinic Flow 360</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; margin: 0; }
+        #network-container { width: 100vw; height: 100vh; }
+        /* Custom scrollbar for panel */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .vis-network { outline: none; }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- Header absolute -->
+    <div class="absolute top-4 left-4 z-10 pointer-events-none">
+        <h1 class="text-2xl font-bold text-slate-900 drop-shadow-md">Clinic Flow 360</h1>
+        <p class="text-sm font-medium text-slate-600 drop-shadow">Arquitectura de Navegación + Consulta Clínica</p>
+    </div>
+
+    <!-- Controls -->
+    <div class="absolute top-4 right-4 z-10 flex gap-2">
+        <button id="btn-recenter" class="bg-white/90 backdrop-blur border border-slate-200 px-4 py-2 rounded-lg shadow-sm hover:bg-slate-50 transition font-medium text-sm text-slate-700 flex items-center gap-2 cursor-pointer pointer-events-auto">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 3h6m-3-3v6"></path></svg>
+            Centrar Vista
+        </button>
+    </div>
+
+    <!-- Legend Panel (Bottom Left) -->
+    <div class="absolute bottom-4 left-4 z-10 bg-white/90 backdrop-blur p-4 rounded-xl shadow-lg border border-slate-100 max-w-xs pointer-events-none">
+        <h3 class="font-semibold text-sm mb-3 text-slate-800">Leyenda de Nodos</h3>
+        <div class="space-y-2 text-xs">
+            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-blue-100 border border-blue-600"></div> Autenticación / Público</div>
+            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-slate-50 border border-slate-500"></div> Rutas protegidas / Shell</div>
+            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-green-200 border-2 border-green-600"></div> Consulta clínica activa</div>
+            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-purple-100 border border-purple-600"></div> Rol: Administrador</div>
+            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-cyan-100 border border-cyan-600"></div> Rol: Doctor</div>
+            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-orange-100 border border-orange-600"></div> Rol: Paciente</div>
+            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-red-100 border-2 border-red-600"></div> Inconsistencia Crítica</div>
+            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-amber-100 border-2 border-dashed border-amber-600"></div> Sin Uso / Huérfano</div>
+            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-gray-100 border border-dashed border-gray-500"></div> Rutas Ocultas / Código Inactivo</div>
+        </div>
+    </div>
+
+    <!-- Network Canvas -->
+    <div id="network-container"></div>
+
+    <!-- Info Sidebar (Hidden by default, slides from right) -->
+    <div id="info-panel" class="absolute top-20 right-4 z-20 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 transform translate-x-[120%] transition-transform duration-300 ease-in-out flex flex-col max-h-[80vh] pointer-events-auto">
+        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+            <h2 class="font-bold text-slate-800" id="panel-title">Detalle de Ruta</h2>
+            <button id="close-panel" class="text-slate-400 hover:text-slate-600 transition cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="p-5 overflow-y-auto">
+            <div class="mb-4">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ruta / Endpoint</span>
+                <p id="panel-path" class="font-mono text-sm bg-slate-100 p-2 rounded mt-1 text-slate-700 break-all">--</p>
+            </div>
+            <div class="mb-4">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Descripción</span>
+                <p id="panel-desc" class="text-sm text-slate-600 mt-1">--</p>
+            </div>
+            <div id="panel-warning-container" class="mb-4 hidden">
+                <span class="text-xs font-semibold text-red-400 uppercase tracking-wider">Advertencia / Riesgo</span>
+                <div id="panel-warning" class="text-sm text-red-700 bg-red-50 p-3 rounded-lg border border-red-100 mt-1 leading-relaxed">--</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Database of Nodes with rich metadata mapped from the specifications
+        const nodesData = [
+            // Auth & Entry
+            { id: 'ROOT', label: '/', group: 'auth', title: 'Raíz del sitio', path: '/', desc: 'Punto de entrada. Valida sesión: redirige a /dashboard si hay sesión, a /login si no.' },
+            { id: 'AUTH_CHECK', label: '¿Sesión Activa?', shape: 'diamond', group: 'core', path: 'Middleware', desc: 'Lógica de protección de rutas y redirección condicional.' },
+            { id: 'LOGIN', label: '/login', group: 'auth', path: '/login', desc: 'Pantalla pública de inicio de sesión principal.' },
+            { id: 'OTP', label: '/validate-otp', group: 'auth', path: '/validate-otp', desc: 'Validación de código OTP público.' },
+            { id: 'FORGOT', label: '/forgot-password', group: 'auth', path: '/forgot-password', desc: 'Recuperación de contraseña (ruta pública).' },
+            { id: 'RESET', label: '/reset-password', group: 'auth', path: '/reset-password', desc: 'Restablecimiento de contraseña (ruta pública).' },
+            { id: 'REGISTER_DISABLED', label: 'Registro\n(Fuera del flujo)', group: 'hidden', path: 'Sin ruta /register', desc: 'El alta de usuarios no forma parte del flujo OTP/JWT público. /register no se declara como ruta pública ni auth route.' },
+            
+            // Core Application Layout
+            { id: 'DASH', label: '/dashboard', group: 'core', shape: 'box', path: '/dashboard', desc: 'Pantalla principal tras login. Muestra métricas operativas, productividad, pacientes y servicios. Recibe config regional (moneda, zona horaria).' },
+            { id: 'SHELL', label: 'AppShellAntd', group: 'core', shape: 'hexagon', font: {size: 16, bold: true}, path: 'Layout Global', desc: 'Contenedor principal protegido. Contiene Sidebar desktop, Headers, control de estado global y modal de cambio de contraseña.' },
+            
+            // Header Features
+            { id: 'HEADER_PROFILE', label: 'Menú Perfil', group: 'core', path: 'Header Desktop/Mobile', desc: 'Dropdown de perfil en la cabecera.' },
+            { id: 'PROFILE', label: '/settings/profile', group: 'core', path: '/settings/profile', desc: 'Edición de perfil del usuario logueado.' },
+            { id: 'HEADER_SUPPORT', label: 'Botón Soporte', group: 'core', path: 'Header', desc: 'Acceso a soporte técnico.' },
+            { id: 'SUPPORT', label: '/support', group: 'core', path: '/support', desc: 'Página de soporte para el usuario.' },
+            { id: 'HEADER_LOGOUT', label: 'Logout', group: 'core', path: 'Header Action', desc: 'Cierra sesión y limpia cookies/tokens. Redirige a /login' },
+            { id: 'ACTIVE_CONSULTATION', label: 'Icono Estetoscopio', group: 'core', shape: 'ellipse', color: { background: '#dcfce7', border: '#16a34a' }, path: 'Header (useActiveConsultation)', desc: 'Visible solo si hay cita persistida (appointmentId + patientId). Redirige al workspace de esa consulta.' },
+            
+            // Roles Logic
+            { id: 'NAV_ADMIN', label: 'Lógica Admin', group: 'admin', shape: 'ellipse', path: 'useSidebarNavigation', desc: 'Menú principal generado para Administradores.' },
+            { id: 'NAV_DOCTOR', label: 'Lógica Doctor', group: 'doctor', shape: 'ellipse', path: 'useSidebarNavigation', desc: 'Menú principal generado para Doctores.' },
+            { id: 'NAV_PATIENT', label: 'Lógica Patient', group: 'patient', shape: 'ellipse', path: 'useSidebarNavigation', desc: 'Menú principal generado para Pacientes.' },
+
+            // Patient Module Routes
+            { id: 'ADMIN_PATIENTS', label: 'Menú Pacientes', group: 'admin', path: 'Sidebar Item', desc: 'Acceso a pacientes para admin.' },
+            { id: 'DOC_PATIENTS', label: 'Menú Pacientes', group: 'doctor', path: 'Sidebar Item', desc: 'Acceso a pacientes para doctor.' },
+            { id: 'PATIENTS_LIST', label: '/patients', group: 'core', path: '/patients', desc: 'Listado general de pacientes.' },
+            { id: 'PATIENT_CREATE', label: '/patients/new', group: 'core', path: '/patients/new', desc: 'Creación de un nuevo paciente en el sistema.' },
+            { id: 'PATIENT_EDIT', label: '/patients/[id]/edit', group: 'core', path: '/patients/[id]/edit', desc: 'Edición de datos de un paciente existente.' },
+            
+            // --- PATIENT DETAIL & ODONTOGRAM SUBMAP ---
+            { id: 'PATIENT_DETAIL', label: '/patients/[id]', group: 'core', shape: 'box', path: '/patients/[id]', desc: 'Renderiza ClinicalHistoryPage. Es la base de enrutamiento para todos los tabs clínicos del paciente.' },
+            { id: 'TAB_HC', label: '?tab=historia-clinica', group: 'core', path: '/patients/[id]?tab=historia-clinica', desc: 'Vista base del paciente. Carga PatientInfoColumn, MedicalAntecedentsColumn y AppointmentsColumn. Desde aquí se inician consultas o se ve el historial.', warning: 'Inconsistencia: El botón "Iniciar Nueva Consulta" inicia una nueva o continúa una existente según el estado. Las tarjetas "scheduled" no tienen botón directo para iniciar.' },
+            { id: 'TAB_ODO', label: '?tab=odontograma\n(Lectura / Histórico)', group: 'core', path: '/patients/[id]?tab=odontograma', desc: 'Odontograma en modo "Solo lectura". Si se carga con historicVisitId, muestra la instantánea histórica.', warning: 'Riesgos pendientes: acepta tab=odontogram (legacy). PatientOdontogramPanel recibe prop onStartConsultation pero nunca la utiliza (el overlay no permite iniciar).' },
+            { id: 'MODAL_EXPRESS', label: 'Modal: Consulta Express', group: 'core', path: 'StartConsultationNowModal', desc: 'Si el paciente no tiene citas in_progress o agendadas para hoy, se abre este modal para crear una consulta exprés. Llama a POST /appointments/start-now.' },
+            { id: 'DRAWER_HISTORY', label: 'Drawer: Historial Visita', group: 'core', path: 'VisitHistoryDrawer', desc: 'Muestra información de una visita pasada (doctor, motivo, dolor, notas). Tiene botón para "Ver en pestaña Odontograma" que cambia el tab y setea el historicVisitId.' },
+            
+            { id: 'PATIENT_WORKSPACE', label: '?tab=workspace\n(Consulta Activa)', group: 'core', shape: 'box', font: {size: 14, color: '#166534', bold: true}, color: {background: '#bbf7d0', border: '#16a34a'}, borderWidth: 3, path: '/patients/[id]?tab=workspace&appointmentId=[id]', desc: 'Entorno de trabajo clínico. Solo visible si isCurrentlyActiveConsultation === true. Incluye notas y odontograma editable (createApiOdontogramAdapter).', warning: 'Riesgo pendiente: el workspace puede activar la sesión si existe appointmentId válido en URL y la cita está scheduled o in_progress. Desde agenda ya se navega por PATCH /start antes de llegar aquí.' },
+
+            // Appointments Module Routes
+            { id: 'ADMIN_APPOINTMENTS', label: 'Menú Citas', group: 'admin', path: 'Sidebar Item', desc: 'Acceso a todas las citas (Admin).' },
+            { id: 'DOC_APPOINTMENTS', label: 'Mis Citas', group: 'doctor', path: 'Sidebar Item', desc: 'Acceso a citas asignadas al doctor logueado.' },
+            { id: 'PAT_APPOINTMENTS', label: 'Mis Citas', group: 'patient', path: 'Sidebar Item', desc: 'Acceso a citas del paciente logueado.' },
+            { id: 'MY_APPOINTMENTS', label: '/my-appointments', group: 'patient', path: '/my-appointments', desc: 'Pantalla protegida de solo lectura para pacientes. Carga citas del usuario autenticado sin entrar a la agenda administrativa.' },
+            { id: 'MY_APPOINTMENTS_ENDPOINT', label: 'GET /appointments/me', group: 'patient', path: 'appointmentsService.getMyAppointments', desc: 'Endpoint autenticado que resuelve el paciente asociado al usuario logueado y devuelve sus citas no canceladas.' },
+            { id: 'APPOINTMENTS_LIST', label: '/appointments', group: 'core', path: '/appointments', desc: 'Agenda principal administrativa. Renderiza AppointmentsSchedulerShell con vistas día/semana/mes, sidebar de doctores/etiquetas y acciones rápidas por cita.', warning: 'Permiso requerido: admin o appointments CREATE/EDIT/DELETE/BLOCK. No debe usarse como destino del menú Patient.' },
+            { id: 'APPOINTMENTS_SCHEDULER', label: 'Scheduler\nDía/Semana/Mes', group: 'core', path: 'AppointmentsSchedulerShell', desc: 'Contenedor visual de agenda. Usa useAppointmentsScheduler, carga doctores, etiquetas y citas por rango visible. Permite cambiar vista, filtrar y abrir acciones por cita.' },
+            { id: 'APPT_QUICK_ACTIONS', label: 'Quick Actions\npor Cita', group: 'core', path: 'AppointmentQuickActions', desc: 'Menú contextual sobre cada cita. Puede mostrar: Iniciar/Continuar consulta, Ver detalle, Marcar como realizada, Reagendar y Cancelar.' },
+            { id: 'APPT_START_CONFIRM', label: 'Modal iniciar\ncita futura', group: 'core', path: '/appointments modal', desc: 'Si la cita está programada para una fecha futura, pide confirmación antes de iniciarla.' },
+            { id: 'APPT_START_PATCH', label: 'PATCH /appointments/[id]/start', group: 'core', path: 'appointmentsService.startAppointment', desc: 'Marca una cita scheduled como in_progress. Luego navega hacia el paciente con appointmentId.' },
+            { id: 'APPOINTMENT_CREATE', label: '/appointments/new', group: 'core', path: '/appointments/new', desc: 'Pantalla para agendar una nueva cita. Soporta query params de prellenado: doctorId, patientId, date, time, interval.' },
+            { id: 'APPT_CREATE_PREFILL', label: 'Prefill nueva cita', group: 'core', path: '/appointments/new?doctorId&patientId&date&time&interval', desc: 'Flujo de creación prellenada desde un slot de agenda. El formulario lee searchParams y aplica valores iniciales.' },
+            { id: 'APPT_FORM', label: 'AppointmentForm', group: 'core', path: 'AppointmentForm + useAppointmentForm', desc: 'Formulario de cita. Carga pacientes, doctores, servicios, disponibilidad del doctor, etiquetas y permite crear paciente rápido.' },
+            { id: 'APPT_AVAILABILITY', label: 'Disponibilidad\ndel Doctor', group: 'core', path: 'GET /appointments/availability/doctor/[id]', desc: 'Al seleccionar doctor y fecha, carga horarios disponibles y deshabilita horas no permitidas.' },
+            { id: 'APPT_QUICK_PATIENT', label: 'Modal paciente rápido', group: 'core', path: 'PatientFormFields dentro de AppointmentForm', desc: 'Permite crear un paciente desde el formulario de cita y seleccionarlo automáticamente.' },
+            { id: 'APPOINTMENT_DETAIL', label: '/appointments/[id]', group: 'core', path: '/appointments/[id]', desc: 'Detalle de la cita. Carga AppointmentDetail y AppointmentForm en readOnly. Permite editar, cancelar o abrir la finalización segura según estado/permisos.' },
+            { id: 'APPOINTMENT_EDIT', label: '/appointments/[id]/edit', group: 'core', path: '/appointments/[id]/edit', desc: 'Edición de cita existente. Si la cita ya no es accionable, redirige de vuelta a /appointments/[id].' },
+            { id: 'APPT_CANCEL_MODAL', label: 'Cancelar cita', group: 'core', path: 'CancelModal / cancelAppointment', desc: 'Modal de cancelación disponible desde scheduler o detalle. Cambia la cita a cancelada y refresca/invalida la agenda.' },
+            { id: 'APPT_RESCHEDULE_MODAL', label: 'Reagendar cita', group: 'core', path: 'RescheduleModal', desc: 'Modal de reagenda disponible desde scheduler. Reprograma fecha/hora de una cita scheduled.' },
+            { id: 'APPT_COMPLETE_DIRECT', label: 'Marcar realizada\nDirecto', group: 'core', path: 'completeAppointment', desc: 'Acción directa de agenda administrativa. El detalle de cita ya no usa esta ruta para finalizar; redirige al workspace clínico con finalize=1.' },
+
+            // Inconsistencies Modules (Errors)
+            { id: 'PATIENT_HISTORY', label: '/history', group: 'patient', path: '/history', desc: 'Historial read-only del paciente autenticado. Muestra visitas realizadas o no asistidas desde GET /appointments/me.' },
+            { id: 'AGENDA_START_FIXED', label: 'Navegación Agenda\n(Corregida)', group: 'core', path: 'useAppointmentsPage.handleStartConsultation', desc: 'Al iniciar consulta desde la Agenda, navega directamente a /patients/[patientId]?tab=workspace&appointmentId=[appointmentId].' },
+            { id: 'INC_AGENDA_FINISH', label: 'Marcar Realizada\n(Corregido)', group: 'warning', path: 'AppointmentDetail', desc: 'La vista de detalle ya no completa la cita directamente. Navega a /patients/{patientId}?tab=workspace&appointmentId={appointmentId}&finalize=1 para usar el modal clínico existente.', warning: 'Riesgo mitigado: la finalización ocurre en el workspace con OdontogramModule montado, adapter activo y useFinalizeAppointment guardando snapshot antes de completeAppointment.' },
+            { id: 'INC_UNUSED', label: 'Props/Componentes\nSin Uso\n(Corregido)', group: 'unused', shape: 'ellipse', desc: 'Deuda corregida: se removieron basePath no usado, PatientDetailsPageClient huérfano y onStartConsultation no consumido. El host clínico ahora usa historicAppointmentId para visitas basadas en citas.', warning: 'Contrato aclarado: PatientVisitRecord se identifica por appointmentId. El nombre visitId queda contenido en el módulo/API de odontograma histórico por compatibilidad con /odontograms/visit/{visitId} y SaveOdontogramRequest.visitId.' },
+
+            // Settings Module (Admin Only)
+            { id: 'ADMIN_SETTINGS', label: 'Menú Configuración', group: 'admin', path: 'Sidebar Item', desc: 'Acceso exclusivo del rol admin al módulo de ajustes.' },
+            { id: 'SETTINGS_ROOT', label: '/settings', group: 'admin', shape: 'diamond', path: '/settings', desc: 'Ruta raíz. Lógica: Redirige automáticamente a /settings/general.' },
+            { id: 'SETTINGS_GENERAL', label: '/settings/general', group: 'admin', path: '/settings/general', desc: 'Opciones generales de la clínica (Moneda, Zona horaria, etc).' },
+            { id: 'SETTINGS_DOCTORS', label: '/settings/doctors', group: 'admin', path: '/settings/doctors', desc: 'Listado y administración de doctores.' },
+            { id: 'SETTINGS_ROLES', label: '/settings/roles', group: 'admin', path: '/settings/roles', desc: 'Gestión de roles y asignación de permisos.' },
+            { id: 'SETTINGS_SERVICES', label: '/settings/services', group: 'admin', path: '/settings/services', desc: 'Catálogo de servicios ofrecidos por la clínica.' },
+            { id: 'SETTINGS_LABELS', label: '/settings/labels', group: 'admin', path: '/settings/labels', desc: 'Gestión de etiquetas personalizadas para el sistema.' },
+            
+            // Sub-Settings Routes
+            { id: 'DOCTOR_CREATE', label: '.../doctors/new', group: 'admin', path: '/settings/doctors/new', desc: 'Registro de un nuevo doctor.' },
+            { id: 'DOCTOR_DETAIL', label: '.../doctors/[id]', group: 'admin', path: '/settings/doctors/[id]', desc: 'Ver el perfil de un doctor.' },
+            { id: 'DOCTOR_EDIT', label: '.../doctors/[id]/edit', group: 'admin', path: '/settings/doctors/[id]/edit', desc: 'Edición del perfil de un doctor.' },
+            { id: 'ROLE_CREATE', label: '.../roles/create', group: 'admin', path: '/settings/roles/create', desc: 'Creación de un nuevo rol personalizado.' },
+            { id: 'ROLE_EDIT', label: '.../roles/[id]/edit', group: 'admin', path: '/settings/roles/[id]/edit', desc: 'Edición de permisos de un rol existente.' },
+            { id: 'SERVICE_CREATE', label: '.../services/create', group: 'admin', path: '/settings/services/create', desc: 'Creación de un nuevo servicio clínico.' },
+            { id: 'SERVICE_EDIT', label: '.../services/[id]/edit', group: 'admin', path: '/settings/services/[id]/edit', desc: 'Edición de datos de un servicio.' },
+
+            // Hidden Modules (MVP)
+            { id: 'HIDDEN_ROOT', label: 'Rutas Ocultas\n(Fuera del MVP)', group: 'hidden', shape: 'ellipse', path: 'Varias', desc: 'Rutas que existen en el código fuente (páginas creadas) pero están comentadas u ocultas en useSidebarNavigation.' },
+            { id: 'CAMPAIGNS', label: '/campaigns', group: 'hidden', path: '/campaigns', desc: 'Módulo de campañas de marketing.' },
+            { id: 'CAMPAIGN_CREATE', label: '/campaigns/new', group: 'hidden', path: '/campaigns/new', desc: 'Crear campaña.' },
+            { id: 'CAMPAIGN_EDIT', label: '/campaigns/edit/[id]', group: 'hidden', path: '/campaigns/edit/[id]', desc: 'Editar campaña.' },
+            { id: 'TEMPLATE_DEMO', label: '/template-demo', group: 'hidden', path: '/template-demo', desc: 'Demo de plantillas del sistema.' },
+            { id: 'SETTINGS_NOTIFICATIONS', label: '/settings/notifications', group: 'hidden', path: '/settings/notifications', desc: 'Configuración de notificaciones (Oculto).' },
+            { id: 'SETTINGS_INTEGRATIONS', label: '/settings/integrations', group: 'hidden', path: '/settings/integrations', desc: 'Integraciones con terceros (Oculto).' }
+        ];
+
+        const edgesData = [
+            // Auth flow
+            { from: 'ROOT', to: 'AUTH_CHECK', arrows: 'to' },
+            { from: 'AUTH_CHECK', to: 'LOGIN', label: 'No', arrows: 'to', font: {align: 'middle'} },
+            { from: 'AUTH_CHECK', to: 'DASH', label: 'Sí', arrows: 'to', font: {align: 'middle'} },
+            { from: 'LOGIN', to: 'OTP', arrows: 'to' },
+            { from: 'LOGIN', to: 'FORGOT', arrows: 'to' },
+            { from: 'FORGOT', to: 'RESET', arrows: 'to' },
+            { from: 'LOGIN', to: 'DASH', dashes: true, label: 'Login Exitoso', arrows: 'to' },
+            { from: 'OTP', to: 'DASH', arrows: 'to' },
+            { from: 'LOGIN', to: 'REGISTER_DISABLED', dashes: true, color: {color: '#9ca3af'}, label: 'No disponible' },
+
+            // Core Layout Flow
+            { from: 'DASH', to: 'SHELL', arrows: 'to', width: 2 },
+            { from: 'SHELL', to: 'HEADER_PROFILE', arrows: 'to' },
+            { from: 'HEADER_PROFILE', to: 'PROFILE', arrows: 'to' },
+            { from: 'SHELL', to: 'HEADER_SUPPORT', arrows: 'to' },
+            { from: 'HEADER_SUPPORT', to: 'SUPPORT', arrows: 'to' },
+            { from: 'SHELL', to: 'HEADER_LOGOUT', arrows: 'to' },
+            { from: 'HEADER_LOGOUT', to: 'LOGIN', arrows: 'to', dashes: true },
+            { from: 'SHELL', to: 'ACTIVE_CONSULTATION', arrows: 'to' },
+            { from: 'ACTIVE_CONSULTATION', to: 'PATIENT_WORKSPACE', arrows: 'to', width: 2, color: {color: '#16a34a'} },
+
+            // Roles Distribution from Shell
+            { from: 'SHELL', to: 'NAV_ADMIN', arrows: 'to', width: 3, color: {color: '#9333ea'} },
+            { from: 'SHELL', to: 'NAV_DOCTOR', arrows: 'to', width: 3, color: {color: '#0891b2'} },
+            { from: 'SHELL', to: 'NAV_PATIENT', arrows: 'to', width: 3, color: {color: '#ea580c'} },
+
+            // Admin Routing
+            { from: 'NAV_ADMIN', to: 'DASH', arrows: 'to' },
+            { from: 'NAV_ADMIN', to: 'ADMIN_PATIENTS', arrows: 'to' },
+            { from: 'NAV_ADMIN', to: 'ADMIN_APPOINTMENTS', arrows: 'to' },
+            { from: 'NAV_ADMIN', to: 'ADMIN_SETTINGS', arrows: 'to' },
+
+            // Doctor Routing
+            { from: 'NAV_DOCTOR', to: 'DASH', arrows: 'to' },
+            { from: 'NAV_DOCTOR', to: 'DOC_APPOINTMENTS', arrows: 'to' },
+            { from: 'NAV_DOCTOR', to: 'DOC_PATIENTS', arrows: 'to' },
+
+            // Patient Routing
+            { from: 'NAV_PATIENT', to: 'DASH', arrows: 'to' },
+            { from: 'NAV_PATIENT', to: 'PAT_APPOINTMENTS', arrows: 'to' },
+            { from: 'NAV_PATIENT', to: 'PATIENT_HISTORY', arrows: 'to', color: {color: '#ea580c'} },
+
+            // Patients Module - General
+            { from: 'ADMIN_PATIENTS', to: 'PATIENTS_LIST', arrows: 'to' },
+            { from: 'DOC_PATIENTS', to: 'PATIENTS_LIST', arrows: 'to', dashes: true },
+            { from: 'PATIENTS_LIST', to: 'PATIENT_CREATE', arrows: 'to' },
+            { from: 'PATIENTS_LIST', to: 'PATIENT_DETAIL', arrows: 'to', width: 2 },
+            { from: 'PATIENT_DETAIL', to: 'PATIENT_EDIT', arrows: 'to' },
+            { from: 'PATIENT_DETAIL', to: 'INC_UNUSED', arrows: 'to', dashes: true, color: {color: '#d97706'}, label: 'Props huérfanas' },
+
+            // --- PATIENT TABS & ODONTOGRAM SUBMAP ROUTING ---
+            { from: 'PATIENT_DETAIL', to: 'TAB_HC', arrows: 'to', color: {color: '#475569'} },
+            { from: 'PATIENT_DETAIL', to: 'TAB_ODO', arrows: 'to', color: {color: '#475569'} },
+            { from: 'PATIENT_DETAIL', to: 'PATIENT_WORKSPACE', arrows: 'to', color: {color: '#16a34a'}, label: 'Si activa' },
+            
+            // Starting Consultations
+            { from: 'TAB_HC', to: 'PATIENT_WORKSPACE', arrows: 'to', color: {color: '#16a34a'}, label: 'Cita en curso/hoy' },
+            { from: 'TAB_HC', to: 'MODAL_EXPRESS', arrows: 'to', color: {color: '#475569'}, label: 'No hay cita' },
+            { from: 'MODAL_EXPRESS', to: 'PATIENT_WORKSPACE', arrows: 'to', color: {color: '#16a34a'}, label: 'POST /start-now' },
+            
+            // Finishing Consultations
+            { from: 'PATIENT_WORKSPACE', to: 'TAB_HC', arrows: 'to', dashes: true, color: {color: '#16a34a'}, label: 'Finalizar Consulta\n(PATCH /complete)' },
+            
+            // Historical views
+            { from: 'TAB_HC', to: 'DRAWER_HISTORY', arrows: 'to', color: {color: '#475569'}, label: 'Ver Historial' },
+            { from: 'DRAWER_HISTORY', to: 'TAB_ODO', arrows: 'to', color: {color: '#475569'}, label: 'Set historicVisitId' },
+
+            // Appointments Module
+            { from: 'ADMIN_APPOINTMENTS', to: 'APPOINTMENTS_LIST', arrows: 'to' },
+            { from: 'DOC_APPOINTMENTS', to: 'APPOINTMENTS_LIST', arrows: 'to', dashes: true },
+            { from: 'PAT_APPOINTMENTS', to: 'MY_APPOINTMENTS', arrows: 'to', color: {color: '#ea580c'}, label: 'Ruta patient' },
+            { from: 'MY_APPOINTMENTS', to: 'MY_APPOINTMENTS_ENDPOINT', arrows: 'to', color: {color: '#ea580c'}, label: 'Service layer' },
+            { from: 'PATIENT_HISTORY', to: 'MY_APPOINTMENTS_ENDPOINT', arrows: 'to', color: {color: '#ea580c'}, label: 'Filtra historial' },
+            { from: 'APPOINTMENTS_LIST', to: 'APPOINTMENTS_SCHEDULER', arrows: 'to', width: 2 },
+            { from: 'APPOINTMENTS_SCHEDULER', to: 'APPOINTMENT_CREATE', arrows: 'to', label: 'Nueva cita' },
+            { from: 'APPOINTMENTS_SCHEDULER', to: 'APPT_CREATE_PREFILL', arrows: 'to', label: 'Slot vacío' },
+            { from: 'APPT_CREATE_PREFILL', to: 'APPOINTMENT_CREATE', arrows: 'to', label: 'query params' },
+            { from: 'APPOINTMENT_CREATE', to: 'APPT_FORM', arrows: 'to' },
+            { from: 'APPT_FORM', to: 'APPT_AVAILABILITY', arrows: 'to', label: 'doctor + fecha' },
+            { from: 'APPT_FORM', to: 'APPT_QUICK_PATIENT', arrows: 'to', label: 'Nuevo paciente' },
+            { from: 'APPT_FORM', to: 'APPOINTMENTS_LIST', arrows: 'to', label: 'Guardar' },
+            { from: 'APPOINTMENTS_SCHEDULER', to: 'APPT_QUICK_ACTIONS', arrows: 'to', label: 'Clic cita' },
+            { from: 'APPT_QUICK_ACTIONS', to: 'APPOINTMENT_DETAIL', arrows: 'to', label: 'Ver detalle' },
+            { from: 'APPT_QUICK_ACTIONS', to: 'APPT_RESCHEDULE_MODAL', arrows: 'to', label: 'Reagendar' },
+            { from: 'APPT_QUICK_ACTIONS', to: 'APPT_CANCEL_MODAL', arrows: 'to', label: 'Cancelar' },
+            { from: 'APPT_QUICK_ACTIONS', to: 'APPT_COMPLETE_DIRECT', arrows: 'to', label: 'Marcar realizada' },
+            { from: 'APPT_QUICK_ACTIONS', to: 'APPT_START_CONFIRM', arrows: 'to', label: 'Cita futura' },
+            { from: 'APPT_QUICK_ACTIONS', to: 'APPT_START_PATCH', arrows: 'to', color: {color: '#16a34a'}, label: 'Hoy/scheduled' },
+            { from: 'APPT_START_CONFIRM', to: 'APPT_START_PATCH', arrows: 'to', color: {color: '#16a34a'}, label: 'Confirmar' },
+            { from: 'APPT_START_PATCH', to: 'AGENDA_START_FIXED', arrows: 'to', color: {color: '#16a34a'}, label: 'URL canónica\n?tab=workspace' },
+            { from: 'AGENDA_START_FIXED', to: 'PATIENT_WORKSPACE', arrows: 'to', color: {color: '#16a34a'}, label: 'Destino directo' },
+            { from: 'APPOINTMENT_DETAIL', to: 'APPOINTMENT_EDIT', arrows: 'to', label: 'Editar si accionable' },
+            { from: 'APPOINTMENT_EDIT', to: 'APPT_FORM', arrows: 'to' },
+            { from: 'APPOINTMENT_EDIT', to: 'APPOINTMENT_DETAIL', arrows: 'to', dashes: true, label: 'No accionable / cancelar' },
+            { from: 'APPOINTMENT_DETAIL', to: 'APPT_CANCEL_MODAL', arrows: 'to', label: 'Cancelar' },
+            { from: 'APPOINTMENT_DETAIL', to: 'PATIENT_WORKSPACE', arrows: 'to', label: 'finalize=1' },
+            { from: 'PATIENT_WORKSPACE', to: 'INC_AGENDA_FINISH', arrows: 'to', color: {color: '#f59e0b'}, label: 'Finalización segura' },
+            { from: 'APPT_CANCEL_MODAL', to: 'APPOINTMENTS_SCHEDULER', arrows: 'to', dashes: true, label: 'Invalidate cache' },
+            { from: 'APPT_RESCHEDULE_MODAL', to: 'APPOINTMENTS_SCHEDULER', arrows: 'to', dashes: true, label: 'Invalidate cache' },
+            
+            // Settings Module (Admin Only)
+            { from: 'ADMIN_SETTINGS', to: 'SETTINGS_ROOT', arrows: 'to' },
+            { from: 'SETTINGS_ROOT', to: 'SETTINGS_GENERAL', arrows: 'to', label: 'Redirect' },
+            { from: 'ADMIN_SETTINGS', to: 'SETTINGS_GENERAL', arrows: 'to', dashes: true },
+            { from: 'ADMIN_SETTINGS', to: 'SETTINGS_DOCTORS', arrows: 'to' },
+            { from: 'ADMIN_SETTINGS', to: 'SETTINGS_ROLES', arrows: 'to' },
+            { from: 'ADMIN_SETTINGS', to: 'SETTINGS_SERVICES', arrows: 'to' },
+            { from: 'ADMIN_SETTINGS', to: 'SETTINGS_LABELS', arrows: 'to' },
+            
+            { from: 'SETTINGS_DOCTORS', to: 'DOCTOR_CREATE', arrows: 'to' },
+            { from: 'SETTINGS_DOCTORS', to: 'DOCTOR_DETAIL', arrows: 'to' },
+            { from: 'DOCTOR_DETAIL', to: 'DOCTOR_EDIT', arrows: 'to' },
+            
+            { from: 'SETTINGS_ROLES', to: 'ROLE_CREATE', arrows: 'to' },
+            { from: 'SETTINGS_ROLES', to: 'ROLE_EDIT', arrows: 'to' },
+            
+            { from: 'SETTINGS_SERVICES', to: 'SERVICE_CREATE', arrows: 'to' },
+            { from: 'SETTINGS_SERVICES', to: 'SERVICE_EDIT', arrows: 'to' },
+
+            // Hidden Modules (MVP)
+            { from: 'SHELL', to: 'HIDDEN_ROOT', arrows: 'to', dashes: true, color: {color: '#9ca3af'}, label: 'Rutas Ocultas' },
+            { from: 'HIDDEN_ROOT', to: 'CAMPAIGNS', arrows: 'to', color: {color: '#9ca3af'} },
+            { from: 'CAMPAIGNS', to: 'CAMPAIGN_CREATE', arrows: 'to', color: {color: '#9ca3af'} },
+            { from: 'CAMPAIGNS', to: 'CAMPAIGN_EDIT', arrows: 'to', color: {color: '#9ca3af'} },
+            { from: 'HIDDEN_ROOT', to: 'TEMPLATE_DEMO', arrows: 'to', color: {color: '#9ca3af'} },
+            { from: 'HIDDEN_ROOT', to: 'SETTINGS_NOTIFICATIONS', arrows: 'to', color: {color: '#9ca3af'} },
+            { from: 'HIDDEN_ROOT', to: 'SETTINGS_INTEGRATIONS', arrows: 'to', color: {color: '#9ca3af'} }
+        ];
+
+        const container = document.getElementById('network-container');
+        const data = {
+            nodes: new vis.DataSet(nodesData),
+            edges: new vis.DataSet(edgesData)
+        };
+        
+        const options = {
+            nodes: {
+                shape: 'box',
+                margin: 12,
+                borderWidth: 1.5,
+                shadow: { enabled: true, color: 'rgba(0,0,0,0.06)', size: 10, x: 0, y: 4 },
+                font: { face: 'Inter', size: 14, color: '#1e293b' }
+            },
+            edges: {
+                // Smooth edges con fuerza vertical para un flujo de árbol
+                smooth: { type: 'cubicBezier', forceDirection: 'vertical', roundness: 0.4 },
+                color: { color: '#cbd5e1', highlight: '#64748b' },
+                font: { face: 'Inter', size: 11, align: 'horizontal', background: 'rgba(255,255,255,0.8)' }
+            },
+            // Configuración estricta del layout jerárquico
+            layout: {
+                hierarchical: {
+                    enabled: true,
+                    direction: 'UD', // Arriba hacia abajo
+                    sortMethod: 'directed', // Usa la dirección de las flechas (de "from" a "to")
+                    levelSeparation: 160, // Distancia vertical entre niveles (aumentado para el submapa)
+                    nodeSpacing: 260, // Distancia horizontal entre nodos
+                    treeSpacing: 320,
+                    blockShifting: true,
+                    edgeMinimization: true,
+                    parentCentralization: true
+                }
+            },
+            groups: {
+                auth: { color: { background: '#e0f2fe', border: '#0284c7' } },
+                core: { color: { background: '#f8fafc', border: '#64748b' } },
+                admin: { color: { background: '#f3e8ff', border: '#9333ea' } },
+                doctor: { color: { background: '#cffafe', border: '#0891b2' } },
+                patient: { color: { background: '#ffedd5', border: '#ea580c' } },
+                error: { color: { background: '#fee2e2', border: '#ef4444' }, borderWidth: 2, font: { color: '#991b1b', bold: true } },
+                unused: { color: { background: '#fef3c7', border: '#d97706' }, borderWidth: 2, borderDashes: [8,4], font: { color: '#92400e', bold: true } },
+                hidden: { color: { background: '#f1f5f9', border: '#94a3b8' }, borderWidth: 1, borderDashes: [4,4], font: { color: '#64748b' } }
+            },
+            physics: {
+                // Deshabilitar la física mantiene el árbol estático, sin rebotes, lo cual es ideal para árboles grandes
+                enabled: false 
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 200,
+                zoomView: true,
+                dragView: true
+            }
+        };
+
+        const network = new vis.Network(container, data, options);
+
+        const infoPanel = document.getElementById('info-panel');
+        const closePanelBtn = document.getElementById('close-panel');
+        const panelTitle = document.getElementById('panel-title');
+        const panelPath = document.getElementById('panel-path');
+        const panelDesc = document.getElementById('panel-desc');
+        const panelWarningContainer = document.getElementById('panel-warning-container');
+        const panelWarning = document.getElementById('panel-warning');
+
+        // Function to open side panel with node data
+        network.on("selectNode", function (params) {
+            if (params.nodes.length === 1) {
+                const nodeId = params.nodes[0];
+                const nodeData = nodesData.find(n => n.id === nodeId);
+                
+                if (nodeData) {
+                    panelTitle.textContent = nodeData.label.replace('\n', ' ');
+                    panelPath.textContent = nodeData.path || 'N/A';
+                    panelDesc.textContent = nodeData.desc || 'Sin descripción adicional.';
+                    
+                    if (nodeData.warning) {
+                        panelWarning.textContent = nodeData.warning;
+                        panelWarningContainer.classList.remove('hidden');
+                    } else {
+                        panelWarningContainer.classList.add('hidden');
+                    }
+
+                    // Slide in the panel
+                    infoPanel.classList.remove('translate-x-[120%]');
+                }
+            }
+        });
+
+        // Close panel when clicking empty space
+        network.on("deselectNode", function () {
+            infoPanel.classList.add('translate-x-[120%]');
+        });
+
+        // Close button logic
+        closePanelBtn.addEventListener('click', () => {
+            network.unselectAll();
+            infoPanel.classList.add('translate-x-[120%]');
+        });
+
+        // Recenter Button
+        document.getElementById('btn-recenter').addEventListener('click', () => {
+            network.fit({ animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
+        });
+
+        // Animate initial fit (setTimeout used for tree layout rendering)
+        setTimeout(() => {
+            network.fit({ animation: { duration: 1000, easingFunction: 'easeInOutQuad' } });
+        }, 100);
+
+    </script>
+</body>
+</html>

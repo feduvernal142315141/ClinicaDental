@@ -10,7 +10,6 @@
  */
 export const PUBLIC_ROUTES = [
   "/login",
-  "/register",
   "/forgot-password",
   "/reset-password",
   "/validate-otp",
@@ -21,7 +20,6 @@ export const PUBLIC_ROUTES = [
  */
 export const AUTH_ROUTES = [
   "/login",
-  "/register",
   "/forgot-password",
   "/reset-password",
   "/validate-otp",
