@@ -3,7 +3,6 @@ import {
   serviceGet,
   servicePost,
   servicePut,
-  servicePatch,
 } from "@/lib/services/baseService";
 import apiInstance from "@/lib/services/apiConfig";
 import { handleServiceError } from "@/lib/utils/error.utils";
@@ -374,6 +373,22 @@ async function getPatientAppointments(
   );
 }
 
+/**
+ * Obtiene las citas del paciente asociado al usuario autenticado.
+ * Endpoint: GET /appointments/me
+ */
+async function getMyAppointments(): Promise<Appointment[]> {
+  const response = await serviceGet<Appointment[]>(`${endpoint}/me`);
+
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
+    const raw = response.data;
+    const items = Array.isArray(raw) ? raw : [];
+    return items.map((item) => normalizeAppointment(item));
+  }
+
+  throw new Error(getErrorMessage(response, "Error al obtener mis citas"));
+}
+
 async function getDoctorAvailability(
   doctorId: string,
   date: string,
@@ -553,6 +568,7 @@ export const appointmentsService = {
   completeAppointment,
   getDoctorAppointments,
   getPatientAppointments,
+  getMyAppointments,
   getDoctorAvailability,
   startNowAppointment,
   getAppointmentsByRange,
