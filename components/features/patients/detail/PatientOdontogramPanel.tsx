@@ -17,12 +17,11 @@ interface PatientOdontogramPanelProps {
     clinicId?: string;
   };
   activeAppointmentId?: string;
-  historicVisitId?: string;
+  /** Historic clinical visit is currently identified by the appointment id. */
+  historicAppointmentId?: string;
   onClearHistoric?: () => void;
   /** All patient appointments — used to build the history timeline */
   appointments?: Appointment[];
-  /** Called when user wants to start a consultation from the overlay */
-  onStartConsultation?: () => void;
   /** Called when user selects a historic visit from the timeline */
   onSelectHistoricVisit?: (appointmentId: string) => void;
   finalizeOpen?: boolean;
@@ -33,10 +32,9 @@ interface PatientOdontogramPanelProps {
 export function PatientOdontogramPanel({
   patient,
   activeAppointmentId,
-  historicVisitId,
+  historicAppointmentId,
   onClearHistoric,
   appointments,
-  onStartConsultation,
   onSelectHistoricVisit,
   finalizeOpen,
   onFinalizeClose,
@@ -52,13 +50,13 @@ export function PatientOdontogramPanel({
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const { snapshot: historicSnapshot, loading: historicLoading, load: loadHistoric } =
-    useOdontogramByVisit(historicVisitId);
+    useOdontogramByVisit(historicAppointmentId);
 
   useEffect(() => {
-    if (historicVisitId) {
-      loadHistoric(historicVisitId);
+    if (historicAppointmentId) {
+      loadHistoric(historicAppointmentId);
     }
-  }, [historicVisitId, loadHistoric]);
+  }, [historicAppointmentId, loadHistoric]);
 
   // Clear transitioning once the async load finishes
   useEffect(() => {
@@ -100,7 +98,7 @@ export function PatientOdontogramPanel({
     return createHistoricOdontogramAdapter(historicSnapshot.state);
   }, [historicSnapshot]);
 
-  const isHistoricMode = !!historicVisitId;
+  const isHistoricMode = !!historicAppointmentId;
   // US-03: odontogram is read-only when no active consultation OR in historic mode
   const readOnly = isHistoricMode || !activeAppointmentId || !(isAdmin || can("patients", PermissionAction.EDIT));
 
@@ -115,7 +113,7 @@ export function PatientOdontogramPanel({
       {appointments && appointments.length > 1 && (
         <OdontogramHistoryTimeline
           appointments={appointments}
-          historicAppointmentId={historicVisitId}
+          historicAppointmentId={historicAppointmentId}
           activeAppointmentId={activeAppointmentId}
           onSelectVisit={handleSelectVisit}
           onReturnToCurrent={handleReturnToCurrent}
@@ -159,4 +157,3 @@ export function PatientOdontogramPanel({
     </div>
   );
 }
-

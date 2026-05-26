@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { App, Space } from "antd";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import {
@@ -31,6 +32,7 @@ export function AppointmentDetail({
   canComplete = false,
 }: AppointmentDetailProps) {
   const { modal } = App.useApp();
+  const router = useRouter();
   const { handleBackToList, handleEditAppointment } = useAppointmentsPage({
     basePath,
   });
@@ -38,7 +40,6 @@ export function AppointmentDetail({
   const {
     getAppointmentById,
     cancelAppointment,
-    completeAppointment,
     loading,
   } = useAppointments();
 
@@ -79,19 +80,35 @@ export function AppointmentDetail({
   const handleCompleteAppointment = useCallback(() => {
     if (!appointment) return;
 
+    const patientId = appointment.patientId ?? appointment.patient_id;
+
+    if (!patientId) {
+      modal.error({
+        title: "No se puede finalizar la cita",
+        content:
+          "La cita no tiene un paciente asociado para abrir el odontograma clínico.",
+      });
+      return;
+    }
+
     modal.confirm({
       title: "¿Marcar cita como realizada?",
       content:
-        "La cita se marcará como completada. Esta acción no se puede deshacer.",
-      okText: "Marcar como realizada",
+        "Se abrirá el workspace clínico para guardar el snapshot del odontograma antes de finalizar la cita.",
+      okText: "Abrir finalización segura",
       okType: "primary",
       cancelText: "Cancelar",
-      onOk: async () => {
-        await completeAppointment(appointment.id);
-        await loadAppointment();
+      onOk: () => {
+        const query = new URLSearchParams({
+          tab: "workspace",
+          appointmentId: appointment.id,
+          finalize: "1",
+        });
+
+        router.push(`/patients/${patientId}?${query.toString()}`);
       },
     });
-  }, [modal, appointment, completeAppointment, loadAppointment]);
+  }, [modal, appointment, router]);
 
   if (detailLoading) {
     return (
