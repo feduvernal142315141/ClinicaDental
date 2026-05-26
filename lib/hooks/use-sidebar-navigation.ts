@@ -77,7 +77,7 @@ export function useSidebarNavigation(userRole?: string) {
         return {
           main: [
             { path: "/dashboard", label: "Dashboard", icon: UserCheck },
-            { path: "/appointments", label: "Mis Citas", icon: Calendar },
+            { path: "/my-appointments", label: "Mis Citas", icon: Calendar },
             { path: "/history", label: "Historial", icon: ClipboardList },
           ],
           secondary: secondaryItems,
