@@ -10,7 +10,7 @@ interface VisitHistoryDrawerProps {
   patientId: string;
   appointment: Appointment | null;
   onClose: () => void;
-  onViewOdontogram?: (visitId: string) => void;
+  onViewOdontogram?: (appointmentId: string) => void;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {

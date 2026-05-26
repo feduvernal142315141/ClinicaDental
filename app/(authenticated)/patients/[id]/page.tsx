@@ -14,13 +14,14 @@ export default function PatientDetailPage({ params }: PageProps) {
 
   const initialTab = searchParams.get("tab") ?? undefined;
   const activeAppointmentId = searchParams.get("appointmentId") ?? undefined;
+  const openFinalizeOnLoad = searchParams.get("finalize") === "1";
 
   return (
     <ClinicalHistoryPage
       patientId={id}
-      basePath="/patients"
       initialTab={initialTab}
       activeAppointmentId={activeAppointmentId}
+      openFinalizeOnLoad={openFinalizeOnLoad}
     />
   );
 }

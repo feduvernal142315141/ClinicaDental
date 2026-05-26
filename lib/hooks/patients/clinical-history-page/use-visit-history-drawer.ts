@@ -12,7 +12,7 @@ interface UseVisitHistoryDrawerParams {
   patientId: string;
   appointment: Appointment | null;
   onClose: () => void;
-  onViewOdontogram?: (visitId: string) => void;
+  onViewOdontogram?: (appointmentId: string) => void;
 }
 
 function formatDate(dateStr?: string): string {

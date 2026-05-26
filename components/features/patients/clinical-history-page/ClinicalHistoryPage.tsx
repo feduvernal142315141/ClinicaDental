@@ -17,14 +17,13 @@ import {
   type UseClinicalHistoryPageParams,
 } from "@/lib/hooks/patients/clinical-history-page/use-clinical-history-page";
 
-interface ClinicalHistoryPageProps extends UseClinicalHistoryPageParams {
-  basePath?: string;
-}
+type ClinicalHistoryPageProps = UseClinicalHistoryPageParams;
 
 export function ClinicalHistoryPage({
   patientId,
   initialTab = "historia-clinica",
   activeAppointmentId,
+  openFinalizeOnLoad,
 }: ClinicalHistoryPageProps) {
   const {
     patient,
@@ -51,7 +50,7 @@ export function ClinicalHistoryPage({
     closeEditPatient,
     openEditPatient,
     effectiveActiveAppointmentId,
-    historicVisitId,
+    historicAppointmentId,
     isCurrentlyActiveConsultation,
     canManageAttachments,
     canEditMedicalHistory,
@@ -69,6 +68,7 @@ export function ClinicalHistoryPage({
     patientId,
     initialTab,
     activeAppointmentId,
+    openFinalizeOnLoad,
   });
 
   if (patientLoading) {
@@ -108,10 +108,9 @@ export function ClinicalHistoryPage({
           <PatientOdontogramPanel
             patient={patient}
             activeAppointmentId={effectiveActiveAppointmentId}
-            historicVisitId={historicVisitId}
+            historicAppointmentId={historicAppointmentId}
             onClearHistoric={handleBackToCurrentOdontogram}
             appointments={appointments}
-            onStartConsultation={openStartNow}
             onSelectHistoricVisit={handleSelectHistoricVisit}
             finalizeOpen={isFinalizeModalOpen}
             onFinalizeClose={closeFinalizeModal}
@@ -192,10 +191,9 @@ export function ClinicalHistoryPage({
         <PatientOdontogramPanel
           patient={patient}
           activeAppointmentId={effectiveActiveAppointmentId}
-          historicVisitId={historicVisitId}
+          historicAppointmentId={historicAppointmentId}
           onClearHistoric={handleBackToCurrentOdontogram}
           appointments={appointments}
-          onStartConsultation={openStartNow}
           onSelectHistoricVisit={handleSelectHistoricVisit}
         />
       ),

@@ -16,12 +16,14 @@ export interface UseClinicalHistoryPageParams {
   patientId: string;
   initialTab?: string;
   activeAppointmentId?: string;
+  openFinalizeOnLoad?: boolean;
 }
 
 export function useClinicalHistoryPage({
   patientId,
   initialTab = "historia-clinica",
   activeAppointmentId,
+  openFinalizeOnLoad = false,
 }: UseClinicalHistoryPageParams) {
   const router = useRouter();
   const normalizedInitialTab =
@@ -34,9 +36,9 @@ export function useClinicalHistoryPage({
   const [restoredAppointmentId, setRestoredAppointmentId] = useState<
     string | undefined
   >(undefined);
-  const [historicVisitId, setHistoricVisitId] = useState<string | undefined>(
-    undefined,
-  );
+  const [historicAppointmentId, setHistoricAppointmentId] = useState<
+    string | undefined
+  >(undefined);
   const [showStartNow, setShowStartNow] = useState(false);
   const [isFinalizeModalOpen, setIsFinalizeModalOpen] = useState(false);
   const [visitHistoryAppointment, setVisitHistoryAppointment] =
@@ -189,6 +191,12 @@ export function useClinicalHistoryPage({
     !!effectiveActiveAppointmentId &&
     isActiveFor(patientId, effectiveActiveAppointmentId);
 
+  useEffect(() => {
+    if (!openFinalizeOnLoad || !isCurrentlyActiveConsultation) return;
+
+    setIsFinalizeModalOpen(true);
+  }, [openFinalizeOnLoad, isCurrentlyActiveConsultation]);
+
   const { isAdmin, can } = usePermission();
   const canManageAttachments =
     isAdmin || can("patients", PermissionAction.EDIT);
@@ -280,13 +288,13 @@ export function useClinicalHistoryPage({
     [patientId, updateMedicalHistory],
   );
 
-  const handleViewOdontogram = useCallback((visitId: string) => {
-    setHistoricVisitId(visitId);
+  const handleViewOdontogram = useCallback((appointmentId: string) => {
+    setHistoricAppointmentId(appointmentId);
     setActiveTab("odontograma");
   }, []);
 
   const handleBackToCurrentOdontogram = useCallback(() => {
-    setHistoricVisitId(undefined);
+    setHistoricAppointmentId(undefined);
   }, []);
 
   const openStartNow = useCallback(() => {
@@ -343,15 +351,15 @@ export function useClinicalHistoryPage({
   }, []);
 
   const handleViewVisitOdontogram = useCallback(
-    (visitId: string) => {
+    (appointmentId: string) => {
       setVisitHistoryAppointment(null);
-      handleViewOdontogram(visitId);
+      handleViewOdontogram(appointmentId);
     },
     [handleViewOdontogram],
   );
 
   const handleSelectHistoricVisit = useCallback((appointmentId: string) => {
-    setHistoricVisitId(appointmentId);
+    setHistoricAppointmentId(appointmentId);
   }, []);
 
   return {
@@ -379,7 +387,7 @@ export function useClinicalHistoryPage({
     closeEditPatient,
     openEditPatient,
     effectiveActiveAppointmentId,
-    historicVisitId,
+    historicAppointmentId,
     isCurrentlyActiveConsultation,
     canManageAttachments,
     canEditMedicalHistory,

@@ -14,7 +14,7 @@ interface AppointmentsColumnProps {
   activeAppointmentId?: string;
   onStartConsultation?: (appointmentId: string) => void;
   /** @deprecated Use onViewVisitHistory instead */
-  onViewOdontogram?: (visitId: string) => void;
+  onViewOdontogram?: (appointmentId: string) => void;
   onViewVisitHistory?: (appointment: Appointment) => void;
   onNewConsultation?: () => void;
 }
@@ -75,7 +75,7 @@ function CompletedCard({
   monthShort: string;
   appointment: Appointment;
   /** @deprecated Use onViewVisitHistory instead */
-  onViewOdontogram?: (visitId: string) => void;
+  onViewOdontogram?: (appointmentId: string) => void;
   onViewVisitHistory?: (appointment: Appointment) => void;
 }) {
   const handleViewHistory = onViewVisitHistory
@@ -133,8 +133,6 @@ function InProgressBanner({ appts }: { appts: Appointment[] }) {
 export function AppointmentsColumn({
   appointments,
   loading,
-  patientId: _patientId,
-  activeAppointmentId: _activeAppointmentId,
   onStartConsultation,
   onViewOdontogram,
   onViewVisitHistory,
@@ -148,7 +146,6 @@ export function AppointmentsColumn({
     completedItems,
     visibleCompletedItems,
     showAll,
-    startableAppointment,
     canTriggerPrimaryAction,
     openCancelAppointment,
     closeCancelAppointment,
