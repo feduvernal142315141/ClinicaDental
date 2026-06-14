@@ -48,18 +48,21 @@ const ZONE_SURFACE_MAP: Record<
     "02": "distal",
     "03": "oclusal",
     "04": "facial",
+    "05": "lingual",
   },
   occlusal: {
     "01": "mesial",
     "02": "distal",
     "03": "oclusal",
-    "04": "lingual",
+    "04": "facial",
+    "05": "lingual",
   },
   lateral: {
     "01": "mesial",
     "02": "distal",
     "03": "oclusal",
-    "04": "lingual",
+    "04": "facial",
+    "05": "lingual",
   },
 };
 
