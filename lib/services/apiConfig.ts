@@ -50,14 +50,14 @@ apiInstance.interceptors.request.use(
     // Obtener el access token desde cookie (flujo OTP/JWT backend)
     const accessToken = getAccessToken();
     if (accessToken) {
-      const headers: unknown = config.headers;
-      if (headers && typeof headers.set === "function") {
-        headers.set("Authorization", `Bearer ${accessToken}`);
+      const headersUnknown = config.headers as unknown as Record<string, unknown>;
+      if (headersUnknown && typeof headersUnknown.set === "function") {
+        (headersUnknown.set as (k: string, v: string) => void)("Authorization", `Bearer ${accessToken}`);
       } else {
         config.headers = {
-          ...(headers ?? {}),
+          ...config.headers,
           Authorization: `Bearer ${accessToken}`,
-        } as unknown;
+        } as unknown as typeof config.headers;
       }
     }
 
@@ -87,11 +87,11 @@ apiInstance.interceptors.response.use(
     // Manejo global de errores
     if (error.response) {
       const status = error.response.status;
-      const data = error.response.data as unknown;
+      const data = error.response.data as Record<string, unknown>;
 
       // Intento de refresh una sola vez (si expira access token)
       if (status === 401) {
-        const originalRequest = error.config as unknown;
+        const originalRequest = error.config as Record<string, unknown>;
         const isRetry = originalRequest?._retry;
         const url = String(originalRequest?.url ?? "");
 
@@ -214,15 +214,28 @@ apiInstance.interceptors.response.use(
           console.error(`Error ${status}:`, data);
       }
     } else if (error.request) {
-      // La petición se realizó pero no se recibió respuesta
-      interceptorHandlers.onNotification?.(
-        "No se pudo conectar con el servidor. Verifica tu conexión a internet.",
-        "error",
-      );
-      console.error(
-        "Error de red - Sin respuesta del servidor:",
-        error.request,
-      );
+      if (error.code === 'ERR_NETWORK' || (typeof window !== 'undefined' && !window.navigator.onLine)) {
+        const isMutation = error.config && ['post', 'put', 'patch', 'delete'].includes(error.config.method?.toLowerCase() || '');
+        if (isMutation) {
+          import('../store/useSyncStore').then(({ useSyncStore }) => {
+            useSyncStore.getState().addRequest({
+              id: crypto.randomUUID(),
+              config: {
+                url: error.config?.url,
+                method: error.config?.method,
+                data: error.config?.data ? JSON.parse(error.config.data) : undefined,
+                headers: error.config?.headers as Record<string, string>,
+                params: error.config?.params,
+              },
+              timestamp: Date.now(),
+            });
+          });
+          interceptorHandlers.onNotification?.("Estás sin conexión. Los cambios se han guardado localmente y se sincronizarán al recuperar la red.", "warning");
+          return Promise.resolve({ data: { offline: true } });
+        }
+      }
+      interceptorHandlers.onNotification?.("No se pudo conectar con el servidor. Verifica tu conexión a internet.", "error");
+      console.error("Error de red - Sin respuesta del servidor:", error.request);
     } else {
       // Error al configurar la petición
       interceptorHandlers.onNotification?.(
