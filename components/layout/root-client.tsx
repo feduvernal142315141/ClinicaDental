@@ -11,6 +11,7 @@ import { InterceptorProvider } from "@/lib/contexts/interceptor-context";
 import { GlobalLoadingBar } from "@/components/global-loading-spinner";
 import { InterceptorsInitializer } from "@/components/interceptors-initializer";
 import { AppShellAntd, AppLoader } from "../ui/antd";
+import { OfflineBanner } from "@/components/features/layout/OfflineBanner";
 
 interface RootClientProps {
   children: React.ReactNode;
@@ -34,6 +35,7 @@ export function RootClient({ children }: RootClientProps) {
                     <InterceptorsInitializer />
                     <GlobalLoadingBar />
                     <GlobalAlertDialog />
+                    <OfflineBanner />
                     <AppShellAntd>{children}</AppShellAntd>
                   </AlertProvider>
                 </AuthProvider>
