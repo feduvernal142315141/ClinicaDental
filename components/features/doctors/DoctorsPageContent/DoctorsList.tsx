@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useEffect, useCallback, useRef, useState } from "react";
-import { DataTable, Card, TableSearchBar } from "@/components/ui/antd";
+import { DataTable } from "@/components/ui/data-display/data-table";
+import { TableSearch } from "@/components/ui/data-display/table-search";
 import { useDoctors } from "@/lib/hooks/doctors";
 import { useDoctorsPage } from "@/lib/hooks/doctors/use-doctors-page";
 import { getDoctorsColumns } from "../columns/doctors-table.config";
@@ -68,8 +69,8 @@ export function DoctorsList({
   );
 
   return (
-    <Card>
-      <TableSearchBar
+    <section className="bento space-y-4 p-4 lg:p-5">
+      <TableSearch
         value={search}
         onChange={setSearch}
         placeholder="Buscar doctor por nombre..."
@@ -92,6 +93,6 @@ export function DoctorsList({
           });
         }}
       />
-    </Card>
+    </section>
   );
 }

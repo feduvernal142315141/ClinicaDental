@@ -85,7 +85,7 @@ export function TemplateForm() {
                     <Label htmlFor="text-body" className="text-base">
                       Body
                     </Label>
-                    <span className="text-red-500">*</span>
+                    <span className="text-destructive">*</span>
                   </div>
                   <TextArea
                     id="text-body"
@@ -96,7 +96,7 @@ export function TemplateForm() {
                     className="resize-none"
                   />
                   {placeholderError && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
+                    <p className="text-sm text-destructive flex items-center gap-1">
                       <span>⚠️</span> {placeholderError}
                     </p>
                   )}
@@ -127,7 +127,7 @@ export function TemplateForm() {
                 <Button
                   variant="ghost"
                   onClick={addVariable}
-                  className="text-blue-600 hover:text-blue-700"
+                  className="text-brand hover:text-brand-strong"
                   type={"button"}
                 >
                   <Plus className="h-4 w-4 mr-2" />

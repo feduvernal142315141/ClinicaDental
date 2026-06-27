@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { App } from "antd";
+
+import { isSessionExpired } from "@/lib/services/apiConfig";
 import { clinicGeneralSettingsService } from "@/lib/services/settings";
 import type {
   ClinicGeneralSettings,
@@ -12,6 +13,7 @@ import {
   DEFAULT_CLINIC_GENERAL_SETTINGS,
   DEFAULT_CLINIC_SCHEDULE,
 } from "@/lib/entity/settings";
+import { notify } from "@/lib/utils/notify";
 
 function normalizeSchedule(schedule?: Partial<ClinicSchedule> | null): ClinicSchedule {
   const normalized = { ...DEFAULT_CLINIC_SCHEDULE };
@@ -39,7 +41,6 @@ function normalizeSettings(settings: ClinicGeneralSettings): ClinicGeneralSettin
 }
 
 export function useClinicGeneralSettings() {
-  const { message } = App.useApp();
   const [settings, setSettings] = useState<ClinicGeneralSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -58,11 +59,14 @@ export function useClinicGeneralSettings() {
           ? err.message
           : "Error al cargar la configuración general";
       setError(errorMessage);
-      message.error(errorMessage);
+      // Si la sesión expiró, el modal global ya lo informa: no duplicar toast.
+      if (!isSessionExpired()) {
+        notify.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
-  }, [message]);
+  }, []);
 
   useEffect(() => {
     loadSettings();
@@ -78,7 +82,7 @@ export function useClinicGeneralSettings() {
         setSettings((current) =>
           current ? normalizeSettings({ ...current, ...payload }) : current,
         );
-        message.success("Configuración general guardada correctamente");
+        notify.success("Configuración general guardada correctamente");
         return true;
       } catch (err) {
         const errorMessage =
@@ -86,13 +90,13 @@ export function useClinicGeneralSettings() {
             ? err.message
             : "Error al guardar la configuración general";
         setError(errorMessage);
-        message.error(errorMessage);
+        notify.error(errorMessage);
         return false;
       } finally {
         setSaving(false);
       }
     },
-    [message],
+    [],
   );
 
   return {

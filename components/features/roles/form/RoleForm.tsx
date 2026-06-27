@@ -1,10 +1,18 @@
 "use client";
 
-import { Card } from "@/components/ui/antd";
-import { isSystemRole } from "@/lib/utils/roles.utils";
-import { useRoleForm } from "@/lib/hooks/roles/use-role-form";
+import { ShieldAlert } from "lucide-react";
+
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+} from "@/components/ui/atomic/forms";
 import { Button } from "@/components/ui/primitives/shadcn/button";
-import { Alert, Divider, Form, Input, Space } from "antd";
+import { useRoleForm } from "@/lib/hooks/roles/use-role-form";
 import { PermissionsSelector } from "./PermissionsSelector";
 
 interface RoleFormProps {
@@ -12,75 +20,88 @@ interface RoleFormProps {
   basePath?: string;
 }
 
-type FormValues = {
-  roleName: string;
-  permissions: string[];
-};
+const Req = () => <span className="text-rose-500">*</span>;
 
 export function RoleForm({
   roleId,
   basePath = "/settings/roles",
 }: RoleFormProps) {
-  const { form, isEdit, loading, handleSubmit, handleCancel } = useRoleForm({
-    roleId,
-    basePath,
-  });
+  const { form, isEdit, isSystem, loading, handleSubmit, handleCancel } =
+    useRoleForm({ roleId, basePath });
 
-  const isSystem = roleId ? isSystemRole(roleId) : false;
+  const disabled = loading || isSystem;
 
   return (
-    <Form<FormValues>
-      form={form}
-      layout="vertical"
-      onFinish={handleSubmit}
-      disabled={loading}
-      initialValues={{
-        permissions: [],
-      }}
-    >
-      <Card>
-        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
-          {isEdit && isSystem && (
-            <Alert
-              type="info"
-              showIcon
-              title="Este rol es de sistema"
-              description="Algunos campos pueden estar restringidos."
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
+        {isEdit && isSystem && (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3">
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="text-sm">
+              <p className="font-medium text-ink">Este rol es del sistema</p>
+              <p className="text-subtle">
+                Sus permisos están protegidos y no pueden modificarse.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <section className="bento p-4 lg:p-5">
+          <FormField
+            control={form.control}
+            name="roleName"
+            render={({ field }) => (
+              <FormItem className="max-w-md">
+                <FormLabel>
+                  Nombre del Rol <Req />
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Ej: Recepcionista"
+                    autoComplete="off"
+                    disabled={disabled}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </section>
+
+        <div className="space-y-1">
+          <h2 className="text-base font-semibold text-ink">Permisos</h2>
+          <p className="text-sm text-subtle">
+            Define qué puede hacer este rol en cada módulo del sistema.
+          </p>
+        </div>
+
+        <FormField
+          control={form.control}
+          name="permissions"
+          render={({ field }) => (
+            <PermissionsSelector
+              value={field.value}
+              onChange={field.onChange}
+              disabled={disabled}
             />
           )}
+        />
 
-          <Form.Item
-            label="Nombre del Rol"
-            name="roleName"
-            rules={[
-              { required: true, message: "El nombre del rol es obligatorio" },
-              { min: 3, message: "El nombre debe tener mínimo 3 caracteres" },
-              { max: 50, message: "El nombre debe tener máximo 50 caracteres" },
-            ]}
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={loading}
           >
-            <Input placeholder="Ej: Administrador" disabled={isSystem} />
-          </Form.Item>
-
-          <Divider>Permisos</Divider>
-
-          <Form.Item
-            name="permissions"
-            valuePropName="value"
-            tooltip='Los permisos se guardan como "module-value" (bitmask)'
-          >
-            <PermissionsSelector disabled={loading || isSystem} />
-          </Form.Item>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={handleCancel}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {isEdit ? "Guardar" : "Crear"}
-            </Button>
-          </div>
-        </Space>
-      </Card>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={disabled}>
+            {isEdit ? "Guardar cambios" : "Crear rol"}
+          </Button>
+        </div>
+      </form>
     </Form>
   );
 }

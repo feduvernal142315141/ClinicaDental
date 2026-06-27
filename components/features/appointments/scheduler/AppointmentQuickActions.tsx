@@ -1,14 +1,19 @@
 "use client";
 
-import { Dropdown } from "antd";
-import type { MenuProps } from "antd";
 import {
-  EyeOutlined,
-  CalendarOutlined,
-  CloseCircleOutlined,
-  CheckCircleOutlined,
-  MedicineBoxOutlined,
-} from "@ant-design/icons";
+  Eye,
+  Calendar,
+  CircleX,
+  CircleCheck,
+  Stethoscope,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/primitives/shadcn/dropdown-menu";
 import type { Appointment } from "@/lib/entity/appointment";
 import { isAppointmentActionable } from "@/lib/utils/appointment-utils";
 
@@ -46,58 +51,71 @@ export function AppointmentQuickActions({
     (appointment.status === "scheduled" || appointment.status === "in_progress") &&
     !!appointment.patientId;
 
-  const items: MenuProps["items"] = [
-    onStartConsultation && canStartConsultation
-      ? {
-          key: "start-consultation",
-          icon: <MedicineBoxOutlined />,
-          label: appointment.status === "in_progress" ? "Continuar consulta" : "Iniciar consulta",
-          disabled: startConsultationLoading,
-          onClick: () => onStartConsultation(appointment),
-        }
-      : null,
-    onViewDetail
-      ? {
-          key: "detail",
-          icon: <EyeOutlined />,
-          label: "Ver detalle",
-          onClick: () => onViewDetail(appointment),
-        }
-      : null,
-    onComplete && canComplete
-      ? {
-          key: "complete",
-          icon: <CheckCircleOutlined />,
-          label: "Marcar como realizada",
-          onClick: () => onComplete(appointment),
-        }
-      : null,
-    onReschedule && canReschedule
-      ? {
-          key: "reschedule",
-          icon: <CalendarOutlined />,
-          label: "Reagendar",
-          onClick: () => onReschedule(appointment),
-        }
-      : null,
-    onCancel && canCancel
-      ? {
-          key: "cancel",
-          icon: <CloseCircleOutlined />,
-          label: "Cancelar cita",
-          danger: true,
-          onClick: () => onCancel(appointment),
-        }
-      : null,
-  ].filter(Boolean);
+  const showStartConsultation = !!onStartConsultation && canStartConsultation;
+  const showViewDetail = !!onViewDetail;
+  const showComplete = !!onComplete && canComplete;
+  const showReschedule = !!onReschedule && canReschedule;
+  const showCancel = !!onCancel && canCancel;
 
-  if (items.length === 0) {
+  const hasItemsAboveCancel =
+    showStartConsultation || showViewDetail || showComplete || showReschedule;
+  const hasAnyItem = hasItemsAboveCancel || showCancel;
+
+  if (!hasAnyItem) {
     return <>{children}</>;
   }
 
   return (
-    <Dropdown menu={{ items }} trigger={["click"]}>
-      {children}
-    </Dropdown>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-52">
+        {showStartConsultation && (
+          <DropdownMenuItem
+            disabled={startConsultationLoading}
+            onClick={() => onStartConsultation?.(appointment)}
+          >
+            <Stethoscope />
+            {appointment.status === "in_progress"
+              ? "Continuar consulta"
+              : "Iniciar consulta"}
+          </DropdownMenuItem>
+        )}
+
+        {showViewDetail && (
+          <DropdownMenuItem onClick={() => onViewDetail?.(appointment)}>
+            <Eye />
+            Ver detalle
+          </DropdownMenuItem>
+        )}
+
+        {showComplete && (
+          <DropdownMenuItem onClick={() => onComplete?.(appointment)}>
+            <CircleCheck />
+            Marcar como realizada
+          </DropdownMenuItem>
+        )}
+
+        {showReschedule && (
+          <DropdownMenuItem onClick={() => onReschedule?.(appointment)}>
+            <Calendar />
+            Reagendar
+          </DropdownMenuItem>
+        )}
+
+        {showCancel && (
+          <>
+            {hasItemsAboveCancel && <DropdownMenuSeparator />}
+            <DropdownMenuItem
+              variant="destructive"
+              className="text-destructive"
+              onClick={() => onCancel?.(appointment)}
+            >
+              <CircleX />
+              Cancelar cita
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

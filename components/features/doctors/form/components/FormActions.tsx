@@ -1,12 +1,12 @@
 "use client";
 
-import { Space } from "antd";
+import { X, Save } from "lucide-react";
 import { Button } from "@/components/ui/primitives/shadcn/button";
-import { CloseOutlined, SaveOutlined } from "@ant-design/icons";
 
 /**
  * FormActions Component
- * Save/Cancel buttons for forms
+ * Botones Guardar / Cancelar (Bento). Cancelar es NEUTRO (outline), no
+ * destructivo — cancelar un formulario no destruye datos.
  */
 interface FormActionsProps {
   /** Whether form is submitting */
@@ -26,27 +26,21 @@ export function FormActions({
   cancelText = "Cancelar",
 }: FormActionsProps) {
   return (
-    <Space>
+    <div className="flex items-center gap-2">
       <Button
         type="button"
-        htmlType="button"
-        danger
+        variant="outline"
         onClick={onCancel}
-        size="large"
         disabled={loading}
-        icon={<CloseOutlined />}
+        className="gap-2"
       >
+        <X className="h-4 w-4" />
         {cancelText}
       </Button>
-      <Button
-        type="primary"
-        htmlType="submit"
-        icon={<SaveOutlined />}
-        loading={loading}
-        size="large"
-      >
+      <Button type="submit" loading={loading} className="gap-2">
+        <Save className="h-4 w-4" />
         {submitText}
       </Button>
-    </Space>
+    </div>
   );
 }

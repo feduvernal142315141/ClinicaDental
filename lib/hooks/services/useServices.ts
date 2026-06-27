@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { App } from "antd";
+
 import { servicesService } from "@/lib/services/services";
 import type {
   ServiceListItem,
@@ -8,6 +8,12 @@ import type {
   ServicesQueryParams,
   PaginatedServicesResponse,
 } from "@/lib/entity/services";
+import { notify } from "@/lib/utils/notify";
+
+/** Extrae un mensaje seguro de un error de tipo unknown. */
+function errMsg(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 
 /**
  * useServices Hook
@@ -15,7 +21,6 @@ import type {
  * Hook for managing clinic services CRUD operations
  */
 export function useServices() {
-  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [services, setServices] = useState<ServiceListItem[]>([]);
   const [pagination, setPagination] = useState({
@@ -45,13 +50,13 @@ export function useServices() {
 
         return response;
       } catch (error: unknown) {
-        message.error(error.message || "Error al cargar servicios");
+        notify.error(errMsg(error, "Error al cargar servicios"));
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -64,13 +69,13 @@ export function useServices() {
         const service = await servicesService.getServiceById(id);
         return service;
       } catch (error: unknown) {
-        message.error(error.message || "Error al cargar servicio");
+        notify.error(errMsg(error, "Error al cargar servicio"));
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -82,18 +87,19 @@ export function useServices() {
       try {
         const success = await servicesService.createService(data);
         if (success) {
-          message.success("Servicio creado exitosamente");
-          await fetchServices();
+          notify.success("Servicio creado exitosamente");
+          // No refrescamos aquí: el form navega de vuelta a la lista, que
+          // re-monta y refetch-ea (evita un request desperdiciado).
         }
         return success;
       } catch (error: unknown) {
-        message.error(error.message || "Error al crear servicio");
+        notify.error(errMsg(error, "Error al crear servicio"));
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message, fetchServices],
+    [],
   );
 
   /**
@@ -105,18 +111,18 @@ export function useServices() {
       try {
         const success = await servicesService.updateService(id, data);
         if (success) {
-          message.success("Servicio actualizado exitosamente");
-          await fetchServices();
+          notify.success("Servicio actualizado exitosamente");
+          // El form navega de vuelta a la lista (que refetch-ea al montar).
         }
         return success;
       } catch (error: unknown) {
-        message.error(error.message || "Error al actualizar servicio");
+        notify.error(errMsg(error, "Error al actualizar servicio"));
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message, fetchServices],
+    [],
   );
 
   /**
@@ -128,22 +134,23 @@ export function useServices() {
       try {
         const success = await servicesService.toggleServiceStatus(id);
         if (success) {
-          message.success(
+          notify.success(
             currentlyActive
               ? "Servicio inactivado exitosamente"
               : "Servicio activado exitosamente",
           );
-          await fetchServices();
+          // El refetch lo dispara la lista CON sus filtros/orden/página activos
+          // (refetch sin args perdería el filtro "ocultar inactivos").
         }
         return success;
       } catch (error: unknown) {
-        message.error(error.message || "Error al cambiar estado del servicio");
+        notify.error(errMsg(error, "Error al cambiar estado del servicio"));
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message, fetchServices],
+    [],
   );
 
   return {

@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import { DoctorForm } from "@/components/doctors";
-import { SectionTitle } from "@/components/ui/antd";
+import { PageHeader } from "@/components/ui/layout/page-header";
 import { useDoctorsPage } from "@/lib/hooks/doctors/use-doctors-page";
 
 interface PageProps {
@@ -17,14 +17,13 @@ export default function EditDoctorPage({ params }: PageProps) {
 
   return (
     <>
-      <SectionTitle
+      <PageHeader
         title="Editar Doctor"
         subtitle="Actualice la información del doctor en el sistema"
         actionButton={{
           label: "Atrás",
           onClick: handleBackToList,
           variant: "back",
-          type: "default",
         }}
       />
       <DoctorForm doctorId={id} basePath="/settings/doctors" />

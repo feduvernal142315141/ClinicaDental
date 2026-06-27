@@ -1,33 +1,31 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Form } from "antd";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import dayjs, { type Dayjs } from "dayjs";
 import { useAppointments } from "@/lib/hooks/appointments/useAppointments";
 import { usePatients } from "@/lib/hooks/patients";
 import { patientsService } from "@/lib/services/patients";
 import { doctorsService } from "@/lib/services/doctors";
 import { servicesService } from "@/lib/services/services";
-import { buildDisabledDate } from "@/lib/utils/appointment-utils";
+import {
+  buildDisabledDate,
+  isDoctorWorkingDay,
+} from "@/lib/utils/appointment-utils";
+import {
+  appointmentFormSchema,
+  type AppointmentFormValues,
+} from "@/lib/hooks/appointments/appointment-form.schema";
 import type {
   Appointment,
-  AppointmentType,
   CreateAppointmentRequest,
   UpdateAppointmentRequest,
 } from "@/lib/entity/appointment";
 import type { CreatePatientRequest } from "@/lib/entity/patients";
 import type { WeekSchedule } from "@/lib/entity/schedule";
+import { isSchedulableType, type ServiceType } from "@/lib/entity/services";
 
-type AppointmentFormValues = {
-  patientId: string;
-  doctorId: string;
-  date: string;
-  time: string;
-  duration: number;
-  type: AppointmentType;
-  reason?: string;
-  notes?: string;
-  serviceIds?: string[];
-  labelIds?: string[];
-};
+export type { AppointmentFormValues } from "@/lib/hooks/appointments/appointment-form.schema";
 
 export interface SelectOption {
   id: string;
@@ -57,8 +55,21 @@ type CreateQuickPatientValues = Required<
 > &
   Pick<CreatePatientRequest, "address" | "agreement">;
 
-function normalizeDate(value?: string): string | undefined {
-  if (!value) return undefined;
+const DEFAULT_VALUES: AppointmentFormValues = {
+  patientId: "",
+  doctorId: "",
+  date: "",
+  time: "",
+  duration: 30,
+  type: "consultation",
+  reason: "",
+  notes: "",
+  serviceIds: [],
+  labelIds: [],
+};
+
+function normalizeDate(value?: string): string {
+  if (!value) return "";
   return value.includes("T") ? value.split("T")[0] : value;
 }
 
@@ -69,8 +80,14 @@ export function useAppointmentForm({
   prefill,
 }: UseAppointmentFormParams) {
   const router = useRouter();
-  const [form] = Form.useForm<AppointmentFormValues>();
   const isEdit = useMemo(() => !!appointmentId, [appointmentId]);
+
+  const form = useForm<AppointmentFormValues>({
+    resolver: zodResolver(appointmentFormSchema),
+    defaultValues: DEFAULT_VALUES,
+    mode: "onBlur",
+  });
+  const { watch, setValue, reset } = form;
 
   const {
     loading,
@@ -94,14 +111,92 @@ export function useAppointmentForm({
     WeekSchedule | Record<string, unknown> | null
   >(null);
 
-  const watchedDoctorId = Form.useWatch("doctorId", form);
-  const watchedDate = Form.useWatch("date", form);
+  // Catálogo de servicios (id → datos) para auto-dimensionar la cita y para
+  // poder mostrar/quitar en edición servicios ya asignados aunque hoy estén
+  // inactivos o sean de un tipo no agendable.
+  const serviceCatalogRef = useRef<
+    Map<
+      string,
+      {
+        code: string;
+        name: string;
+        duration?: number;
+        type: ServiceType;
+        active: boolean;
+      }
+    >
+  >(new Map());
 
-  /** Función para deshabilitar fechas en el DatePicker según el schedule del doctor */
+  /** Etiqueta "CÓDIGO - Nombre" de un servicio del catálogo (para chips en edición). */
+  const getServiceLabel = useCallback((id: string): string | undefined => {
+    const s = serviceCatalogRef.current.get(id);
+    return s ? `${s.code} - ${s.name}` : undefined;
+  }, []);
+
+  /** Suma de duraciones de los servicios seleccionados (undefined si ninguno la define). */
+  const getSuggestedDuration = useCallback(
+    (ids: string[]): number | undefined => {
+      let sum = 0;
+      let any = false;
+      for (const id of ids) {
+        const d = serviceCatalogRef.current.get(id)?.duration;
+        if (typeof d === "number" && d > 0) {
+          sum += d;
+          any = true;
+        }
+      }
+      return any ? sum : undefined;
+    },
+    [],
+  );
+
+  const watchedDoctorId = watch("doctorId");
+  const watchedDate = watch("date");
+  const watchedDuration = watch("duration");
+
+  /** `disabledDate` para el calendario según el schedule del doctor. */
   const disabledDate = useMemo(
     () => buildDisabledDate(doctorSchedule),
     [doctorSchedule],
   );
+
+  /** Predicado para resaltar los días que el doctor atiende. */
+  const isWorkingDay = useCallback(
+    (date: Dayjs) => isDoctorWorkingDay(doctorSchedule, date),
+    [doctorSchedule],
+  );
+
+  /** ¿El doctor atiende en la fecha seleccionada? (para el estado vacío de slots) */
+  const selectedDayWorked = useMemo(() => {
+    if (!watchedDate) return undefined;
+    return isDoctorWorkingDay(doctorSchedule, dayjs(watchedDate));
+  }, [doctorSchedule, watchedDate]);
+
+  // Limpiar la hora seleccionada cuando cambian doctor, fecha o duración:
+  // un slot válido para una combinación no lo es necesariamente para otra.
+  // Solo limpia si ANTES ya había un doctor/fecha real (evita borrar la hora
+  // al precargar una cita en edición o al aplicar el prefill).
+  const prevSelectionRef = useRef<{
+    doctorId?: string;
+    date?: string;
+    duration?: number;
+  }>({});
+  useEffect(() => {
+    const prev = prevSelectionRef.current;
+    const hadSelection = Boolean(prev.doctorId) || Boolean(prev.date);
+    const changed =
+      prev.doctorId !== watchedDoctorId ||
+      prev.date !== watchedDate ||
+      prev.duration !== watchedDuration;
+    if (hadSelection && changed) {
+      setValue("time", "");
+    }
+    prevSelectionRef.current = {
+      doctorId: watchedDoctorId,
+      date: watchedDate,
+      duration: watchedDuration,
+    };
+  }, [watchedDoctorId, watchedDate, watchedDuration, setValue]);
 
   const loadCatalogs = useCallback(async () => {
     setCatalogsLoading(true);
@@ -113,26 +208,40 @@ export function useAppointmentForm({
           servicesService.getServices({ page: 0, pageSize: 200 }),
         ]);
 
-      const patientItems = (patientsResponse.entities ?? []).map((item) => ({
-        id: item.id,
-        label: `${item.name}${item.email ? ` - ${item.email}` : ""}`,
-      }));
-
-      const doctorItems = (doctorsResponse.entities ?? []).map((item) => ({
-        id: item.id,
-        label: `${item.name}${item.specialty ? ` - ${item.specialty}` : ""}`,
-      }));
-
-      const serviceItems = (servicesResponse.entities ?? [])
-        .filter((item) => item.active)
-        .map((item) => ({
+      setPatientsOptions(
+        (patientsResponse.entities ?? []).map((item) => ({
           id: item.id,
-          label: `${item.code} - ${item.name}`,
-        }));
-
-      setPatientsOptions(patientItems);
-      setDoctorsOptions(doctorItems);
-      setServicesOptions(serviceItems);
+          label: `${item.name}${item.email ? ` - ${item.email}` : ""}`,
+        })),
+      );
+      setDoctorsOptions(
+        (doctorsResponse.entities ?? []).map((item) => ({
+          id: item.id,
+          label: `${item.name}${item.specialty ? ` - ${item.specialty}` : ""}`,
+        })),
+      );
+      // Mapa completo id → datos para sugerir duración y resolver etiquetas.
+      serviceCatalogRef.current = new Map(
+        (servicesResponse.entities ?? []).map((item) => [
+          item.id,
+          {
+            code: item.code,
+            name: item.name,
+            duration: item.duration,
+            type: item.type,
+            active: item.active,
+          },
+        ]),
+      );
+      // En el selector de citas solo ofrecemos tipos agendables (no PRODUCT/ADVANCE).
+      setServicesOptions(
+        (servicesResponse.entities ?? [])
+          .filter((item) => item.active && isSchedulableType(item.type))
+          .map((item) => ({
+            id: item.id,
+            label: `${item.code} - ${item.name}`,
+          })),
+      );
     } catch {
       setPatientsOptions([]);
       setDoctorsOptions([]);
@@ -151,15 +260,16 @@ export function useAppointmentForm({
 
     if (!appointment) return;
 
-    form.setFieldsValue({
+    reset({
+      ...DEFAULT_VALUES,
       patientId: appointment.patientId ?? appointment.patient_id ?? "",
       doctorId: appointment.doctorId ?? appointment.doctor_id ?? "",
       date: normalizeDate(appointment.date),
-      time: appointment.time,
-      duration: appointment.duration,
+      time: appointment.time ?? "",
+      duration: appointment.duration ?? 30,
       type: appointment.type,
-      reason: appointment.reason,
-      notes: appointment.notes,
+      reason: appointment.reason ?? "",
+      notes: appointment.notes ?? "",
       serviceIds:
         appointment.services && appointment.services.length > 0
           ? appointment.services
@@ -172,39 +282,22 @@ export function useAppointmentForm({
         ? appointment.labels.map((l) => l.id)
         : [],
     });
-  }, [isEdit, appointmentId, initialData, getAppointmentById, form]);
+  }, [isEdit, appointmentId, initialData, getAppointmentById, reset]);
 
   const applyPrefill = useCallback(() => {
     if (isEdit || !prefill) return;
 
-    const values: Partial<AppointmentFormValues> = {};
-
-    if (prefill.patientId) {
-      values.patientId = prefill.patientId;
-    }
-
-    if (prefill.doctorId) {
-      values.doctorId = prefill.doctorId;
-    }
-
-    if (prefill.date) {
-      values.date = normalizeDate(prefill.date);
-    }
-
-    if (prefill.time) {
-      values.time = prefill.time;
-    }
-
-    if (Object.keys(values).length > 0) {
-      form.setFieldsValue(values);
-    }
-  }, [form, isEdit, prefill]);
+    if (prefill.patientId) setValue("patientId", prefill.patientId);
+    if (prefill.doctorId) setValue("doctorId", prefill.doctorId);
+    if (prefill.date) setValue("date", normalizeDate(prefill.date));
+    if (prefill.time) setValue("time", prefill.time);
+  }, [isEdit, prefill, setValue]);
 
   useEffect(() => {
     loadCatalogs();
   }, [loadCatalogs]);
 
-  // Cargar schedule del doctor cuando cambia la selección
+  // Cargar schedule del doctor cuando cambia la selección.
   useEffect(() => {
     if (!watchedDoctorId) {
       setDoctorSchedule(null);
@@ -248,7 +341,12 @@ export function useAppointmentForm({
 
       setAvailabilityLoading(true);
       try {
-        const times = await getDoctorAvailability(watchedDoctorId, watchedDate);
+        const times = await getDoctorAvailability(
+          watchedDoctorId,
+          watchedDate,
+          15,
+          watchedDuration || 30,
+        );
         setAvailableTimes(times);
       } catch {
         setAvailableTimes([]);
@@ -258,7 +356,7 @@ export function useAppointmentForm({
     };
 
     run();
-  }, [watchedDoctorId, watchedDate, getDoctorAvailability]);
+  }, [watchedDoctorId, watchedDate, watchedDuration, getDoctorAvailability]);
 
   const handleSubmit = useCallback(
     async (values: AppointmentFormValues) => {
@@ -275,8 +373,8 @@ export function useAppointmentForm({
         time: values.time,
         duration: Number(values.duration),
         type: values.type,
-        reason: values.reason,
-        notes: values.notes,
+        reason: values.reason || undefined,
+        notes: values.notes || undefined,
         serviceIds,
         serviceId: serviceIds[0],
         labelIds,
@@ -344,18 +442,17 @@ export function useAppointmentForm({
         label: `${values.name}${values.email ? ` - ${values.email}` : ""}`,
       };
 
-      setPatientsOptions((prev) => {
-        if (prev.some((item) => item.id === patientId)) {
-          return prev;
-        }
-        return [newOption, ...prev];
-      });
+      setPatientsOptions((prev) =>
+        prev.some((item) => item.id === patientId)
+          ? prev
+          : [newOption, ...prev],
+      );
 
-      form.setFieldValue("patientId", patientId);
+      setValue("patientId", patientId);
 
       return patientId;
     },
-    [createPatientFromPatientsModule, form],
+    [createPatientFromPatientsModule, setValue],
   );
 
   return {
@@ -370,6 +467,11 @@ export function useAppointmentForm({
     servicesOptions,
     availableTimes,
     disabledDate,
+    isWorkingDay,
+    doctorSchedule,
+    selectedDayWorked,
+    getSuggestedDuration,
+    getServiceLabel,
     handleSubmit,
     handleCancel,
     handleBack,

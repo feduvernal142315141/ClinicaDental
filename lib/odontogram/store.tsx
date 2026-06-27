@@ -946,11 +946,25 @@ const createOdontogramStore = ({
         const nextPerformedEvents: ClinicalEvent[] = performed.map((item) => {
           const existingEvent = existingPerformedById.get(item.id);
 
+          // Conserva el símbolo personalizado del servicio al finalizar: lo toma
+          // del evento performed previo o, si no, del evento de plan del mismo
+          // procedimiento en este diente.
+          const symbolSource =
+            existingEvent ??
+            currentToothEvents.find(
+              (e) =>
+                !!e.procedureId &&
+                e.procedureId === item.procedureId &&
+                (!!e.serviceSymbolText || !!e.serviceSymbolUrl),
+            );
+
           return {
             ...(existingEvent ?? {
               id: item.id,
               createdAt: now,
             }),
+            serviceSymbolText: symbolSource?.serviceSymbolText,
+            serviceSymbolUrl: symbolSource?.serviceSymbolUrl,
             schemaVersion: ODONTOGRAM_SCHEMA_VERSION,
             visitId: item.visitId ?? state.metadata.visitId,
             toothNumber,

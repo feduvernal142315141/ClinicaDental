@@ -1,14 +1,59 @@
 "use client";
 
-import { useEffect } from "react";
-import { Drawer, Form, Space, Button } from "antd";
-import { SaveOutlined, CloseOutlined } from "@ant-design/icons";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Save, X } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/primitives/shadcn/sheet";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/atomic/forms/form";
+import { Input } from "@/components/ui/atomic/forms/input";
+import TextArea from "@/components/ui/atomic/forms/textarea";
+import { Slider } from "@/components/ui/atomic/forms/slider";
+import { Select } from "@/components/ui/controls/select";
+import { DateTimePicker } from "@/components/ui/controls/date-time-picker";
+import { cn } from "@/lib/utils/utils";
 import type {
   ClinicalHistoryMedicalHistory,
   UpdateMedicalHistoryRequest,
 } from "@/lib/entity/clinical-history";
-import dayjs from "dayjs";
-import { MedicalHistoryFormFields } from "./MedicalHistoryFormFields";
+
+// Opciones locales (equivalentes a las exportadas por MedicalHistoryFormFields,
+// que sigue sirviendo a AntecedentesPanel en AntD). Se replican aquí para que
+// este drawer no dependa del módulo AntD.
+const PAIN_TYPE_OPTIONS = [
+  { label: "Agudo", value: "agudo" },
+  { label: "Pulsátil", value: "pulsátil" },
+  { label: "Sordo", value: "sordo" },
+  { label: "Punzante", value: "punzante" },
+  { label: "Intermitente", value: "intermitente" },
+  { label: "Constante", value: "constante" },
+];
+
+const MARITAL_STATUS_OPTIONS = [
+  { label: "Soltero/a", value: "Soltero/a" },
+  { label: "Casado/a", value: "Casado/a" },
+  { label: "Divorciado/a", value: "Divorciado/a" },
+  { label: "Viudo/a", value: "Viudo/a" },
+  { label: "Unión libre", value: "Unión libre" },
+];
+
+const EMPTY_OPTION = { label: "Sin especificar", value: "" };
 
 interface MedicalHistoryDrawerProps {
   open: boolean;
@@ -18,6 +63,148 @@ interface MedicalHistoryDrawerProps {
   loading: boolean;
 }
 
+const formSchema = z.object({
+  occupation: z.string().optional(),
+  maritalStatus: z.string().optional(),
+  systemicDiseases: z.array(z.string()),
+  currentMedications: z.array(z.string()),
+  allergies: z.array(z.string()),
+  previousSurgeries: z.array(z.string()),
+  chiefComplaint: z.string().optional(),
+  habits: z.array(z.string()),
+  lastDentalVisit: z.string().optional(),
+  painLocation: z.string().optional(),
+  painIntensity: z.number(),
+  painType: z.string().optional(),
+  painDuration: z.string().optional(),
+});
+
+type MedicalHistoryFormValues = z.infer<typeof formSchema>;
+
+const EMPTY_VALUES: MedicalHistoryFormValues = {
+  occupation: "",
+  maritalStatus: "",
+  systemicDiseases: [],
+  currentMedications: [],
+  allergies: [],
+  previousSurgeries: [],
+  chiefComplaint: "",
+  habits: [],
+  lastDentalVisit: "",
+  painLocation: "",
+  painIntensity: 0,
+  painType: "",
+  painDuration: "",
+};
+
+function toFormValues(
+  mh: ClinicalHistoryMedicalHistory,
+): MedicalHistoryFormValues {
+  return {
+    occupation: mh.occupation ?? "",
+    maritalStatus: mh.maritalStatus ?? "",
+    systemicDiseases: mh.systemicDiseases ?? [],
+    currentMedications: mh.currentMedications ?? [],
+    allergies: mh.allergies ?? [],
+    previousSurgeries: mh.previousSurgeries ?? [],
+    chiefComplaint: mh.chiefComplaint ?? "",
+    habits: mh.habits ?? [],
+    // El picker Bento trabaja con strings 'YYYY-MM-DD'.
+    lastDentalVisit: mh.lastDentalVisit ? mh.lastDentalVisit.slice(0, 10) : "",
+    painLocation: mh.currentPain?.location ?? "",
+    painIntensity: mh.currentPain?.intensity ?? 0,
+    painType: mh.currentPain?.type ?? "",
+    painDuration: mh.currentPain?.duration ?? "",
+  };
+}
+
+/**
+ * Tag input libre (equivalente al `mode="tags"` de AntD): el usuario escribe y
+ * confirma con Enter o coma; Backspace en vacío elimina el último; chips con X.
+ * Controlado vía value/onChange. Tokens Bento.
+ */
+function TagInput({
+  value,
+  onChange,
+  placeholder,
+  id,
+  onBlur,
+  ariaInvalid,
+}: {
+  value: string[];
+  onChange: (value: string[]) => void;
+  placeholder?: string;
+  id?: string;
+  onBlur?: () => void;
+  ariaInvalid?: boolean;
+}) {
+  const [draft, setDraft] = useState("");
+
+  const addToken = (raw: string) => {
+    const token = raw.trim();
+    setDraft("");
+    if (!token || value.includes(token)) return;
+    onChange([...value, token]);
+  };
+
+  const removeAt = (index: number) =>
+    onChange(value.filter((_, i) => i !== index));
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addToken(draft);
+    } else if (e.key === "Backspace" && draft === "" && value.length > 0) {
+      removeAt(value.length - 1);
+    }
+  };
+
+  return (
+    <div
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          onBlur?.();
+        }
+      }}
+      className={cn(
+        "flex w-full flex-wrap items-center gap-1.5 rounded-xl border bg-elevated px-3 py-2 text-sm transition-colors",
+        "focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/30",
+        ariaInvalid ? "border-rose-500/60" : "border-hairline",
+      )}
+    >
+      {value.map((tag, i) => (
+        <span
+          key={`${tag}-${i}`}
+          className="inline-flex items-center gap-1 rounded-md bg-brand/15 px-2 py-0.5 text-xs font-medium text-brand"
+        >
+          {tag}
+          <button
+            type="button"
+            aria-label={`Quitar ${tag}`}
+            onClick={() => removeAt(i)}
+            className="grid h-3.5 w-3.5 place-items-center rounded-sm hover:bg-brand/20"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      ))}
+      <input
+        id={id}
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={() => {
+          if (draft.trim()) addToken(draft);
+        }}
+        placeholder={value.length === 0 ? placeholder : ""}
+        aria-invalid={ariaInvalid}
+        className="min-w-[8rem] flex-1 bg-transparent text-ink outline-none placeholder:text-subtle"
+      />
+    </div>
+  );
+}
+
 export function MedicalHistoryDrawer({
   open,
   onClose,
@@ -25,101 +212,361 @@ export function MedicalHistoryDrawer({
   medicalHistory,
   loading,
 }: MedicalHistoryDrawerProps) {
-  const [form] = Form.useForm();
+  const form = useForm<MedicalHistoryFormValues>({
+    resolver: zodResolver(formSchema),
+    mode: "onBlur",
+    defaultValues: EMPTY_VALUES,
+  });
 
   useEffect(() => {
     if (open) {
-      if (medicalHistory) {
-        form.setFieldsValue({
-          ...medicalHistory,
-          lastDentalVisit: medicalHistory.lastDentalVisit
-            ? dayjs(medicalHistory.lastDentalVisit)
-            : undefined,
-          painLocation: medicalHistory.currentPain?.location,
-          painIntensity: medicalHistory.currentPain?.intensity ?? 0,
-          painType: medicalHistory.currentPain?.type,
-          painDuration: medicalHistory.currentPain?.duration,
-        });
-      } else {
-        form.resetFields();
-      }
+      form.reset(medicalHistory ? toFormValues(medicalHistory) : EMPTY_VALUES);
     }
   }, [open, medicalHistory, form]);
 
-  const handleFinish = async (values: Record<string, unknown>) => {
+  const onSubmit = async (values: MedicalHistoryFormValues) => {
     // intensity 0 = "sin dolor" — backend validator rejects 0, expects null when not applicable
-    const rawIntensity = values.painIntensity as number | undefined;
+    const rawIntensity = values.painIntensity;
     const intensity = rawIntensity && rawIntensity > 0 ? rawIntensity : null;
 
     // Only include currentPain object if at least one field is filled
     const hasPainData =
       intensity !== null ||
-      (values.painLocation as string)?.trim() ||
+      values.painLocation?.trim() ||
       values.painType ||
-      (values.painDuration as string)?.trim();
+      values.painDuration?.trim();
 
+    // Preserva la semántica de HEAD: se envían los strings crudos (""
+    // cuando el usuario vacía el campo) para no alterar el "limpiar campo"
+    // si el backend distingue "" de ausente en el PATCH parcial.
     const data: UpdateMedicalHistoryRequest = {
-      occupation: values.occupation as string,
-      maritalStatus: values.maritalStatus as string,
-      systemicDiseases: (values.systemicDiseases as string[]) ?? [],
-      currentMedications: (values.currentMedications as string[]) ?? [],
-      allergies: (values.allergies as string[]) ?? [],
-      previousSurgeries: (values.previousSurgeries as string[]) ?? [],
-      chiefComplaint: values.chiefComplaint as string,
-      habits: (values.habits as string[]) ?? [],
+      occupation: values.occupation,
+      maritalStatus: values.maritalStatus,
+      systemicDiseases: values.systemicDiseases ?? [],
+      currentMedications: values.currentMedications ?? [],
+      allergies: values.allergies ?? [],
+      previousSurgeries: values.previousSurgeries ?? [],
+      chiefComplaint: values.chiefComplaint,
+      habits: values.habits ?? [],
       currentPain: hasPainData
         ? {
-            location: values.painLocation as string,
+            location: values.painLocation,
             intensity: intensity ?? undefined,
-            type: values.painType as string,
-            duration: values.painDuration as string,
+            type: values.painType,
+            duration: values.painDuration,
           }
         : undefined,
-      lastDentalVisit: values.lastDentalVisit
-        ? (values.lastDentalVisit as { format: (s: string) => string }).format("YYYY-MM-DD")
-        : undefined,
+      lastDentalVisit: values.lastDentalVisit || undefined,
     };
     await onSave(data);
   };
 
   return (
-    <Drawer
-      title={
-        medicalHistory ? "Editar historia médica" : "Crear historia médica"
-      }
+    <Sheet
       open={open}
-      onClose={onClose}
-      size="large"
-      destroyOnHidden
-      extra={
-        <Space>
-          <Button
-            icon={<CloseOutlined />}
-            type="default"
-            danger
-            onClick={onClose}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="primary"
-            icon={<SaveOutlined />}
-            loading={loading}
-            onClick={() => form.submit()}
-          >
-            Guardar
-          </Button>
-        </Space>
-      }
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
     >
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleFinish}
-        autoComplete="off"
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 border-hairline bg-surface p-0 sm:max-w-lg"
       >
-        <MedicalHistoryFormFields />
-      </Form>
-    </Drawer>
+        <SheetHeader className="border-b border-hairline">
+          <SheetTitle className="text-ink">
+            {medicalHistory ? "Editar historia médica" : "Crear historia médica"}
+          </SheetTitle>
+          <SheetDescription className="text-subtle">
+            {medicalHistory
+              ? "Actualiza los antecedentes médicos del paciente."
+              : "Registra los antecedentes médicos del paciente."}
+          </SheetDescription>
+        </SheetHeader>
+
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            autoComplete="off"
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+              <FormField
+                control={form.control}
+                name="occupation"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Ocupación</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Ej: Ingeniero, Estudiante..."
+                        aria-invalid={!!fieldState.error}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="maritalStatus"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Estado civil</FormLabel>
+                    <Select
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      options={[EMPTY_OPTION, ...MARITAL_STATUS_OPTIONS]}
+                      placeholder="Seleccionar"
+                      aria-invalid={!!fieldState.error}
+                      aria-label="Estado civil"
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="systemicDiseases"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Enfermedades sistémicas</FormLabel>
+                    <TagInput
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      placeholder="Escriba y presione Enter para agregar"
+                      ariaInvalid={!!fieldState.error}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="currentMedications"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Medicamentos actuales</FormLabel>
+                    <TagInput
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      placeholder="Escriba y presione Enter para agregar"
+                      ariaInvalid={!!fieldState.error}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="allergies"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Alergias</FormLabel>
+                    <TagInput
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      placeholder="Escriba y presione Enter para agregar"
+                      ariaInvalid={!!fieldState.error}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="previousSurgeries"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Cirugías previas</FormLabel>
+                    <TagInput
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      placeholder="Escriba y presione Enter para agregar"
+                      ariaInvalid={!!fieldState.error}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="chiefComplaint"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Motivo de consulta</FormLabel>
+                    <FormControl>
+                      <TextArea
+                        rows={3}
+                        placeholder="Describa el motivo de consulta"
+                        aria-invalid={!!fieldState.error}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="habits"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Hábitos</FormLabel>
+                    <TagInput
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      placeholder="Ej: Bruxismo, Tabaquismo, Onicofagia..."
+                      ariaInvalid={!!fieldState.error}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="lastDentalVisit"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Última visita dental</FormLabel>
+                    <DateTimePicker
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      showTime={false}
+                      aria-invalid={!!fieldState.error}
+                      aria-label="Última visita dental"
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Current pain */}
+              <div className="space-y-4 rounded-xl border border-hairline bg-elevated p-4">
+                <div className="text-sm font-semibold text-ink">Dolor actual</div>
+
+                <FormField
+                  control={form.control}
+                  name="painLocation"
+                  render={({ field, fieldState }) => (
+                    <FormItem>
+                      <FormLabel>Ubicación</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Ej: Molar inferior derecho"
+                          aria-invalid={!!fieldState.error}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="painIntensity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Intensidad (0-10)</FormLabel>
+                        <span className="text-sm font-medium tabular-nums text-ink">
+                          {field.value ?? 0}
+                        </span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={10}
+                        step={1}
+                        value={[field.value ?? 0]}
+                        onValueChange={(v) => field.onChange(v[0])}
+                        aria-label="Intensidad del dolor"
+                      />
+                      <div className="flex justify-between text-[11px] text-subtle">
+                        <span>0</span>
+                        <span>5</span>
+                        <span>10</span>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="painType"
+                  render={({ field, fieldState }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de dolor</FormLabel>
+                      <Select
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        options={[EMPTY_OPTION, ...PAIN_TYPE_OPTIONS]}
+                        placeholder="Seleccionar tipo"
+                        aria-invalid={!!fieldState.error}
+                        aria-label="Tipo de dolor"
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="painDuration"
+                  render={({ field, fieldState }) => (
+                    <FormItem>
+                      <FormLabel>Duración</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Ej: 2 días, 1 semana..."
+                          aria-invalid={!!fieldState.error}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <SheetFooter className="flex-row justify-end gap-2 border-t border-hairline">
+              <Button
+                type="button"
+                variant="outline"
+                danger
+                icon={<X className="h-4 w-4" />}
+                onClick={onClose}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                variant="default"
+                loading={loading}
+                icon={<Save className="h-4 w-4" />}
+              >
+                Guardar
+              </Button>
+            </SheetFooter>
+          </form>
+        </Form>
+      </SheetContent>
+    </Sheet>
   );
 }

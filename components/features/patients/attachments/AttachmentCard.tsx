@@ -35,9 +35,9 @@ function truncate(str: string, max: number): string {
 }
 
 function FileIcon({ mimeType }: { mimeType: string }) {
-  if (mimeType.startsWith("image/")) return <Image className="h-5 w-5 text-blue-500" />;
-  if (mimeType === "application/pdf") return <FileText className="h-5 w-5 text-red-500" />;
-  return <File className="h-5 w-5 text-gray-400" />;
+  if (mimeType.startsWith("image/")) return <Image className="h-5 w-5 text-brand" />;
+  if (mimeType === "application/pdf") return <FileText className="h-5 w-5 text-destructive" />;
+  return <File className="h-5 w-5 text-subtle" />;
 }
 
 export function AttachmentCard({ attachment, patientId, onDelete, canDelete }: AttachmentCardProps) {

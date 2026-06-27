@@ -59,7 +59,7 @@ export function OverviewSection({ data, currency }: OverviewSectionProps) {
           title="Citas de Hoy"
           value={kpis.todayTotal}
           icon={Calendar}
-          iconColor="text-blue-600"
+          accent="sky"
           badges={[
             {
               label: `${kpis.todayCompleted} cumplidas`,
@@ -76,7 +76,7 @@ export function OverviewSection({ data, currency }: OverviewSectionProps) {
           title="Tasa de Asistencia"
           value={`${kpis.attendanceRate}%`}
           icon={Target}
-          iconColor="text-green-600"
+          accent="emerald"
           description="Citas cumplidas sobre cumplidas + canceladas"
           sparkline={attendanceSparkline}
           trend={attendanceTrend}
@@ -87,7 +87,7 @@ export function OverviewSection({ data, currency }: OverviewSectionProps) {
           title="Pacientes Nuevos"
           value={kpis.newPatients}
           icon={Activity}
-          iconColor="text-purple-600"
+          accent="violet"
           badges={[
             {
               label: `${data.patientSignals.uniquePatientsAttended} atendidos`,
@@ -117,8 +117,9 @@ export function OverviewSection({ data, currency }: OverviewSectionProps) {
         />
       </KpiGrid>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <DataCard
+          className="lg:col-span-7"
           title="Señales Operativas"
           description="Indicadores para revisar agenda y calidad de registro"
           icon={AlertTriangle}
@@ -159,6 +160,7 @@ export function OverviewSection({ data, currency }: OverviewSectionProps) {
 
         {/* Doctor Productivity */}
         <DataCard
+          className="lg:col-span-5"
           title="Ocupación de Doctores"
           description="Tasa de asistencia por doctor en el período"
         >

@@ -23,6 +23,18 @@ import type {
 const endpoint = "/services";
 
 /**
+ * Lanza un error amigable y específico para el conflicto de código duplicado
+ * (HTTP 409), en vez del mensaje genérico/técnico del backend.
+ */
+function throwDuplicateCodeError(): never {
+  const error = new Error(
+    "Ya existe un servicio con ese código. Usa un código distinto.",
+  ) as Error & { status?: number };
+  error.status = 409;
+  throw error;
+}
+
+/**
  * Build query string from params
  */
 function buildQueryString(params?: ServicesQueryParams): string {
@@ -83,14 +95,21 @@ async function getServiceById(id: string): Promise<Service> {
  * Create new service
  * POST /api/v1/services
  */
-async function createService(data: CreateServiceRequest): Promise<boolean> {
-  const response = await servicePost<CreateServiceRequest, boolean>(
+async function createService(
+  data: CreateServiceRequest,
+): Promise<string | boolean> {
+  const response = await servicePost<CreateServiceRequest, string>(
     endpoint,
     data,
   );
 
   if (response?.status >= 200 && response?.status < 300) {
-    return true;
+    // El backend devuelve el UUID del servicio creado; lo propagamos (truthy).
+    return (response.data as unknown as string) || true;
+  }
+
+  if (response?.status === 409) {
+    throwDuplicateCodeError();
   }
 
   handleServiceError(response, "Error al crear servicio");
@@ -111,6 +130,10 @@ async function updateService(
 
   if (response?.status >= 200 && response?.status < 300) {
     return true;
+  }
+
+  if (response?.status === 409) {
+    throwDuplicateCodeError();
   }
 
   handleServiceError(response, "Error al actualizar servicio");
@@ -163,11 +186,11 @@ export function buildFilter(
 }
 
 /**
- * Helper: Build order string
- * Example: buildOrder('name', 'asc') => 'name,asc'
+ * Helper: Build order string (canonical backend format)
+ * Example: buildOrder('name', 'asc') => 'name__ASC'
  */
 export function buildOrder(field: string, direction: "asc" | "desc"): string {
-  return `${field},${direction}`;
+  return `${field}__${direction.toUpperCase()}`;
 }
 
 /**

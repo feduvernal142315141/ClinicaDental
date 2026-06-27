@@ -90,12 +90,12 @@ function buildTimelineItem(
     <div className="pb-1">
       {/* Cabecera: paciente + estado + hora */}
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <UserOutlined className="text-gray-400" />
+        <UserOutlined className="text-subtle" />
         <Text strong>{appointment.patientName ?? "Paciente sin nombre"}</Text>
         <Tag color={config.tagColor} className="mx-0">
           {config.label}
         </Tag>
-        <Text type="secondary" className="text-xs">
+        <Text type="secondary" className="text-xs tabular-nums">
           <ClockCircleOutlined className="mr-1" />
           {appointment.time || "--:--"}
           {appointment.duration ? ` · ${appointment.duration} min` : ""}
@@ -104,10 +104,10 @@ function buildTimelineItem(
 
       {/* Bloque detalle con borde lateral de color */}
       <div
-        className="rounded border-l-4 bg-gray-50 px-3 py-2"
+        className="rounded border-l-4 bg-hover px-3 py-2"
         style={{ borderLeftColor: config.hex }}
       >
-        <Text className="text-sm text-gray-600">
+        <Text className="text-sm text-subtle">
           {TYPE_LABELS[appointment.type] ?? appointment.type}
           {appointment.reason && (
             <Text type="secondary"> · {appointment.reason}</Text>

@@ -346,7 +346,7 @@ export function SurfacesTab({
           </p>
         </div>
         <div className="flex items-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 shadow-sm">
+          <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-elevated px-3 py-1.5 shadow-sm">
             <Popover
               content={legendContent}
               title="Escala de colores"
@@ -356,7 +356,7 @@ export function SurfacesTab({
               <button
                 type="button"
                 aria-label="Ver escala de colores"
-                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white hover:text-foreground"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-hover hover:text-foreground"
               >
                 <HelpCircle className="h-4 w-4" />
               </button>
@@ -364,7 +364,7 @@ export function SurfacesTab({
             <span className="text-xs font-medium text-muted-foreground">
               Superficies
             </span>
-            <span className="text-lg font-bold leading-none text-slate-950">
+            <span className="text-lg font-bold leading-none text-ink tabular-nums">
               {selectedSurfaces.length}
             </span>
           </div>
@@ -372,8 +372,8 @@ export function SurfacesTab({
       </div>
 
       {isDisabled && (
-        <Card className="p-3 bg-amber-50 border-amber-200">
-          <p className="text-sm text-amber-800">
+        <Card className="p-3 bg-amber-500/15 border-amber-400/25">
+          <p className="text-sm text-amber-600 dark:text-amber-300">
             ⚠️ Las superficies están deshabilitadas porque el diente está
             marcado como{" "}
             {tooth.globalStatus === "absent" ? "Ausente" : "Implante"}.
@@ -536,7 +536,7 @@ export function SurfacesTab({
                   >
                     Diagnóstico
                   </button>
-                  <span aria-hidden="true" className="text-slate-300">
+                  <span aria-hidden="true" className="text-subtle">
                     /
                   </span>
                   <button

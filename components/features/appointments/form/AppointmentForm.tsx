@@ -1,38 +1,40 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState, type ComponentType } from "react";
+import {
+  CalendarClock,
+  Clock,
+  FileText,
+  Plus,
+  Stethoscope,
+  Tag as TagIcon,
+  User,
+} from "lucide-react";
 import {
   Form,
-  Row,
-  Col,
-  DatePicker,
-  Select,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
   Input,
-  Flex,
-  Alert,
-  Button,
-  Tooltip,
-} from "antd";
-import dayjs from "dayjs";
-import { PlusOutlined } from "@ant-design/icons";
-import { Card } from "@/components/ui/antd";
-import { FormTimePicker } from "@/components/ui/antd/forms/FormTimePicker";
-import { Modal as CustomModal } from "@/components/ui/primitives/custom";
-import { FormActions } from "@/components/features/doctors/form/components/FormActions";
-import { PatientFormFields } from "@/components/features/patients/form/PatientFormFields";
+} from "@/components/ui/atomic/forms";
+import TextArea from "@/components/ui/atomic/forms/textarea";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import { Select } from "@/components/ui/controls/select";
+import { MultiSelect } from "@/components/ui/controls/multi-select";
+import { AvailabilityCalendar } from "@/components/features/appointments/form/AvailabilityCalendar";
+import { AvailabilitySlotPicker } from "@/components/features/appointments/form/AvailabilitySlotPicker";
+import { DoctorScheduleSummary } from "@/components/features/appointments/form/DoctorScheduleSummary";
+import { QuickPatientModal } from "@/components/features/appointments/form/QuickPatientModal";
 import { LabelSelector, LabelFormModal } from "@/components/app/labels";
 import { useAppointmentForm } from "@/lib/hooks/appointments";
+import { cn } from "@/lib/utils/utils";
 
 import type { AppointmentFormPrefill } from "@/lib/hooks/appointments/use-appointment-form";
 import type { Appointment } from "@/lib/entity/appointment";
 import type { Label } from "@/lib/entity/label";
 
-const DURATION_OPTIONS = [
-  { value: 15, label: "15 minutos" },
-  { value: 30, label: "30 minutos" },
-  { value: 45, label: "45 minutos" },
-  { value: 60, label: "60 minutos" },
-];
 
 const TYPE_OPTIONS = [
   { value: "consultation", label: "Consulta" },
@@ -50,15 +52,35 @@ interface AppointmentFormProps {
   readOnly?: boolean;
 }
 
-type QuickPatientFormValues = {
-  name: string;
-  email: string;
-  phone: string;
-  dateOfBirth: string;
-  gender: "M" | "F";
-  address?: string;
-  agreement?: boolean;
-};
+function SummaryRow({
+  icon: Icon,
+  label,
+  value,
+  mono,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  value?: string | null;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <dt className="flex items-center gap-1.5 text-subtle">
+        <Icon className="h-4 w-4 shrink-0" />
+        {label}
+      </dt>
+      <dd
+        className={cn(
+          "text-right font-medium text-ink",
+          mono && "tabular-nums",
+          !value && "font-normal text-subtle/60",
+        )}
+      >
+        {value || "—"}
+      </dd>
+    </div>
+  );
+}
 
 export function AppointmentForm({
   appointmentId,
@@ -70,7 +92,6 @@ export function AppointmentForm({
   const [isCreatePatientModalOpen, setIsCreatePatientModalOpen] =
     useState(false);
   const [isCreateLabelModalOpen, setIsCreateLabelModalOpen] = useState(false);
-  const [quickPatientForm] = Form.useForm<QuickPatientFormValues>();
 
   const {
     form,
@@ -84,325 +105,472 @@ export function AppointmentForm({
     servicesOptions,
     availableTimes,
     disabledDate,
+    isWorkingDay,
+    doctorSchedule,
+    selectedDayWorked,
+    getSuggestedDuration,
+    getServiceLabel,
     handleSubmit,
     handleCancel,
     createQuickPatient,
-  } = useAppointmentForm({
-    appointmentId,
-    basePath,
-    initialData,
-    prefill,
-  });
+  } = useAppointmentForm({ appointmentId, basePath, initialData, prefill });
 
-  const disabledTime = useCallback(() => {
-    if (!availableTimes.length) return {};
+  const { errors } = form.formState;
 
-    const availableHours = new Set<number>();
-    const availableMinutesByHour = new Map<number, Set<number>>();
+  // Suscripción puntual a los campos que alimentan resumen / progresividad
+  // (evita re-render del formulario completo al teclear motivo/notas).
+  const watchedPatientId = form.watch("patientId");
+  const watchedDoctorId = form.watch("doctorId");
+  const watchedDate = form.watch("date");
+  const watchedTime = form.watch("time");
+  const watchedDuration = form.watch("duration");
+  const watchedType = form.watch("type");
+  const watchedServiceIds = form.watch("serviceIds");
 
-    for (const t of availableTimes) {
-      const [h, m] = t.split(":").map(Number);
-      availableHours.add(h);
-      if (!availableMinutesByHour.has(h))
-        availableMinutesByHour.set(h, new Set());
-      availableMinutesByHour.get(h)!.add(m);
-    }
+  const scheduleReady = Boolean(watchedDoctorId && watchedDate);
+  const formDisabled = loading || patientCreationLoading || readOnly;
 
-    const allHours = Array.from({ length: 24 }, (_, i) => i);
-    const disabledHours = () => allHours.filter((h) => !availableHours.has(h));
+  const patientLabel = patientsOptions.find(
+    (o) => o.id === watchedPatientId,
+  )?.label;
+  const doctorLabel = doctorsOptions.find((o) => o.id === watchedDoctorId)?.label;
+  const typeLabel = TYPE_OPTIONS.find((o) => o.value === watchedType)?.label;
+  const serviceCount = (watchedServiceIds ?? []).length;
+  const dateLabel = watchedDate
+    ? new Date(`${watchedDate}T00:00:00`).toLocaleDateString("es-ES", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      })
+    : null;
 
-    const disabledMinutes = (selectedHour: number) => {
-      const allowed = availableMinutesByHour.get(selectedHour);
-      if (!allowed) return Array.from({ length: 60 }, (_, i) => i);
-      return Array.from({ length: 60 }, (_, i) => i).filter(
-        (m) => !allowed.has(m),
-      );
-    };
-
-    return { disabledHours, disabledMinutes };
-  }, [availableTimes]);
-
-  const openCreatePatientModal = useCallback(() => {
-    setIsCreatePatientModalOpen(true);
-  }, []);
-
-  const closeCreatePatientModal = useCallback(() => {
-    setIsCreatePatientModalOpen(false);
-    quickPatientForm.resetFields();
-  }, [quickPatientForm]);
-
-  const handleCreatePatientSubmit = useCallback(async () => {
-    try {
-      const values = await quickPatientForm.validateFields();
-      const createdId = await createQuickPatient(values);
-      if (createdId) {
-        closeCreatePatientModal();
-      }
-    } catch {
-      // AntD handles validation errors and patient hook handles API errors.
-    }
-  }, [closeCreatePatientModal, createQuickPatient, quickPatientForm]);
-
-  const handleCreateLabelSubmit = useCallback(
-    (newLabel: Label) => {
-      setIsCreateLabelModalOpen(false);
-      const currentLabelIds = form.getFieldValue("labelIds") || [];
-      form.setFieldValue("labelIds", [...currentLabelIds, newLabel.id]);
-    },
-    [form],
-  );
+  const handleCreateLabelSubmit = (newLabel: Label) => {
+    setIsCreateLabelModalOpen(false);
+    const current = form.getValues("labelIds") ?? [];
+    form.setValue("labelIds", [...current, newLabel.id]);
+  };
 
   return (
-    <>
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-        disabled={loading || patientCreationLoading || readOnly}
-        initialValues={{
-          duration: 30,
-          type: "consultation",
-        }}
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="grid gap-6 lg:grid-cols-3"
       >
-        <Card
-          title="Información de la Cita"
-          styles={{
-            body: {
-              maxHeight: "calc(100vh - 320px)",
-              overflowY: "auto",
-              overflowX: "hidden",
-            },
-          }}
-          actions={
-            readOnly
-              ? undefined
-              : [
-                  <Flex
-                    key="actions"
-                    justify="end"
-                    style={{ padding: "0 16px" }}
-                  >
-                    <FormActions
-                      loading={loading || patientCreationLoading}
-                      onCancel={handleCancel}
-                      submitText={isEdit ? "Actualizar" : "Guardar"}
-                    />
-                  </Flex>,
-                ]
-          }
-        >
-          {(catalogsLoading || availabilityLoading) && (
-            <Alert
-              type="info"
-              showIcon
-              title="Cargando información para el formulario..."
-              className="mb-4"
-            />
-          )}
+        {/* ───────────────── Columna formulario ───────────────── */}
+        <div className="space-y-6 lg:col-span-2">
+          {/* Paciente y doctor */}
+          <section className="bento space-y-5 p-6">
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-brand" />
+              <h2 className="text-base font-semibold text-ink">
+                Paciente y doctor
+              </h2>
+            </div>
 
-          <Row gutter={[24, 16]}>
-            <Col xs={24} md={12} lg={8}>
-              <Form.Item label="Paciente" required style={{ marginBottom: 0 }}>
-                <Flex align="center" gap={8}>
-                  <Form.Item
-                    name="patientId"
-                    rules={[
-                      { required: true, message: "El paciente es obligatorio" },
-                    ]}
-                    style={{ marginBottom: 0, flex: 1, minWidth: 0 }}
-                  >
-                    <Select
-                      placeholder="Seleccione paciente"
-                      size="large"
-                      loading={catalogsLoading}
-                      options={patientsOptions.map((option) => ({
-                        value: option.id,
-                        label: option.label,
-                      }))}
-                    />
-                  </Form.Item>
-                  {!readOnly && (
-                    <Tooltip title="Nuevo paciente">
-                      <Button
-                        type="primary"
-                        size="large"
-                        icon={<PlusOutlined />}
-                        aria-label="Nuevo paciente"
-                        onClick={openCreatePatientModal}
-                        disabled={
-                          loading || catalogsLoading || patientCreationLoading
-                        }
-                      />
-                    </Tooltip>
-                  )}
-                </Flex>
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} md={12} lg={8}>
-              <Form.Item
-                name="doctorId"
-                label="Doctor"
-                rules={[
-                  { required: true, message: "El doctor es obligatorio" },
-                ]}
-              >
-                <Select
-                  placeholder="Seleccione doctor"
-                  size="large"
-                  loading={catalogsLoading}
-                  options={doctorsOptions.map((option) => ({
-                    value: option.id,
-                    label: option.label,
-                  }))}
-                />
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} md={12} lg={8}>
-              <Form.Item
-                name="date"
-                label="Fecha"
-                rules={[{ required: true, message: "La fecha es obligatoria" }]}
-                getValueProps={(value) => ({
-                  value: value ? dayjs(value) : undefined,
-                })}
-                getValueFromEvent={(date) => date?.format("YYYY-MM-DD")}
-              >
-                <DatePicker
-                  placeholder="Seleccione fecha"
-                  size="large"
-                  style={{ width: "100%" }}
-                  format="DD/MM/YYYY"
-                  disabledDate={disabledDate}
-                />
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} md={12} lg={8}>
-              <FormTimePicker
-                name="time"
-                label="Hora"
-                required
-                placeholder="Seleccione hora"
-                loading={availabilityLoading}
-                disabledTime={disabledTime}
-                hideDisabledOptions
+            <div className="grid gap-5 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="patientId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Paciente <span className="text-rose-500">*</span>
+                    </FormLabel>
+                    <div className="flex items-center gap-2">
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          options={patientsOptions.map((o) => ({
+                            value: o.id,
+                            label: o.label,
+                          }))}
+                          placeholder="Seleccione paciente"
+                          disabled={formDisabled || catalogsLoading}
+                          className="flex-1"
+                        />
+                      </FormControl>
+                      {!readOnly && (
+                        <Button
+                          variant="outline"
+                          type="button"
+                          aria-label="Nuevo paciente"
+                          disabled={formDisabled || catalogsLoading}
+                          onClick={() => setIsCreatePatientModalOpen(true)}
+                          className="shrink-0"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </Col>
 
-            <Col xs={24} md={12} lg={8}>
-              <Form.Item
+              <FormField
+                control={form.control}
+                name="doctorId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Doctor <span className="text-rose-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        options={doctorsOptions.map((o) => ({
+                          value: o.id,
+                          label: o.label,
+                        }))}
+                        placeholder="Seleccione doctor"
+                        disabled={formDisabled || catalogsLoading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </section>
+
+          {/* Fecha y hora */}
+          <section className="bento space-y-4 p-6">
+            <div className="flex items-center gap-2">
+              <CalendarClock className="h-5 w-5 text-brand" />
+              <h2 className="text-base font-semibold text-ink">Fecha y hora</h2>
+            </div>
+
+            <DoctorScheduleSummary
+              schedule={doctorSchedule}
+              ready={Boolean(watchedDoctorId)}
+            />
+
+            {!watchedDoctorId ? (
+              <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-hairline bg-hover/40 px-6 py-12 text-center">
+                <CalendarClock className="h-8 w-8 text-subtle" />
+                <p className="text-sm font-medium text-ink">
+                  Primero selecciona un doctor
+                </p>
+                <p className="text-sm text-subtle">
+                  Verás los días y horas que tiene disponibles para agendar.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Fecha <span className="text-rose-500">*</span>
+                      </FormLabel>
+                      <AvailabilityCalendar
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabledDate={disabledDate}
+                        isWorkingDay={isWorkingDay}
+                        disabled={formDisabled}
+                        aria-invalid={!!errors.date}
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="time"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Hora <span className="text-rose-500">*</span>
+                      </FormLabel>
+                      <AvailabilitySlotPicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        availableTimes={availableTimes}
+                        loading={availabilityLoading}
+                        ready={scheduleReady}
+                        dayWorked={selectedDayWorked}
+                        disabled={formDisabled}
+                        aria-invalid={!!errors.time}
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+          </section>
+
+          {/* Detalles */}
+          <section className="bento space-y-5 p-6">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-brand" />
+              <h2 className="text-base font-semibold text-ink">Detalles</h2>
+            </div>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <FormField
+                control={form.control}
                 name="duration"
-                label="Duración"
-                rules={[
-                  { required: true, message: "La duración es obligatoria" },
-                ]}
-              >
-                <Select
-                  placeholder="Seleccione duración"
-                  size="large"
-                  options={DURATION_OPTIONS}
-                />
-              </Form.Item>
-            </Col>
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Duración <span className="text-rose-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min={5}
+                          step={5}
+                          placeholder="30"
+                          className="pr-12"
+                          value={field.value ?? ""}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === ""
+                                ? undefined
+                                : Number(e.target.value),
+                            )
+                          }
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          disabled={formDisabled}
+                        />
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-subtle">
+                          min
+                        </span>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <Col xs={24} md={12} lg={8}>
-              <Form.Item
+              <FormField
+                control={form.control}
                 name="type"
-                label="Tipo de Cita"
-                rules={[{ required: true, message: "El tipo es obligatorio" }]}
-              >
-                <Select
-                  placeholder="Seleccione tipo"
-                  size="large"
-                  options={TYPE_OPTIONS}
-                />
-              </Form.Item>
-            </Col>
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Tipo de cita <span className="text-rose-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        options={TYPE_OPTIONS}
+                        placeholder="Seleccione tipo"
+                        disabled={formDisabled}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-            <Col xs={24} md={24} lg={16}>
-              <Form.Item name="serviceIds" label="Servicios">
-                <Select
-                  placeholder="Seleccione uno o más servicios"
-                  size="large"
-                  mode="multiple"
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  loading={catalogsLoading}
-                  options={servicesOptions.map((option) => ({
-                    value: option.id,
-                    label: option.label,
-                  }))}
-                />
-              </Form.Item>
-            </Col>
+            <FormField
+              control={form.control}
+              name="serviceIds"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Servicios</FormLabel>
+                  <FormControl>
+                    <MultiSelect
+                      value={field.value ?? []}
+                      onChange={(ids) => {
+                        field.onChange(ids);
+                        // Auto-dimensiona la cita con la suma de duraciones de
+                        // los servicios; el usuario puede ajustar manualmente.
+                        const suggested = getSuggestedDuration(ids);
+                        if (suggested) {
+                          form.setValue("duration", suggested, {
+                            shouldValidate: true,
+                            shouldDirty: true,
+                          });
+                        }
+                      }}
+                      onBlur={field.onBlur}
+                      options={(() => {
+                        const base = servicesOptions.map((o) => ({
+                          value: o.id,
+                          label: o.label,
+                        }));
+                        const present = new Set(base.map((o) => o.value));
+                        // En edición, conserva servicios ya asignados que el
+                        // filtro de tipos/estado ocultaría (para verlos/quitarlos).
+                        const extra = (field.value ?? [])
+                          .filter((id) => !present.has(id))
+                          .map((id) => ({
+                            value: id,
+                            label: `${getServiceLabel(id) ?? id} (no disponible)`,
+                          }));
+                        return [...base, ...extra];
+                      })()}
+                      placeholder="Seleccione uno o más servicios"
+                      searchPlaceholder="Buscar servicio…"
+                      disabled={formDisabled || catalogsLoading}
+                    />
+                  </FormControl>
+                  <p className="text-xs text-subtle">
+                    La duración se calcula desde los servicios; puedes ajustarla
+                    manualmente.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            <Col xs={24}>
-              <Form.Item name="reason" label="Motivo">
-                <Input placeholder="Motivo de la cita" size="large" />
-              </Form.Item>
-            </Col>
+            <FormField
+              control={form.control}
+              name="reason"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Motivo</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Motivo de la cita"
+                      disabled={formDisabled}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            <Col xs={24}>
-              <Form.Item name="notes" label="Notas">
-                <Input.TextArea rows={4} placeholder="Notas adicionales" />
-              </Form.Item>
-            </Col>
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notas</FormLabel>
+                  <FormControl>
+                    <TextArea
+                      rows={4}
+                      placeholder="Notas adicionales"
+                      disabled={formDisabled}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            <Col xs={24}>
-              <Form.Item name="labelIds" label="Etiquetas">
-                <LabelSelector
-                  disabled={readOnly}
-                  onCreateNew={readOnly ? undefined : () => setIsCreateLabelModalOpen(true)}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Card>
-      </Form>
+            <FormField
+              control={form.control}
+              name="labelIds"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Etiquetas</FormLabel>
+                  <LabelSelector
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    disabled={formDisabled}
+                    onCreateNew={
+                      readOnly ? undefined : () => setIsCreateLabelModalOpen(true)
+                    }
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </section>
+        </div>
 
-      <CustomModal
+        {/* ───────────────── Columna resumen (sticky) ───────────────── */}
+        <aside className="lg:col-span-1">
+          <div className="bento space-y-4 p-6 lg:sticky lg:top-6">
+            <div className="flex items-center gap-2">
+              <CalendarClock className="h-5 w-5 text-brand" />
+              <h2 className="text-base font-semibold text-ink">
+                Resumen de la cita
+              </h2>
+            </div>
+
+            {(catalogsLoading || availabilityLoading) && (
+              <p className="rounded-lg bg-brand/10 px-3 py-2 text-xs text-brand">
+                Cargando información…
+              </p>
+            )}
+
+            <dl className="space-y-3 text-sm">
+              <SummaryRow icon={User} label="Paciente" value={patientLabel} />
+              <SummaryRow
+                icon={Stethoscope}
+                label="Doctor"
+                value={doctorLabel}
+              />
+              <SummaryRow
+                icon={CalendarClock}
+                label="Fecha"
+                value={dateLabel}
+              />
+              <SummaryRow icon={Clock} label="Hora" value={watchedTime} mono />
+              <SummaryRow
+                icon={Clock}
+                label="Duración"
+                value={watchedDuration ? `${watchedDuration} min` : undefined}
+              />
+              <SummaryRow icon={FileText} label="Tipo" value={typeLabel} />
+              <SummaryRow
+                icon={TagIcon}
+                label="Servicios"
+                value={
+                  serviceCount > 0
+                    ? `${serviceCount} seleccionado${serviceCount > 1 ? "s" : ""}`
+                    : undefined
+                }
+              />
+            </dl>
+
+            {!readOnly && (
+              <div className="flex flex-col gap-2 border-t border-hairline pt-4">
+                <Button
+                  type="submit"
+                  loading={loading || patientCreationLoading}
+                  className="w-full"
+                >
+                  {isEdit ? "Actualizar cita" : "Guardar cita"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={loading || patientCreationLoading}
+                  className="w-full"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            )}
+          </div>
+        </aside>
+      </form>
+
+      <QuickPatientModal
         open={isCreatePatientModalOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            closeCreatePatientModal();
-            return;
-          }
-
-          setIsCreatePatientModalOpen(true);
-        }}
-        title="Registrar nuevo paciente"
-        description="Completa los datos para crear y seleccionar el paciente en esta cita."
-        className="w-full sm:max-w-2xl"
-      >
-        <Form
-          form={quickPatientForm}
-          layout="vertical"
-          initialValues={{
-            agreement: true,
-          }}
-        >
-          <PatientFormFields gutter={[16, 12]} />
-
-          <Flex justify="end" gap={8}>
-            <Button onClick={closeCreatePatientModal}>Cancelar</Button>
-            <Button
-              type="primary"
-              onClick={handleCreatePatientSubmit}
-              loading={patientCreationLoading}
-            >
-              Guardar paciente
-            </Button>
-          </Flex>
-        </Form>
-      </CustomModal>
+        onClose={() => setIsCreatePatientModalOpen(false)}
+        onCreate={createQuickPatient}
+        loading={patientCreationLoading}
+      />
       <LabelFormModal
         isOpen={isCreateLabelModalOpen}
         onClose={() => setIsCreateLabelModalOpen(false)}
         onSuccess={handleCreateLabelSubmit}
       />
-    </>
+    </Form>
   );
 }

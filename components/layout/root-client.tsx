@@ -10,7 +10,10 @@ import { GlobalAlertDialog } from "@/components/global-alert-dialog";
 import { InterceptorProvider } from "@/lib/contexts/interceptor-context";
 import { GlobalLoadingBar } from "@/components/global-loading-spinner";
 import { InterceptorsInitializer } from "@/components/interceptors-initializer";
-import { AppShellAntd, AppLoader } from "../ui/antd";
+import { Toaster } from "@/components/ui/atomic/feedback/sonner";
+import { AntdCompatProvider } from "@/components/layout/antd-compat-provider";
+import { AppChrome } from "@/components/layout/app-chrome";
+import { CommandPalette } from "@/components/ui/navigation/command-palette";
 
 interface RootClientProps {
   children: React.ReactNode;
@@ -18,6 +21,8 @@ interface RootClientProps {
 
 export function RootClient({ children }: RootClientProps) {
   return (
+    // AntdRegistry + AntdCompatProvider se conservan hasta retirar antd por
+    // completo (componentes/modales antd aún en uso en varias pantallas).
     <AntdRegistry>
       <ThemeProvider
         attribute="class"
@@ -25,7 +30,7 @@ export function RootClient({ children }: RootClientProps) {
         enableSystem
         disableTransitionOnChange
       >
-        <AppLoader>
+        <AntdCompatProvider>
           <Theme>
             <Suspense fallback={null}>
               <InterceptorProvider>
@@ -34,14 +39,16 @@ export function RootClient({ children }: RootClientProps) {
                     <InterceptorsInitializer />
                     <GlobalLoadingBar />
                     <GlobalAlertDialog />
-                    <AppShellAntd>{children}</AppShellAntd>
+                    <CommandPalette />
+                    <AppChrome>{children}</AppChrome>
                   </AlertProvider>
                 </AuthProvider>
               </InterceptorProvider>
             </Suspense>
             <Analytics />
           </Theme>
-        </AppLoader>
+        </AntdCompatProvider>
+        <Toaster richColors closeButton position="top-right" />
       </ThemeProvider>
     </AntdRegistry>
   );

@@ -1,8 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Button, Drawer } from "antd";
-import { FilterOutlined } from "@ant-design/icons";
+import { Filter } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/primitives/shadcn/sheet";
 import { useAppointmentsScheduler } from "@/lib/hooks/appointments/use-appointments-scheduler";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { Appointment, SchedulerEvent } from "@/lib/entity/appointment";
@@ -108,12 +114,31 @@ export function AppointmentsSchedulerShell({
     [scheduler],
   );
 
+  // Clic en hueco vacío → crear cita prefilled. Si hay exactamente un
+  // especialista visible, se prefija ese doctor; si no, sólo fecha/hora.
+  const handleCreateSlot = useCallback(
+    (date: string, time: string) => {
+      const visible = Array.from(scheduler.visibleDoctorIds);
+      const doctorId = visible.length === 1 ? visible[0] : "";
+      onNewAppointmentPrefilled({ doctorId, date, time });
+    },
+    [scheduler.visibleDoctorIds, onNewAppointmentPrefilled],
+  );
+
+  // Arrastrar-para-reagendar (optimista + rollback + guarda 409, en el hook).
+  const handleMoveEvent = useCallback(
+    (appointment: Appointment, newDate: string, newTime: string) => {
+      scheduler.rescheduleByDrag(appointment, newDate, newTime);
+    },
+    [scheduler],
+  );
+
   // Invalidate cache after modal success
   const handleModalSuccess = useCallback(() => {
     scheduler.invalidateCache();
   }, [scheduler]);
 
-  // ---- Sidebar content (shared between inline and Drawer) ------------------
+  // ---- Sidebar content (shared between inline and mobile Sheet) -----------
   const sidebarContent = (
     <AppointmentsSpecialistSidebar
       doctors={scheduler.doctors}
@@ -149,6 +174,8 @@ export function AppointmentsSchedulerShell({
             onReschedule={canCreate ? handleReschedule : undefined}
             onCancel={canCreate ? handleCancel : undefined}
             onComplete={canCreate ? handleComplete : undefined}
+            onCreateSlot={canCreate ? handleCreateSlot : undefined}
+            onMoveEvent={canCreate ? handleMoveEvent : undefined}
             startConsultationLoading={startConsultationLoading}
           />
         );
@@ -167,6 +194,8 @@ export function AppointmentsSchedulerShell({
             onReschedule={canCreate ? handleReschedule : undefined}
             onCancel={canCreate ? handleCancel : undefined}
             onComplete={canCreate ? handleComplete : undefined}
+            onCreateSlot={canCreate ? handleCreateSlot : undefined}
+            onMoveEvent={canCreate ? handleMoveEvent : undefined}
             startConsultationLoading={startConsultationLoading}
           />
         );
@@ -241,57 +270,45 @@ export function AppointmentsSchedulerShell({
 
       {/* Main layout */}
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "260px 1fr",
-          gap: 16,
-        }}
+        className="grid gap-4"
+        style={{ gridTemplateColumns: isMobile ? "1fr" : "260px 1fr" }}
       >
         {/* Sidebar — desktop only */}
         {!isMobile && (
-          <div
-            style={{
-              borderRight: "1px solid #f0f0f0",
-              paddingRight: 16,
-              maxHeight: "calc(100vh - 240px)",
-              overflowY: "auto",
-            }}
-          >
+          <div className="max-h-[calc(100vh-240px)] overflow-y-auto border-r border-hairline pr-4">
             {sidebarContent}
           </div>
         )}
 
         {/* Agenda view */}
-        <div style={{ minWidth: 0 }}>{renderView()}</div>
+        <div className="min-w-0">{renderView()}</div>
       </div>
 
-      {/* Mobile: floating filter button + Drawer */}
+      {/* Mobile: floating filter button + Sheet */}
       {isMobile && (
         <>
-          <Button
-            type="primary"
-            shape="circle"
-            icon={<FilterOutlined />}
-            size="large"
+          <button
+            type="button"
             onClick={() => setDrawerOpen(true)}
-            style={{
-              position: "fixed",
-              bottom: 24,
-              right: 24,
-              zIndex: 100,
-              boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-            }}
-          />
-          <Drawer
-            title="Especialistas"
-            placement="left"
-            open={drawerOpen}
-            onClose={() => setDrawerOpen(false)}
-            size={280}
-            styles={{ body: { padding: 16 } }}
+            aria-label="Filtrar especialistas"
+            className="fixed bottom-6 right-6 z-[100] grid h-14 w-14 place-items-center rounded-full bg-brand text-white shadow-lg transition-colors hover:bg-brand-strong"
           >
-            {sidebarContent}
-          </Drawer>
+            <Filter className="h-5 w-5" />
+          </button>
+          <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+            <SheetContent
+              side="left"
+              className="w-[280px] bg-surface p-0 sm:max-w-[280px]"
+            >
+              <SheetHeader className="border-b border-hairline">
+                <SheetTitle className="text-ink">Especialistas</SheetTitle>
+                <SheetDescription className="sr-only">
+                  Filtra la agenda por especialista y etiquetas
+                </SheetDescription>
+              </SheetHeader>
+              <div className="overflow-y-auto p-4">{sidebarContent}</div>
+            </SheetContent>
+          </Sheet>
         </>
       )}
     </div>

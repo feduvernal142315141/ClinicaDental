@@ -86,12 +86,6 @@
       "@/components/template/*": [
         "./components/features/template/*"
       ],
-      "@/components/doctors-old": [
-        "./components/legacy/doctors"
-      ],
-      "@/components/doctors-old/*": [
-        "./components/legacy/doctors/*"
-      ],
       "@/components/auto-logout-warning-modal": [
         "./components/app/auto-logout-warning-modal"
       ],

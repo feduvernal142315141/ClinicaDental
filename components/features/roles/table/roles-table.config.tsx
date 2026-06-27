@@ -1,5 +1,5 @@
-import { ActionButtons, DataTableColumn } from "@/components/ui/antd";
-import { EditOutlined } from "@ant-design/icons";
+import { Pencil } from "lucide-react";
+import { DataTableColumn } from "@/components/ui/data-display/data-table";
 import type { RoleListItem } from "@/lib/entity/roles";
 import dayjs from "dayjs";
 
@@ -16,13 +16,19 @@ export function getRolesColumns({
       title: "Nombre",
       dataIndex: "name",
       sorter: true,
-      render: (value) => <div className="font-medium">{value}</div>,
+      render: (value) => (
+        <div className="font-medium text-ink">{value as string}</div>
+      ),
     },
     {
       key: "createAt",
       title: "Fecha Creación",
       dataIndex: "createAt",
-      render: (value) => (value ? dayjs(value).format("DD/MM/YYYY") : "-"),
+      render: (value) => (
+        <span className="text-sm text-subtle tabular-nums">
+          {value ? dayjs(value as string).format("DD/MM/YYYY") : "-"}
+        </span>
+      ),
     },
     {
       key: "actions",
@@ -31,16 +37,15 @@ export function getRolesColumns({
       fixed: "right",
       width: 110,
       render: (_, record) => (
-        <ActionButtons
-          actions={[
-            {
-              key: "edit",
-              label: "Editar",
-              icon: <EditOutlined />,
-              onClick: () => onEdit(record.id),
-            },
-          ]}
-        />
+        <div className="flex items-center justify-center">
+          <button
+            onClick={() => onEdit(record.id)}
+            title="Editar rol"
+            className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        </div>
       ),
     },
   ];

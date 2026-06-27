@@ -1,7 +1,7 @@
 "use client";
 
 import { DoctorForm } from "@/components/doctors";
-import { SectionTitle } from "@/components/ui/antd";
+import { PageHeader } from "@/components/ui/layout/page-header";
 import { useDoctorsPage } from "@/lib/hooks/doctors/use-doctors-page";
 
 export default function NewUserPage() {
@@ -11,14 +11,13 @@ export default function NewUserPage() {
 
   return (
     <>
-      <SectionTitle
+      <PageHeader
         title="Nuevo Doctor"
         subtitle="Registre un nuevo doctor en el sistema"
         actionButton={{
           label: "Atrás",
           onClick: handleBackToList,
           variant: "back",
-          type: "default",
         }}
       />
       <DoctorForm basePath="/settings/doctors" />

@@ -86,6 +86,34 @@ export function calcEventPosition(
   };
 }
 
+/**
+ * Inverso de `calcEventPosition`: convierte un offset vertical en píxeles
+ * (relativo al inicio de la rejilla) a una hora "HH:mm", ajustada (snap) a
+ * `snapMinutes` (def. 15). Usado por clic-para-crear y arrastrar-para-reagendar.
+ */
+export function pixelsToTime(
+  offsetY: number,
+  startHour: number,
+  endHour: number,
+  slotHeight: number,
+  snapMinutes = 15,
+): string {
+  const pixelsPerMinute = slotHeight / 30;
+  let minutesFromStart = offsetY / pixelsPerMinute;
+  if (snapMinutes > 0) {
+    minutesFromStart = Math.round(minutesFromStart / snapMinutes) * snapMinutes;
+  }
+  // Clamp a la jornada visible [startHour, endHour] para no producir horas
+  // fuera de rango (p.ej. 24:00 → Invalid Date al construir el ISO).
+  const maxMinutes = (endHour - startHour) * 60;
+  if (minutesFromStart < 0) minutesFromStart = 0;
+  if (minutesFromStart > maxMinutes) minutesFromStart = maxMinutes;
+  const total = startHour * 60 + minutesFromStart;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 // ---------------------------------------------------------------------------
 // Overlap resolution
 // ---------------------------------------------------------------------------

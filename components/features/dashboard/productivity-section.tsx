@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { Target, Users } from "lucide-react";
 import { DashboardSummary } from "@/lib/entity/dashboard";
+import { useChartTheme } from "@/lib/hooks/use-chart-theme";
 
 interface ProductivitySectionProps {
   data: DashboardSummary;
@@ -94,6 +95,7 @@ function buildFullMonthSeries(
 
 export function ProductivitySection({ data }: ProductivitySectionProps) {
   const { kpis, doctorProductivity, monthlyAppointments } = data;
+  const chart = useChartTheme();
 
   const chartData = buildFullMonthSeries(monthlyAppointments);
   const hasMonthlyData = monthlyAppointments.some((month) => month.total > 0);
@@ -113,7 +115,7 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
           title="Tasa de Asistencia"
           value={`${kpis.attendanceRate}%`}
           icon={Target}
-          iconColor="text-green-600"
+          iconColor="text-emerald-600"
           progressValue={kpis.attendanceRate}
           description="Citas cumplidas vs canceladas"
         />
@@ -122,7 +124,7 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
           title="Tasa de Cancelación"
           value={`${kpis.cancellationRate}%`}
           icon={Target}
-          iconColor="text-red-600"
+          iconColor="text-rose-600"
           progressValue={kpis.cancellationRate}
           description="Del total de citas en el período"
         />
@@ -131,7 +133,7 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
           title="Doctores Activos"
           value={kpis.activeDoctors}
           icon={Users}
-          iconColor="text-purple-600"
+          iconColor="text-indigo-600"
           description={
             doctorProductivity.length > 0
               ? `Promedio ${Math.round(
@@ -179,17 +181,32 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
                   <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={chart.gridStroke}
+                vertical={false}
+              />
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 11 }}
+                tick={chart.axisTick}
+                tickLine={false}
+                axisLine={false}
                 angle={chartData.length > 8 ? -35 : 0}
                 textAnchor={chartData.length > 8 ? "end" : "middle"}
                 height={chartData.length > 8 ? 50 : 30}
                 interval={0}
               />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
+              <YAxis
+                allowDecimals={false}
+                tick={chart.axisTick}
+                tickLine={false}
+                axisLine={false}
+              />
+              <Tooltip
+                contentStyle={chart.tooltip.contentStyle}
+                labelStyle={chart.tooltip.labelStyle}
+                itemStyle={chart.tooltip.itemStyle}
+              />
               <Legend />
               <Area
                 type="monotone"
@@ -234,12 +251,31 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
               Canceladas: d.cancelled,
             }))}
           >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis allowDecimals={false} />
-            <Tooltip />
-            <Bar dataKey="Completadas" fill="#3b82f6" />
-            <Bar dataKey="Canceladas" fill="#f97316" />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke={chart.gridStroke}
+              vertical={false}
+            />
+            <XAxis
+              dataKey="name"
+              tick={chart.axisTick}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={chart.axisTick}
+              tickLine={false}
+              axisLine={false}
+            />
+            <Tooltip
+              contentStyle={chart.tooltip.contentStyle}
+              labelStyle={chart.tooltip.labelStyle}
+              itemStyle={chart.tooltip.itemStyle}
+              cursor={{ fill: "var(--hover)" }}
+            />
+            <Bar dataKey="Completadas" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Canceladas" fill="#f97316" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </DataCard>

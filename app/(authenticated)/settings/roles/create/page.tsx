@@ -1,6 +1,6 @@
 "use client";
 
-import { SectionTitle } from "@/components/ui/antd";
+import { PageHeader } from "@/components/ui/layout/page-header";
 import { RoleForm } from "@/components/roles";
 import { useRolesPage } from "@/lib/hooks/roles/use-roles-page";
 import { usePermission } from "@/lib/hooks/use-permission";
@@ -22,14 +22,13 @@ export default function CreateRolePage() {
 
   return (
     <>
-      <SectionTitle
+      <PageHeader
         title="Nuevo Rol"
         subtitle="Cree un nuevo rol para el sistema"
         actionButton={{
           label: "Atrás",
           onClick: handleBackToList,
           variant: "back",
-          type: "default",
         }}
       />
       <RoleForm basePath="/settings/roles" />

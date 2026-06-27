@@ -12,7 +12,7 @@
  */
 
 import { createContext, useContext, useState, ReactNode } from "react";
-import { message } from "antd";
+import { notify } from "@/lib/utils/notify";
 
 // ============================================
 // TIPOS
@@ -79,9 +79,6 @@ const InterceptorContext = createContext<InterceptorContextType | undefined>(
 // ============================================
 
 export function InterceptorProvider({ children }: { children: ReactNode }) {
-  // Hook API de Ant Design (context-aware, no estática)
-  const [messageApi, contextHolder] = message.useMessage();
-
   // Estado de loading
   const [isLoading, setIsLoading] = useState(false);
   const [activeRequests, setActiveRequests] = useState(0);
@@ -128,19 +125,19 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
 
     setNotifications((prev) => [...prev, notification]);
 
-    // Mostrar toast con Ant Design (hook API, context-aware)
+    // Mostrar toast con Sonner (API imperativa, sin contextHolder)
     switch (type) {
       case "success":
-        messageApi.success(message);
+        notify.success(message);
         break;
       case "error":
-        messageApi.error(message);
+        notify.error(message);
         break;
       case "warning":
-        messageApi.warning(message);
+        notify.warning(message);
         break;
       case "info":
-        messageApi.info(message);
+        notify.info(message);
         break;
     }
 
@@ -245,10 +242,27 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
       "warning",
     );
 
-    // Redirigir después de 2 segundos
-    setTimeout(() => {
+    // Limpiar la sesión ANTES de redirigir. Si no se borran las cookies
+    // (loggedUser / clinic_access_token), el middleware ve el token presente
+    // —aunque esté expirado— y rebota /login -> /dashboard en bucle.
+    const clearSessionAndRedirect = async () => {
+      try {
+        await fetch("/api/auth/logout", { method: "POST" });
+      } catch {
+        // Logout best-effort: redirigimos igual aunque falle.
+      }
+      try {
+        localStorage.removeItem("loggedUser");
+      } catch {
+        // Ignorar errores de almacenamiento.
+      }
       window.location.href = "/login";
-    }, 2000);
+    };
+
+    // Pequeña pausa para que el usuario alcance a ver el aviso.
+    setTimeout(() => {
+      void clearSessionAndRedirect();
+    }, 1500);
   };
 
   // ============================================
@@ -283,7 +297,6 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
 
   return (
     <InterceptorContext.Provider value={value}>
-      {contextHolder}
       {children}
     </InterceptorContext.Provider>
   );

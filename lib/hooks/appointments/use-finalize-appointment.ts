@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { App } from "antd";
+
 import { appointmentsService } from "@/lib/services/appointments";
 import { treatmentPlanService } from "@/lib/services/odontogram";
 import {
@@ -13,6 +13,7 @@ import type {
   AppointmentServiceSnapshot,
   CreateAppointmentRequest,
 } from "@/lib/entity/appointment";
+import { notify } from "@/lib/utils/notify";
 
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -82,7 +83,6 @@ export function useFinalizeAppointment({
   clinicId,
   adapter,
 }: UseFinalizeAppointmentOptions): UseFinalizeAppointmentReturn {
-  const { message } = App.useApp();
   const storeApi = useOdontogramStoreApi();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,13 +96,13 @@ export function useFinalizeAppointment({
       if (!visitId) {
         const msg = "No hay cita activa para finalizar.";
         setError(msg);
-        message.error(msg);
+        notify.error(msg);
         throw new Error(msg);
       }
       if (!patientId) {
         const msg = "Falta el identificador de paciente.";
         setError(msg);
-        message.error(msg);
+        notify.error(msg);
         throw new Error(msg);
       }
 
@@ -121,7 +121,7 @@ export function useFinalizeAppointment({
               ? err.message
               : "Error al guardar el odontograma antes de finalizar.";
           setError(msg);
-          message.error(msg);
+          notify.error(msg);
           throw err;
         }
 
@@ -167,7 +167,7 @@ export function useFinalizeAppointment({
               ? err.message
               : "Error al marcar la cita como realizada.";
           setError(msg);
-          message.error(msg);
+          notify.error(msg);
           throw err;
         }
 
@@ -200,7 +200,7 @@ export function useFinalizeAppointment({
 
             try {
               followUpId = await appointmentsService.createAppointment(payload);
-              message.success(
+              notify.success(
                 "Cita marcada como realizada y seguimiento programado.",
               );
             } catch (err) {
@@ -208,15 +208,15 @@ export function useFinalizeAppointment({
                 "[useFinalizeAppointment] Cita completada pero falló el seguimiento",
                 err,
               );
-              message.warning(
+              notify.warning(
                 "Cita marcada como realizada, pero no se pudo crear el seguimiento. Créalo manualmente.",
               );
             }
           } else {
-            message.success("Cita marcada como realizada.");
+            notify.success("Cita marcada como realizada.");
           }
         } else {
-          message.success("Cita marcada como realizada.");
+          notify.success("Cita marcada como realizada.");
         }
 
         return { followUpId };
@@ -224,7 +224,7 @@ export function useFinalizeAppointment({
         setLoading(false);
       }
     },
-    [visitId, patientId, clinicId, adapter, storeApi, message],
+    [visitId, patientId, clinicId, adapter, storeApi],
   );
 
   return { finalize, loading, error };

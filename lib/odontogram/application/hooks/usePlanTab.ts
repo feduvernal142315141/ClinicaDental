@@ -103,6 +103,8 @@ export function usePlanTab({
       priority: "media",
       durationMin: procedure.estimatedDuration,
       cost: procedure.baseCost,
+      serviceSymbolText: procedure.serviceSymbolText,
+      serviceSymbolUrl: procedure.serviceSymbolUrl,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

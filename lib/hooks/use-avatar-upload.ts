@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { message } from "antd";
+
 import type { UploadFile, UploadProps, GetProp } from "antd";
+import { notify } from "@/lib/utils/notify";
 
 type FileType = Parameters<GetProp<UploadProps, "beforeUpload">>[0];
 
@@ -56,7 +57,7 @@ export function useAvatarUpload({
     // Check file type
     const isValidFormat = allowedFormats.includes(file.type);
     if (!isValidFormat) {
-      message.error(
+      notify.error(
         `Solo se permiten archivos: ${allowedFormats
           .map((f) => f.split("/")[1].toUpperCase())
           .join(", ")}`,
@@ -67,7 +68,7 @@ export function useAvatarUpload({
     // Check file size
     const isValidSize = file.size / 1024 / 1024 < maxSizeMB;
     if (!isValidSize) {
-      message.error(`La imagen debe ser menor a ${maxSizeMB}MB`);
+      notify.error(`La imagen debe ser menor a ${maxSizeMB}MB`);
       return false;
     }
 

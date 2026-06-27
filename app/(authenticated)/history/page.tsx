@@ -117,16 +117,16 @@ export default function PatientHistoryPage() {
 
 function HistoryAppointmentCard({ appointment }: { appointment: Appointment }) {
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+    <div className="bento bg-surface p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-blue-500" />
-            <p className="font-semibold text-slate-900">
+            <FileText className="h-4 w-4 text-brand" />
+            <p className="font-semibold text-ink">
               {appointment.serviceName ?? appointment.reason ?? "Consulta"}
             </p>
           </div>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-subtle">
             {appointment.doctorName ? `Dr. ${appointment.doctorName}` : "Doctor por confirmar"}
           </p>
         </div>
@@ -136,23 +136,23 @@ function HistoryAppointmentCard({ appointment }: { appointment: Appointment }) {
         </Tag>
       </div>
 
-      <div className="mt-4 grid gap-2 text-sm text-slate-600 md:grid-cols-3">
+      <div className="mt-4 grid gap-2 text-sm text-subtle md:grid-cols-3">
         <div className="flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-blue-500" />
+          <CalendarDays className="h-4 w-4 text-brand" />
           <span>{appointment.date ? formatDate(appointment.date) : "Fecha pendiente"}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-blue-500" />
+          <Clock className="h-4 w-4 text-brand" />
           <span>{appointment.time || "Hora pendiente"}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Stethoscope className="h-4 w-4 text-blue-500" />
+          <Stethoscope className="h-4 w-4 text-brand" />
           <span>{formatAppointmentType(appointment.type)}</span>
         </div>
       </div>
 
       {appointment.notes && (
-        <p className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+        <p className="mt-3 rounded-lg bg-hover p-3 text-xs text-subtle">
           {appointment.notes}
         </p>
       )}

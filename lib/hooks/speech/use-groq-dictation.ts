@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { speechService } from "@/lib/services/speech/speech.service";
-import { App } from "antd";
+import { notify } from "@/lib/utils/notify";
 
 export interface UseGroqDictationOptions {
   /** Called with the final accurate transcription from Groq Whisper. */
@@ -27,7 +27,6 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recognitionRef = useRef<InstanceType<typeof window.SpeechRecognition> | null>(null);
-  const { message } = App.useApp();
 
   // Stable ref to avoid re-creating recorder on every render
   const optionsRef = useRef(options);
@@ -125,12 +124,12 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
       setIsRecording(true);
     } catch (error) {
       console.error("[useGroqDictation] mic access error:", error);
-      message.error("No se pudo acceder al micrófono");
+      notify.error("No se pudo acceder al micrófono");
       if (options.onError && error instanceof Error) {
         options.onError(error);
       }
     }
-  }, [message, options, startSpeechRecognition]);
+  }, [options, startSpeechRecognition]);
 
   const stopRecording = useCallback(() => {
     // Stop live preview
@@ -157,7 +156,7 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
         }
       } catch (error) {
         console.error("[useGroqDictation] Groq transcription error:", error);
-        message.error("No se pudo procesar el dictado por voz");
+        notify.error("No se pudo procesar el dictado por voz");
         if (optionsRef.current.onError && error instanceof Error) {
           optionsRef.current.onError(error);
         }
@@ -171,7 +170,7 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
     };
 
     recorder.stop();
-  }, [message]);
+  }, []);
 
   const cancelRecording = useCallback(() => {
     recognitionRef.current?.abort();

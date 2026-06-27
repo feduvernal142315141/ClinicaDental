@@ -1,7 +1,7 @@
 "use client";
 
 import { DoctorsList } from "@/components/doctors";
-import { SectionTitle } from "@/components/ui/antd";
+import { PageHeader } from "@/components/ui/layout/page-header";
 import { useDoctorsPage } from "@/lib/hooks/doctors/use-doctors-page";
 
 export default function UsersPage() {
@@ -9,7 +9,7 @@ export default function UsersPage() {
 
   return (
     <>
-      <SectionTitle
+      <PageHeader
         title="Gestión de Doctores"
         subtitle="Administre los doctores del sistema"
         actionButton={{

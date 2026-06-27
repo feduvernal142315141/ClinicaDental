@@ -46,9 +46,9 @@ export function AntecedentesPanel({
   if (!open) return null;
 
   return (
-    <div className="flex flex-col h-full min-w-95 bg-white border-l border-gray-200 shadow-sm">
+    <div className="flex flex-col h-full min-w-95 bg-surface border-l border-hairline shadow-sm">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-hairline">
         <h3 className="text-sm font-semibold text-foreground">{panelTitle}</h3>
         <Button
           type="text"
@@ -76,7 +76,7 @@ export function AntecedentesPanel({
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-gray-100">
+      <div className="px-5 py-4 border-t border-hairline">
         <Space className="w-full justify-end">
           <Button
             type="default"

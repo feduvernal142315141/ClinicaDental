@@ -45,7 +45,7 @@ export const Tooth: React.FC<ToothProps> = ({
         </ContextMenu.Trigger>
 
         <div
-          className="absolute left-1/2 -translate-x-1/2 text-[10px] text-gray-600"
+          className="absolute left-1/2 -translate-x-1/2 text-[10px] text-subtle"
           style={{
             top: orientation === "crown-down" ? "calc(50% + 48px)" : undefined,
             bottom: orientation === "crown-up" ? "calc(50% + 48px)" : undefined,
@@ -55,13 +55,13 @@ export const Tooth: React.FC<ToothProps> = ({
         </div>
       </div>
 
-      <ContextMenu.Content className="min-w-[160px] rounded-md bg-white p-1 shadow-lg ring-1 ring-black/5 text-sm">
+      <ContextMenu.Content className="min-w-[160px] rounded-md bg-elevated p-1 shadow-lg ring-1 ring-border text-sm">
         {(["sano", "caries", "filled", "falta", "implante"] as ToothStatus[]).map(
           (s) => (
             <ContextMenu.Item
               key={s}
               onClick={() => onChange?.(info.id, s)}
-              className={`cursor-pointer rounded px-2 py-1 hover:bg-gray-100 capitalize ${
+              className={`cursor-pointer rounded px-2 py-1 hover:bg-hover capitalize ${
                 s === value ? "font-semibold" : ""
               }`}
             >

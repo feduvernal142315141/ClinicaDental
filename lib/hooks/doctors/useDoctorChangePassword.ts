@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
-import { App } from "antd";
+
 import { doctorsService } from "@/lib/services/doctors";
 import type { DoctorChangePasswordRequest } from "@/lib/entity/doctors";
+import { notify } from "@/lib/utils/notify";
 
 export function useDoctorChangePassword() {
-  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
 
   const changeDoctorPassword = useCallback(
@@ -12,15 +12,15 @@ export function useDoctorChangePassword() {
       setLoading(true);
       try {
         await doctorsService.changeDoctorPassword(data);
-        message.success("Contraseña cambiada exitosamente");
+        notify.success("Contraseña cambiada exitosamente");
       } catch (error: unknown) {
-        message.error(error.message || "Error al cambiar contraseña");
+        notify.error(error.message || "Error al cambiar contraseña");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message]
+    []
   );
 
   return {

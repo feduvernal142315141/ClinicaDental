@@ -125,15 +125,15 @@ export function PatientDetail({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "scheduled":
-        return "bg-blue-100 text-blue-800";
+        return "bg-sky-500/15 text-sky-600 ring-sky-400/25 dark:text-sky-300";
       case "completed":
-        return "bg-green-100 text-green-800";
+        return "bg-emerald-500/15 text-emerald-600 ring-emerald-400/25 dark:text-emerald-300";
       case "cancelled":
-        return "bg-red-100 text-red-800";
+        return "bg-rose-500/15 text-rose-600 ring-rose-400/25 dark:text-rose-300";
       case "no-show":
-        return "bg-gray-100 text-gray-800";
+        return "bg-elevated text-subtle";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-elevated text-subtle";
     }
   };
 
@@ -216,15 +216,15 @@ export function PatientDetail({
           <Typography.Title level={2} className="!mb-1">
             Detalles del Paciente
           </Typography.Title>
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-subtle text-sm mt-1">
             Información completa e historial médico
           </p>
           {externalAppointmentId && (
-            <div className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <div className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 bg-emerald-500/15 border border-emerald-400/25 rounded-lg text-sm text-emerald-600 dark:text-emerald-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               Consulta en curso
               {activeConsultationAppointment && (
-                <span className="text-green-600 font-medium">
+                <span className="text-emerald-600 dark:text-emerald-300 font-medium">
                   · {activeConsultationAppointment.time}
                   {activeConsultationAppointment.serviceName
                     ? ` — ${activeConsultationAppointment.serviceName}`
@@ -348,7 +348,7 @@ export function PatientDetail({
                               ) : patient.gender === "F" ? (
                                 <UserRound className="h-4 w-4 text-pink-600" />
                               ) : (
-                                <Circle className="h-4 w-4 text-gray-500" />
+                                <Circle className="h-4 w-4 text-subtle" />
                               )}
                               <div>
                                 <p className="text-sm font-medium">Género</p>
@@ -363,7 +363,7 @@ export function PatientDetail({
 
                           {patient.agreement !== undefined && (
                             <div className="flex items-center gap-3">
-                              <FileText className="h-4 w-4 text-green-600" />
+                              <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
                               <div>
                                 <p className="text-sm font-medium">Convenio</p>
                                 <p className="text-sm text-muted-foreground">
@@ -383,7 +383,7 @@ export function PatientDetail({
                         title="Próximas Citas"
                         value={upcomingAppointments.length}
                         icon={Calendar}
-                        iconColor="text-blue-600"
+                        iconColor="text-sky-600 dark:text-sky-300"
                       />
                       <KpiCard
                         title="Completadas"
@@ -393,7 +393,7 @@ export function PatientDetail({
                           ).length
                         }
                         icon={Activity}
-                        iconColor="text-green-600"
+                        iconColor="text-emerald-600 dark:text-emerald-300"
                       />
                     </div>
                   </div>
@@ -403,7 +403,7 @@ export function PatientDetail({
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          <Calendar className="h-5 w-5 text-blue-500" />
+                          <Calendar className="h-5 w-5 text-brand" />
                           Línea de Tiempo de Citas
                         </CardTitle>
                         <CardDescription>
@@ -434,12 +434,12 @@ export function PatientDetail({
                                 ? [
                                     {
                                       icon: (
-                                        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-[10px] font-bold">
+                                        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-300 text-[10px] font-bold">
                                           →
                                         </span>
                                       ),
                                       title: (
-                                        <span className="text-xs font-semibold uppercase tracking-wide text-blue-500">
+                                        <span className="text-xs font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-300">
                                           Próximas
                                         </span>
                                       ),
@@ -455,10 +455,10 @@ export function PatientDetail({
                                         </span>
                                       ),
                                       content: (
-                                        <div className="mb-2 rounded-xl bg-blue-50 px-4 py-3">
+                                        <div className="mb-2 rounded-xl bg-sky-500/15 px-4 py-3">
                                           <div className="flex items-start justify-between gap-2">
                                             <div>
-                                              <p className="font-semibold text-blue-900 text-sm">
+                                              <p className="font-semibold text-sky-700 dark:text-sky-300 text-sm">
                                                 Dr. {appt.doctorName}
                                               </p>
                                               {appt.reason && (
@@ -467,7 +467,7 @@ export function PatientDetail({
                                                 </p>
                                               )}
                                             </div>
-                                            <Badge className="shrink-0 bg-blue-100 text-blue-800 hover:bg-blue-100 text-[11px]">
+                                            <Badge className="shrink-0 bg-sky-500/15 text-sky-600 ring-sky-400/25 dark:text-sky-300 hover:bg-sky-500/15 text-[11px]">
                                               {getStatusText(appt.status)}
                                             </Badge>
                                           </div>
@@ -481,12 +481,12 @@ export function PatientDetail({
                                 ? [
                                     {
                                       icon: (
-                                        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold">
+                                        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-elevated text-subtle text-[10px] font-bold">
                                           ↺
                                         </span>
                                       ),
                                       title: (
-                                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                        <span className="text-xs font-semibold uppercase tracking-wide text-subtle">
                                           Historial
                                         </span>
                                       ),
@@ -513,12 +513,12 @@ export function PatientDetail({
                                                 : "gray";
                                         const bgClass =
                                           appt.status === "completed"
-                                            ? "bg-green-50"
+                                            ? "bg-emerald-500/15"
                                             : appt.status === "cancelled"
-                                              ? "bg-red-50"
+                                              ? "bg-rose-500/15"
                                               : appt.status === "no-show"
-                                                ? "bg-amber-50"
-                                                : "bg-slate-50";
+                                                ? "bg-amber-500/15"
+                                                : "bg-hover";
                                         return {
                                           color: dotColor,
                                           title: (
@@ -534,7 +534,7 @@ export function PatientDetail({
                                             >
                                               <div className="flex items-start justify-between gap-2">
                                                 <div>
-                                                  <p className="font-semibold text-slate-800 text-sm">
+                                                  <p className="font-semibold text-ink text-sm">
                                                     Dr. {appt.doctorName}
                                                   </p>
                                                   {appt.reason && (

@@ -1,15 +1,23 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import { Button, Checkbox, Tooltip, Tag } from "antd";
+import { useCallback, useMemo, useState } from "react";
+import { CheckCheck, ChevronDown, Eraser, Search } from "lucide-react";
+
+import { Checkbox } from "@/components/ui/atomic/forms/checkbox";
+import { Input } from "@/components/ui/atomic/forms/input";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/primitives/shadcn/collapsible";
 import { PERMISSIONS } from "@/lib/constants/roles.constants";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import {
-  getModuleActions,
   permissionsToObject,
   objectToPermissions,
   type PermissionsObject,
 } from "@/lib/permissions/permissions-encoding";
+import { cn } from "@/lib/utils/utils";
 
 type PermissionModule = {
   id: string;
@@ -25,15 +33,25 @@ const ACTIONS: Array<{ label: string; action: PermissionAction }> = [
   { label: "Bloquear", action: PermissionAction.BLOCK },
 ];
 
+/** Etiquetas en español para las categorías del catálogo. */
+const CATEGORY_LABELS: Record<string, string> = {
+  appointments: "Citas",
+  patients: "Pacientes",
+  clinical: "Clínico",
+  doctors: "Doctores",
+  settings: "Configuración",
+  reports: "Reportes",
+};
+
+const UNCATEGORIZED = "__otros__";
+
+// Plantilla de columnas compartida por la cabecera y las filas (alineación exacta).
+const GRID =
+  "grid grid-cols-[minmax(11rem,1fr)_repeat(4,minmax(3.5rem,4rem))_minmax(6rem,7rem)] items-center gap-x-2";
+
 function toggleActionValue(current: number, action: PermissionAction): number {
   const has = (current & action) === action;
   return has ? current & ~action : current | action;
-}
-
-function computeCategories(modules: PermissionModule[]): string[] {
-  return Array.from(
-    new Set(modules.map((m) => m.category).filter(Boolean) as string[]),
-  );
 }
 
 function hasAnyPermission(value: number): boolean {
@@ -52,6 +70,42 @@ function actionLabel(action: PermissionAction): string {
   return "";
 }
 
+function categoryLabel(category: string): string {
+  if (category === UNCATEGORIZED) return "Otros";
+  return CATEGORY_LABELS[category] ?? category;
+}
+
+/** Badge de nivel de acceso (sin acceso · limitado · acceso total). */
+function LevelBadge({ value }: { value: number }) {
+  if (!hasAnyPermission(value)) {
+    return <span className="text-xs text-subtle">—</span>;
+  }
+
+  if (hasFullAccess(value)) {
+    return (
+      <span
+        title="Crear, Editar, Eliminar y Bloquear"
+        className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-400/25 dark:text-emerald-300"
+      >
+        Acceso total
+      </span>
+    );
+  }
+
+  const actions = ACTIONS.filter(
+    ({ action }) => (value & action) === action,
+  ).map(({ label }) => label);
+
+  return (
+    <span
+      title={actions.length ? actions.join(", ") : "Permisos limitados"}
+      className="inline-flex items-center rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-semibold text-amber-600 ring-1 ring-amber-400/25 dark:text-amber-300"
+    >
+      Limitado
+    </span>
+  );
+}
+
 export interface PermissionsSelectorProps {
   value?: string[];
   onChange?: (value: string[]) => void;
@@ -63,21 +117,23 @@ export function PermissionsSelector({
   onChange,
   disabled,
 }: PermissionsSelectorProps) {
+  const [query, setQuery] = useState("");
+  const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
+
   const normalizedValue = useMemo(() => {
     if (!Array.isArray(value)) return [] as string[];
     return value.filter((p): p is string => typeof p === "string");
   }, [value]);
 
-  const modules: PermissionModule[] = useMemo(() => {
-    return Object.values(PERMISSIONS);
-  }, []);
+  const modules: PermissionModule[] = useMemo(
+    () => Object.values(PERMISSIONS),
+    [],
+  );
 
   const knownModuleIds = useMemo(
     () => new Set(modules.map((m) => m.id)),
     [modules],
   );
-
-  const categories = useMemo(() => computeCategories(modules), [modules]);
 
   const permissionsObj = useMemo<PermissionsObject>(() => {
     const raw = permissionsToObject(normalizedValue);
@@ -128,9 +184,7 @@ export function PermissionsSelector({
 
   const handleSelectAll = useCallback(() => {
     const next: PermissionsObject = {};
-    for (const mod of modules) {
-      next[mod.id] = PermissionAction.ALL;
-    }
+    for (const mod of modules) next[mod.id] = PermissionAction.ALL;
     emit(next);
   }, [modules, emit]);
 
@@ -147,33 +201,24 @@ export function PermissionsSelector({
     };
   }, [permissionsObj]);
 
-  const getAccessLevelTag = useCallback(
-    (moduleKey: string) => {
-      const valueForModule = permissionsObj[moduleKey] ?? 0;
-      if (!hasAnyPermission(valueForModule)) return null;
+  // Agrupar los módulos (filtrados por búsqueda) por categoría, preservando el
+  // orden de aparición del catálogo.
+  const normalizedQuery = query.trim().toLowerCase();
 
-      if (hasFullAccess(valueForModule)) {
-        return (
-          <Tooltip title="Crear, Editar, Eliminar y Bloquear">
-            <Tag color="success">Acceso total</Tag>
-          </Tooltip>
-        );
+  const groups = useMemo(() => {
+    const map = new Map<string, PermissionModule[]>();
+    for (const mod of modules) {
+      if (normalizedQuery) {
+        const haystack = `${mod.name} ${mod.description ?? ""}`.toLowerCase();
+        if (!haystack.includes(normalizedQuery)) continue;
       }
-
-      const actions = getModuleActions(permissionsObj, moduleKey)
-        .map(actionLabel)
-        .filter(Boolean);
-
-      return (
-        <Tooltip
-          title={actions.length ? actions.join(", ") : "Permisos limitados"}
-        >
-          <Tag color="processing">Limitado</Tag>
-        </Tooltip>
-      );
-    },
-    [permissionsObj],
-  );
+      const key = mod.category || UNCATEGORIZED;
+      const list = map.get(key) ?? [];
+      list.push(mod);
+      map.set(key, list);
+    }
+    return Array.from(map.entries()).map(([key, mods]) => ({ key, modules: mods }));
+  }, [modules, normalizedQuery]);
 
   const renderModuleRow = useCallback(
     (mod: PermissionModule) => {
@@ -182,196 +227,203 @@ export function PermissionsSelector({
       const full = hasFullAccess(current);
 
       return (
-        <tr
+        <div
           key={mod.id}
-          className={
-            "border-b border-border/50 hover:bg-muted/30 transition-colors"
-          }
+          className={cn(GRID, "px-4 py-2.5 transition-colors hover:bg-hover/50")}
         >
-          <td className="px-4 py-3">
-            <div className="flex items-start gap-3">
-              <Checkbox
-                checked={checked}
-                indeterminate={checked && !full}
-                onChange={(e) =>
-                  setModuleValue(
-                    mod.id,
-                    e.target.checked ? PermissionAction.ALL : 0,
-                  )
-                }
-                disabled={disabled}
-              />
-              <div>
-                <div
-                  className={checked ? "font-medium" : "text-muted-foreground"}
-                >
-                  {mod.name}
-                </div>
-                {mod.description ? (
-                  <div className="text-xs text-muted-foreground">
-                    {mod.description}
-                  </div>
-                ) : null}
+          <div className="flex min-w-0 items-center gap-3">
+            <Checkbox
+              checked={full ? true : checked ? "indeterminate" : false}
+              onCheckedChange={(c) =>
+                setModuleValue(mod.id, c ? PermissionAction.ALL : 0)
+              }
+              disabled={disabled}
+              aria-label={`Acceso total a ${mod.name}`}
+            />
+            <div className="min-w-0">
+              <div
+                className={cn(
+                  "truncate text-sm",
+                  checked ? "font-medium text-ink" : "text-subtle",
+                )}
+              >
+                {mod.name}
               </div>
+              {mod.description ? (
+                <div className="truncate text-xs text-subtle">
+                  {mod.description}
+                </div>
+              ) : null}
             </div>
-          </td>
+          </div>
 
           {ACTIONS.map(({ action }) => (
-            <td key={`${mod.id}-${action}`} className="px-3 py-3 text-center">
+            <div key={`${mod.id}-${action}`} className="flex justify-center">
               <Checkbox
                 checked={(current & action) === action}
-                onChange={() => handleToggleAction(mod.id, action)}
+                onCheckedChange={() => handleToggleAction(mod.id, action)}
                 disabled={disabled}
+                aria-label={`${actionLabel(action)} en ${mod.name}`}
               />
-            </td>
+            </div>
           ))}
 
-          <td className="px-4 py-3 text-right">{getAccessLevelTag(mod.id)}</td>
-        </tr>
+          <div className="flex justify-end pr-1">
+            <LevelBadge value={current} />
+          </div>
+        </div>
       );
     },
-    [
-      permissionsObj,
-      disabled,
-      handleToggleAction,
-      setModuleValue,
-      getAccessLevelTag,
-    ],
+    [permissionsObj, disabled, handleToggleAction, setModuleValue],
   );
 
   return (
-    <div className="space-y-4">
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur border-b border-border px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">
-              {summary.modulesWithPermissions}
-            </span>{" "}
-            módulos con permisos ·{" "}
-            <span className="font-medium text-foreground">
-              {summary.modulesWithFullAccess}
-            </span>{" "}
-            con acceso total
+    <div className="space-y-3">
+      {/* Toolbar: buscador + resumen + acciones masivas (botones Bento-nativos) */}
+      <div className="sticky top-0 z-10 rounded-xl border border-hairline bg-surface/90 px-3 py-2.5 backdrop-blur">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          {/* Izquierda: buscador + resumen */}
+          <div className="flex flex-1 flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar módulo…"
+                className="h-9 pl-9"
+                aria-label="Buscar módulo"
+              />
+            </div>
+            <div className="flex items-center gap-3 text-xs whitespace-nowrap">
+              <span className="inline-flex items-center gap-1.5 text-subtle">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />
+                <strong className="font-semibold tabular-nums text-ink">
+                  {summary.modulesWithPermissions}
+                </strong>
+                con permisos
+              </span>
+              <span className="h-3 w-px bg-hairline" aria-hidden />
+              <span className="inline-flex items-center gap-1.5 text-subtle">
+                <span
+                  className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                  aria-hidden
+                />
+                <strong className="font-semibold tabular-nums text-ink">
+                  {summary.modulesWithFullAccess}
+                </strong>
+                acceso total
+              </span>
+            </div>
           </div>
 
+          {/* Derecha: acciones masivas */}
           <div className="flex items-center gap-2">
-            <Button onClick={handleClearAll} disabled={disabled}>
+            <button
+              type="button"
+              onClick={handleClearAll}
+              disabled={disabled}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-hairline bg-surface px-3 text-sm font-medium text-ink transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Eraser className="h-4 w-4 text-subtle" />
               Limpiar
-            </Button>
-            <Button
-              type="primary"
+            </button>
+            <button
+              type="button"
               onClick={handleSelectAll}
               disabled={disabled}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
             >
+              <CheckCheck className="h-4 w-4" />
               Seleccionar todo
-            </Button>
+            </button>
           </div>
         </div>
       </div>
 
-      {categories.map((category) => {
-        const categoryModules = modules.filter((m) => m.category === category);
-        const moduleIds = categoryModules.map((m) => m.id);
-        const values = moduleIds.map((id) => permissionsObj[id] ?? 0);
-        const all = values.length > 0 && values.every((v) => hasFullAccess(v));
-        const some = values.some((v) => hasAnyPermission(v));
-
-        return (
-          <div
-            key={category}
-            className="rounded-lg border border-border bg-background overflow-hidden"
-          >
-            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/30">
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  checked={all}
-                  indeterminate={some && !all}
-                  onChange={(e) =>
-                    setManyModulesValue(
-                      moduleIds,
-                      e.target.checked ? PermissionAction.ALL : 0,
-                    )
-                  }
-                  disabled={disabled}
-                />
-                <div>
-                  <div className="font-medium capitalize">{category}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {categoryModules.length} módulos
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-muted/20">
-                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Módulo
-                    </th>
-                    <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Crear
-                    </th>
-                    <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Editar
-                    </th>
-                    <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Eliminar
-                    </th>
-                    <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Bloquear
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Nivel
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>{categoryModules.map((m) => renderModuleRow(m))}</tbody>
-              </table>
-            </div>
-          </div>
-        );
-      })}
-
-      {modules.some((m) => !m.category) ? (
-        <div className="rounded-lg border border-border bg-background overflow-hidden">
-          <div className="px-4 py-3 border-b border-border bg-muted/30">
-            <div className="font-medium">Otros</div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/20">
-                  <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Módulo
-                  </th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Crear
-                  </th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Editar
-                  </th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Eliminar
-                  </th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Bloquear
-                  </th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Nivel
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {modules
-                  .filter((m) => !m.category)
-                  .map((m) => renderModuleRow(m))}
-              </tbody>
-            </table>
-          </div>
+      {groups.length === 0 ? (
+        <div className="bento px-4 py-10 text-center text-sm text-subtle">
+          No se encontraron módulos para «{query.trim()}».
         </div>
-      ) : null}
+      ) : (
+        groups.map(({ key, modules: categoryModules }) => {
+          const moduleIds = categoryModules.map((m) => m.id);
+          const values = moduleIds.map((id) => permissionsObj[id] ?? 0);
+          const all = values.length > 0 && values.every((v) => hasFullAccess(v));
+          const some = values.some((v) => hasAnyPermission(v));
+          const withPerms = values.filter((v) => hasAnyPermission(v)).length;
+          // Al buscar, forzar la categoría abierta para mostrar coincidencias.
+          const isOpen = normalizedQuery ? true : (openMap[key] ?? true);
+
+          return (
+            <div key={key} className="bento overflow-hidden p-0">
+              <Collapsible
+                open={isOpen}
+                onOpenChange={(o) =>
+                  setOpenMap((prev) => ({ ...prev, [key]: o }))
+                }
+              >
+                <div className="flex items-center gap-3 border-b border-hairline bg-elevated/50 px-4 py-3">
+                  <Checkbox
+                    checked={all ? true : some ? "indeterminate" : false}
+                    onCheckedChange={(c) =>
+                      setManyModulesValue(moduleIds, c ? PermissionAction.ALL : 0)
+                    }
+                    disabled={disabled}
+                    aria-label={`Acceso total a ${categoryLabel(key)}`}
+                  />
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="group flex flex-1 items-center justify-between gap-2 text-left"
+                    >
+                      <span className="flex items-baseline gap-2">
+                        <span className="text-sm font-semibold text-ink">
+                          {categoryLabel(key)}
+                        </span>
+                        <span className="text-xs text-subtle tabular-nums">
+                          {withPerms}/{categoryModules.length} módulos
+                        </span>
+                      </span>
+                      <ChevronDown className="h-4 w-4 shrink-0 text-subtle transition-transform group-data-[state=open]:rotate-180" />
+                    </button>
+                  </CollapsibleTrigger>
+                </div>
+
+                <CollapsibleContent>
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[640px]">
+                      <div
+                        className={cn(
+                          GRID,
+                          "border-b border-hairline bg-elevated/30 px-4 py-2",
+                        )}
+                      >
+                        <span className="text-[0.7rem] font-medium uppercase tracking-wider text-subtle">
+                          Módulo
+                        </span>
+                        {ACTIONS.map(({ label, action }) => (
+                          <span
+                            key={action}
+                            className="text-center text-[0.7rem] font-medium uppercase tracking-wider text-subtle"
+                          >
+                            {label}
+                          </span>
+                        ))}
+                        <span className="text-right text-[0.7rem] font-medium uppercase tracking-wider text-subtle">
+                          Nivel
+                        </span>
+                      </div>
+                      <div className="divide-y divide-hairline">
+                        {categoryModules.map((m) => renderModuleRow(m))}
+                      </div>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }

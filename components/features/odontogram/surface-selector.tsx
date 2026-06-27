@@ -120,10 +120,10 @@ export function SurfaceSelector({
       return (
         <div
           key={view}
-          className="flex h-full min-h-56 flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+          className="flex h-full min-h-56 flex-col rounded-2xl border border-hairline bg-surface p-3 shadow-sm"
         >
           <div className="mb-3 space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink">
               {viewMeta.label}
             </p>
             <p className="text-[11px] text-muted-foreground">
@@ -131,7 +131,7 @@ export function SurfaceSelector({
             </p>
           </div>
 
-          <div className="flex min-h-40 flex-1 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-center text-xs text-muted-foreground">
+          <div className="flex min-h-40 flex-1 items-center justify-center rounded-xl border border-dashed border-hairline bg-hover text-center text-xs text-muted-foreground">
             SVG no disponible para esta vista
           </div>
         </div>
@@ -149,14 +149,14 @@ export function SurfaceSelector({
     return (
       <div
         key={view}
-        className="flex h-full min-h-56 flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+        className="flex h-full min-h-56 flex-col rounded-2xl border border-hairline bg-surface p-3 shadow-sm"
       >
         <div className="mb-3 space-y-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink">
               {viewMeta.label}
             </p>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+            <span className="rounded-full bg-elevated px-2 py-0.5 text-[10px] font-medium text-subtle">
               {viewMeta.helper}
             </span>
           </div>
@@ -165,7 +165,7 @@ export function SurfaceSelector({
           </p>
         </div>
 
-        <div className="flex flex-1 items-center justify-center rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+        <div className="flex flex-1 items-center justify-center rounded-xl border border-hairline bg-hover p-3">
           <div
             className={cn(
               "mx-auto w-full",
@@ -276,7 +276,7 @@ export function SurfaceSelector({
           className={cn(
             "rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-all",
             activeSurface
-              ? "bg-sky-100 text-sky-700"
+              ? "bg-sky-500/15 text-sky-600 dark:text-sky-300"
               : "bg-muted text-muted-foreground",
           )}
         >
@@ -287,7 +287,7 @@ export function SurfaceSelector({
             : "Esperando selección..."}
         </div>
 
-        <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm">
+        <div className="rounded-full border border-hairline bg-elevated px-3 py-1.5 text-xs font-medium text-subtle shadow-sm tabular-nums">
           {surfaces.length} superficie{surfaces.length === 1 ? "" : "s"} activas
         </div>
       </div>

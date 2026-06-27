@@ -22,7 +22,7 @@ interface AuthFormCardProps {
 }
 
 const DefaultAuthIcon = (
-  <div className="mx-auto mb-4 w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
+  <div className="mx-auto mb-4 w-16 h-16 bg-brand rounded-full flex items-center justify-center">
     <svg
       className="w-8 h-8 text-white"
       fill="none"
@@ -51,17 +51,17 @@ export function AuthFormCard({
   return (
     <Card
       className={cn(
-        "w-full max-w-md shadow-xl border-0 bg-white/80 backdrop-blur-sm",
+        "w-full max-w-md shadow-xl border-0 bg-surface/80 backdrop-blur-sm",
         cardClassName
       )}
     >
       <CardHeader className={cn("text-center pb-8", headerClassName)}>
         {icon ?? DefaultAuthIcon}
-        <CardTitle className="text-3xl font-bold text-gray-900">
+        <CardTitle className="text-3xl font-bold text-ink">
           {title}
         </CardTitle>
         {description ? (
-          <CardDescription className="text-gray-600 text-base">
+          <CardDescription className="text-subtle text-base">
             {description}
           </CardDescription>
         ) : null}

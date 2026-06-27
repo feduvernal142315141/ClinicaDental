@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useEffect, useState, useCallback } from "react";
-import { App, Spin } from "antd";
+import { Spin } from "antd";
 import { OdontogramModule, createApiOdontogramAdapter, createHistoricOdontogramAdapter } from "@/lib/odontogram";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
@@ -10,6 +10,7 @@ import { useOdontogramByVisit } from "@/lib/hooks/odontogram/useOdontogramByVisi
 import { OdontogramReadOnlyOverlay } from "@/components/features/odontogram/ui/OdontogramReadOnlyOverlay";
 import { OdontogramHistoryTimeline } from "@/components/features/odontogram/ui/OdontogramHistoryTimeline";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
+import { notify } from "@/lib/utils/notify";
 
 interface PatientOdontogramPanelProps {
   patient: {
@@ -40,7 +41,6 @@ export function PatientOdontogramPanel({
   onFinalizeClose,
   onFinalizeSuccess,
 }: PatientOdontogramPanelProps) {
-  const { message } = App.useApp();
   const { can, isAdmin } = usePermission();
   const { user } = useAuth();
 
@@ -142,7 +142,7 @@ export function PatientOdontogramPanel({
             showHeader={false}
             initialTab="odontogram"
             onError={() => {
-              message.error("No se pudo sincronizar el odontograma del paciente");
+              notify.error("No se pudo sincronizar el odontograma del paciente");
             }}
             finalizeOpen={finalizeOpen}
             onFinalizeClose={onFinalizeClose}

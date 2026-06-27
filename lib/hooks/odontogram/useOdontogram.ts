@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { App } from "antd";
+
 import { odontogramService } from "@/lib/services/odontogram";
 import type {
   SaveOdontogramRequest,
@@ -9,6 +9,7 @@ import type {
   PaginatedOdontogramHistoryResponse,
   PaginatedQueryParams,
 } from "@/lib/entity/odontogram";
+import { notify } from "@/lib/utils/notify";
 
 /**
  * useOdontogram Hook
@@ -17,7 +18,6 @@ import type {
  * Provides load, save, and history operations with Ant Design message feedback.
  */
 export function useOdontogram() {
-  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
 
   /**
@@ -32,13 +32,13 @@ export function useOdontogram() {
       } catch (error: unknown) {
         const msg =
           error instanceof Error ? error.message : "Error al cargar el odontograma";
-        message.error(msg);
+        notify.error(msg);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -55,13 +55,13 @@ export function useOdontogram() {
           error instanceof Error
             ? error.message
             : "Error al guardar el odontograma";
-        message.error(msg);
+        notify.error(msg);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -80,13 +80,13 @@ export function useOdontogram() {
           error instanceof Error
             ? error.message
             : "Error al cargar el historial del odontograma";
-        message.error(msg);
+        notify.error(msg);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   return {

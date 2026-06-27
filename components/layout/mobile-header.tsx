@@ -17,7 +17,7 @@ export function MobileHeader({
   const { user } = useAuth();
 
   return (
-    <header className="lg:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 p-4 flex items-center justify-between transition-colors">
+    <header className="lg:hidden bg-surface border-b border-hairline p-4 flex items-center justify-between transition-colors">
       <div className="flex items-center space-x-3">
         <Button
           variant="ghost"

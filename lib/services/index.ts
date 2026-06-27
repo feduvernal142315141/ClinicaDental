@@ -14,14 +14,6 @@ export {
 // Instancia de Axios y configuración de interceptores
 export { default as apiInstance, setInterceptorHandlers } from "./apiConfig";
 
-// Configuraciones predefinidas de interceptores
-export {
-  setupInterceptorsBasic,
-  setupInterceptorsWithAlertContext,
-  setupInterceptorsWithLoading,
-  setupInterceptorsHybrid,
-} from "./interceptors-setup";
-
 // Doctors Services (replaces manager-users)
 export * from "./doctors";
 

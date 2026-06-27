@@ -1,4 +1,5 @@
-import { ActionButtons, DataTableColumn } from "@/components/ui/antd";
+import { ActionButtons } from "@/components/ui/antd";
+import { DataTableColumn } from "@/components/ui/data-display/data-table";
 import { CalendarOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { AvailabilitySlot } from "@/lib/entity/appointment";

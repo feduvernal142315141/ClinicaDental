@@ -40,7 +40,7 @@ import { SurfacesTab } from "./surfaces-tab";
 import { DiagnosisTab } from "./diagnosis-tab";
 import { PlanTab } from "./plan-tab";
 import { PerformedTab } from "./performed-tab";
-import { App } from "antd";
+
 import { SchedulePlanModal } from "./schedule-plan-modal";
 import { useOdontogramStore } from "@/lib/odontogram/store";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services";
@@ -54,6 +54,7 @@ import {
   Crown,
   Wrench,
 } from "lucide-react";
+import { App } from "antd";
 
 interface ToothModalProps {
   tooth: Tooth | null;
@@ -201,8 +202,8 @@ export function ToothModal({
     clinicalEvents,
     readOnly,
   } = useOdontogramStore();
-  const visitId = useOdontogramStore((state) => state.metadata.visitId);
   const { message: antdMessage } = App.useApp();
+  const visitId = useOdontogramStore((state) => state.metadata.visitId);
   const odontogramConfirm = useOdontogramConfirm();
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -471,9 +472,13 @@ export function ToothModal({
           status: event.status as ProcedurePlan["status"],
           priority: event.priority || "media",
           material: event.material,
-          durationMin: event.durationMin || 30,
+          durationMin: event.durationMin ?? 0,
           cost: event.cost || 0,
           notes: event.notes,
+          // Conservar el símbolo del servicio al reabrir (si no, el re-guardado
+          // lo sobrescribiría con undefined y se perdería).
+          serviceSymbolText: event.serviceSymbolText,
+          serviceSymbolUrl: event.serviceSymbolUrl,
           createdAt: event.createdAt,
           updatedAt: event.updatedAt,
           authorId: event.authorId,
@@ -916,6 +921,8 @@ export function ToothModal({
             cost: plan.cost,
             notes: eventNotes,
             visualState,
+            serviceSymbolText: plan.serviceSymbolText,
+            serviceSymbolUrl: plan.serviceSymbolUrl,
           });
         } else {
           addClinicalEvent({
@@ -933,6 +940,8 @@ export function ToothModal({
             cost: plan.cost,
             notes: eventNotes,
             visualState,
+            serviceSymbolText: plan.serviceSymbolText,
+            serviceSymbolUrl: plan.serviceSymbolUrl,
           });
         }
       });
@@ -1225,20 +1234,20 @@ export function ToothModal({
   const topBanner = (() => {
     if (readOnly) {
       return (
-        <div className="flex items-center gap-2 rounded-lg bg-slate-50 border border-slate-200 px-4 py-2.5 text-xs text-slate-600">
+        <div className="flex items-center gap-2 rounded-lg bg-hover border border-hairline px-4 py-2.5 text-xs text-subtle">
           <Lock className="w-3.5 h-3.5 shrink-0" />
           <span className="font-medium">Solo lectura</span>
-          <span className="text-slate-400">—</span>
+          <span className="text-subtle">—</span>
           <span>Inicia una consulta para editar este diente</span>
         </div>
       );
     }
     if (hasUnsavedChanges) {
       return (
-        <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 text-xs text-amber-700">
+        <div className="flex items-center gap-2 rounded-lg bg-amber-500/15 border border-amber-400/25 px-4 py-2.5 text-xs text-amber-600 dark:text-amber-300">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
           <span className="font-semibold">Cambios sin guardar</span>
-          <span className="text-amber-500">—</span>
+          <span className="text-amber-600 dark:text-amber-300">—</span>
           <span>Guarda antes de cerrar para no perder tu trabajo</span>
         </div>
       );
@@ -1292,10 +1301,10 @@ export function ToothModal({
               </div>
             )}
             <div className="flex flex-col">
-              <span className="text-lg font-bold leading-tight">
+              <span className="text-lg font-bold leading-tight tabular-nums">
                 Diente {tooth.number}
               </span>
-              <span className="text-xs text-gray-500 font-normal">
+              <span className="text-xs text-subtle font-normal">
                 {getToothDescription(tooth.number)}
               </span>
             </div>
@@ -1379,7 +1388,7 @@ export function ToothModal({
             )}
           </div>
           {saveErrors.length > 0 && (
-            <div className="ml-auto rounded-md border border-red-200 bg-red-50 px-3 py-1 text-xs text-red-700">
+            <div className="ml-auto rounded-md border border-rose-400/25 bg-rose-500/15 px-3 py-1 text-xs text-rose-600 dark:text-rose-300">
               {saveErrors.map((error) => (
                 <p key={error}>{error}</p>
               ))}

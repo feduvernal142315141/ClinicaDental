@@ -81,15 +81,15 @@ export function PatientDetails({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "scheduled":
-        return "bg-blue-100 text-blue-800";
+        return "bg-sky-500/15 text-sky-600 ring-sky-400/25 dark:text-sky-300";
       case "completed":
-        return "bg-green-100 text-green-800";
+        return "bg-emerald-500/15 text-emerald-600 ring-emerald-400/25 dark:text-emerald-300";
       case "cancelled":
-        return "bg-red-100 text-red-800";
+        return "bg-rose-500/15 text-rose-600 ring-rose-400/25 dark:text-rose-300";
       case "no-show":
-        return "bg-gray-100 text-gray-800";
+        return "bg-elevated text-subtle";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-elevated text-subtle";
     }
   };
 
@@ -211,11 +211,11 @@ export function PatientDetails({
                     {patient.gender && (
                       <div className="flex items-center gap-3">
                         {patient.gender.toUpperCase() === "M" ? (
-                          <User className="h-4 w-4 text-blue-600" />
+                          <User className="h-4 w-4 text-brand" />
                         ) : patient.gender.toUpperCase() === "F" ? (
                           <UserRound className="h-4 w-4 text-pink-600" />
                         ) : (
-                          <Circle className="h-4 w-4 text-gray-500" />
+                          <Circle className="h-4 w-4 text-subtle" />
                         )}
                         <div>
                           <p className="text-sm font-medium">Género</p>
@@ -231,7 +231,7 @@ export function PatientDetails({
 
                     {patient.agreement !== undefined && (
                       <div className="flex items-center gap-3">
-                        <FileText className="h-4 w-4 text-green-600" />
+                        <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
                         <div>
                           <p className="text-sm font-medium">Convenio</p>
                           <p className="text-sm text-muted-foreground">
@@ -249,7 +249,7 @@ export function PatientDetails({
                   title="Próximas Citas"
                   value={upcomingAppointments.length}
                   icon={Calendar}
-                  iconColor="text-blue-600"
+                  iconColor="text-brand"
                 />
                 <KpiCard
                   title="Completadas"
@@ -259,7 +259,7 @@ export function PatientDetails({
                     ).length
                   }
                   icon={Activity}
-                  iconColor="text-green-600"
+                  iconColor="text-emerald-600 dark:text-emerald-300"
                 />
               </div>
             </div>

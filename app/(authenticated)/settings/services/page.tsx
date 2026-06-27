@@ -1,6 +1,6 @@
 "use client";
 
-import { SectionTitle } from "@/components/ui/antd";
+import { PageHeader } from "@/components/ui/layout/page-header";
 import { ServicesList } from "@/components/features/services";
 import { useServicesPage } from "@/lib/hooks/services/use-services-page";
 import { usePermission } from "@/lib/hooks/use-permission";
@@ -32,7 +32,7 @@ export default function ServicesSettingsPage() {
 
   return (
     <>
-      <SectionTitle
+      <PageHeader
         title="Gestión de Servicios"
         subtitle="Administre el catálogo de servicios clínicos"
         actionButton={

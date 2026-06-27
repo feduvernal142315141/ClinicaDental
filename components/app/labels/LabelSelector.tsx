@@ -62,7 +62,7 @@ export function LabelSelector({
           <>
             {menu}
             {onCreateNew && (
-              <div style={{ padding: "8px", borderTop: "1px solid #f0f0f0" }}>
+              <div style={{ padding: "8px", borderTop: "1px solid var(--color-hairline)" }}>
                 <Button type="link" icon={<PlusOutlined />} onClick={onCreateNew}>
                   Nueva etiqueta
                 </Button>

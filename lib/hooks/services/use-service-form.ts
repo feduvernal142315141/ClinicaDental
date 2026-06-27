@@ -1,92 +1,86 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { App, Form } from "antd";
-import type { UploadFile } from "antd";
+import { useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import { useServices } from "@/lib/hooks/services/useServices";
-import type {
-  CreateServiceRequest,
-  OdontogramSymbolMode,
-  ServiceType,
-  ServiceCategory,
-} from "@/lib/entity/services";
+import {
+  serviceFormSchema,
+  type ServiceFormValues,
+} from "@/lib/hooks/services/service-form.schema";
+import type { CreateServiceRequest } from "@/lib/entity/services";
+import { notify } from "@/lib/utils/notify";
+
+export type { ServiceFormValues } from "@/lib/hooks/services/service-form.schema";
 
 interface UseServiceFormParams {
   serviceId?: string;
   basePath?: string;
 }
 
-export type ServiceFormValues = {
-  code: string;
-  name: string;
-  description?: string;
-  type: ServiceType;
-  category?: ServiceCategory;
-  cost: number;
-  odontogramEnabled: boolean;
-  odontogramSymbolMode: OdontogramSymbolMode;
-  symbolText?: string;
-};
-
 export function useServiceForm({
   serviceId,
   basePath = "/settings/services",
 }: UseServiceFormParams) {
   const router = useRouter();
-  const { message } = App.useApp();
-  const [form] = Form.useForm<ServiceFormValues>();
 
   const isEdit = useMemo(() => !!serviceId, [serviceId]);
 
   const { loading, getServiceById, createService, updateService } =
     useServices();
 
-  const [symbolFileList, setSymbolFileList] = useState<UploadFile[]>([]);
-  const [symbolImage, setSymbolImage] = useState<string | undefined>();
-
-  const handleSymbolFileChange = useCallback((files: UploadFile[]) => {
-    setSymbolFileList(files);
-    if (files.length > 0 && files[0].originFileObj) {
-      const reader = new FileReader();
-      reader.readAsDataURL(files[0].originFileObj);
-      reader.onload = () => setSymbolImage(reader.result as string);
-    } else {
-      setSymbolImage(undefined);
-    }
-  }, []);
+  const form = useForm<ServiceFormValues>({
+    resolver: zodResolver(serviceFormSchema),
+    mode: "onBlur",
+    defaultValues: {
+      code: "",
+      name: "",
+      type: "TREATMENT",
+      cost: 0,
+      duration: undefined,
+      category: undefined,
+      description: "",
+      odontogramEnabled: false,
+      odontogramSymbolMode: "NONE",
+      symbolText: "",
+      symbolImage: "",
+      symbolUrl: "",
+    },
+  });
+  const { reset } = form;
 
   useEffect(() => {
-    form.resetFields();
+    reset();
 
     if (!isEdit || !serviceId) return;
 
     getServiceById(serviceId)
       .then((service) => {
-        form.setFieldsValue({
+        reset({
           code: service.code,
           name: service.name,
-          description: service.description,
           type: service.type,
-          category: service.category,
           cost: service.cost,
+          duration: service.duration ?? undefined,
+          category: service.category,
+          description: service.description ?? "",
           odontogramEnabled: service.odontogramEnabled,
-          odontogramSymbolMode: service.odontogramSymbolMode,
-          symbolText: service.symbolText,
+          // MANUAL (legacy) ya no se ofrece en la UI → se normaliza a NONE para
+          // que el Select no quede vacío y no se reenvíe un modo sin soporte.
+          odontogramSymbolMode:
+            service.odontogramSymbolMode &&
+            service.odontogramSymbolMode !== "MANUAL"
+              ? service.odontogramSymbolMode
+              : "NONE",
+          symbolText: service.symbolText ?? "",
+          symbolImage: "",
+          symbolUrl: service.symbolUrl ?? "",
         });
-        if (service.symbolUrl) {
-          setSymbolFileList([
-            {
-              uid: "-1",
-              name: "symbol",
-              status: "done" as const,
-              url: service.symbolUrl,
-            },
-          ]);
-        }
       })
       .catch((err) => {
-        message.error(err?.message || "Error al cargar servicio");
+        notify.error(err?.message || "Error al cargar servicio");
       });
-  }, [isEdit, serviceId, getServiceById, form, message]);
+  }, [isEdit, serviceId, getServiceById, reset]);
 
   const handleSubmit = useCallback(
     async (values: ServiceFormValues) => {
@@ -94,44 +88,34 @@ export function useServiceForm({
         ? values.odontogramSymbolMode
         : "NONE";
 
-      if (mode === "ASSET" && !symbolImage && symbolFileList.length === 0) {
-        message.error("Debe subir una imagen para el símbolo");
-        return;
-      }
-
       const payload: CreateServiceRequest = {
         code: values.code,
         name: values.name,
-        description: values.description,
+        description: values.description || undefined,
         type: values.type,
         category: values.category,
         cost: values.cost,
+        duration: values.duration,
         odontogramEnabled: values.odontogramEnabled,
         odontogramSymbolMode: mode,
-        symbolImage: symbolImage || undefined,
-        symbolText: values.symbolText,
+        // Solo enviamos imagen nueva; si no, el backend conserva la existente.
+        symbolImage: values.symbolImage || undefined,
+        symbolText: mode === "TEXT" ? values.symbolText : undefined,
       };
 
-      if (isEdit && serviceId) {
-        await updateService(serviceId, payload);
-      } else {
-        await createService(payload);
+      try {
+        if (isEdit && serviceId) {
+          await updateService(serviceId, payload);
+        } else {
+          await createService(payload);
+        }
+        router.push(basePath);
+        router.refresh();
+      } catch {
+        // useServices ya muestra el toast de error (incl. 409 código duplicado).
       }
-
-      router.push(basePath);
-      router.refresh();
     },
-    [
-      isEdit,
-      serviceId,
-      createService,
-      updateService,
-      router,
-      basePath,
-      symbolImage,
-      symbolFileList,
-      message,
-    ],
+    [isEdit, serviceId, createService, updateService, router, basePath],
   );
 
   const handleCancel = useCallback(() => {
@@ -144,7 +128,5 @@ export function useServiceForm({
     loading,
     handleSubmit,
     handleCancel,
-    symbolFileList,
-    handleSymbolFileChange,
   };
 }

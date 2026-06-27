@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { App } from "antd";
+
 import { clinicalHistoryService } from "@/lib/services/clinical-history";
 import type {
   PatientVisitRecord,
   UpsertVisitRecordRequest,
 } from "@/lib/entity/clinical-history";
+import { notify } from "@/lib/utils/notify";
 
 export function useVisitRecord(patientId: string, appointmentId?: string) {
-  const { message } = App.useApp();
   const [record, setRecord] = useState<PatientVisitRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -29,12 +29,12 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
         // No visit record yet — graceful empty state
         setRecord(null);
       } else {
-        message.error(e?.message || "Error al cargar registro de visita");
+        notify.error(e?.message || "Error al cargar registro de visita");
       }
     } finally {
       setLoading(false);
     }
-  }, [patientId, appointmentId, message]);
+  }, [patientId, appointmentId]);
 
   // Auto-load when appointmentId is present
   useEffect(() => {
@@ -70,17 +70,17 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
           return { appointmentId: appointmentId!, patientId, ...data, currentPain: cleanPain };
         });
         if (!options?.silent) {
-          message.success("Registro de visita guardado");
+          notify.success("Registro de visita guardado");
         }
       } catch (err: unknown) {
         const e = err as { message?: string };
-        message.error(e?.message || "Error al guardar registro de visita");
+        notify.error(e?.message || "Error al guardar registro de visita");
         throw err;
       } finally {
         setSaving(false);
       }
     },
-    [patientId, appointmentId, message],
+    [patientId, appointmentId],
   );
 
   const saveNotes = useCallback(
@@ -112,13 +112,13 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
         return result;
       } catch (err: unknown) {
         const e = err as { message?: string };
-        message.error(e?.message || "Error al guardar notas de visita");
+        notify.error(e?.message || "Error al guardar notas de visita");
         throw err;
       } finally {
         setSaving(false);
       }
     },
-    [patientId, appointmentId, message],
+    [patientId, appointmentId],
   );
 
   return {

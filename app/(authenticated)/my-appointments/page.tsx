@@ -133,13 +133,13 @@ function AppointmentPatientCard({ appointment }: { appointment: Appointment }) {
     : "Fecha pendiente";
 
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-hairline bg-surface p-4 shadow-sm">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <p className="font-semibold text-slate-900">
+          <p className="font-semibold text-ink">
             {appointment.serviceName ?? appointment.reason ?? "Consulta"}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-subtle">
             {appointment.doctorName ? `Dr. ${appointment.doctorName}` : "Doctor por confirmar"}
           </p>
         </div>
@@ -148,26 +148,26 @@ function AppointmentPatientCard({ appointment }: { appointment: Appointment }) {
         </Tag>
       </div>
 
-      <div className="space-y-2 text-sm text-slate-600">
+      <div className="space-y-2 text-sm text-subtle">
         <div className="flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-blue-500" />
+          <CalendarDays className="h-4 w-4 text-brand" />
           <span>{displayDate}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-blue-500" />
+          <Clock className="h-4 w-4 text-brand" />
           <span>{appointment.time || "Hora pendiente"}</span>
           {appointment.duration > 0 && <span>· {appointment.duration} min</span>}
         </div>
         {appointment.type && (
           <div className="flex items-center gap-2">
-            <Stethoscope className="h-4 w-4 text-blue-500" />
+            <Stethoscope className="h-4 w-4 text-brand" />
             <span>{formatAppointmentType(appointment.type)}</span>
           </div>
         )}
       </div>
 
       {appointment.notes && (
-        <p className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+        <p className="mt-3 rounded-lg bg-elevated p-3 text-xs text-subtle">
           {appointment.notes}
         </p>
       )}

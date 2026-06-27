@@ -40,10 +40,9 @@ export function ClinicalHistoryHeader({
 
   return (
     <div
+      className="bento"
       style={{
         padding: "16px 24px",
-        background: "#fafafa",
-        borderRadius: 8,
         marginBottom: 16,
       }}
     >
@@ -107,7 +106,7 @@ export function ClinicalHistoryHeader({
           )}
           {nextAppointment && (
             <Space size={4}>
-              <CalendarOutlined style={{ color: "#1677ff" }} />
+              <CalendarOutlined className="text-brand" />
               <Text>Próxima cita: {formatDate(nextAppointment)}</Text>
             </Space>
           )}

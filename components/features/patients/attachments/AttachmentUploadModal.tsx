@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Modal, Upload, Select, Input, Button, message } from "antd";
+import { Upload } from "antd";
 import { Upload as UploadIcon } from "lucide-react";
 import { ATTACHMENT_CATEGORIES, type AttachmentCategory } from "@/lib/entity/patientAttachment";
+import { notify } from "@/lib/utils/notify";
+import { Modal } from "@/components/ui/primitives/custom";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import { Select } from "@/components/ui/controls/select";
+import TextArea from "@/components/ui/atomic/forms/textarea";
 
 interface AttachmentUploadModalProps {
   open: boolean;
@@ -31,11 +36,11 @@ export function AttachmentUploadModal({ open, onClose, onUpload, uploading, appo
 
   const handleSubmit = async () => {
     if (!file) {
-      void message.warning("Selecciona un archivo");
+      void notify.warning("Selecciona un archivo");
       return;
     }
     if (!category) {
-      void message.warning("Selecciona una categoría");
+      void notify.warning("Selecciona una categoría");
       return;
     }
     await onUpload(file, category, notes.trim() || undefined, appointmentId);
@@ -45,20 +50,26 @@ export function AttachmentUploadModal({ open, onClose, onUpload, uploading, appo
 
   return (
     <Modal
-      title="Agregar archivo"
       open={open}
-      onCancel={handleClose}
-      footer={[
-        <Button key="cancel" onClick={handleClose} disabled={uploading}>
-          Cancelar
-        </Button>,
-        <Button key="submit" type="primary" loading={uploading} onClick={handleSubmit}>
-          Subir
-        </Button>,
-      ]}
-      destroyOnHidden
+      onOpenChange={(next) => {
+        if (!next) handleClose();
+      }}
+      icon={<UploadIcon className="h-5 w-5" />}
+      title="Agregar archivo"
+      description="Adjunta una imagen o PDF al expediente del paciente."
+      className="w-full sm:max-w-lg"
+      footer={
+        <>
+          <Button variant="outline" type="button" onClick={handleClose} disabled={uploading}>
+            Cancelar
+          </Button>
+          <Button type="button" loading={uploading} onClick={handleSubmit}>
+            Subir
+          </Button>
+        </>
+      }
     >
-      <div className="space-y-4 py-2">
+      <div className="space-y-5 px-6 pb-6">
         <Upload.Dragger
           accept=".jpg,.jpeg,.png,.webp,.pdf"
           maxCount={1}
@@ -70,32 +81,35 @@ export function AttachmentUploadModal({ open, onClose, onUpload, uploading, appo
           fileList={file ? [{ uid: "1", name: file.name, status: "done" }] : []}
         >
           <p className="ant-upload-drag-icon flex justify-center">
-            <UploadIcon className="h-8 w-8 text-primary" />
+            <UploadIcon className="h-8 w-8 text-brand" />
           </p>
           <p className="ant-upload-text">Haz clic o arrastra un archivo aquí</p>
           <p className="ant-upload-hint">JPG, PNG, WEBP, PDF — máx. 1 archivo</p>
         </Upload.Dragger>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">
-            Categoría <span className="text-red-500">*</span>
+          <label className="mb-1.5 block text-sm font-medium text-ink">
+            Categoría <span className="text-rose-500">*</span>
           </label>
           <Select
-            className="w-full"
-            placeholder="Selecciona una categoría"
-            value={category}
+            value={category ?? ""}
             onChange={(v) => setCategory(v as AttachmentCategory)}
             options={ATTACHMENT_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
+            placeholder="Selecciona una categoría"
+            disabled={uploading}
+            aria-label="Categoría"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Notas (opcional)</label>
-          <Input.TextArea
+          <label className="mb-1.5 block text-sm font-medium text-ink">Notas (opcional)</label>
+          <TextArea
             rows={2}
             placeholder="Notas adicionales..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
+            disabled={uploading}
+            aria-label="Notas"
           />
         </div>
       </div>

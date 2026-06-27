@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { App } from "antd";
+
 import { doctorsService } from "@/lib/services/doctors";
 import type {
   Doctor,
@@ -8,6 +8,7 @@ import type {
   DoctorsQueryParams,
   PaginatedDoctorsResponse,
 } from "@/lib/entity/doctors";
+import { notify } from "@/lib/utils/notify";
 
 /**
  * useDoctors Hook
@@ -15,7 +16,6 @@ import type {
  * Hook for managing doctors CRUD operations
  */
 export function useDoctors() {
-  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [pagination, setPagination] = useState({
@@ -46,13 +46,13 @@ export function useDoctors() {
 
         return response;
       } catch (error: unknown) {
-        message.error(error.message || "Error al cargar doctores");
+        notify.error(error.message || "Error al cargar doctores");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -65,13 +65,13 @@ export function useDoctors() {
         const doctor = await doctorsService.getDoctorById(id);
         return doctor;
       } catch (error: unknown) {
-        message.error(error.message || "Error al cargar doctor");
+        notify.error(error.message || "Error al cargar doctor");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -115,15 +115,15 @@ export function useDoctors() {
       setLoading(true);
       try {
         await doctorsService.deleteDoctor(id);
-        message.success("Doctor eliminado exitosamente");
+        notify.success("Doctor eliminado exitosamente");
       } catch (error: unknown) {
-        message.error(error.message || "Error al eliminar doctor");
+        notify.error(error.message || "Error al eliminar doctor");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -134,17 +134,17 @@ export function useDoctors() {
       setLoading(true);
       try {
         await doctorsService.updateDoctor(id, { active });
-        message.success(
+        notify.success(
           `Doctor ${active ? "activado" : "desactivado"} exitosamente`,
         );
       } catch (error: unknown) {
-        message.error(error.message || "Error al cambiar estado");
+        notify.error(error.message || "Error al cambiar estado");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   return {

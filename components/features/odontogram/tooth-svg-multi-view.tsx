@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useOdontogramStore } from "@/lib/odontogram/store";
 import type { ToothSurface } from "./types";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ToothSymbolService } from "@/lib/odontogram/domain/odontogram/services/ToothSymbolService";
 import type { ToothViewPaths, SurfacePath } from "./tooth-square-paths";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
@@ -74,6 +74,12 @@ function _ToothSVGMultiView({
     return ToothSymbolService.getToothSymbol(toothNumber, clinicalEvents);
   }, [toothNumber, clinicalEvents, isClient]);
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const toothSymbolImage = useMemo(() => {
+    if (!isClient) return null;
+    return ToothSymbolService.getToothSymbolImage(toothNumber, clinicalEvents);
+  }, [toothNumber, clinicalEvents, isClient]);
+
   // Use the professionally designed SVG paths
   const viewPaths = getDesignedToothPaths(toothNumber, view);
 
@@ -84,6 +90,7 @@ function _ToothSVGMultiView({
       viewPaths={viewPaths}
       surfaceColors={surfaceColors}
       symbol={toothSymbol}
+      symbolImage={toothSymbolImage}
       onSurfaceClick={onSurfaceClick}
       view={view}
     />
@@ -95,12 +102,14 @@ function DesignedToothView({
   viewPaths,
   surfaceColors,
   symbol,
+  symbolImage,
   onSurfaceClick,
   view,
 }: {
   viewPaths: ToothViewPaths;
   surfaceColors: Record<ToothSurface, string>;
   symbol: string | null;
+  symbolImage?: string | null;
   onSurfaceClick: (surface: ToothSurface) => void;
   view: "frontal" | "oclusal" | "lateral";
 }) {
@@ -112,6 +121,11 @@ function DesignedToothView({
   const cy = vbParts[1] + vbParts[3] / 2;
   // Scale font size relative to viewBox width
   const fontSize = Math.round(vbParts[2] * 0.22);
+
+  // Si la imagen del símbolo falla (URL rota/404), se cae al texto/heurística.
+  const [imgError, setImgError] = useState(false);
+  useEffect(() => setImgError(false), [symbolImage]);
+  const showImage = !!symbolImage && !imgError;
 
   return (
     <svg
@@ -182,8 +196,22 @@ function DesignedToothView({
         />
       ))}
 
-      {/* Símbolo profesional (letra indicando tipo de tratamiento) */}
-      {symbol && view === "oclusal" && (
+      {/* Símbolo del servicio en modo imagen (precede al texto). */}
+      {showImage && view === "oclusal" && (
+        <image
+          href={symbolImage as string}
+          x={cx - fontSize * 0.8}
+          y={cy - fontSize * 0.8}
+          width={fontSize * 1.6}
+          height={fontSize * 1.6}
+          preserveAspectRatio="xMidYMid meet"
+          pointerEvents="none"
+          onError={() => setImgError(true)}
+        />
+      )}
+
+      {/* Símbolo profesional (texto: letra de tratamiento o texto del servicio) */}
+      {!showImage && symbol && view === "oclusal" && (
         <text
           x={cx}
           y={cy + fontSize * 0.35}

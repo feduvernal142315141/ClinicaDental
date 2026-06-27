@@ -196,6 +196,8 @@ export function PlanTab({
       material: procedure.materials?.[0],
       durationMin: procedure.estimatedDuration,
       cost: procedure.baseCost,
+      serviceSymbolText: procedure.serviceSymbolText,
+      serviceSymbolUrl: procedure.serviceSymbolUrl,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -263,6 +265,8 @@ export function PlanTab({
           material: procedure.materials?.[0],
           durationMin: procedure.estimatedDuration,
           cost: procedure.baseCost,
+          serviceSymbolText: procedure.serviceSymbolText,
+          serviceSymbolUrl: procedure.serviceSymbolUrl,
           dependencies: tp.dependsOn,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -293,6 +297,8 @@ export function PlanTab({
           priority: "media" as const,
           durationMin: procedure.estimatedDuration,
           cost: procedure.baseCost,
+          serviceSymbolText: procedure.serviceSymbolText,
+          serviceSymbolUrl: procedure.serviceSymbolUrl,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         } as ProcedurePlan;
@@ -310,9 +316,11 @@ export function PlanTab({
   };
 
   const getRiskColor = (risk: PatientRiskLevel) => {
-    if (risk === "bajo") return "bg-green-100 text-green-800 border-green-300";
-    if (risk === "medio") return "bg-amber-100 text-amber-800 border-amber-300";
-    return "bg-red-100 text-red-800 border-red-300";
+    if (risk === "bajo")
+      return "bg-emerald-500/15 text-emerald-600 border-emerald-400/25 dark:text-emerald-300";
+    if (risk === "medio")
+      return "bg-amber-500/15 text-amber-600 border-amber-400/25 dark:text-amber-300";
+    return "bg-rose-500/15 text-rose-600 border-rose-400/25 dark:text-rose-300";
   };
 
   const hasCoherenceIssue =
@@ -355,7 +363,7 @@ export function PlanTab({
             {plans.length} procedimiento{plans.length !== 1 ? "s" : ""}
           </span>
           {plans.length > 0 && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground tabular-nums">
               · {totals.totalDuration} min · {formatCurrency(totals.totalCost)}
             </span>
           )}
@@ -377,10 +385,10 @@ export function PlanTab({
       </div>
 
       {hasCoherenceIssue && (
-        <Card className="p-2.5 bg-red-50 border-red-200">
+        <Card className="p-2.5 bg-rose-500/15 border-rose-400/25">
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-            <p className="text-xs text-red-700">
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-300 shrink-0" />
+            <p className="text-xs text-rose-700 dark:text-rose-300">
               El diente está marcado como{" "}
               {GLOBAL_STATUS_LABELS[tooth.globalStatus]} pero tienes
               procedimientos restauradores planificados.
@@ -403,7 +411,7 @@ export function PlanTab({
                   size="sm"
                   variant="ghost"
                   onClick={() => handlePlansUpdate([])}
-                  className="text-xs h-7 text-red-500 hover:text-red-700 hover:bg-red-50"
+                  className="text-xs h-7 text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 dark:text-rose-300"
                 >
                   <Trash2 className="w-3 h-3 mr-1" />
                   Limpiar
@@ -461,7 +469,7 @@ export function PlanTab({
                               </span>
                             )}
                             {plan.status === "done" && (
-                              <span className="flex items-center gap-0.5 text-[10px] text-blue-600">
+                              <span className="flex items-center gap-0.5 text-[10px] text-sky-600 dark:text-sky-300">
                                 <CheckCircle2 className="w-3 h-3" />
                                 Realizado
                               </span>
@@ -469,7 +477,7 @@ export function PlanTab({
                           </div>
                         </div>
                         {/* Price + actions */}
-                        <span className="text-sm font-semibold whitespace-nowrap">
+                        <span className="text-sm font-semibold whitespace-nowrap tabular-nums">
                           {formatCurrency(plan.cost)}
                         </span>
                         <div className="flex gap-1 shrink-0">
@@ -481,17 +489,17 @@ export function PlanTab({
                             }}
                             title="Duplicar"
                           >
-                            <Copy className="w-3.5 h-3.5 text-slate-400" />
+                            <Copy className="w-3.5 h-3.5 text-subtle" />
                           </button>
                           <button
-                            className="p-1 rounded hover:bg-red-50 transition-colors"
+                            className="p-1 rounded hover:bg-rose-500/10 transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleRemovePlan(plan.id);
                             }}
                             title="Eliminar"
                           >
-                            <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                           </button>
                         </div>
                         <ChevronDown
@@ -624,10 +632,10 @@ export function PlanTab({
           {/* Sticky totals bar */}
           {plans.length > 0 && (
             <div className="sticky bottom-0 z-10">
-              <Card className="p-3 shadow-lg bg-white/95 backdrop-blur-sm border-t-2 border-primary/20">
+              <Card className="p-3 shadow-lg bg-surface/95 backdrop-blur-sm border-t-2 border-primary/20">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
                       <Clock className="w-3.5 h-3.5" />
                       {totals.totalDuration} min
                     </span>
@@ -641,7 +649,7 @@ export function PlanTab({
                         ).map(([cat, cost]) => (
                           <span
                             key={cat}
-                            className="flex items-center gap-1 text-xs text-muted-foreground"
+                            className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums"
                           >
                             <div
                               className="w-2 h-2 rounded-full"
@@ -656,7 +664,7 @@ export function PlanTab({
                       </div>
                     )}
                   </div>
-                  <span className="text-lg font-bold">
+                  <span className="text-lg font-bold tabular-nums">
                     {formatCurrency(totals.totalCost)}
                   </span>
                 </div>
@@ -733,7 +741,7 @@ export function PlanTab({
                         {suggestion.reason}
                       </p>
                     </div>
-                    <span className="text-xs font-semibold whitespace-nowrap">
+                    <span className="text-xs font-semibold whitespace-nowrap tabular-nums">
                       {formatCurrency(suggestion.procedure.baseCost)}
                     </span>
                   </div>
@@ -750,7 +758,7 @@ export function PlanTab({
                 onClick={() => setIcdasSectionOpen(!icdasSectionOpen)}
               >
                 <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer">
-                  <Sparkles className="w-3 h-3 inline mr-1 text-amber-500" />
+                  <Sparkles className="w-3 h-3 inline mr-1 text-amber-600 dark:text-amber-300" />
                   Plantillas ICDAS · {maxIcdasScore}
                 </Label>
                 {icdasSectionOpen ? (
@@ -783,7 +791,7 @@ export function PlanTab({
                     return (
                       <div
                         key={suggestion.templateId}
-                        className="p-2 rounded-md border border-amber-200 bg-amber-50/50"
+                        className="p-2 rounded-md border border-amber-400/25 bg-amber-500/15"
                       >
                         <div className="flex items-center justify-between mb-1">
                           <p className="text-xs font-medium">
@@ -791,7 +799,7 @@ export function PlanTab({
                           </p>
                           <Badge
                             variant="outline"
-                            className="text-[10px] border-amber-400 text-amber-700"
+                            className="text-[10px] border-amber-400/25 text-amber-600 dark:text-amber-300"
                           >
                             P{suggestion.priority}
                           </Badge>
@@ -823,7 +831,7 @@ export function PlanTab({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="w-full text-xs h-7 border-amber-400 text-amber-700 hover:bg-amber-50 bg-transparent"
+                          className="w-full text-xs h-7 border-amber-400/25 text-amber-600 dark:text-amber-300 hover:bg-amber-500/10 bg-transparent"
                           onClick={() =>
                             handleApplyIcdasTemplate(
                               suggestion.templateName,
@@ -946,7 +954,7 @@ export function PlanTab({
                         <Star className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
                       )}
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-[10px] text-muted-foreground tabular-nums">
                       {procedure.estimatedDuration} min ·{" "}
                       {formatCurrency(procedure.baseCost)}
                     </p>

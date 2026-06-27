@@ -3,9 +3,9 @@
 import { DoctorForm } from "../form/DoctorForm";
 import { useDoctorsPage } from "@/lib/hooks/doctors/use-doctors-page";
 import { useRouter } from "next/navigation";
-import { Space } from "antd";
 import { Button } from "@/components/ui/primitives/shadcn/button";
-import { EditOutlined, ArrowLeftOutlined } from "@ant-design/icons";
+import { PageHeader } from "@/components/ui/layout/page-header";
+import { Pencil, ArrowLeft } from "lucide-react";
 
 interface DoctorDetailProps {
   /** Doctor ID to display */
@@ -36,32 +36,27 @@ export function DoctorDetail({
 
   return (
     <>
-      <div className="flex items-start justify-between mb-6">
-        <div className="flex-1">
-          <h2 className="text-2xl font-semibold mb-1">Detalle del Doctor</h2>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-            Visualice la información del doctor en el sistema
-          </p>
-        </div>
-        <Space>
-          <Button
-            type="primary"
-            icon={<EditOutlined />}
-            onClick={handleEdit}
-            size="large"
-          >
-            Editar
-          </Button>
-          <Button
-            icon={<ArrowLeftOutlined />}
-            onClick={handleBackToList}
-            size="large"
-            variant="outline"
-          >
-            Atrás
-          </Button>
-        </Space>
-      </div>
+      <PageHeader
+        title="Detalle del Doctor"
+        subtitle="Visualice la información del doctor en el sistema"
+        actions={
+          <div className="flex gap-2">
+            <Button type="button" onClick={handleEdit} className="gap-2">
+              <Pencil className="h-4 w-4" />
+              Editar
+            </Button>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={handleBackToList}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Atrás
+            </Button>
+          </div>
+        }
+      />
       <DoctorForm doctorId={doctorId} basePath={basePath} readOnly />
     </>
   );

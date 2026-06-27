@@ -67,8 +67,11 @@ const Button = React.forwardRef<HTMLElement, ButtonProps>(
     const antdTypeFromProp = !isHtmlType
       ? (type as AntdButtonProps["type"])
       : undefined;
+    // Honra `htmlType` cuando `type` no es un tipo HTML explícito. Antes, pasar
+    // solo `htmlType="button"` se resolvía a "submit" (ignorando htmlType) y
+    // hacía que botones secundarios (Cancelar) enviaran el formulario.
     const htmlTypeFinal: AntdButtonProps["htmlType"] = isHtmlType
-      ? (type as HtmlButtonType | undefined) ?? "submit"
+      ? (type as HtmlButtonType | undefined) ?? htmlType ?? "submit"
       : htmlType ?? "button";
 
     const sizeFromProp = size;

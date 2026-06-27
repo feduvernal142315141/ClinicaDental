@@ -2,11 +2,10 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { SectionTitle } from "@/components/ui/antd";
+import { PageHeader } from "@/components/ui/layout/page-header";
 import { AppointmentForm } from "@/components/features/appointments/form/AppointmentForm";
 import { useAppointments } from "@/lib/hooks/appointments";
 import type { Appointment } from "@/lib/entity/appointment";
-import { Skeleton } from "antd";
 import { isAppointmentActionable } from "@/lib/utils/appointment-utils";
 
 interface PageProps {
@@ -42,18 +41,22 @@ export default function EditAppointmentPage({ params }: PageProps) {
   if (loading) {
     return (
       <>
-        <SectionTitle
-          title="Editar Cita"
-          subtitle="Cargando datos de la cita..."
-        />
-        <Skeleton active paragraph={{ rows: 8 }} />
+        <PageHeader title="Editar Cita" subtitle="Cargando datos de la cita..." />
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="bento h-48 animate-pulse p-6" />
+            ))}
+          </div>
+          <div className="bento h-64 animate-pulse p-6 lg:col-span-1" />
+        </div>
       </>
     );
   }
 
   return (
     <>
-      <SectionTitle
+      <PageHeader
         title="Editar Cita"
         subtitle="Modifique los datos de la cita"
       />

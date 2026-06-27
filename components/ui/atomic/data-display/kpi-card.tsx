@@ -36,6 +36,20 @@ type TrendConfig = {
   color?: "positive" | "negative";
 };
 
+/** Variantes del chip de icono (par color/15 + ring color/25). */
+type KpiAccent = "brand" | "sky" | "emerald" | "violet" | "amber" | "rose";
+
+const CHIP_VARIANTS: Record<KpiAccent, string> = {
+  brand: "bg-brand/15 text-brand ring-brand/25",
+  sky: "bg-sky-500/15 text-sky-600 ring-sky-400/25 dark:text-sky-300",
+  emerald:
+    "bg-emerald-500/15 text-emerald-600 ring-emerald-400/25 dark:text-emerald-300",
+  violet:
+    "bg-violet-500/15 text-violet-600 ring-violet-400/25 dark:text-violet-300",
+  amber: "bg-amber-500/15 text-amber-600 ring-amber-400/25 dark:text-amber-300",
+  rose: "bg-rose-500/15 text-rose-600 ring-rose-400/25 dark:text-rose-300",
+};
+
 export interface KpiCardProps {
   /** Variante del componente */
   variant?: "default" | "badges" | "trend" | "featured";
@@ -49,8 +63,11 @@ export interface KpiCardProps {
   /** Ícono de Lucide React */
   icon: LucideIcon;
 
-  /** Color del ícono (clase de Tailwind) */
+  /** Color del ícono (clase de Tailwind) — usado como fallback. */
   iconColor?: string;
+
+  /** Acento del chip de icono (Bento). */
+  accent?: KpiAccent;
 
   /** Descripción o detalle adicional */
   description?: string;
@@ -115,7 +132,8 @@ export function KpiCard({
   title,
   value,
   icon: Icon,
-  iconColor = "text-blue-600",
+  iconColor = "text-brand",
+  accent = "brand",
   description,
   badges = [],
   trend,
@@ -127,24 +145,28 @@ export function KpiCard({
   const trendLabel = trend?.label ?? "vs periodo anterior";
   const isPositive = trend?.color ? trend.color === "positive" : trendValue > 0;
   const TrendIcon = isPositive ? TrendingUp : TrendingDown;
-  const trendColorClass = isPositive ? "text-green-600" : "text-red-600";
+  const trendColorClass = isPositive
+    ? "text-emerald-600 dark:text-emerald-300"
+    : "text-rose-600 dark:text-rose-300";
 
   // ── Featured variant (tarjeta con fondo azul) ──────────────────────────────
   if (variant === "featured") {
     return (
       <div
         className={cn(
-          "relative overflow-hidden rounded-xl bg-blue-600 p-5 text-white shadow-md flex flex-col justify-between min-h-32",
+          "relative overflow-hidden rounded-bento bg-brand p-5 text-white shadow-sm flex flex-col justify-between min-h-32",
           className,
         )}
       >
-        <p className="text-xs font-semibold uppercase tracking-widest text-blue-200">
+        <p className="text-xs font-semibold uppercase tracking-widest text-white/70">
           {title}
         </p>
-        <p className="mt-1 text-3xl font-bold tracking-tight">{value}</p>
+        <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums">
+          {value}
+        </p>
         <div className="mt-3 flex items-center justify-between">
           {trend && (
-            <span className="flex items-center gap-1 text-xs text-blue-100">
+            <span className="flex items-center gap-1 text-xs text-white/80">
               <TrendIcon className="h-3 w-3" />
               {Math.abs(trendValue)}% {trendLabel}
             </span>
@@ -152,7 +174,7 @@ export function KpiCard({
           {onDetails && (
             <button
               onClick={onDetails}
-              className="ml-auto rounded-md bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur hover:bg-white/30 transition-colors"
+              className="ml-auto rounded-md bg-white/15 px-3 py-1 text-xs font-medium text-white backdrop-blur hover:bg-white/25 transition-colors"
             >
               Detalles
             </button>
@@ -163,13 +185,29 @@ export function KpiCard({
   }
 
   return (
-    <Card className={className}>
+    <Card
+      className={cn(
+        "gap-0 py-5 transition-colors hover:border-foreground/15",
+        className,
+      )}
+    >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className={cn("h-6 w-6", iconColor)} />
+        <CardTitle className="text-xs font-semibold uppercase tracking-wide text-subtle">
+          {title}
+        </CardTitle>
+        <span
+          className={cn(
+            "grid h-9 w-9 place-items-center rounded-xl ring-1",
+            CHIP_VARIANTS[accent],
+          )}
+        >
+          <Icon className="h-5 w-5" />
+        </span>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-3xl font-bold tracking-tight tabular-nums text-ink">
+          {value}
+        </div>
         {description && (
           <p className="text-xs text-muted-foreground mt-1">{description}</p>
         )}

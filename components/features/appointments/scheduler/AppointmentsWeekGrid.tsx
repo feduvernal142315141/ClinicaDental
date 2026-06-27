@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Typography, Empty } from "antd";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
-import { getTimeSlots } from "@/lib/utils/scheduler-layout";
+import { CalendarOff, GripVertical } from "lucide-react";
+import { getTimeSlots, pixelsToTime } from "@/lib/utils/scheduler-layout";
+import { cn } from "@/lib/utils/utils";
+import { useEventDrag } from "@/lib/hooks/appointments/use-event-drag";
+import { EmptyState } from "@/components/ui/atomic/feedback";
 import { AppointmentEventCard } from "./AppointmentEventCard";
 import { AppointmentQuickActions } from "./AppointmentQuickActions";
 import type { SchedulerEvent, Appointment } from "@/lib/entity/appointment";
 
 dayjs.locale("es");
-
-const { Text } = Typography;
 
 interface AppointmentsWeekGridProps {
   weekDays: string[];
@@ -25,6 +26,10 @@ interface AppointmentsWeekGridProps {
   onReschedule?: (appointment: Appointment) => void;
   onCancel?: (appointment: Appointment) => void;
   onComplete?: (appointment: Appointment) => void;
+  /** Clic en un hueco vacío de una columna-día → crear cita prefilled. */
+  onCreateSlot?: (date: string, time: string) => void;
+  /** Arrastrar una cita a otra hora/día → reagendar. */
+  onMoveEvent?: (appointment: Appointment, newDate: string, newTime: string) => void;
   startConsultationLoading?: boolean;
 }
 
@@ -42,9 +47,33 @@ export function AppointmentsWeekGrid({
   onReschedule,
   onCancel,
   onComplete,
+  onCreateSlot,
+  onMoveEvent,
   startConsultationLoading,
 }: AppointmentsWeekGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const dragApi = useEventDrag(!!onMoveEvent, (ev, clientX, _clientY, _dx, dy) => {
+    // Día destino por geometría de columnas (robusto al scroll/superposición).
+    let newDate: string | null = null;
+    const cols =
+      containerRef.current?.querySelectorAll<HTMLElement>("[data-day]");
+    if (cols) {
+      for (const col of Array.from(cols)) {
+        const r = col.getBoundingClientRect();
+        if (clientX >= r.left && clientX < r.right) {
+          newDate = col.dataset.day ?? null;
+          break;
+        }
+      }
+    }
+    // Soltar fuera de toda columna (eje, canalón, fuera del grid) = cancelar.
+    if (!newDate) return;
+    onMoveEvent?.(
+      ev.appointment,
+      newDate,
+      pixelsToTime(ev.top + dy, startHour, endHour, slotHeight),
+    );
+  });
   const slots = getTimeSlots(startHour, endHour, 30);
   const totalHeight = slots.length * slotHeight;
   const todayStr = dayjs().format("YYYY-MM-DD");
@@ -75,23 +104,12 @@ export function AppointmentsWeekGrid({
 
   if (loading && !hasAnyEvents) {
     return (
-      <div
-        style={{
-          height: 400,
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-        }}
-      >
+      <div className="flex h-[400px] flex-col gap-0.5">
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
-            style={{
-              height: slotHeight,
-              background: "#fafafa",
-              borderRadius: 4,
-              animation: "pulse 1.5s infinite",
-            }}
+            className="animate-pulse rounded bg-hover"
+            style={{ height: slotHeight }}
           />
         ))}
       </div>
@@ -99,23 +117,12 @@ export function AppointmentsWeekGrid({
   }
 
   return (
-    <div
-      style={{
-        border: "1px solid #f0f0f0",
-        borderRadius: 8,
-        overflow: "hidden",
-      }}
-    >
-      {/* Header: days */}
+    <div className="overflow-hidden rounded-lg border border-hairline bg-surface">
+      {/* Header: days (sticky vertically — fuera del área de scroll) */}
       <div
+        className="sticky top-0 z-20 grid border-b border-hairline bg-canvas"
         style={{
-          display: "grid",
           gridTemplateColumns: `${TIME_COL_WIDTH}px repeat(7, 1fr)`,
-          borderBottom: "1px solid #f0f0f0",
-          background: "#fafafa",
-          position: "sticky",
-          top: 0,
-          zIndex: 5,
         }}
       >
         <div style={{ width: TIME_COL_WIDTH }} />
@@ -125,38 +132,19 @@ export function AppointmentsWeekGrid({
           return (
             <div
               key={day}
-              style={{
-                textAlign: "center",
-                padding: "8px 4px",
-                borderLeft: "1px solid #f0f0f0",
-              }}
+              className="border-l border-hairline px-1 py-2 text-center"
             >
-              <Text
-                type="secondary"
-                style={{
-                  fontSize: 11,
-                  textTransform: "capitalize",
-                  display: "block",
-                }}
-              >
+              <span className="block text-[11px] capitalize text-subtle">
                 {d.format("ddd")}
-              </Text>
-              <Text
-                strong
-                style={{
-                  fontSize: 18,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 32,
-                  height: 32,
-                  borderRadius: "50%",
-                  background: isToday ? "#1677ff" : "transparent",
-                  color: isToday ? "#fff" : undefined,
-                }}
+              </span>
+              <span
+                className={cn(
+                  "mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg font-semibold",
+                  isToday ? "bg-brand text-white" : "text-ink",
+                )}
               >
                 {d.format("D")}
-              </Text>
+              </span>
             </div>
           );
         })}
@@ -165,50 +153,32 @@ export function AppointmentsWeekGrid({
       {/* Body: scroll area */}
       <div
         ref={containerRef}
-        style={{
-          height: "calc(100vh - 310px)",
-          minHeight: 400,
-          overflowY: "auto",
-          overflowX: "auto",
-          position: "relative",
-        }}
+        className="relative overflow-auto"
+        style={{ height: "calc(100vh - 310px)", minHeight: 400 }}
       >
         <div
+          className="relative grid"
           style={{
-            display: "grid",
             gridTemplateColumns: `${TIME_COL_WIDTH}px repeat(7, 1fr)`,
-            position: "relative",
             height: totalHeight,
             minWidth: 700,
           }}
         >
-          {/* Time labels column */}
-          <div style={{ position: "relative" }}>
-            {slots.map((slot, i) => (
-              <div
-                key={slot}
-                style={{
-                  position: "absolute",
-                  top: i * slotHeight,
-                  width: "100%",
-                  height: slotHeight,
-                }}
-              >
-                <Text
-                  type="secondary"
-                  style={{
-                    fontSize: 10,
-                    textAlign: "right",
-                    display: "block",
-                    paddingRight: 6,
-                    marginTop: -6,
-                    userSelect: "none",
-                  }}
+          {/* Time labels column (eje horario sticky horizontalmente) */}
+          <div className="sticky left-0 z-20 bg-surface">
+            <div className="relative h-full">
+              {slots.map((slot, i) => (
+                <div
+                  key={slot}
+                  className="absolute w-full"
+                  style={{ top: i * slotHeight, height: slotHeight }}
                 >
-                  {slot}
-                </Text>
-              </div>
-            ))}
+                  <span className="-mt-1.5 block select-none pr-1.5 text-right text-[10px] text-subtle">
+                    {slot}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Day columns */}
@@ -219,24 +189,32 @@ export function AppointmentsWeekGrid({
             return (
               <div
                 key={day}
-                style={{
-                  position: "relative",
-                  borderLeft: "1px solid #f0f0f0",
-                  background: isToday ? "#e6f4ff20" : undefined,
+                data-day={day}
+                className={cn(
+                  "relative border-l border-hairline",
+                  isToday && "bg-brand/5",
+                  onCreateSlot && "cursor-copy",
+                )}
+                onClick={(e) => {
+                  if (!onCreateSlot || e.target !== e.currentTarget) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  onCreateSlot(
+                    day,
+                    pixelsToTime(
+                      e.clientY - rect.top,
+                      startHour,
+                      endHour,
+                      slotHeight,
+                    ),
+                  );
                 }}
               >
-                {/* Horizontal slot lines */}
+                {/* Horizontal slot lines (no interceptan el clic de crear) */}
                 {slots.map((slot, i) => (
                   <div
                     key={slot}
-                    style={{
-                      position: "absolute",
-                      top: i * slotHeight,
-                      left: 0,
-                      right: 0,
-                      height: slotHeight,
-                      borderTop: "1px solid #f5f5f5",
-                    }}
+                    className="pointer-events-none absolute left-0 right-0 border-t border-hairline"
+                    style={{ top: i * slotHeight, height: slotHeight }}
                   />
                 ))}
 
@@ -244,32 +222,56 @@ export function AppointmentsWeekGrid({
                 {dayEvents.map((ev) => {
                   const widthPercent = 100 / ev.totalColumns;
                   const leftPercent = ev.column * widthPercent;
+                  const isDragging = dragApi.drag?.id === ev.appointment.id;
 
                   return (
                     <div
                       key={ev.appointment.id}
+                      className={cn("absolute", isDragging ? "z-50" : "z-[1]")}
                       style={{
-                        position: "absolute",
                         top: ev.top,
                         height: ev.height,
                         left: `calc(${leftPercent}% + 2px)`,
                         width: `calc(${widthPercent}% - 4px)`,
-                        zIndex: 1,
+                        transform: isDragging
+                          ? `translate(${dragApi.drag?.dx ?? 0}px, ${dragApi.drag?.dy ?? 0}px)`
+                          : undefined,
+                        opacity: isDragging ? 0.85 : undefined,
                       }}
                     >
-                      <AppointmentQuickActions
-                        appointment={ev.appointment}
-                        onViewDetail={onViewDetail}
-                        onStartConsultation={onStartConsultation}
-                        onReschedule={onReschedule}
-                        onCancel={onCancel}
-                        onComplete={onComplete}
-                        startConsultationLoading={startConsultationLoading}
-                      >
-                        <div style={{ height: "100%", position: "relative" }}>
-                          <AppointmentEventCard event={ev} />
-                        </div>
-                      </AppointmentQuickActions>
+                      <div className="group relative h-full">
+                        {onMoveEvent && (
+                          <div
+                            aria-hidden="true"
+                            title="Arrastrar para reagendar"
+                            onPointerDown={(e) => dragApi.onPointerDown(e, ev)}
+                            onPointerMove={dragApi.onPointerMove}
+                            onPointerUp={dragApi.onPointerUp}
+                            onPointerCancel={dragApi.onPointerCancel}
+                            className={cn(
+                              "absolute left-0 top-0 z-10 grid h-full w-2 cursor-grab touch-none select-none place-items-center rounded-l-md transition-opacity hover:bg-hover",
+                              isDragging
+                                ? "cursor-grabbing opacity-100"
+                                : "opacity-0 group-hover:opacity-100 [@media(pointer:coarse)]:opacity-100",
+                            )}
+                          >
+                            <GripVertical className="h-3 w-3 text-subtle" />
+                          </div>
+                        )}
+                        <AppointmentQuickActions
+                          appointment={ev.appointment}
+                          onViewDetail={onViewDetail}
+                          onStartConsultation={onStartConsultation}
+                          onReschedule={onReschedule}
+                          onCancel={onCancel}
+                          onComplete={onComplete}
+                          startConsultationLoading={startConsultationLoading}
+                        >
+                          <div className="relative h-full">
+                            <AppointmentEventCard event={ev} />
+                          </div>
+                        </AppointmentQuickActions>
+                      </div>
                     </div>
                   );
                 })}
@@ -277,28 +279,10 @@ export function AppointmentsWeekGrid({
                 {/* "Now" line */}
                 {isToday && nowLineTop !== null && (
                   <div
-                    style={{
-                      position: "absolute",
-                      top: nowLineTop,
-                      left: 0,
-                      right: 0,
-                      height: 2,
-                      background: "#f5222d",
-                      zIndex: 10,
-                      pointerEvents: "none",
-                    }}
+                    className="pointer-events-none absolute left-0 right-0 z-10 h-0.5 bg-destructive"
+                    style={{ top: nowLineTop }}
                   >
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: -3,
-                        top: -3,
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: "#f5222d",
-                      }}
-                    />
+                    <div className="absolute -left-[3px] -top-[3px] h-2 w-2 rounded-full bg-destructive" />
                   </div>
                 )}
               </div>
@@ -308,19 +292,8 @@ export function AppointmentsWeekGrid({
 
         {/* Empty state overlay */}
         {!hasAnyEvents && !loading && (
-          <div
-            style={{
-              position: "absolute",
-              top: "30%",
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 2,
-            }}
-          >
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="Sin citas en esta semana"
-            />
+          <div className="pointer-events-none absolute left-1/2 top-[30%] z-[2] -translate-x-1/2">
+            <EmptyState icon={CalendarOff} title="Sin citas en esta semana" />
           </div>
         )}
       </div>

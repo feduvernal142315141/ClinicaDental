@@ -1,7 +1,24 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Modal, Form, Input, Button, Tooltip, ColorPicker } from "antd";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Tag } from "lucide-react";
+// Sin equivalente Bento: ColorPicker y Tooltip (este último lo usa IconPicker) se conservan de antd.
+import { Tooltip, ColorPicker } from "antd";
+import { Modal } from "@/components/ui/primitives/custom";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+} from "@/components/ui/atomic/forms";
+import TextArea from "@/components/ui/atomic/forms/textarea";
 import { DynamicIcon } from "./DynamicIcon";
 import { LabelChip } from "./LabelChip";
 import { useCreateLabel } from "@/lib/hooks/labels";
@@ -81,10 +98,13 @@ function IconPicker({ value, onChange }: IconPickerProps) {
             justifyContent: "center",
             border:
               value === "" || !value
-                ? "2px solid #1890ff"
-                : "1px solid #d9d9d9",
-            background: value === "" || !value ? "#e6f4ff" : "#fafafa",
-            color: "#595959",
+                ? "2px solid var(--color-brand)"
+                : "1px solid var(--color-hairline)",
+            background:
+              value === "" || !value
+                ? "rgb(var(--brand) / 0.15)"
+                : "var(--color-hover)",
+            color: "var(--color-subtle)",
             fontSize: 12,
           }}
         >
@@ -105,8 +125,10 @@ function IconPicker({ value, onChange }: IconPickerProps) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                border: isSelected ? "2px solid #1890ff" : "1px solid #d9d9d9",
-                background: isSelected ? "#e6f4ff" : "#fafafa",
+                border: isSelected
+                  ? "2px solid var(--color-brand)"
+                  : "1px solid var(--color-hairline)",
+                background: isSelected ? "rgb(var(--brand) / 0.15)" : "var(--color-hover)",
                 fontSize: 18,
               }}
             >
@@ -132,37 +154,56 @@ const PRESET_COLORS = [
   "#795548",
 ];
 
+const labelSchema = z.object({
+  name: z
+    .string()
+    .min(1, "El nombre es requerido")
+    .max(50, "Máximo 50 caracteres"),
+  color: z.string().min(1, "El color es requerido"),
+  description: z.string().optional(),
+  icon: z.string().optional(),
+});
+
+type LabelFormValues = z.infer<typeof labelSchema>;
+
 export function LabelFormModal({
   isOpen,
   onClose,
   onSuccess,
   label,
 }: LabelFormModalProps) {
-  const [form] = Form.useForm<CreateLabelDto>();
   const isEdit = !!label;
   const { createLabel, loading: createLoading } = useCreateLabel();
   const [updateLoading, setUpdateLoading] = useState(false);
 
-  // Live preview state
-  const [previewName, setPreviewName] = useState(label?.name ?? "");
-  const [previewColor, setPreviewColor] = useState(label?.color ?? "#3498DB");
-  const [previewIcon, setPreviewIcon] = useState(label?.icon ?? "");
+  const form = useForm<LabelFormValues>({
+    resolver: zodResolver(labelSchema),
+    mode: "onBlur",
+    defaultValues: {
+      name: label?.name ?? "",
+      color: label?.color ?? "#3498DB",
+      description: label?.description ?? "",
+      icon: label?.icon ?? "",
+    },
+  });
+
+  // Live preview derivado de los valores del formulario.
+  const previewName = form.watch("name");
+  const previewColor = form.watch("color");
+  const previewIcon = form.watch("icon");
 
   useEffect(() => {
     if (isOpen) {
-      form.setFieldsValue({
+      form.reset({
         name: label?.name ?? "",
         color: label?.color ?? "#3498DB",
         description: label?.description ?? "",
         icon: label?.icon ?? "",
       });
-      setPreviewName(label?.name ?? "");
-      setPreviewColor(label?.color ?? "#3498DB");
-      setPreviewIcon(label?.icon ?? "");
     }
   }, [isOpen, label, form]);
 
-  const handleSubmit = async (values: CreateLabelDto) => {
+  const handleSubmit = async (values: LabelFormValues) => {
     if (isEdit && label) {
       setUpdateLoading(true);
       try {
@@ -178,7 +219,7 @@ export function LabelFormModal({
         setUpdateLoading(false);
       }
     } else {
-      const created = await createLabel(values);
+      const created = await createLabel(values as CreateLabelDto);
       if (created) {
         onSuccess(created);
         onClose();
@@ -191,118 +232,145 @@ export function LabelFormModal({
   return (
     <Modal
       open={isOpen}
-      onCancel={onClose}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+      icon={<Tag className="h-5 w-5" />}
       title={isEdit ? "Editar etiqueta" : "Nueva etiqueta"}
-      footer={null}
-      destroyOnHidden
+      description="Personaliza el nombre, color e ícono de la etiqueta."
+      className="w-full sm:max-w-lg"
     >
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-        onValuesChange={(_, allValues) => {
-          setPreviewName(allValues.name ?? "");
-          setPreviewColor(allValues.color ?? "#3498DB");
-          setPreviewIcon(allValues.icon ?? "");
-        }}
-      >
-        <Form.Item
-          name="name"
-          label="Nombre"
-          rules={[
-            { required: true, message: "El nombre es requerido" },
-            { max: 50, message: "Máximo 50 caracteres" },
-          ]}
-        >
-          <Input placeholder="Ej. Urgencia" maxLength={50} />
-        </Form.Item>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)}>
+          <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 pb-5">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Nombre <span className="text-rose-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Ej. Urgencia"
+                      maxLength={50}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <Form.Item
-          name="color"
-          label="Color"
-          rules={[{ required: true, message: "El color es requerido" }]}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {PRESET_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => {
-                    form.setFieldValue("color", c);
-                    setPreviewColor(c);
-                  }}
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: "50%",
-                    backgroundColor: c,
-                    border:
-                      previewColor === c
-                        ? "2px solid #000"
-                        : "2px solid transparent",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                  aria-label={c}
-                />
-              ))}
-            </div>
-            <div>
-              <ColorPicker
-                value={previewColor?.split(",")[0]?.substring(0, 7) || "#3498DB"}
-                format="hex"
-                disabledAlpha
-                onChange={(color) => {
-                  const hexValue = color.toHexString();
-                  form.setFieldValue("color", hexValue);
-                  setPreviewColor(hexValue);
+            <FormField
+              control={form.control}
+              name="color"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Color <span className="text-rose-500">*</span>
+                  </FormLabel>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-wrap gap-1.5">
+                      {PRESET_COLORS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => field.onChange(c)}
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: "50%",
+                            backgroundColor: c,
+                            border:
+                              previewColor === c
+                                ? "2px solid var(--color-ink)"
+                                : "2px solid transparent",
+                            cursor: "pointer",
+                            padding: 0,
+                          }}
+                          aria-label={c}
+                        />
+                      ))}
+                    </div>
+                    <div>
+                      {/* Sin equivalente Bento: se conserva el ColorPicker de antd. */}
+                      <ColorPicker
+                        value={
+                          field.value?.split(",")[0]?.substring(0, 7) ||
+                          "#3498DB"
+                        }
+                        format="hex"
+                        disabledAlpha
+                        onChange={(color) => {
+                          field.onChange(color.toHexString());
+                        }}
+                        showText
+                      />
+                    </div>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descripción (opcional)</FormLabel>
+                  <FormControl>
+                    <TextArea
+                      rows={2}
+                      maxLength={255}
+                      placeholder="Descripción breve"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="icon"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ícono (opcional)</FormLabel>
+                  {/* Sin equivalente Bento: se conserva el IconPicker local. */}
+                  <IconPicker value={field.value} onChange={field.onChange} />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Live preview */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-ink">Preview</p>
+              <LabelChip
+                label={{
+                  id: "preview",
+                  name: previewName || "Etiqueta",
+                  color: previewColor || "#3498DB",
+                  icon: previewIcon || undefined,
                 }}
-                showText
+                size="md"
               />
             </div>
           </div>
-        </Form.Item>
 
-        <Form.Item name="description" label="Descripción (opcional)">
-          <Input.TextArea
-            rows={2}
-            maxLength={255}
-            placeholder="Descripción breve"
-          />
-        </Form.Item>
-
-        <Form.Item name="icon" label="Ícono (opcional)">
-          <IconPicker
-            value={previewIcon}
-            onChange={(v) => {
-              setPreviewIcon(v);
-              form.setFieldValue("icon", v);
-            }}
-          />
-        </Form.Item>
-
-        {/* Live preview */}
-        <Form.Item label="Preview">
-          <LabelChip
-            label={{
-              id: "preview",
-              name: previewName || "Etiqueta",
-              color: previewColor || "#3498DB",
-              icon: previewIcon || undefined,
-            }}
-            size="md"
-          />
-        </Form.Item>
-
-        <Form.Item style={{ marginBottom: 0 }}>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <Button onClick={onClose}>Cancelar</Button>
-            <Button type="primary" htmlType="submit" loading={loading}>
+          <div className="flex justify-end gap-2 border-t border-hairline px-6 py-4">
+            <Button variant="outline" type="button" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" loading={loading}>
               Guardar etiqueta
             </Button>
           </div>
-        </Form.Item>
+        </form>
       </Form>
     </Modal>
   );

@@ -7,13 +7,13 @@ const { Text } = Typography;
 /** Renders a single availability slot row. */
 export function SlotItem({ slot, onSchedule }: SlotItemProps) {
   return (
-    <li className="flex items-center justify-between border-b border-gray-100 px-0 py-2 last:border-b-0">
+    <li className="flex items-center justify-between border-b border-hairline px-0 py-2 last:border-b-0">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <ClockCircleOutlined className="text-gray-400" />
-          <Text className="font-medium">{slot.time || "--:--"}</Text>
+          <ClockCircleOutlined className="text-subtle" />
+          <Text className="font-medium tabular-nums">{slot.time || "--:--"}</Text>
         </div>
-        <div className="mt-0.5 flex gap-1 text-xs text-gray-500">
+        <div className="mt-0.5 flex gap-1 text-xs text-subtle">
           <span>{slot.doctorName || "Doctor seleccionado"}</span>
           <span>·</span>
           <span>{slot.interval} min</span>

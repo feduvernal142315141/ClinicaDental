@@ -58,7 +58,7 @@ export function Carousel({
   };
 
   if (items.length === 0) {
-    return <div className={cn("w-full h-full bg-gray-200", className)} />;
+    return <div className={cn("w-full h-full bg-hover", className)} />;
   }
 
   return (

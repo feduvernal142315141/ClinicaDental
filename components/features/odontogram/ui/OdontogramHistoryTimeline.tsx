@@ -206,14 +206,14 @@ export function OdontogramHistoryTimeline({
   if (points.length < 2) return null;
 
   return (
-    <div className="bg-gradient-to-b from-white to-slate-50/80 border-b border-slate-200/60 px-2 pt-3.5 pb-3 shrink-0">
+    <div className="bg-surface border-b border-hairline px-2 pt-3.5 pb-3 shrink-0">
       <div className="max-w-3xl mx-auto">
         {/* Header with counter + return button */}
         <div className="flex items-center justify-between mb-2.5 px-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-subtle">
             Historial de visitas
             {points.length > 5 && (
-              <span className="ml-1.5 text-slate-400 font-normal">
+              <span className="ml-1.5 text-subtle font-normal tabular-nums">
                 ({selectedIndex + 1} de {points.length})
               </span>
             )}
@@ -221,7 +221,7 @@ export function OdontogramHistoryTimeline({
           {isViewingHistoric && (
             <button
               onClick={onReturnToCurrent}
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600
+              className="flex items-center gap-1.5 text-xs text-subtle hover:text-brand
                          transition-all duration-200 hover:gap-2 group"
             >
               <RotateCcw className="h-3.5 w-3.5 group-hover:rotate-[-45deg] transition-transform duration-300" />
@@ -237,8 +237,8 @@ export function OdontogramHistoryTimeline({
             onClick={scrollPrev}
             disabled={!canScrollPrev}
             className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full
-                       bg-white border border-slate-200 text-slate-400
-                       hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 hover:shadow-md
+                       bg-elevated border border-hairline text-subtle
+                       hover:bg-brand/15 hover:text-brand hover:border-brand/30 hover:shadow-md
                        disabled:opacity-0 disabled:pointer-events-none
                        active:scale-90
                        transition-all duration-200 ease-out mr-1.5 shadow-sm"
@@ -265,18 +265,18 @@ export function OdontogramHistoryTimeline({
                       className={[
                         "w-full rounded-xl border px-3 py-2.5 text-center cursor-pointer",
                         "transition-all duration-300 ease-out",
-                        "focus:outline-none focus:ring-2 focus:ring-blue-400/40 focus:ring-offset-1",
+                        "focus:outline-none focus:ring-2 focus:ring-brand/25 focus:ring-offset-1",
                         // — Current ("Hoy") + Active —
                         isCurrent && isActive
-                          ? "border-transparent bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25 scale-100 ring-2 ring-blue-400/30 ring-offset-2"
+                          ? "border-transparent bg-brand text-white shadow-lg shadow-brand/25 scale-100 ring-2 ring-brand/30 ring-offset-2"
                           // — Current ("Hoy") + NOT active (scrolled away) —
                           : isCurrent && !isActive
-                            ? "border-blue-300 bg-blue-50/60 scale-[0.93] opacity-80 hover:opacity-95 hover:border-blue-400"
+                            ? "border-brand/30 bg-brand/10 scale-[0.93] opacity-80 hover:opacity-95 hover:border-brand/40"
                             // — Historic + Active (selected) —
                             : isActive
-                              ? "border-blue-300 bg-blue-50 shadow-md shadow-blue-100/50 scale-100"
+                              ? "border-brand/30 bg-brand/15 shadow-md shadow-brand/10 scale-100"
                               // — Historic + NOT active —
-                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 scale-[0.93] opacity-75 hover:opacity-90",
+                              : "border-hairline bg-surface hover:border-hairline hover:bg-hover scale-[0.93] opacity-75 hover:opacity-90",
                       ].join(" ")}
                     >
                       {/* Date */}
@@ -286,10 +286,10 @@ export function OdontogramHistoryTimeline({
                           isCurrent && isActive
                             ? "text-white"
                             : isCurrent
-                              ? "text-blue-600"
+                              ? "text-brand"
                               : isActive
-                                ? "text-blue-700"
-                                : "text-slate-600",
+                                ? "text-brand"
+                                : "text-subtle",
                         ].join(" ")}
                       >
                         {point.shortLabel}
@@ -299,10 +299,10 @@ export function OdontogramHistoryTimeline({
                       {!isCurrent && (
                         <p
                           className={[
-                            "text-[11px] leading-tight mt-0.5 font-medium",
+                            "text-[11px] leading-tight mt-0.5 font-medium tabular-nums",
                             isActive
-                              ? "text-blue-500/80"
-                              : "text-slate-400",
+                              ? "text-brand/80"
+                              : "text-subtle",
                           ].join(" ")}
                         >
                           {new Date(point.date).getFullYear()}
@@ -317,10 +317,10 @@ export function OdontogramHistoryTimeline({
                             isCurrent
                               ? isActive
                                 ? "bg-white animate-pulse"
-                                : "bg-blue-500"
+                                : "bg-brand"
                               : isActive
-                                ? "bg-blue-400"
-                                : "bg-slate-300",
+                                ? "bg-brand"
+                                : "bg-muted-foreground/40",
                           ].join(" ")}
                         />
                         <span
@@ -328,11 +328,11 @@ export function OdontogramHistoryTimeline({
                             "text-[10px] uppercase tracking-wider font-semibold",
                             isCurrent
                               ? isActive
-                                ? "text-blue-100"
-                                : "text-blue-500"
+                                ? "text-white/80"
+                                : "text-brand"
                               : isActive
-                                ? "text-blue-500"
-                                : "text-slate-400",
+                                ? "text-brand"
+                                : "text-subtle",
                           ].join(" ")}
                         >
                           {isCurrent ? "Activa" : `#${point.index}`}
@@ -350,8 +350,8 @@ export function OdontogramHistoryTimeline({
             onClick={scrollNext}
             disabled={!canScrollNext}
             className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full
-                       bg-white border border-slate-200 text-slate-400
-                       hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 hover:shadow-md
+                       bg-elevated border border-hairline text-subtle
+                       hover:bg-brand/15 hover:text-brand hover:border-brand/30 hover:shadow-md
                        disabled:opacity-0 disabled:pointer-events-none
                        active:scale-90
                        transition-all duration-200 ease-out ml-1.5 shadow-sm"
@@ -363,9 +363,9 @@ export function OdontogramHistoryTimeline({
 
         {/* Mini progress bar */}
         {points.length > 5 && (
-          <div className="mt-2.5 mx-8 h-1 bg-slate-100 rounded-full overflow-hidden">
+          <div className="mt-2.5 mx-8 h-1 bg-hover rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full transition-all duration-500 ease-out"
+              className="h-full bg-brand rounded-full transition-all duration-500 ease-out"
               style={{
                 width: `${Math.max(
                   5,

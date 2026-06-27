@@ -23,6 +23,12 @@ function mapCategory(
     PERIODONCIA: "periodoncia",
     ESTETICO: "estetico",
     CIRUGIA: "cirugia",
+    // ProcedureCategory (taxonomía del odontograma) aún no tiene diagnóstico/
+    // ortodoncia/general; mapeamos a la más cercana para el color/agrupación.
+    // (Expandir ProcedureCategory 1:1 es roadmap del módulo odontograma.)
+    DIAGNOSTICO: "preventivo",
+    GENERAL: "preventivo",
+    ORTODONCIA: "estetico",
   };
   return map[backendCategory] ?? "restaurador";
 }
@@ -31,14 +37,26 @@ function mapCategory(
  * Converts a backend Service into a ProcedureCatalogItem for the odontogram PlanTab.
  */
 function serviceToCatalogItem(service: ServiceListItem): ProcedureCatalogItem {
+  const enabled = service.odontogramEnabled;
   return {
     id: service.id,
     name: service.name,
     code: service.code,
     category: mapCategory(service.category),
-    estimatedDuration: service.duration ?? 30,
+    // Duración real del servicio; 0 si no está configurada (sin inventar 30 min).
+    estimatedDuration: service.duration ?? 0,
     baseCost: service.cost ?? 0,
     isFavorite: false,
+    // Símbolo personalizado del servicio (la presencia codifica el modo):
+    // TEXT → serviceSymbolText ; ASSET → serviceSymbolUrl. Solo si está habilitado.
+    serviceSymbolText:
+      enabled && service.odontogramSymbolMode === "TEXT"
+        ? service.symbolText
+        : undefined,
+    serviceSymbolUrl:
+      enabled && service.odontogramSymbolMode === "ASSET"
+        ? service.symbolUrl
+        : undefined,
   };
 }
 

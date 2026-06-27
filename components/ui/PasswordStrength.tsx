@@ -72,7 +72,7 @@ export function PasswordStrength() {
               {/* Progress Bar */}
               <div>
                 <div className="flex justify-between items-center mb-1 flex-wrap gap-2">
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-subtle">
                     Fortaleza de contraseña
                   </span>
                   <span

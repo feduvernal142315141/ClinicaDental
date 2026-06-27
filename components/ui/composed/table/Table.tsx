@@ -34,7 +34,7 @@ export function CustomTable<T extends Record<string, unknown>>({
   });
 
   return (
-    <div className="w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+    <div className="w-full overflow-hidden rounded-lg border border-hairline">
       <div className="overflow-x-auto">
         <Table.Root
           style={{
@@ -44,11 +44,11 @@ export function CustomTable<T extends Record<string, unknown>>({
           }}
         >
           <Table.Header>
-            <Table.Row className="bg-gray-100 dark:bg-gray-800">
+            <Table.Row className="bg-hover">
               {columns.map((column, index) => (
                 <Table.ColumnHeaderCell
                   key={`header-${column.key}-${index}`}
-                  className="p-3 font-semibold text-gray-700 dark:text-gray-200 border-b dark:border-gray-700"
+                  className="p-3 font-semibold text-ink border-b border-hairline"
                 >
                   <div className="space-y-2">
                     <div>{column.title}</div>
@@ -62,7 +62,7 @@ export function CustomTable<T extends Record<string, unknown>>({
                           onChange={(e) =>
                             handleFilterChange(column.key, e.target.value)
                           }
-                          className="h-8 text-sm font-normal bg-white dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200"
+                          className="h-8 text-sm font-normal bg-elevated border-hairline text-ink"
                           onClick={(e) => e.stopPropagation()}
                         />
                       ))}
@@ -78,7 +78,7 @@ export function CustomTable<T extends Record<string, unknown>>({
                 {columns.map((column, colIndex) => (
                   <Table.Cell
                     key={`cell-${rowIndex}-${column.key}-${colIndex}`}
-                    className={`p-3 text-gray-600 dark:text-gray-300 align-middle ${
+                    className={`p-3 text-subtle align-middle ${
                       column.className || ""
                     }`}
                     style={{ verticalAlign: "middle" }}
@@ -93,9 +93,7 @@ export function CustomTable<T extends Record<string, unknown>>({
           </Table.Body>
         </Table.Root>
         <div
-          className={
-            "p-3 border-t border-gray-200 dark:border-gray-700 dark:bg-gray-800"
-          }
+          className={"p-3 border-t border-hairline bg-hover"}
         >
           <Pagination
             currentPage={page}

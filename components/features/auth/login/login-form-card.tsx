@@ -33,7 +33,7 @@ export function LoginFormCard({
     >
       <form onSubmit={onSubmit} className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-gray-700 font-medium">
+          <Label htmlFor="email" className="text-ink font-medium">
             Email
           </Label>
           <Input
@@ -42,12 +42,12 @@ export function LoginFormCard({
             value={email}
             onChange={(e) => onEmailChange(e.target.value)}
             placeholder="doctor@clinic.com"
-            className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+            className="h-12 border-hairline focus:border-brand focus:ring-brand"
             required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-gray-700 font-medium">
+          <Label htmlFor="password" className="text-ink font-medium">
             Contraseña
           </Label>
           <Input
@@ -56,20 +56,20 @@ export function LoginFormCard({
             value={password}
             onChange={(e) => onPasswordChange(e.target.value)}
             placeholder="••••••••"
-            className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+            className="h-12 border-hairline focus:border-brand focus:ring-brand"
             required
           />
         </div>
 
         {authError && (
-          <div className="text-sm text-red-600 bg-red-50 p-4 rounded-lg border border-red-200">
+          <div className="text-sm text-rose-600 dark:text-rose-300 bg-rose-500/15 p-4 rounded-lg border border-rose-400/25">
             {authError}
           </div>
         )}
 
         <Button
           type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700"
+          className="w-full bg-brand hover:bg-brand-strong"
           loading={loading}
         >
           Iniciar Sesión

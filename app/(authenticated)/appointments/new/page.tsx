@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SectionTitle } from "@/components/ui/antd";
+import { PageHeader } from "@/components/ui/layout/page-header";
 import { AppointmentForm } from "@/components/appointments";
 import { useAppointmentsPage } from "@/lib/hooks/appointments";
 import type { AppointmentFormPrefill } from "@/lib/hooks/appointments/use-appointment-form";
@@ -48,14 +48,13 @@ export default function NewAppointmentPage() {
 
   return (
     <>
-      <SectionTitle
+      <PageHeader
         title="Nueva Cita"
         subtitle="Programe una nueva cita en el sistema"
         actionButton={{
           label: "Atrás",
           onClick: handleBackToList,
           variant: "back",
-          type: "default",
         }}
       />
 

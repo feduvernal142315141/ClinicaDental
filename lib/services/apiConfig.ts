@@ -17,6 +17,44 @@ type InterceptorHandlers = {
 // Variable para almacenar los handlers (se pueden inyectar posteriormente desde Redux)
 let interceptorHandlers: InterceptorHandlers = {};
 
+// ============================================
+// ESTADO DE SESIÓN (manejo idempotente de 401)
+// ============================================
+
+// Promesa de refresh compartida: evita que N peticiones 401 concurrentes
+// disparen N llamadas a /api/auth/refresh. Todas esperan el mismo intento.
+let refreshPromise: Promise<boolean> | null = null;
+
+// Bandera para que la expiración de sesión se notifique/redirija UNA sola vez,
+// aunque varias peticiones fallen con 401 al mismo tiempo.
+let sessionExpiryHandled = false;
+
+/**
+ * Indica si una expiración de sesión global ya está siendo manejada
+ * (modal + redirección). Las features pueden consultarlo para no mostrar
+ * sus propios toasts/errores redundantes ante un 401.
+ */
+export const isSessionExpired = (): boolean => sessionExpiryHandled;
+
+/**
+ * Intenta refrescar el access token una sola vez de forma compartida.
+ * Si ya hay un refresh en curso, devuelve la misma promesa.
+ */
+const tryRefreshOnce = (): Promise<boolean> => {
+  if (!refreshPromise) {
+    refreshPromise = fetch("/api/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((res) => res.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+};
+
 /**
  * Función para configurar los handlers de los interceptores
  * Esto permite inyectar dispatch de Redux u otras funciones de estado global
@@ -89,35 +127,46 @@ apiInstance.interceptors.response.use(
       const status = error.response.status;
       const data = error.response.data as unknown;
 
-      // Intento de refresh una sola vez (si expira access token)
+      // ============================================
+      // MANEJO DE 401 (idempotente, refresh compartido)
+      // ============================================
       if (status === 401) {
         const originalRequest = error.config as unknown;
-        const isRetry = originalRequest?._retry;
         const url = String(originalRequest?.url ?? "");
 
-        const shouldTryRefresh =
-          !isRetry &&
-          !url.includes("/auth/login") &&
-          !url.includes("/auth/validate-otp") &&
-          !url.includes("/auth/refresh-token") &&
-          !url.includes("/api/auth/refresh");
+        // Endpoints de auth: un 401 significa credenciales/código inválidos
+        // o que el propio refresh falló. Se propaga en silencio al servicio
+        // que lo invocó (el formulario o el flujo de expiración lo maneja).
+        const isAuthEndpoint =
+          url.includes("/auth/login") ||
+          url.includes("/auth/validate-otp") ||
+          url.includes("/auth/refresh-token") ||
+          url.includes("/api/auth/");
 
-        if (shouldTryRefresh) {
-          try {
-            originalRequest._retry = true;
-            const refreshRes = await fetch("/api/auth/refresh", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-            });
+        if (isAuthEndpoint) {
+          console.error("Error 401 - Unauthorized:", data);
+          return Promise.reject(error);
+        }
 
-            if (refreshRes.ok) {
-              // Reintentar request original: el request interceptor tomará el nuevo token de cookie
-              return apiInstance(originalRequest);
-            }
-          } catch {
-            // Si falla, continuar flujo normal 401
+        // Endpoint protegido: intentar UN refresh compartido entre peticiones.
+        if (!originalRequest?._retry) {
+          originalRequest._retry = true;
+          const refreshed = await tryRefreshOnce();
+          if (refreshed) {
+            // Sesión recuperada: el request interceptor tomará el nuevo token.
+            sessionExpiryHandled = false;
+            return apiInstance(originalRequest);
           }
         }
+
+        // Refresh falló o ya se reintentó: la sesión expiró de verdad.
+        // Notificar y redirigir UNA sola vez aunque caigan varios 401 a la vez.
+        if (!sessionExpiryHandled) {
+          sessionExpiryHandled = true;
+          interceptorHandlers.onUnauthorized?.();
+        }
+        console.error("Error 401 - Unauthorized:", data);
+        return Promise.reject(error);
       }
 
       switch (status) {
@@ -128,29 +177,6 @@ apiInstance.interceptors.response.use(
             "Solicitud incorrecta. Verifica los datos enviados.";
           interceptorHandlers.onNotification?.(message400, "error");
           console.error("Error 400 - Bad Request:", data);
-          break;
-
-        case 401:
-          // Unauthorized — handle differently for auth endpoints
-          // Auth endpoints (login, validate-otp) returning 401 means wrong credentials/code,
-          // NOT an expired session. Let the error propagate to the caller silently.
-          const authUrl = String(error.config?.url ?? "");
-          const isAuthEndpoint =
-            authUrl.includes("/auth/login") ||
-            authUrl.includes("/auth/validate-otp") ||
-            authUrl.includes("/auth/refresh-token") ||
-            authUrl.includes("/api/auth/");
-
-          if (!isAuthEndpoint) {
-            // Expired session on a protected endpoint — show global alert
-            const message401 =
-              data?.message ||
-              "Sesión expirada. Por favor, inicia sesión nuevamente.";
-            interceptorHandlers.onNotification?.(message401, "warning");
-            interceptorHandlers.onUnauthorized?.();
-          }
-          // For auth endpoints: error propagates to the calling service — form handles it
-          console.error("Error 401 - Unauthorized:", data);
           break;
 
         case 403:

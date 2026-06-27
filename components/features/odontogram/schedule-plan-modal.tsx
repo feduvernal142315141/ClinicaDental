@@ -7,6 +7,8 @@ import { Button } from "antd";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, User, AlertCircle, Loader2 } from "lucide-react";
+import { DateTimePicker } from "@/components/ui/controls/date-time-picker";
+import { localTodayInput } from "@/lib/datetime";
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
 import { doctorsService } from "@/lib/services/doctors/doctors.service";
 import { useOdontogramStore } from "@/lib/odontogram/store";
@@ -146,8 +148,8 @@ export function SchedulePlanModal({
     label: t,
   }));
 
-  // Minimum date: today
-  const today = new Date().toISOString().split("T")[0];
+  // Minimum date: today (hora LOCAL — la regla de oro, no UTC).
+  const today = localTodayInput();
 
   return (
     <OdontogramModal
@@ -200,12 +202,12 @@ export function SchedulePlanModal({
             <Calendar className="w-3.5 h-3.5" />
             Fecha
           </label>
-          <input
-            type="date"
+          <DateTimePicker
+            showTime={false}
             min={today}
             value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            onChange={setDate}
+            aria-label="Fecha"
           />
         </div>
 

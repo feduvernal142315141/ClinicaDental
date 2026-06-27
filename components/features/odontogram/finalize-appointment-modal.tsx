@@ -8,6 +8,8 @@ import {
 } from "@/components/features/odontogram/ui";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DateTimePicker } from "@/components/ui/controls/date-time-picker";
+import { localTodayInput } from "@/lib/datetime";
 import {
   Calendar,
   CheckCircle2,
@@ -161,13 +163,16 @@ export function FinalizarCitaModal({
     return sum > 0 ? sum : 30;
   }, [pendingPlanEvents]);
 
-  // Servicios pendientes para el follow-up (usando serviceId del evento)
+  // Servicios pendientes para el follow-up. El evento del plan guarda el
+  // `procedureId` (que es el id del servicio del catálogo); usamos serviceId si
+  // existe y, si no, caemos a procedureId — así el bloque de servicios pendientes
+  // aparece aunque el evento no haya persistido serviceId explícitamente.
   const pendingServices: AppointmentServiceSnapshot[] = useMemo(
     () =>
       pendingPlanEvents
-        .filter((ev) => !!ev.serviceId)
+        .filter((ev) => !!(ev.serviceId || ev.procedureId))
         .map((ev) => ({
-          serviceId: ev.serviceId!,
+          serviceId: (ev.serviceId ?? ev.procedureId)!,
           serviceName: ev.serviceName ?? ev.procedureName ?? "Servicio",
           serviceCode: ev.serviceCode,
           serviceCost: ev.serviceCost ?? ev.cost ?? 0,
@@ -221,7 +226,7 @@ export function FinalizarCitaModal({
 
   const doctorOptions = doctors.map((d) => ({ value: d.id, label: d.label }));
   const timeOptions = availableTimes.map((t) => ({ value: t, label: t }));
-  const today = new Date().toISOString().split("T")[0];
+  const today = localTodayInput();
   const combinedError = localError ?? error;
 
   return (
@@ -234,8 +239,8 @@ export function FinalizarCitaModal({
     >
       <div className="space-y-4 p-2">
         {/* Performed summary */}
-        <Card className="p-3 bg-green-50 border-green-200">
-          <p className="text-xs font-medium text-green-800 mb-2 flex items-center gap-1.5">
+        <Card className="p-3 bg-emerald-500/15 border-emerald-400/25">
+          <p className="text-xs font-medium text-emerald-600 dark:text-emerald-300 mb-2 flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5" />
             Procedimientos realizados en esta cita
           </p>
@@ -267,8 +272,8 @@ export function FinalizarCitaModal({
 
         {/* Pending summary */}
         {pendingPlanEvents.length > 0 && (
-          <Card className="p-3 bg-amber-50 border-amber-200">
-            <p className="text-xs font-medium text-amber-800 mb-2 flex items-center gap-1.5">
+          <Card className="p-3 bg-amber-500/15 border-amber-400/25">
+            <p className="text-xs font-medium text-amber-600 dark:text-amber-300 mb-2 flex items-center gap-1.5">
               <AlertCircle className="w-3.5 h-3.5" />
               Procedimientos pendientes del plan
             </p>
@@ -321,12 +326,12 @@ export function FinalizarCitaModal({
                     <Calendar className="w-3.5 h-3.5" />
                     Fecha
                   </label>
-                  <input
-                    type="date"
+                  <DateTimePicker
+                    showTime={false}
                     min={today}
                     value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    onChange={setDate}
+                    aria-label="Fecha"
                   />
                 </div>
 
@@ -348,7 +353,7 @@ export function FinalizarCitaModal({
                       placeholder="Seleccionar hora"
                     />
                   ) : doctorId && date ? (
-                    <p className="text-sm text-amber-600 flex items-center gap-1.5 py-2">
+                    <p className="text-sm text-amber-600 dark:text-amber-300 flex items-center gap-1.5 py-2">
                       <AlertCircle className="w-4 h-4" />
                       No hay horarios disponibles para esta fecha
                     </p>

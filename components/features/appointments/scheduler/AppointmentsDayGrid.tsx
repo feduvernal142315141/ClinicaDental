@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Typography, Empty } from "antd";
 import dayjs from "dayjs";
-import { getTimeSlots } from "@/lib/utils/scheduler-layout";
+import { CalendarX2, GripVertical } from "lucide-react";
+import { getTimeSlots, pixelsToTime } from "@/lib/utils/scheduler-layout";
+import { cn } from "@/lib/utils/utils";
+import { useEventDrag } from "@/lib/hooks/appointments/use-event-drag";
 import { AppointmentEventCard } from "./AppointmentEventCard";
 import { AppointmentQuickActions } from "./AppointmentQuickActions";
 import type { SchedulerEvent, Appointment } from "@/lib/entity/appointment";
-
-const { Text } = Typography;
 
 interface AppointmentsDayGridProps {
   date: string;
@@ -23,6 +23,10 @@ interface AppointmentsDayGridProps {
   onReschedule?: (appointment: Appointment) => void;
   onCancel?: (appointment: Appointment) => void;
   onComplete?: (appointment: Appointment) => void;
+  /** Clic en un hueco vacío → crear cita prefilled (date, time "HH:mm"). */
+  onCreateSlot?: (date: string, time: string) => void;
+  /** Arrastrar una cita a otra hora → reagendar. */
+  onMoveEvent?: (appointment: Appointment, newDate: string, newTime: string) => void;
   startConsultationLoading?: boolean;
 }
 
@@ -40,9 +44,18 @@ export function AppointmentsDayGrid({
   onReschedule,
   onCancel,
   onComplete,
+  onCreateSlot,
+  onMoveEvent,
   startConsultationLoading,
 }: AppointmentsDayGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const dragApi = useEventDrag(!!onMoveEvent, (ev, _x, _y, _dx, dy) => {
+    onMoveEvent?.(
+      ev.appointment,
+      date,
+      pixelsToTime(ev.top + dy, startHour, endHour, slotHeight),
+    );
+  });
   const slots = getTimeSlots(startHour, endHour, 30);
   const totalHeight = slots.length * slotHeight;
   const isToday = dayjs().format("YYYY-MM-DD") === date;
@@ -70,23 +83,12 @@ export function AppointmentsDayGrid({
 
   if (loading) {
     return (
-      <div
-        style={{
-          height: 400,
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-        }}
-      >
+      <div className="flex flex-col gap-0.5" style={{ height: 400 }}>
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
-            style={{
-              height: slotHeight,
-              background: "#fafafa",
-              borderRadius: 4,
-              animation: "pulse 1.5s infinite",
-            }}
+            className="animate-pulse rounded bg-hover"
+            style={{ height: slotHeight }}
           />
         ))}
       </div>
@@ -96,104 +98,106 @@ export function AppointmentsDayGrid({
   return (
     <div
       ref={containerRef}
-      style={{
-        height: "calc(100vh - 260px)",
-        minHeight: 400,
-        overflowY: "auto",
-        position: "relative",
-        border: "1px solid #f0f0f0",
-        borderRadius: 8,
-      }}
+      className="relative overflow-y-auto rounded-lg border border-hairline bg-surface"
+      style={{ height: "calc(100vh - 260px)", minHeight: 400 }}
     >
-      <div style={{ position: "relative", height: totalHeight }}>
+      <div className="relative" style={{ height: totalHeight }}>
         {/* Time labels + horizontal lines */}
         {slots.map((slot, i) => (
           <div
             key={slot}
-            style={{
-              position: "absolute",
-              top: i * slotHeight,
-              left: 0,
-              right: 0,
-              height: slotHeight,
-              borderTop: "1px solid #f0f0f0",
-              display: "flex",
-              alignItems: "flex-start",
-            }}
+            className="absolute inset-x-0 flex items-start border-t border-hairline"
+            style={{ top: i * slotHeight, height: slotHeight }}
           >
-            <Text
-              type="secondary"
+            <span
+              className="sticky left-0 z-[2] shrink-0 select-none bg-surface pr-2 text-right text-[11px] text-subtle"
               style={{
                 width: TIME_COL_WIDTH,
-                textAlign: "right",
-                paddingRight: 8,
-                fontSize: 11,
                 lineHeight: `${slotHeight}px`,
-                flexShrink: 0,
-                userSelect: "none",
               }}
             >
               {slot}
-            </Text>
+            </span>
           </div>
         ))}
 
-        {/* Events area */}
+        {/* Empty state */}
+        {events.length === 0 && !loading && (
+          <div className="pointer-events-none absolute inset-x-0 top-[30%] flex flex-col items-center justify-center gap-2 text-center">
+            <CalendarX2 className="h-8 w-8 text-subtle/60" aria-hidden />
+            <span className="text-sm text-subtle">Sin citas para este día</span>
+          </div>
+        )}
+
+        {/* Events area (clic en hueco vacío → crear) */}
         <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: TIME_COL_WIDTH,
-            right: 8,
-            height: totalHeight,
+          className={cn("absolute top-0", onCreateSlot && "cursor-copy")}
+          style={{ left: TIME_COL_WIDTH, right: 8, height: totalHeight }}
+          onClick={(e) => {
+            if (!onCreateSlot || e.target !== e.currentTarget) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            onCreateSlot(
+              date,
+              pixelsToTime(e.clientY - rect.top, startHour, endHour, slotHeight),
+            );
           }}
         >
-          {events.length === 0 && !loading && (
-            <div
-              style={{
-                position: "absolute",
-                top: "30%",
-                left: 0,
-                right: 0,
-                textAlign: "center",
-              }}
-            >
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="Sin citas para este día"
-              />
-            </div>
-          )}
-
           {events.map((ev) => {
             const widthPercent = 100 / ev.totalColumns;
             const leftPercent = ev.column * widthPercent;
+            const isDragging = dragApi.drag?.id === ev.appointment.id;
 
             return (
               <div
                 key={ev.appointment.id}
+                className={cn(
+                  "absolute",
+                  isDragging ? "z-50" : "z-[1]",
+                )}
                 style={{
-                  position: "absolute",
                   top: ev.top,
                   height: ev.height,
                   left: `${leftPercent}%`,
                   width: `calc(${widthPercent}% - 2px)`,
-                  zIndex: 1,
+                  transform: isDragging
+                    ? `translateY(${dragApi.drag?.dy ?? 0}px)`
+                    : undefined,
+                  opacity: isDragging ? 0.85 : undefined,
                 }}
               >
-                <AppointmentQuickActions
-                  appointment={ev.appointment}
-                  onViewDetail={onViewDetail}
-                  onStartConsultation={onStartConsultation}
-                  onReschedule={onReschedule}
-                  onCancel={onCancel}
-                  onComplete={onComplete}
-                  startConsultationLoading={startConsultationLoading}
-                >
-                  <div style={{ height: "100%", position: "relative" }}>
-                    <AppointmentEventCard event={ev} />
-                  </div>
-                </AppointmentQuickActions>
+                <div className="group relative h-full">
+                  {onMoveEvent && (
+                    <div
+                      aria-hidden="true"
+                      title="Arrastrar para reagendar"
+                      onPointerDown={(e) => dragApi.onPointerDown(e, ev)}
+                      onPointerMove={dragApi.onPointerMove}
+                      onPointerUp={dragApi.onPointerUp}
+                      onPointerCancel={dragApi.onPointerCancel}
+                      className={cn(
+                        "absolute left-0 top-0 z-10 grid h-full w-2 cursor-grab touch-none select-none place-items-center rounded-l-md transition-opacity hover:bg-hover",
+                        isDragging
+                          ? "cursor-grabbing opacity-100"
+                          : "opacity-0 group-hover:opacity-100 [@media(pointer:coarse)]:opacity-100",
+                      )}
+                    >
+                      <GripVertical className="h-3 w-3 text-subtle" />
+                    </div>
+                  )}
+                  <AppointmentQuickActions
+                    appointment={ev.appointment}
+                    onViewDetail={onViewDetail}
+                    onStartConsultation={onStartConsultation}
+                    onReschedule={onReschedule}
+                    onCancel={onCancel}
+                    onComplete={onComplete}
+                    startConsultationLoading={startConsultationLoading}
+                  >
+                    <div className="relative h-full">
+                      <AppointmentEventCard event={ev} />
+                    </div>
+                  </AppointmentQuickActions>
+                </div>
               </div>
             );
           })}
@@ -202,27 +206,12 @@ export function AppointmentsDayGrid({
         {/* "Now" line */}
         {nowLineTop !== null && (
           <div
-            style={{
-              position: "absolute",
-              top: nowLineTop,
-              left: TIME_COL_WIDTH - 4,
-              right: 0,
-              height: 2,
-              background: "#f5222d",
-              zIndex: 10,
-              pointerEvents: "none",
-            }}
+            className="pointer-events-none absolute right-0 z-10 h-0.5 bg-destructive"
+            style={{ top: nowLineTop, left: TIME_COL_WIDTH - 4 }}
           >
             <div
-              style={{
-                position: "absolute",
-                left: -3,
-                top: -3,
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "#f5222d",
-              }}
+              className="absolute h-2 w-2 rounded-full bg-destructive"
+              style={{ left: -3, top: -3 }}
             />
           </div>
         )}

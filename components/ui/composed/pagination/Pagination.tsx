@@ -85,11 +85,11 @@ export const Pagination: React.FC<PaginationProps> = ({
               onClick={() => onPageChange(item as number)}
               aria-current={item === validCurrentPage ? "page" : undefined}
               size="2"
+              className={
+                item === validCurrentPage ? "bg-brand text-white" : undefined
+              }
               style={{
                 minWidth: "40px",
-                backgroundColor:
-                  item === validCurrentPage ? "#1e3a8a" : undefined,
-                color: item === validCurrentPage ? "white" : undefined,
               }}
             >
               {item}

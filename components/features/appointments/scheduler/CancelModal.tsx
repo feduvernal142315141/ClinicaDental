@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Modal, Radio, Input, Typography, Space, Alert } from "antd";
-import { WarningOutlined } from "@ant-design/icons";
+import { AlertTriangle, CalendarX2 } from "lucide-react";
 import dayjs from "dayjs";
+import { Modal } from "@/components/ui/primitives/custom";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/atomic/forms";
+import TextArea from "@/components/ui/atomic/forms/textarea";
 import { useCancelAppointment } from "@/lib/hooks/appointments/use-cancel-appointment";
 import type { CancellationReasonCode } from "@/lib/entity/appointment";
-
-const { Text } = Typography;
-const { TextArea } = Input;
 
 interface CancelModalProps {
   appointment: {
@@ -81,75 +81,107 @@ export function CancelModal({
 
   return (
     <Modal
-      title="Cancelar cita"
       open={isOpen}
-      onCancel={handleCancel}
-      onOk={handleOk}
-      okText="Sí, cancelar cita"
-      cancelText="Volver"
-      okButtonProps={{ danger: true, loading }}
-      destroyOnHidden
+      onOpenChange={(next) => {
+        if (!next) handleCancel();
+      }}
+      icon={<CalendarX2 className="h-5 w-5" />}
+      title="Cancelar cita"
+      className="w-full sm:max-w-lg"
+      footer={
+        <>
+          <Button variant="outline" type="button" onClick={handleCancel}>
+            Volver
+          </Button>
+          <Button
+            variant="destructive"
+            type="button"
+            onClick={handleOk}
+            loading={loading}
+          >
+            Sí, cancelar cita
+          </Button>
+        </>
+      }
     >
-      <Space orientation="vertical" style={{ width: "100%" }} size="middle">
-        <Alert
-          title="Esta acción no se puede deshacer."
-          type="warning"
-          showIcon
-          icon={<WarningOutlined />}
-        />
+      <div className="max-h-[70vh] space-y-4 overflow-y-auto px-6 pb-5">
+        <div className="flex items-start gap-2.5 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+          <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+            Esta acción no se puede deshacer.
+          </p>
+        </div>
 
         {isInProgress && (
-          <Alert
-            title="La cita está en curso"
-            description="El doctor ya inició esta cita. ¿Desea cancelarla de todos modos?"
-            type="error"
-            showIcon
-          />
+          <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3">
+            <p className="text-sm font-medium text-rose-700 dark:text-rose-300">
+              La cita está en curso
+            </p>
+            <p className="mt-1 text-sm text-rose-600 dark:text-rose-300/90">
+              El doctor ya inició esta cita. ¿Desea cancelarla de todos modos?
+            </p>
+          </div>
         )}
 
-        <div>
-          <Text strong>Paciente: </Text>
-          <Text>{appointment.patientName ?? "—"}</Text>
-          <br />
-          <Text strong>Cita: </Text>
-          <Text>{formatAppointmentTime(appointment)}</Text>
+        <div className="rounded-xl border border-hairline bg-elevated px-4 py-3 text-sm">
+          <div className="flex justify-between gap-3">
+            <span className="text-subtle">Paciente</span>
+            <span className="font-medium text-ink">
+              {appointment.patientName ?? "—"}
+            </span>
+          </div>
+          <div className="mt-1.5 flex justify-between gap-3">
+            <span className="text-subtle">Cita</span>
+            <span className="font-medium text-ink">
+              {formatAppointmentTime(appointment)}
+            </span>
+          </div>
         </div>
 
         <div>
-          <Text strong>Motivo de cancelación</Text>
-          <Text type="secondary"> (opcional)</Text>
-          <Radio.Group
+          <p className="mb-2 text-sm font-medium text-ink">
+            Motivo de cancelación{" "}
+            <span className="font-normal text-subtle">(opcional)</span>
+          </p>
+
+          <RadioGroup
             value={reasonCode}
-            onChange={(e) =>
-              setReasonCode(e.target.value as CancellationReasonCode)
+            onValueChange={(value) =>
+              setReasonCode(value as CancellationReasonCode)
             }
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-              marginTop: 8,
-            }}
           >
             {CANCEL_REASONS.map((r) => (
-              <Radio key={r.value} value={r.value}>
+              <label
+                key={r.value}
+                htmlFor={`cancel-reason-${r.value}`}
+                className="flex cursor-pointer items-center gap-2.5 text-sm text-ink"
+              >
+                <RadioGroupItem
+                  id={`cancel-reason-${r.value}`}
+                  value={r.value}
+                />
                 {r.label}
-              </Radio>
+              </label>
             ))}
-          </Radio.Group>
+          </RadioGroup>
 
           {reasonCode === "OTHER" && (
-            <TextArea
-              style={{ marginTop: 8 }}
-              rows={2}
-              placeholder="Describe el motivo..."
-              value={freeText}
-              onChange={(e) => setFreeText(e.target.value)}
-              maxLength={300}
-              showCount
-            />
+            <div className="mt-3">
+              <TextArea
+                rows={2}
+                placeholder="Describe el motivo..."
+                value={freeText}
+                onChange={(e) => setFreeText(e.target.value)}
+                maxLength={300}
+                aria-label="Motivo de cancelación"
+              />
+              <div className="mt-1 text-right text-xs text-subtle">
+                {freeText.length}/300
+              </div>
+            </div>
           )}
         </div>
-      </Space>
+      </div>
     </Modal>
   );
 }

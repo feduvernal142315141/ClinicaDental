@@ -157,8 +157,8 @@ export function FileUpload({
             {/* Mensaje de error */}
             {error && (
                 <div
-                    className="mb-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3">
-                    <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                    className="mb-3 rounded-lg bg-rose-500/15 border border-rose-400/25 p-3">
+                    <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p>
                 </div>
             )}
 
@@ -171,9 +171,9 @@ export function FileUpload({
                     className={cn(
                         "relative rounded-xl border-2 border-dashed transition-all duration-200",
                         isDragging
-                            ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
-                            : "border-gray-300 bg-white dark:bg-gray-900 hover:border-gray-400",
-                        error && "border-red-300 bg-red-50/50 dark:bg-red-900/10",
+                            ? "border-brand bg-brand/15"
+                            : "border-hairline bg-surface hover:border-foreground/30",
+                        error && "border-rose-400/25 bg-rose-500/10",
                         "p-8 text-center cursor-pointer"
                     )}
                     onClick={handleBrowse}
@@ -187,15 +187,15 @@ export function FileUpload({
                     />
 
                     <div className="flex flex-col items-center justify-center space-y-4">
-                        <div className="rounded-full bg-blue-100 dark:bg-blue-900 p-4">
-                            <Upload className="h-8 w-8 text-blue-600 dark:text-blue-400"/>
+                        <div className="rounded-full bg-brand/15 p-4">
+                            <Upload className="h-8 w-8 text-brand"/>
                         </div>
 
                         <div className="space-y-2">
-                            <p className="text-base font-medium text-gray-700 dark:text-gray-300">
+                            <p className="text-base font-medium text-ink">
                                 Drag your documents, photos, or videos here to start uploading.
                             </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">OR</p>
+                            <p className="text-sm text-subtle">OR</p>
                         </div>
 
                         <Button
@@ -204,12 +204,12 @@ export function FileUpload({
                                 e.stopPropagation();
                                 handleBrowse();
                             }}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-brand hover:bg-brand-strong"
                         >
                             Browse files
                         </Button>
 
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                        <p className="text-xs text-subtle">
                             Máximo {maxSize}MB
                         </p>
                     </div>
@@ -217,13 +217,13 @@ export function FileUpload({
             ) : (
                 // Vista previa
                 <div
-                    className="relative rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+                    className="relative rounded-xl border-2 border-hairline bg-surface p-4">
                     <Button
                         type="button"
                         variant="ghost"
                         size="icon"
                         onClick={handleRemove}
-                        className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-white dark:bg-gray-800 shadow-md hover:bg-red-50 hover:text-red-600"
+                        className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-elevated shadow-md hover:bg-rose-500/15 hover:text-rose-600"
                     >
                         <X className="h-4 w-4"/>
                     </Button>
@@ -232,7 +232,7 @@ export function FileUpload({
                         // Preview de imagen
                         <div className="space-y-3">
                             <div
-                                className="relative aspect-video w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+                                className="relative aspect-video w-full overflow-hidden rounded-lg bg-hover">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                     src={previewUrl}
@@ -241,7 +241,7 @@ export function FileUpload({
                                 />
                             </div>
                             {fileName && (
-                                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <div className="flex items-center gap-2 text-sm text-subtle">
                                     <ImageIcon className="h-4 w-4"/>
                                     <span className="truncate">{fileName}</span>
                                 </div>
@@ -250,14 +250,14 @@ export function FileUpload({
                     ) : (
                         // Preview de archivo no imagen
                         <div className="flex items-center gap-4 p-4">
-                            <div className="rounded-lg bg-blue-100 dark:bg-blue-900 p-3">
-                                <FileIcon className="h-8 w-8 text-blue-600 dark:text-blue-400"/>
+                            <div className="rounded-lg bg-brand/15 p-3">
+                                <FileIcon className="h-8 w-8 text-brand"/>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                <p className="text-sm font-medium text-ink truncate">
                                     {fileName}
                                 </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                <p className="text-xs text-subtle">
                                     {fileType || "Archivo cargado"}
                                 </p>
                             </div>

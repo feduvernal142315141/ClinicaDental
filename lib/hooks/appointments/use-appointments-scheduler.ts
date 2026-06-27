@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { appointmentsService } from "@/lib/services/appointments";
 import { doctorsService } from "@/lib/services/doctors";
+import { notify } from "@/lib/utils/notify";
 import { getDoctorColor } from "@/lib/constants/scheduler-colors";
 import {
   getWeekDays,
@@ -376,6 +377,72 @@ export function useAppointmentsScheduler(
     [fetchRange, visibleDoctorIds, dateRange],
   );
 
+  // ---- Reschedule by drag (optimista + rollback) ---------------------------
+  const rescheduleByDrag = useCallback(
+    async (appointment: Appointment, newDate: string, newTime: string) => {
+      if (appointment.date === newDate && appointment.time === newTime) return;
+
+      // Local → ISO UTC (regla de oro: el string sin zona se interpreta local).
+      const start = dayjs(`${newDate}T${newTime}`);
+      if (!start.isValid()) return; // defensivo (no debería pasar tras el clamp)
+
+      const id = appointment.id;
+      const prev = {
+        date: appointment.date,
+        time: appointment.time,
+        startAt: appointment.scheduledStartAt,
+        endAt: appointment.scheduledEndAt,
+      };
+      const startIso = start.toISOString();
+      const endIso = start
+        .add(appointment.duration || 30, "minute")
+        .toISOString();
+
+      // Parche optimista del cache (mueve el evento al instante).
+      const patch = (
+        d: string,
+        t: string,
+        startAt?: string,
+        endAt?: string,
+      ) => {
+        let changed = false;
+        for (const [key, list] of cacheRef.current.entries()) {
+          const idx = list.findIndex((a) => a.id === id);
+          if (idx >= 0) {
+            const copy = list.slice();
+            copy[idx] = {
+              ...copy[idx],
+              date: d,
+              time: t,
+              scheduledStartAt: startAt,
+              scheduledEndAt: endAt,
+            };
+            cacheRef.current.set(key, copy);
+            changed = true;
+          }
+        }
+        if (changed) setCacheVersion((v) => v + 1);
+      };
+
+      patch(newDate, newTime, startIso, endIso);
+
+      try {
+        await appointmentsService.rescheduleAppointment(id, {
+          scheduledStartAt: startIso,
+          scheduledEndAt: endIso,
+        });
+        // El parche optimista ya refleja el resultado; NO invalidamos aquí para
+        // evitar el flash de skeleton (invalidateCache vacía + recarga global).
+        notify.success("Cita reagendada.");
+      } catch {
+        // El interceptor de Axios ya notifica el error (incl. el 409 con el
+        // mensaje del backend); aquí sólo revertimos el parche optimista.
+        patch(prev.date, prev.time, prev.startAt, prev.endAt);
+      }
+    },
+    [],
+  );
+
   // ---- Cancel appointment --------------------------------------------------
   const cancelAppointment = useCallback(
     (appointment: Appointment) => {
@@ -461,6 +528,7 @@ export function useAppointmentsScheduler(
     // Actions
     cancelAppointment,
     completeAppointment,
+    rescheduleByDrag,
     invalidateCache,
 
     // Constants for grids

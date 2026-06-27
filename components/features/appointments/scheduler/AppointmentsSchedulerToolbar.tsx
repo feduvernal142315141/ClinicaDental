@@ -1,17 +1,16 @@
 "use client";
 
-import { Button, DatePicker, Segmented, Space, Typography } from "antd";
-import { LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
+import { cn } from "@/lib/utils/utils";
+import { DateTimePicker } from "@/components/ui/controls/date-time-picker";
 import type {
   SchedulerViewMode,
   SchedulerDateRange,
 } from "@/lib/entity/appointment";
 
 dayjs.locale("es");
-
-const { Text } = Typography;
 
 const VIEW_OPTIONS: { label: string; value: SchedulerViewMode }[] = [
   { label: "Día", value: "day" },
@@ -69,53 +68,77 @@ export function AppointmentsSchedulerToolbar({
   const rangeLabel = formatRangeLabel(viewMode, currentDate, dateRange);
 
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        {/* Left: view mode */}
-        <Segmented
-          options={VIEW_OPTIONS}
-          value={viewMode}
-          onChange={(val) => onViewModeChange(val as SchedulerViewMode)}
-        />
-
-        {/* Center: navigation */}
-        <Space size={4}>
-          <Button icon={<LeftOutlined />} size="small" onClick={onPrev} />
-          <Button size="small" onClick={onToday}>
-            Hoy
-          </Button>
-          <Button icon={<RightOutlined />} size="small" onClick={onNext} />
-        </Space>
-
-        {/* Range label */}
-        <Text
-          strong
-          style={{
-            fontSize: 15,
-            textTransform: "capitalize",
-            whiteSpace: "nowrap",
-          }}
+    <div className="mb-4">
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Izquierda: modo de vista (control segmentado Bento) */}
+        <div
+          role="group"
+          aria-label="Modo de vista"
+          className="inline-flex items-center rounded-xl border border-hairline bg-elevated p-0.5 text-sm"
         >
-          {rangeLabel}
-        </Text>
+          {VIEW_OPTIONS.map((opt) => {
+            const isActive = opt.value === viewMode;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => onViewModeChange(opt.value)}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 font-medium transition-colors",
+                  isActive
+                    ? "bg-brand text-white shadow-sm"
+                    : "text-subtle hover:text-ink",
+                )}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
 
-        {/* Date picker */}
-        <DatePicker
-          size="small"
-          format="DD/MM/YYYY"
-          value={dayjs(currentDate, "YYYY-MM-DD")}
-          onChange={(val) => {
-            if (val) onDateChange(val.format("YYYY-MM-DD"));
-          }}
+        {/* Centro: navegación ‹ Hoy › */}
+        <div className="inline-flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="Anterior"
+            onClick={onPrev}
+            className="grid h-9 w-9 place-items-center rounded-xl border border-hairline bg-elevated text-subtle transition-colors hover:bg-hover hover:text-ink"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onToday}
+            className="h-9 rounded-xl border border-hairline bg-elevated px-3 text-sm font-medium text-subtle transition-colors hover:bg-hover hover:text-ink"
+          >
+            Hoy
+          </button>
+          <button
+            type="button"
+            aria-label="Siguiente"
+            onClick={onNext}
+            className="grid h-9 w-9 place-items-center rounded-xl border border-hairline bg-elevated text-subtle transition-colors hover:bg-hover hover:text-ink"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Etiqueta de rango */}
+        <span className="whitespace-nowrap text-[15px] font-semibold capitalize text-ink">
+          {rangeLabel}
+        </span>
+
+        {/* Selector de fecha (Bento, sin hora) */}
+        <DateTimePicker
+          value={currentDate}
+          showTime={false}
           allowClear={false}
-          style={{ marginLeft: "auto" }}
+          onChange={(val) => {
+            if (val) onDateChange(val);
+          }}
+          aria-label="Ir a una fecha"
+          className="ml-auto w-44"
         />
       </div>
     </div>

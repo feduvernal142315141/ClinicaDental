@@ -343,9 +343,9 @@ export function DiagnosisTab({
   };
 
   const getRiskColor = (risk: PatientRiskLevel) => {
-    if (risk === "bajo") return "bg-green-100 text-green-800 border-green-300";
-    if (risk === "medio") return "bg-amber-100 text-amber-800 border-amber-300";
-    return "bg-red-100 text-red-800 border-red-300";
+    if (risk === "bajo") return "bg-emerald-500/15 text-emerald-600 ring-emerald-400/25 dark:text-emerald-300";
+    if (risk === "medio") return "bg-amber-500/15 text-amber-600 ring-amber-400/25 dark:text-amber-300";
+    return "bg-rose-500/15 text-rose-600 ring-rose-400/25 dark:text-rose-300";
   };
 
   const hasCoherenceIssue =
@@ -397,14 +397,14 @@ export function DiagnosisTab({
       </div>
 
       {hasCoherenceIssue && (
-        <Card className="p-3 bg-red-50 border-red-200">
+        <Card className="p-3 bg-rose-500/15 border-rose-400/25">
           <div className="flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-red-600 mt-0.5" />
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-300 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-red-900">
+              <p className="text-sm font-medium text-rose-700 dark:text-rose-300">
                 Revisa el estado del diente
               </p>
-              <p className="text-xs text-red-700">
+              <p className="text-xs text-rose-600 dark:text-rose-300">
                 El diente está marcado como{" "}
                 {GLOBAL_STATUS_LABELS[tooth.globalStatus]} pero tiene
                 diagnóstico de caries
@@ -415,14 +415,14 @@ export function DiagnosisTab({
       )}
 
       {hasMixedState && (
-        <Card className="p-3 bg-amber-50 border-amber-200">
+        <Card className="p-3 bg-amber-500/15 border-amber-400/25">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-300 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-amber-900">
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
                 Estado mixto detectado
               </p>
-              <p className="text-xs text-amber-700">
+              <p className="text-xs text-amber-600 dark:text-amber-300">
                 Restauración existente con caries secundaria - considerar
                 retiro/recambio
               </p>
@@ -689,7 +689,7 @@ export function DiagnosisTab({
                         className={`px-2.5 py-1 text-xs rounded-md border transition-all font-medium ${
                           isActive
                             ? "bg-primary text-white border-primary shadow-sm"
-                            : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                            : "bg-elevated text-subtle border-hairline hover:bg-hover"
                         }`}
                       >
                         {label}
@@ -723,7 +723,7 @@ export function DiagnosisTab({
                         className={`px-2.5 py-1 text-xs rounded-md border transition-all font-medium ${
                           isActive
                             ? "bg-primary text-white border-primary shadow-sm"
-                            : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                            : "bg-elevated text-subtle border-hairline hover:bg-hover"
                         }`}
                       >
                         {label}
@@ -778,7 +778,7 @@ export function DiagnosisTab({
                                   className={`w-8 h-6 rounded text-xs font-bold transition-all ${
                                     isActive
                                       ? "text-white shadow-sm"
-                                      : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                                      : "bg-elevated text-subtle hover:bg-hover"
                                   }`}
                                   style={
                                     isActive
@@ -978,14 +978,14 @@ export function DiagnosisTab({
             <div className="space-y-2">
               {(pulpalStatus === "irreversible" ||
                 pulpalStatus === "necrosis") && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg shadow-sm">
+                <div className="p-3 bg-rose-500/15 border border-rose-400/25 rounded-lg shadow-sm">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                    <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-300 mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-red-900">
+                      <p className="text-sm font-medium text-rose-700 dark:text-rose-300">
                         Endodoncia requerida
                       </p>
-                      <p className="text-xs text-red-700 mt-1">
+                      <p className="text-xs text-rose-600 dark:text-rose-300 mt-1">
                         Estado pulpar{" "}
                         {PULPAL_STATUS_LABELS[pulpalStatus].toLowerCase()}{" "}
                         detectado
@@ -998,14 +998,14 @@ export function DiagnosisTab({
               {Array.from(surfaceDiagnoses.values()).some(
                 (d) => d.icdasScore >= 5,
               ) && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg shadow-sm">
+                <div className="p-3 bg-rose-500/15 border border-rose-400/25 rounded-lg shadow-sm">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                    <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-300 mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-red-900">
+                      <p className="text-sm font-medium text-rose-700 dark:text-rose-300">
                         Restauración extensa / Onlay / Endo
                       </p>
-                      <p className="text-xs text-red-700 mt-1">
+                      <p className="text-xs text-rose-600 dark:text-rose-300 mt-1">
                         Caries con cavitación extensa - evaluar endodoncia si
                         hay síntomas
                       </p>
@@ -1017,14 +1017,14 @@ export function DiagnosisTab({
               {Array.from(surfaceDiagnoses.values()).some(
                 (d) => d.icdasScore >= 3 && d.icdasScore <= 4,
               ) && (
-                <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg shadow-sm">
+                <div className="p-3 bg-amber-500/15 border border-amber-400/25 rounded-lg shadow-sm">
                   <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-300 mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-orange-900">
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
                         Resina (Plan)
                       </p>
-                      <p className="text-xs text-orange-700 mt-1">
+                      <p className="text-xs text-amber-600 dark:text-amber-300 mt-1">
                         Caries con microcavitación - restauración con resina
                         compuesta
                       </p>
@@ -1036,14 +1036,14 @@ export function DiagnosisTab({
               {Array.from(surfaceDiagnoses.values()).some(
                 (d) => d.icdasScore >= 1 && d.icdasScore <= 2,
               ) && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg shadow-sm">
+                <div className="p-3 bg-amber-500/15 border border-amber-400/25 rounded-lg shadow-sm">
                   <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                    <Info className="w-4 h-4 text-amber-600 dark:text-amber-300 mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-amber-900">
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
                         Infiltración / Sellante
                       </p>
-                      <p className="text-xs text-amber-700 mt-1">
+                      <p className="text-xs text-amber-600 dark:text-amber-300 mt-1">
                         Caries incipiente - tratamiento preventivo con sellantes
                         o flúor
                       </p>
@@ -1055,14 +1055,14 @@ export function DiagnosisTab({
               {Array.from(surfaceDiagnoses.values()).every(
                 (d) => d.icdasScore === 0,
               ) && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg shadow-sm">
+                <div className="p-3 bg-emerald-500/15 border border-emerald-400/25 rounded-lg shadow-sm">
                   <div className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-300 mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-green-900">
+                      <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
                         Superficies sanas
                       </p>
-                      <p className="text-xs text-green-700 mt-1">
+                      <p className="text-xs text-emerald-600 dark:text-emerald-300 mt-1">
                         Mantener higiene y controles periódicos
                       </p>
                     </div>

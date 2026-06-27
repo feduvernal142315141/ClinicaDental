@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import { AppBreadcrumb } from "@/components/ui/antd";
+import { PageHeader } from "@/components/ui/layout/page-header";
 import { ServiceForm } from "@/components/features/services";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
@@ -26,14 +26,15 @@ export default function EditServicePage({ params }: EditServicePageProps) {
 
   return (
     <>
-      <div className="mb-8">
-        <h2 className="text-3xl font-extrabold tracking-tight text-gray-900">
-          Editar Servicio
-        </h2>
-        <p className="mt-1 text-base text-gray-500">
-          Modifique los datos del servicio clínico.
-        </p>
-      </div>
+      <PageHeader
+        title="Editar Servicio"
+        subtitle="Modifique los datos del servicio clínico."
+        actionButton={{
+          label: "Atrás",
+          onClick: () => router.push("/settings/services"),
+          variant: "back",
+        }}
+      />
       <ServiceForm serviceId={id} basePath="/settings/services" />
     </>
   );

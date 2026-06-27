@@ -1,6 +1,6 @@
 "use client";
 
-import { SectionTitle } from "@/components/ui/antd";
+import { PageHeader } from "@/components/ui/layout/page-header";
 import { RolesList } from "@/components/roles";
 import { useRolesPage } from "@/lib/hooks/roles/use-roles-page";
 import { usePermission } from "@/lib/hooks/use-permission";
@@ -30,7 +30,7 @@ export default function RolesSettingsPage() {
 
   return (
     <>
-      <SectionTitle
+      <PageHeader
         title="Gestión de Roles"
         subtitle="Administre los roles del sistema"
         actionButton={

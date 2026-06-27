@@ -22,7 +22,7 @@ export function SidebarHeader({
       <div className="flex items-center justify-between gap-4 mb-2">
         <div className="flex items-center gap-4 min-w-0 flex-1">
           <LogoIcon icon={icon} size="md" className="shrink-0" />
-          <h2 className="text-lg font-semibold dark:text-white whitespace-nowrap">
+          <h2 className="text-lg font-semibold text-ink whitespace-nowrap">
             {title}
           </h2>
         </div>
@@ -31,7 +31,7 @@ export function SidebarHeader({
         )}
       </div>
       {subtitle && (
-        <p className="text-sm text-muted-foreground dark:text-gray-400">
+        <p className="text-sm text-subtle">
           {subtitle}
         </p>
       )}

@@ -3,9 +3,16 @@
 import dynamic from "next/dynamic";
 import { LazyLoadingFallback } from "@/components/ui/atomic/feedback/lazy-loading-fallback";
 import { useDashboardSummary } from "@/lib/hooks/dashboard/use-dashboard-summary";
-import { Button, Input } from "@/components/ui";
-import { Spin, Alert } from "antd";
-import { RefreshCw } from "lucide-react";
+import { isSessionExpired } from "@/lib/services/apiConfig";
+import { cn } from "@/lib/utils/utils";
+import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
+import {
+  Alert,
+  AlertTitle,
+  AlertDescription,
+} from "@/components/ui/atomic/feedback/alert";
+import { RefreshCw, AlertTriangle } from "lucide-react";
+import { DateRangePicker } from "@/components/ui/controls/date-range-picker";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings";
 import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
 import { formatClinicTimezone } from "@/lib/utils/clinic-regional-format";
@@ -43,7 +50,6 @@ export default function DashboardPage() {
   const currency = settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency;
   const timezone = settings?.timezone ?? DEFAULT_CLINIC_GENERAL_SETTINGS.timezone;
 
-  const today = toIsoDate(new Date());
   const selectedFrom = params?.from ?? data?.period.from ?? "";
   const selectedTo = params?.to ?? data?.period.to ?? "";
 
@@ -59,162 +65,144 @@ export default function DashboardPage() {
     updatePeriod({ from: toIsoDate(from), to: toIsoDate(now) });
   };
 
-  const updateDate = (key: "from" | "to", value: string) => {
-    const next = {
-      from: selectedFrom,
-      to: selectedTo || today,
-      [key]: value,
-    };
-    if (next.from && next.to) {
-      updatePeriod(next);
-    }
-  };
-
   if (loading && !data) {
     return (
       <div className="flex items-center justify-center min-h-64">
-        <Spin size="large" description="Cargando dashboard..." />
+        <LoadingSpinner message="Cargando dashboard..." />
       </div>
     );
   }
 
   if (error && !data) {
+    // Si la sesión expiró, el modal global y la redirección se encargan:
+    // no mostrar también el error inline del dashboard.
+    if (isSessionExpired()) {
+      return (
+        <div className="flex items-center justify-center min-h-64">
+          <LoadingSpinner message="Redirigiendo al inicio de sesión..." />
+        </div>
+      );
+    }
     return (
-      <Alert
-        type="error"
-        message="Error al cargar el dashboard"
-        description={
-          error ?? "No se pudo obtener la información de la clínica."
-        }
-        showIcon
-      />
+      <Alert variant="destructive">
+        <AlertTriangle />
+        <AlertTitle>Error al cargar el dashboard</AlertTitle>
+        <AlertDescription>
+          {error ?? "No se pudo obtener la información de la clínica."}
+        </AlertDescription>
+      </Alert>
     );
   }
 
   if (!data) {
     return (
-      <Alert
-        type="warning"
-        message="Dashboard sin datos"
-        description="No se pudo obtener la información de la clínica."
-        showIcon
-      />
+      <Alert>
+        <AlertTriangle />
+        <AlertTitle>Dashboard sin datos</AlertTitle>
+        <AlertDescription>
+          No se pudo obtener la información de la clínica.
+        </AlertDescription>
+      </Alert>
     );
   }
 
   return (
     <div className="space-y-8">
       {error && (
-        <Alert
-          type="warning"
-          message="No se pudo actualizar el dashboard"
-          description={error}
-          showIcon
-        />
+        <Alert>
+          <AlertTriangle />
+          <AlertTitle>No se pudo actualizar el dashboard</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 shadow-sm lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-normal">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Estado operativo de la clínica basado en citas reales.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <span className="rounded-full border bg-background px-2.5 py-1 font-medium text-foreground">
-              Moneda {currency}
-            </span>
-            <span className="rounded-full border bg-background px-2.5 py-1 font-medium text-foreground">
-              Zona {formatClinicTimezone(timezone)}
-            </span>
-            {loadingSettings && <span>Sincronizando configuración regional...</span>}
-            {settingsError && (
-              <span className="text-amber-600">
-                Configuración regional por defecto
+      {/* ── Toolbar (sticky, sobre canvas, estilo 2026) ─────────────── */}
+      <div className="sticky top-0 z-20 -mx-4 border-b border-hairline bg-canvas/80 px-4 py-4 backdrop-blur-md lg:-mx-6 lg:px-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h1 className="text-2xl font-semibold tracking-tight text-ink">
+                Dashboard
+              </h1>
+              <span className="inline-flex items-center rounded-full border border-hairline bg-elevated px-2 py-0.5 text-xs font-medium text-subtle">
+                {currency}
               </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={
-                selectedRange(selectedFrom, selectedTo, 6)
-                  ? "default"
-                  : "outline"
-              }
-              size="sm"
-              disabled={loading}
-              onClick={() => setQuickRange(6)}
-            >
-              6M
-            </Button>
-            <Button
-              type="button"
-              variant={
-                selectedRange(selectedFrom, selectedTo, 12)
-                  ? "default"
-                  : "outline"
-              }
-              size="sm"
-              disabled={loading}
-              onClick={() => setQuickRange(12)}
-            >
-              12M
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={loading}
-              onClick={setYearToDate}
-            >
-              Año actual
-            </Button>
+              <span className="inline-flex items-center rounded-full border border-hairline bg-elevated px-2 py-0.5 text-xs font-medium text-subtle">
+                {formatClinicTimezone(timezone)}
+              </span>
+              {settingsError && (
+                <span className="text-xs text-amber-600">
+                  Configuración regional por defecto
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-subtle">
+              Estado operativo de la clínica basado en citas reales.
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <label className="space-y-1 text-xs font-medium text-muted-foreground">
-              Desde
-              <Input
-                type="date"
-                value={selectedFrom}
-                disabled={loading}
-                onChange={(event) => updateDate("from", event.target.value)}
-              />
-            </label>
-            <label className="space-y-1 text-xs font-medium text-muted-foreground">
-              Hasta
-              <Input
-                type="date"
-                value={selectedTo}
-                max={today}
-                disabled={loading}
-                onChange={(event) => updateDate("to", event.target.value)}
-              />
-            </label>
-          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Presets segmentados */}
+            <div className="inline-flex items-center rounded-xl border border-hairline bg-elevated p-0.5 text-sm">
+              {[
+                { label: "6M", active: selectedRange(selectedFrom, selectedTo, 6), onClick: () => setQuickRange(6) },
+                { label: "12M", active: selectedRange(selectedFrom, selectedTo, 12), onClick: () => setQuickRange(12) },
+                { label: "Año actual", active: isYearToDate(selectedFrom, selectedTo), onClick: setYearToDate },
+              ].map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  disabled={loading}
+                  onClick={p.onClick}
+                  className={cn(
+                    "rounded-lg px-3 py-1.5 font-medium transition-colors disabled:opacity-50",
+                    p.active
+                      ? "bg-brand text-white shadow-sm"
+                      : "text-subtle hover:text-ink",
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            disabled={loading || loadingSettings}
-            onClick={() => {
-              refresh();
-              reload();
-            }}
-            aria-label="Actualizar dashboard"
-          >
-            <RefreshCw
-              className={
-                loading || loadingSettings ? "h-4 w-4 animate-spin" : "h-4 w-4"
-              }
+            {/* Rango de fechas (control corporativo, hora local) */}
+            <DateRangePicker
+              from={selectedFrom}
+              to={selectedTo}
+              disabled={loading}
+              onChange={({ from, to }) => {
+                if (from && to) updatePeriod({ from, to });
+              }}
             />
-          </Button>
+
+            {/* Refrescar */}
+            <button
+              type="button"
+              disabled={loading || loadingSettings}
+              onClick={() => {
+                refresh();
+                reload();
+              }}
+              aria-label="Actualizar dashboard"
+              className="grid h-9 w-9 place-items-center rounded-xl border border-hairline bg-elevated text-subtle transition-colors hover:bg-hover hover:text-ink disabled:opacity-50"
+            >
+              <RefreshCw
+                className={cn(
+                  "h-4 w-4",
+                  (loading || loadingSettings) && "animate-spin",
+                )}
+              />
+            </button>
+          </div>
         </div>
+        {loadingSettings && (
+          <p className="mt-2 text-xs text-subtle">
+            Sincronizando configuración regional…
+          </p>
+        )}
       </div>
+
       <OverviewSection data={data} currency={currency} />
       <ProductivitySection data={data} />
       <PatientsSection data={data} currency={currency} />
@@ -237,5 +225,12 @@ function selectedRange(from: string, to: string, months: number): boolean {
     now.getMonth() - months + 1,
     1,
   );
+  return from === toIsoDate(expectedFrom) && to === toIsoDate(now);
+}
+
+function isYearToDate(from: string, to: string): boolean {
+  if (!from || !to) return false;
+  const now = new Date();
+  const expectedFrom = new Date(now.getFullYear(), 0, 1);
   return from === toIsoDate(expectedFrom) && to === toIsoDate(now);
 }

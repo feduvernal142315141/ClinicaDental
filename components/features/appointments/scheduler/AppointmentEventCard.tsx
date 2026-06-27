@@ -1,11 +1,9 @@
 "use client";
 
 import dayjs from "dayjs";
-import { Typography, Tooltip } from "antd";
-import type { SchedulerEvent } from "@/lib/entity/appointment";
+import type { AppointmentStatus, SchedulerEvent } from "@/lib/entity/appointment";
 import { LabelChip } from "@/components/app/labels";
-
-const { Text } = Typography;
+import { cn } from "@/lib/utils/utils";
 
 interface AppointmentEventCardProps {
   event: SchedulerEvent;
@@ -20,6 +18,24 @@ const TYPE_LABELS: Record<string, string> = {
   routine: "Rutina",
 };
 
+/**
+ * Acento por estado (pares Bento emerald/amber/rose/sky).
+ * El color de especialista (doctorColor) sigue siendo el acento dominante
+ * (borde izquierdo + tinte de fondo); el estado se indica con un punto y,
+ * cuando aplica, atenuación del card.
+ */
+const STATUS_ACCENT: Record<
+  AppointmentStatus,
+  { dot: string; muted?: boolean; pulse?: boolean; strike?: boolean }
+> = {
+  scheduled: { dot: "bg-sky-500" },
+  in_progress: { dot: "bg-emerald-500", pulse: true },
+  completed: { dot: "bg-emerald-500", muted: true },
+  cancelled: { dot: "bg-rose-500", muted: true, strike: true },
+  "no-show": { dot: "bg-amber-500", muted: true },
+  no_show: { dot: "bg-amber-500", muted: true },
+};
+
 export function AppointmentEventCard({
   event,
   onClick,
@@ -30,6 +46,8 @@ export function AppointmentEventCard({
       ? dayjs(appointment.actualStartAt).format("HH:mm")
       : appointment.time;
   const isCompact = height < 40;
+
+  const accent = STATUS_ACCENT[appointment.status] ?? STATUS_ACCENT.scheduled;
 
   const label = [displayTime, appointment.patientName]
     .filter(Boolean)
@@ -51,88 +69,78 @@ export function AppointmentEventCard({
     .filter(Boolean)
     .join(" · ");
 
+  // Tooltip Bento → atributo title nativo (multilínea con \n)
+  const tooltip = [
+    appointment.patientName ?? "Paciente",
+    `${displayTime} — ${appointment.duration} min`,
+    appointment.doctorName ? `Dr. ${appointment.doctorName}` : null,
+    servicesLabel || null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   return (
-    <Tooltip
-      title={
-        <>
-          <div>
-            <strong>{appointment.patientName ?? "Paciente"}</strong>
-          </div>
-          <div>
-            {displayTime} — {appointment.duration} min
-          </div>
-          {appointment.doctorName && <div>Dr. {appointment.doctorName}</div>}
-          {servicesLabel && <div>{servicesLabel}</div>}
-        </>
-      }
-      placement="right"
-      mouseEnterDelay={0.4}
+    <div
+      role="button"
+      tabIndex={0}
+      title={tooltip}
+      onClick={() => onClick?.(event)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.(event);
+        }
+      }}
+      className={cn(
+        "absolute inset-0 flex cursor-pointer flex-col overflow-hidden rounded-md border-l-[3px]",
+        "transition-shadow hover:shadow-md",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
+        isCompact ? "px-1.5 py-0.5" : "px-2 py-1",
+        accent.muted && "opacity-70",
+      )}
+      style={{
+        borderLeftColor: doctorColor,
+        backgroundColor: `${doctorColor}14`,
+      }}
     >
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => onClick?.(event)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onClick?.(event);
-          }
-        }}
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          borderLeft: `3px solid ${doctorColor}`,
-          backgroundColor: `${doctorColor}14`,
-          borderRadius: 4,
-          padding: isCompact ? "2px 6px" : "4px 8px",
-          cursor: "pointer",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          gap: 0,
-          transition: "box-shadow 0.15s",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.boxShadow =
-            "0 2px 8px rgba(0,0,0,0.15)";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.boxShadow = "none";
-        }}
-      >
-        <Text
-          style={{
-            fontSize: isCompact ? 11 : 12,
-            fontWeight: 600,
-            lineHeight: 1.3,
-            color: "#262626",
-          }}
-          ellipsis
+      <div className="flex min-w-0 items-center gap-1">
+        <span
+          aria-hidden
+          className={cn(
+            "h-1.5 w-1.5 shrink-0 rounded-full",
+            accent.dot,
+            accent.pulse && "animate-pulse",
+          )}
+        />
+        <span
+          className={cn(
+            "truncate font-semibold leading-tight text-ink",
+            isCompact ? "text-[11px]" : "text-xs",
+            accent.strike && "line-through",
+          )}
         >
           {label}
-        </Text>
-        {!isCompact && detail && (
-          <Text
-            style={{ fontSize: 11, lineHeight: 1.2, color: "#595959" }}
-            ellipsis
-          >
-            {detail}
-          </Text>
-        )}
-        {!isCompact && appointment.labels && appointment.labels.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 2 }}>
-            {appointment.labels.slice(0, 3).map((label) => (
-              <LabelChip key={label.id} label={label} size="xs" />
-            ))}
-            {appointment.labels.length > 3 && (
-              <span style={{ fontSize: 10, color: "#595959" }}>+{appointment.labels.length - 3}</span>
-            )}
-          </div>
-        )}
+        </span>
       </div>
-    </Tooltip>
+
+      {!isCompact && detail && (
+        <span className="truncate text-[11px] leading-tight text-subtle">
+          {detail}
+        </span>
+      )}
+
+      {!isCompact && appointment.labels && appointment.labels.length > 0 && (
+        <div className="mt-0.5 flex flex-wrap gap-0.5">
+          {appointment.labels.slice(0, 3).map((labelItem) => (
+            <LabelChip key={labelItem.id} label={labelItem} size="xs" />
+          ))}
+          {appointment.labels.length > 3 && (
+            <span className="text-[10px] text-subtle">
+              +{appointment.labels.length - 3}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

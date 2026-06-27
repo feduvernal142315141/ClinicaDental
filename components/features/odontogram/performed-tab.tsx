@@ -59,9 +59,11 @@ function getToothTypeName(toothNumber: number): string {
 }
 
 function getRiskColor(risk: PatientRiskLevel) {
-  if (risk === "bajo") return "bg-green-100 text-green-800 border-green-300";
-  if (risk === "medio") return "bg-amber-100 text-amber-800 border-amber-300";
-  return "bg-red-100 text-red-800 border-red-300";
+  if (risk === "bajo")
+    return "bg-emerald-500/15 text-emerald-600 ring-emerald-400/25 dark:text-emerald-300";
+  if (risk === "medio")
+    return "bg-amber-500/15 text-amber-600 ring-amber-400/25 dark:text-amber-300";
+  return "bg-rose-500/15 text-rose-600 ring-rose-400/25 dark:text-rose-300";
 }
 
 function formatSurfaceLabel(surface: ToothSurface) {
@@ -161,10 +163,10 @@ function PlanGroup({
   if (plans.length === 0) return null;
 
   return (
-    <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+    <div className="space-y-3 rounded-xl border border-hairline bg-surface p-4 shadow-sm">
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-3">
-          <Label className="text-sm font-semibold text-slate-900">
+          <Label className="text-sm font-semibold text-ink">
             {title}
           </Label>
           <Badge variant="outline" className="text-xs">
@@ -186,8 +188,8 @@ function PlanGroup({
               onClick={() => onToggle(plan.id)}
               className={`w-full rounded-xl border p-3 text-left transition ${
                 isSelected
-                  ? "border-emerald-300 bg-emerald-50 shadow-sm"
-                  : "border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-slate-50"
+                  ? "border-emerald-400/25 bg-emerald-500/15 shadow-sm"
+                  : "border-hairline bg-elevated hover:border-hairline hover:bg-hover"
               } ${readOnly ? "cursor-default opacity-70" : "cursor-pointer"}`}
             >
               <div className="flex items-start gap-3">
@@ -202,7 +204,7 @@ function PlanGroup({
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900">
+                      <p className="truncate text-sm font-semibold text-ink">
                         {plan.displayName}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -220,13 +222,13 @@ function PlanGroup({
                         <Badge
                           key={surface}
                           variant="outline"
-                          className="bg-white text-[11px]"
+                          className="bg-elevated text-[11px]"
                         >
                           {formatSurfaceLabel(surface)}
                         </Badge>
                       ))
                     ) : (
-                      <Badge variant="outline" className="bg-white text-[11px]">
+                      <Badge variant="outline" className="bg-elevated text-[11px]">
                         Diente completo
                       </Badge>
                     )}
@@ -495,7 +497,7 @@ export function PerformedTab({
     return (
       <Card className="border-dashed p-8 text-center">
         <div className="mx-auto max-w-md space-y-3">
-          <p className="text-base font-semibold text-slate-900">
+          <p className="text-base font-semibold text-ink">
             Aun no hay trabajo listo para registrar
           </p>
           <p className="text-sm text-muted-foreground">
@@ -520,13 +522,13 @@ export function PerformedTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-2xl border border-emerald-100 bg-linear-to-r from-emerald-50 via-white to-teal-50 p-4 shadow-sm lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-emerald-400/25 bg-linear-to-r from-emerald-50 via-white to-teal-50 p-4 shadow-sm lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-300">
             <CheckCircle2 className="h-3.5 w-3.5" />
             Realizado
           </div>
-          <h3 className="text-lg font-bold text-slate-950">
+          <h3 className="text-lg font-bold text-ink">
             Cierre clínico del diente {tooth.number}
           </h3>
           <p className="text-sm text-muted-foreground">
@@ -540,12 +542,12 @@ export function PerformedTab({
           <Badge variant="outline" className={getRiskColor(patientRisk)}>
             Riesgo: {patientRisk.charAt(0).toUpperCase() + patientRisk.slice(1)}
           </Badge>
-          <Badge variant="outline" className="bg-white text-xs">
+          <Badge variant="outline" className="bg-elevated text-xs">
             {GLOBAL_STATUS_LABELS[tooth.globalStatus]}
           </Badge>
           <Badge
             variant="outline"
-            className="bg-white text-xs text-emerald-700"
+            className="bg-elevated text-xs text-emerald-600 dark:text-emerald-300"
           >
             {timelineItems.length} registrados
           </Badge>
@@ -554,13 +556,13 @@ export function PerformedTab({
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <div className="space-y-4">
-          <Card className="overflow-hidden border-slate-200/80 shadow-sm">
-            <div className="border-b border-slate-200 bg-white px-4 py-4">
+          <Card className="overflow-hidden border-hairline shadow-sm">
+            <div className="border-b border-hairline bg-surface px-4 py-4">
               <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <ListChecks className="h-4 w-4 text-slate-500" />
-                    <h4 className="text-sm font-semibold text-slate-950">
+                    <ListChecks className="h-4 w-4 text-subtle" />
+                    <h4 className="text-sm font-semibold text-ink">
                       Pendientes por ejecutar
                     </h4>
                   </div>
@@ -569,13 +571,13 @@ export function PerformedTab({
                     procedimientos realizados con trazabilidad real en el store.
                   </p>
                 </div>
-                <Badge variant="outline" className="w-fit bg-white text-xs">
+                <Badge variant="outline" className="w-fit bg-elevated text-xs">
                   {pendingPlans.length} pendientes
                 </Badge>
               </div>
             </div>
 
-            <div className="space-y-4 bg-slate-50/70 p-4">
+            <div className="space-y-4 bg-hover p-4">
               <PlanGroup
                 title="Programados hoy"
                 description="Tratamientos ya agendados para esta cita o para el mismo dia."
@@ -602,7 +604,7 @@ export function PerformedTab({
               />
 
               {pendingPlans.length === 0 && (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6">
+                <div className="rounded-xl border border-dashed border-hairline bg-surface p-6">
                   <OdontogramEmptyState description="No hay planes pendientes en este diente." />
                   <div className="mt-3 flex justify-center">
                     <Button
@@ -620,10 +622,10 @@ export function PerformedTab({
         </div>
 
         <div className="space-y-4 lg:sticky lg:top-0">
-          <Card className="border-emerald-200/80 bg-white shadow-sm">
+          <Card className="border-emerald-400/25 bg-surface shadow-sm">
             <div className="space-y-4 p-4">
               <div>
-                <h4 className="text-sm font-semibold text-slate-950">
+                <h4 className="text-sm font-semibold text-ink">
                   Resumen de ejecucion
                 </h4>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -632,27 +634,27 @@ export function PerformedTab({
               </div>
 
               <div className="grid grid-cols-3 items-stretch gap-2">
-                <div className="flex min-h-24 flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-2 py-3 text-center">
+                <div className="flex min-h-24 flex-col items-center justify-center rounded-xl border border-hairline bg-hover px-2 py-3 text-center">
                   <p className="flex min-h-10 items-center justify-center text-[10px] font-medium uppercase leading-tight text-muted-foreground sm:text-[11px]">
                     Pendientes
                   </p>
-                  <p className="mt-1 text-xl font-bold leading-none text-slate-950 sm:text-2xl">
+                  <p className="mt-1 text-xl font-bold leading-none text-ink tabular-nums sm:text-2xl">
                     {pendingPlans.length}
                   </p>
                 </div>
-                <div className="flex min-h-24 flex-col items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-3 text-center">
-                  <p className="flex min-h-10 items-center justify-center text-[10px] font-medium uppercase leading-tight text-emerald-700 sm:text-[11px]">
+                <div className="flex min-h-24 flex-col items-center justify-center rounded-xl border border-emerald-400/25 bg-emerald-500/15 px-2 py-3 text-center">
+                  <p className="flex min-h-10 items-center justify-center text-[10px] font-medium uppercase leading-tight text-emerald-600 dark:text-emerald-300 sm:text-[11px]">
                     Listos
                   </p>
-                  <p className="mt-1 text-xl font-bold leading-none text-emerald-900 sm:text-2xl">
+                  <p className="mt-1 text-xl font-bold leading-none text-emerald-600 dark:text-emerald-300 tabular-nums sm:text-2xl">
                     {selectedPlans.length}
                   </p>
                 </div>
-                <div className="flex min-h-24 flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-2 py-3 text-center">
+                <div className="flex min-h-24 flex-col items-center justify-center rounded-xl border border-hairline bg-hover px-2 py-3 text-center">
                   <p className="flex min-h-10 items-center justify-center text-[10px] font-medium uppercase leading-tight text-muted-foreground sm:text-[11px]">
                     Hechos
                   </p>
-                  <p className="mt-1 text-xl font-bold leading-none text-slate-950 sm:text-2xl">
+                  <p className="mt-1 text-xl font-bold leading-none text-ink tabular-nums sm:text-2xl">
                     {completedPlanCount}
                   </p>
                 </div>
@@ -661,13 +663,13 @@ export function PerformedTab({
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-medium">
                   <span className="text-muted-foreground">Progreso</span>
-                  <span className="text-slate-900">
+                  <span className="text-ink tabular-nums">
                     {totalPlannedCount > 0
                       ? `${completedPlanCount} de ${totalPlannedCount}`
                       : `${timelineItems.length} realizados`}
                   </span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full bg-linear-to-r from-emerald-500 to-teal-500 transition-all"
                     style={{ width: `${progressPercent}%` }}
@@ -698,11 +700,11 @@ export function PerformedTab({
             </div>
           </Card>
 
-          <Card className="border-slate-200/80 bg-white shadow-sm">
+          <Card className="border-hairline bg-surface shadow-sm">
             <div className="space-y-4 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-950">
+                  <h4 className="text-sm font-semibold text-ink">
                     Timeline de realizados
                   </h4>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -711,7 +713,7 @@ export function PerformedTab({
                 </div>
                 <Badge
                   variant="outline"
-                  className="bg-white text-xs text-emerald-700"
+                  className="bg-elevated text-xs text-emerald-600 dark:text-emerald-300"
                 >
                   {timelineItems.length}
                 </Badge>
@@ -725,13 +727,13 @@ export function PerformedTab({
                     <div key={item.id} className="flex gap-3">
                       <div className="flex flex-col items-center pt-1">
                         <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                        <span className="mt-1 h-full w-px bg-slate-200" />
+                        <span className="mt-1 h-full w-px bg-border" />
                       </div>
 
-                      <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                      <div className="min-w-0 flex-1 rounded-xl border border-hairline bg-hover p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-950">
+                            <p className="truncate text-sm font-semibold text-ink">
                               {item.label}
                             </p>
                             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -750,7 +752,7 @@ export function PerformedTab({
                             {item.legacy && (
                               <Badge
                                 variant="outline"
-                                className="bg-white text-[11px]"
+                                className="bg-elevated text-[11px]"
                               >
                                 Legacy
                               </Badge>
@@ -775,7 +777,7 @@ export function PerformedTab({
                               <Badge
                                 key={`${item.id}-${surface}`}
                                 variant="outline"
-                                className="bg-white text-[11px]"
+                                className="bg-elevated text-[11px]"
                               >
                                 {formatSurfaceLabel(surface)}
                               </Badge>
@@ -783,7 +785,7 @@ export function PerformedTab({
                           ) : (
                             <Badge
                               variant="outline"
-                              className="bg-white text-[11px]"
+                              className="bg-elevated text-[11px]"
                             >
                               Diente completo
                             </Badge>
@@ -804,10 +806,10 @@ export function PerformedTab({
           </Card>
 
           {!readOnly && pendingPlans.length > 0 && (
-            <Card className="border-dashed border-slate-200 bg-white shadow-sm">
+            <Card className="border-dashed border-hairline bg-surface shadow-sm">
               <div className="flex items-center justify-between gap-3 p-4 text-sm">
                 <div>
-                  <p className="font-semibold text-slate-950">
+                  <p className="font-semibold text-ink">
                     Si algo sigue faltando, vuelve al plan
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">

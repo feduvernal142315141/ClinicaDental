@@ -18,8 +18,9 @@ export function useTheme() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Solo marcar montado: respetar la preferencia del sistema/persistida
+    // (defaultTheme="system"). No forzar un tema fijo aquí.
     setMounted(true);
-    setTheme('light');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { App } from "antd";
+
 import { rolesService } from "@/lib/services/roles";
 import type {
   RoleListItem,
@@ -7,6 +7,7 @@ import type {
   RolesQueryParams,
   PaginatedRolesResponse,
 } from "@/lib/entity/roles";
+import { notify } from "@/lib/utils/notify";
 
 /**
  * useRoles Hook
@@ -14,7 +15,6 @@ import type {
  * Hook for managing roles CRUD operations
  */
 export function useRoles() {
-  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState<RoleListItem[]>([]);
   const [pagination, setPagination] = useState({
@@ -42,13 +42,13 @@ export function useRoles() {
 
         return response;
       } catch (error: unknown) {
-        message.error(error.message || "Error al cargar roles");
+        notify.error(error.message || "Error al cargar roles");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -61,13 +61,13 @@ export function useRoles() {
         const role = await rolesService.getRoleById(id);
         return role;
       } catch (error: unknown) {
-        message.error(error.message || "Error al cargar rol");
+        notify.error(error.message || "Error al cargar rol");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -79,19 +79,19 @@ export function useRoles() {
       try {
         const success = await rolesService.createRole(data);
         if (success) {
-          message.success("Rol creado exitosamente");
+          notify.success("Rol creado exitosamente");
           // Refresh list
           await fetchRoles();
         }
         return success;
       } catch (error: unknown) {
-        message.error(error.message || "Error al crear rol");
+        notify.error(error.message || "Error al crear rol");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message, fetchRoles],
+    [fetchRoles],
   );
 
   /**
@@ -103,18 +103,18 @@ export function useRoles() {
       try {
         const success = await rolesService.updateRole(id, data);
         if (success) {
-          message.success("Rol actualizado exitosamente");
+          notify.success("Rol actualizado exitosamente");
           await fetchRoles();
         }
         return success;
       } catch (error: unknown) {
-        message.error(error.message || "Error al actualizar rol");
+        notify.error(error.message || "Error al actualizar rol");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message, fetchRoles],
+    [fetchRoles],
   );
 
   return {

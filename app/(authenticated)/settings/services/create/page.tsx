@@ -1,6 +1,6 @@
 "use client";
 
-import { AppBreadcrumb } from "@/components/ui/antd";
+import { PageHeader } from "@/components/ui/layout/page-header";
 import { ServiceForm } from "@/components/features/services";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
@@ -20,14 +20,15 @@ export default function CreateServicePage() {
 
   return (
     <>
-      <div className="mb-8">
-        <h2 className="text-3xl font-extrabold tracking-tight text-gray-900">
-          Nuevo Servicio
-        </h2>
-        <p className="mt-1 text-base text-gray-500">
-          Cree un nuevo servicio clínico para su catálogo hospitalario.
-        </p>
-      </div>
+      <PageHeader
+        title="Nuevo Servicio"
+        subtitle="Cree un nuevo servicio clínico para su catálogo."
+        actionButton={{
+          label: "Atrás",
+          onClick: () => router.push("/settings/services"),
+          variant: "back",
+        }}
+      />
       <ServiceForm basePath="/settings/services" />
     </>
   );

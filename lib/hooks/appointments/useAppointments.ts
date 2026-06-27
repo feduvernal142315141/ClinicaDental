@@ -142,12 +142,13 @@ export function useAppointments() {
   );
 
   const getDoctorAvailability = useCallback(
-    async (doctorId: string, date: string, interval = 15) => {
+    async (doctorId: string, date: string, interval = 15, duration?: number) => {
       try {
         return await appointmentsService.getDoctorAvailability(
           doctorId,
           date,
           interval,
+          duration,
         );
       } catch (error) {
         throw error;

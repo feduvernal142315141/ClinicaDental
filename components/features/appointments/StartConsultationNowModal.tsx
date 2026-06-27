@@ -1,10 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Modal, Input, Select, Form } from "antd";
+import { useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Stethoscope } from "lucide-react";
+import { Modal as CustomModal } from "@/components/ui/primitives/custom";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/atomic/forms";
+import TextArea from "@/components/ui/atomic/forms/textarea";
+import { Select } from "@/components/ui/controls/select";
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
 import { doctorsService } from "@/lib/services/doctors/doctors.service";
 import type { Doctor } from "@/lib/entity/doctors";
+
+const startConsultationSchema = z.object({
+  doctorId: z.string().min(1, "Seleccione un doctor"),
+  reason: z.string().max(500).optional(),
+});
+
+type StartConsultationFormValues = z.infer<typeof startConsultationSchema>;
 
 interface StartConsultationNowModalProps {
   open: boolean;
@@ -19,10 +40,20 @@ export function StartConsultationNowModal({
   onClose,
   onStarted,
 }: StartConsultationNowModalProps) {
-  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [doctorsLoading, setDoctorsLoading] = useState(false);
+
+  const form = useForm<StartConsultationFormValues>({
+    resolver: zodResolver(startConsultationSchema),
+    mode: "onBlur",
+    defaultValues: {
+      doctorId: "",
+      reason: "",
+    },
+  });
+  const { errors } = form.formState;
+  const reasonValue = form.watch("reason") ?? "";
 
   // Load doctors when modal opens
   useEffect(() => {
@@ -39,75 +70,116 @@ export function StartConsultationNowModal({
       .finally(() => setDoctorsLoading(false));
   }, [open]);
 
-  const handleOk = async () => {
+  const close = useCallback(() => {
+    if (loading) return;
+    form.reset();
+    onClose();
+  }, [loading, form, onClose]);
+
+  const submit = form.handleSubmit(async (values) => {
     try {
-      const values = await form.validateFields();
       setLoading(true);
       const result = await appointmentsService.startNowAppointment({
         patientId,
         doctorId: values.doctorId,
         reason: values.reason || undefined,
       });
-      form.resetFields();
+      form.reset();
       onStarted(result.appointmentId);
-    } catch (err: unknown) {
-      // Validation errors are handled by AntD Form; service errors are toasted by interceptor
-      const e = err as { message?: string };
-      if (e?.message) {
-        // Re-throw so loading state resets but modal stays open
-      }
+    } catch {
+      // Service errors are toasted by the Axios interceptor; keep modal open.
     } finally {
       setLoading(false);
     }
-  };
+  });
 
-  const handleCancel = () => {
-    if (loading) return;
-    form.resetFields();
-    onClose();
-  };
+  const doctorOptions = doctors.map((d) => ({
+    value: d.id,
+    label: d.specialty ? `${d.name} — ${d.specialty}` : d.name,
+  }));
 
   return (
-    <Modal
-      title="Nueva Consulta Express"
+    <CustomModal
       open={open}
-      onOk={handleOk}
-      onCancel={handleCancel}
-      okText="Iniciar Consulta"
-      cancelText="Cancelar"
-      confirmLoading={loading}
-      mask={{ closable: !loading }}
-      destroyOnHidden
+      onOpenChange={(next) => {
+        if (!next) close();
+      }}
+      icon={<Stethoscope className="h-5 w-5" />}
+      title="Nueva Consulta Express"
+      description="Selecciona el doctor y registra el motivo para iniciar la consulta de inmediato."
+      className="w-full sm:max-w-lg"
     >
-      <Form form={form} layout="vertical" className="mt-4">
-        <Form.Item
-          name="doctorId"
-          label="Doctor"
-          rules={[{ required: true, message: "Seleccione un doctor" }]}
-        >
-          <Select
-            placeholder="Seleccione un doctor"
-            loading={doctorsLoading}
-            showSearch
-            optionFilterProp="label"
-            options={doctors.map((d) => ({
-              value: d.id,
-              label: d.specialty
-                ? `${d.name} — ${d.specialty}`
-                : d.name,
-            }))}
-          />
-        </Form.Item>
+      <Form {...form}>
+        <form onSubmit={submit}>
+          <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 pb-5">
+            <FormField
+              control={form.control}
+              name="doctorId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Doctor <span className="text-rose-500">*</span>
+                  </FormLabel>
+                  <Select
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    options={doctorOptions}
+                    searchable
+                    searchPlaceholder="Buscar doctor…"
+                    placeholder={
+                      doctorsLoading
+                        ? "Cargando doctores…"
+                        : "Seleccione un doctor"
+                    }
+                    disabled={loading || doctorsLoading}
+                    aria-label="Doctor"
+                    aria-invalid={!!errors.doctorId}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <Form.Item name="reason" label="Motivo de consulta (opcional)">
-          <Input.TextArea
-            rows={3}
-            placeholder="Ej: Dolor en molar inferior derecho"
-            maxLength={500}
-            showCount
-          />
-        </Form.Item>
+            <FormField
+              control={form.control}
+              name="reason"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Motivo de consulta (opcional)</FormLabel>
+                  <TextArea
+                    rows={3}
+                    placeholder="Ej: Dolor en molar inferior derecho"
+                    maxLength={500}
+                    disabled={loading}
+                    aria-label="Motivo de consulta"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                  <div className="text-right text-xs text-subtle">
+                    {reasonValue.length}/500
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-hairline px-6 py-4">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={close}
+              disabled={loading}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" loading={loading}>
+              Iniciar Consulta
+            </Button>
+          </div>
+        </form>
       </Form>
-    </Modal>
+    </CustomModal>
   );
 }

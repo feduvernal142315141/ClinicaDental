@@ -2,7 +2,7 @@
 
 import { useMemo, useEffect, useCallback, useRef } from "react";
 import { App } from "antd";
-import { DataTable, Card } from "@/components/ui/antd";
+import { DataTable } from "@/components/ui/data-display/data-table";
 import {
   usePatients,
   usePatientsPage,
@@ -11,6 +11,7 @@ import {
 import { getPatientsColumns } from "../columns/patients-table.config";
 import { PatientSearchBar } from "./PatientSearchBar";
 import type { Patient } from "@/lib/entity/patients";
+import { notify } from "@/lib/utils/notify";
 
 interface PatientListProps {
   /** Base path for navigation */
@@ -26,7 +27,7 @@ interface PatientListProps {
  * <PatientList basePath="/patients" />
  */
 export function PatientList({ basePath = "/patients" }: PatientListProps) {
-  const { modal, message } = App.useApp();
+  const { modal } = App.useApp();
   const { handleViewPatient, handleEditPatient } = usePatientsPage({
     basePath,
   });
@@ -77,7 +78,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
           });
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_e) {
-          message.error("No se pudo desactivar el paciente");
+          notify.error("No se pudo desactivar el paciente");
         }
       },
     });
@@ -105,7 +106,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
           });
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_e) {
-          message.error("No se pudo activar el paciente");
+          notify.error("No se pudo activar el paciente");
         }
       },
     });
@@ -124,7 +125,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
   );
 
   return (
-    <Card>
+    <section className="bento space-y-4 p-4 lg:p-5">
       <PatientSearchBar value={search} onChange={setSearch} loading={loading} />
       <DataTable
         columns={columns}
@@ -143,6 +144,6 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
           });
         }}
       />
-    </Card>
+    </section>
   );
 }

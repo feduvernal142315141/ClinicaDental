@@ -9,6 +9,7 @@ import type {
   TreatmentPlanResponse,
   PaginatedQueryParams,
 } from "@/lib/entity/odontogram";
+import { notify } from "@/lib/utils/notify";
 
 /**
  * useTreatmentPlans Hook
@@ -17,7 +18,6 @@ import type {
  * Uses Ant Design App.useApp().message for user feedback.
  */
 export function useTreatmentPlans() {
-  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [plans, setPlans] = useState<TreatmentPlanResponse[]>([]);
   const [pagination, setPagination] = useState({
@@ -52,13 +52,13 @@ export function useTreatmentPlans() {
           error instanceof Error
             ? error.message
             : "Error al cargar los planes de tratamiento";
-        message.error(msg);
+        notify.error(msg);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -74,13 +74,13 @@ export function useTreatmentPlans() {
           error instanceof Error
             ? error.message
             : "Error al cargar el plan de tratamiento";
-        message.error(msg);
+        notify.error(msg);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -92,20 +92,20 @@ export function useTreatmentPlans() {
       setLoading(true);
       try {
         const planId = await treatmentPlanService.createTreatmentPlan(data);
-        message.success("Plan de tratamiento creado exitosamente");
+        notify.success("Plan de tratamiento creado exitosamente");
         return planId;
       } catch (error: unknown) {
         const msg =
           error instanceof Error
             ? error.message
             : "Error al crear el plan de tratamiento";
-        message.error(msg);
+        notify.error(msg);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -116,20 +116,20 @@ export function useTreatmentPlans() {
       setLoading(true);
       try {
         await treatmentPlanService.updateTreatmentPlan(data);
-        message.success("Plan de tratamiento actualizado exitosamente");
+        notify.success("Plan de tratamiento actualizado exitosamente");
         return true;
       } catch (error: unknown) {
         const msg =
           error instanceof Error
             ? error.message
             : "Error al actualizar el plan de tratamiento";
-        message.error(msg);
+        notify.error(msg);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -140,20 +140,20 @@ export function useTreatmentPlans() {
       setLoading(true);
       try {
         await treatmentPlanService.cancelTreatmentPlan(id);
-        message.success("Plan de tratamiento cancelado");
+        notify.success("Plan de tratamiento cancelado");
         return true;
       } catch (error: unknown) {
         const msg =
           error instanceof Error
             ? error.message
             : "Error al cancelar el plan de tratamiento";
-        message.error(msg);
+        notify.error(msg);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   return {

@@ -28,6 +28,10 @@ export interface ProcedureCatalogItem {
   materials?: string[]
   requiresAnesthesia?: boolean
   isFavorite?: boolean
+  /** Símbolo personalizado del servicio para el odontograma (modo TEXT). */
+  serviceSymbolText?: string
+  /** Imagen personalizada del servicio para el odontograma (modo ASSET). */
+  serviceSymbolUrl?: string
 }
 
 export interface ProcedureTemplate {
@@ -61,6 +65,10 @@ export interface ProcedurePlan {
   appointmentAt?: string
   blockedReason?: string
   isHomologousSuggestion?: boolean
+  /** Símbolo personalizado del servicio para el odontograma (modo TEXT). */
+  serviceSymbolText?: string
+  /** Imagen personalizada del servicio para el odontograma (modo ASSET). */
+  serviceSymbolUrl?: string
   createdAt: string
   updatedAt: string
   authorId?: string

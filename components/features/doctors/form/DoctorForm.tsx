@@ -1,74 +1,159 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Form, Input, Row, Col, Flex, Avatar } from "antd";
-import { UserOutlined } from "@ant-design/icons";
+import { useEffect, useState } from "react";
+import type { FieldErrors, UseFormReturn } from "react-hook-form";
+import { CircleAlert, Clock, User } from "lucide-react";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  Switch,
+} from "@/components/ui/atomic/forms";
+import TextArea from "@/components/ui/atomic/forms/textarea";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/primitives/shadcn/tabs";
+import { Select } from "@/components/ui/controls/select";
+import { TimeField } from "@/components/ui/controls/time-field";
+import { AvatarField } from "@/components/ui/controls/avatar-field";
 import { useDoctorForm } from "@/lib/hooks/doctors/use-doctor-form";
-
-import { BasicInfoFields } from "./fields/BasicInfoFields";
-import { ProfessionalInfoFields } from "./fields/ProfessionalInfoFields";
-import { RoleStatusFields } from "./fields/RoleStatusFields";
-import { DoctorScheduleFields } from "./fields/DoctorScheduleFields";
-import { FormActions } from "./components/FormActions";
-import { AvatarUpload } from "./components/AvatarUpload";
+import { useRoles } from "@/lib/hooks/roles";
+import { DAYS_OF_WEEK } from "@/lib/entity/schedule";
+import { cn } from "@/lib/utils/utils";
 import type { Doctor } from "@/lib/entity/doctors";
-import { Card } from "@/components/ui/antd";
-import { DEFAULT_WEEK_SCHEDULE } from "@/lib/entity/schedule";
+import type { DoctorFormValues } from "@/lib/hooks/doctors/doctor-form.schema";
 
-const { TextArea } = Input;
-
-function useResponsiveAvatarSize() {
-  const [size, setSize] = useState(200);
-
-  useEffect(() => {
-    const updateSize = () => {
-      const width = window.innerWidth;
-      if (width < 768) {
-        setSize(200);
-      } else if (width < 1200) {
-        setSize(160);
-      } else {
-        setSize(220);
-      }
-    };
-
-    updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
-  }, []);
-
-  return size;
-}
+const GENDER_OPTIONS = [
+  { value: "male", label: "Masculino" },
+  { value: "female", label: "Femenino" },
+  { value: "other", label: "Otro" },
+];
 
 interface DoctorFormProps {
-  /** Doctor ID for editing (undefined for new doctor) */
   doctorId?: string;
-  /** Base path for navigation */
   basePath?: string;
-  /** Initial data (for editing) */
   initialData?: Doctor;
-  /** Read-only mode (for detail view) */
   readOnly?: boolean;
-  /** Show role & status section (default: true). Useful to hide in "My Profile". */
+  /** Mostrar Rol + Estado (default true; ocúltalo en "Mi perfil"). */
   showRoleStatusFields?: boolean;
 }
 
-/**
- * Doctor Form Component
- *
- * Handles creation, editing, and viewing of doctors (system users).
- * Uses Ant Design Form with validation.
- *
- * @example
- * // New doctor
- * <DoctorForm basePath="/settings/doctors" />
- *
- * // Edit doctor
- * <DoctorForm doctorId="123" basePath="/settings/doctors" />
- *
- * // View doctor (read-only)
- * <DoctorForm doctorId="123" basePath="/settings/doctors" readOnly />
- */
+const Req = () => <span className="text-rose-500">*</span>;
+
+/** Una fila de día del editor de horarios. */
+function ScheduleDayRow({
+  form,
+  dayKey,
+  label,
+  disabled,
+}: {
+  form: UseFormReturn<DoctorFormValues>;
+  dayKey: keyof DoctorFormValues["schedule"];
+  label: string;
+  disabled?: boolean;
+}) {
+  const enabled = form.watch(`schedule.${dayKey}.enabled`);
+
+  return (
+    <div
+      className={cn(
+        "rounded-lg border border-hairline p-3 transition-colors",
+        enabled ? "bg-surface" : "bg-hover/40",
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <FormField
+          control={form.control}
+          name={`schedule.${dayKey}.enabled`}
+          render={({ field }) => (
+            <label className="flex w-32 shrink-0 cursor-pointer items-center gap-2">
+              <Switch
+                checked={!!field.value}
+                onCheckedChange={field.onChange}
+                disabled={disabled}
+              />
+              <span className="text-sm font-medium text-ink">{label}</span>
+            </label>
+          )}
+        />
+
+        {enabled ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-subtle">De</span>
+            <FormField
+              control={form.control}
+              name={`schedule.${dayKey}.startTime`}
+              render={({ field }) => (
+                <TimeField
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={disabled}
+                  aria-label={`${label}: hora de inicio`}
+                  className="w-28"
+                />
+              )}
+            />
+            <span className="text-xs text-subtle">a</span>
+            <FormField
+              control={form.control}
+              name={`schedule.${dayKey}.endTime`}
+              render={({ field }) => (
+                <TimeField
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={disabled}
+                  aria-label={`${label}: hora de fin`}
+                  className="w-28"
+                />
+              )}
+            />
+            <span className="ml-2 hidden text-xs text-subtle sm:inline">
+              Descanso
+            </span>
+            <FormField
+              control={form.control}
+              name={`schedule.${dayKey}.breakStart`}
+              render={({ field }) => (
+                <TimeField
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={disabled}
+                  aria-label={`${label}: inicio del descanso`}
+                  className="w-28"
+                />
+              )}
+            />
+            <span className="text-xs text-subtle">a</span>
+            <FormField
+              control={form.control}
+              name={`schedule.${dayKey}.breakEnd`}
+              render={({ field }) => (
+                <TimeField
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={disabled}
+                  aria-label={`${label}: fin del descanso`}
+                  className="w-28"
+                />
+              )}
+            />
+          </div>
+        ) : (
+          <span className="text-sm text-subtle">Cerrado</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function DoctorForm({
   doctorId,
   basePath = "/settings/doctors",
@@ -80,111 +165,343 @@ export function DoctorForm({
     doctorId,
     basePath,
     initialData,
+    requireRole: showRoleStatusFields,
   });
+  const { errors } = form.formState;
+  const { roles, loading: rolesLoading, fetchRoles } = useRoles();
+  const [tab, setTab] = useState("datos");
 
-  const avatarUrl = Form.useWatch("avatarUrl", form);
-  const avatarSize = useResponsiveAvatarSize();
+  useEffect(() => {
+    fetchRoles({ page: 0, pageSize: 0 });
+  }, [fetchRoles]);
 
-  const initialFileList =
-    avatarUrl && isEdit
-      ? [
-          {
-            uid: "-1",
-            name: "avatar.jpg",
-            status: "done" as const,
-            url: avatarUrl,
-          },
-        ]
-      : [];
+  // Al fallar la validación, salta a la primera pestaña con errores (Radix
+  // desmonta el contenido inactivo, así que el FormMessage no se vería).
+  const onInvalid = (errs: FieldErrors<DoctorFormValues>) => {
+    const datos =
+      errs.name ||
+      errs.email ||
+      errs.phone ||
+      errs.licenceNumber ||
+      errs.specialty ||
+      errs.gender ||
+      errs.roleId;
+    setTab(datos ? "datos" : errs.schedule ? "horarios" : "datos");
+  };
+
+  const roleOptions = roles.map((r) => ({ value: r.id, label: r.name }));
+  const formDisabled = loading || readOnly;
+
+  const datosError = Boolean(
+    errors.name ||
+      errors.email ||
+      errors.phone ||
+      errors.licenceNumber ||
+      errors.specialty ||
+      errors.gender ||
+      errors.roleId,
+  );
+  const horariosError = Boolean(errors.schedule);
 
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={handleSubmit}
-      initialValues={{
-        active: true,
-        schedule: DEFAULT_WEEK_SCHEDULE,
-      }}
-      disabled={loading || readOnly}
-    >
-      <Card
-        styles={{
-          body: {
-            maxHeight: "calc(100vh - 280px)",
-            overflowY: "auto",
-            overflowX: "hidden",
-          },
-        }}
-        actions={
-          readOnly
-            ? undefined
-            : [
-                <Flex key="actions" justify="end" style={{ padding: "0 16px" }}>
-                  <FormActions loading={loading} onCancel={handleCancel} />
-                </Flex>,
-              ]
-        }
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(handleSubmit, onInvalid)}
+        className="space-y-6"
       >
-        <Row gutter={[16, 24]} justify="center" align="middle">
-          <Col xs={24} sm={24} md={24} lg={8} xl={6}>
-            <Flex align="center" justify="center" className="w-full">
-              {readOnly ? (
-                <Avatar
-                  size={avatarSize}
-                  src={avatarUrl}
-                  icon={!avatarUrl ? <UserOutlined /> : undefined}
-                  style={{
-                    backgroundColor: !avatarUrl ? "#f0f0f0" : undefined,
-                    color: !avatarUrl ? "#8c8c8c" : undefined,
-                  }}
-                />
-              ) : (
-                <AvatarUpload
-                  size={avatarSize}
-                  maxCount={1}
-                  listType="picture-circle"
-                  initialFileList={initialFileList}
-                  disabled={readOnly}
-                  onFileListChange={(files) => {
-                    const url = files[0]?.preview || files[0]?.url;
-                    if (url) {
-                      form.setFieldValue("avatarUrl", url);
-                    } else {
-                      form.setFieldValue("avatarUrl", undefined);
-                    }
-                  }}
-                />
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList>
+            <TabsTrigger value="datos" className="gap-1.5">
+              <User className="h-4 w-4" /> Datos del doctor
+              {datosError && (
+                <CircleAlert className="h-3.5 w-3.5 text-rose-500" />
               )}
-            </Flex>
-          </Col>
+            </TabsTrigger>
+            <TabsTrigger value="horarios" className="gap-1.5">
+              <Clock className="h-4 w-4" /> Horarios de atención
+              {horariosError && (
+                <CircleAlert className="h-3.5 w-3.5 text-rose-500" />
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-          <Col xs={24} sm={24} md={24} lg={16} xl={18}>
-            <Flex justify={"space-between"} align={"start"} wrap={true}>
-              <BasicInfoFields />
+          {/* ───────────────── Datos ───────────────── */}
+          <TabsContent
+            value="datos"
+            className="mt-4 grid gap-6 lg:grid-cols-[200px_1fr]"
+          >
+            <div className="flex justify-center lg:justify-start lg:pt-2">
+              <FormField
+                control={form.control}
+                name="avatarUrl"
+                render={({ field }) => (
+                  <AvatarField
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    disabled={formDisabled}
+                  />
+                )}
+              />
+            </div>
 
-              <ProfessionalInfoFields />
+            <div className="space-y-6">
+              <section className="bento space-y-5 p-6">
+                <h3 className="text-sm font-semibold text-ink">
+                  Información básica
+                </h3>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel>
+                          Nombre <Req />
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Nombre del doctor"
+                            disabled={formDisabled}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Email <Req />
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="correo@clinica.com"
+                            disabled={formDisabled}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Teléfono <Req />
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="+591 7000 0000"
+                            disabled={formDisabled}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </section>
 
-              <Form.Item
-                className="w-full "
-                name="description"
-                label="Descripción / Biografía"
-              >
-                <TextArea
-                  className="pl-12"
-                  rows={4}
-                  placeholder="Información adicional sobre el doctor..."
+              <section className="bento space-y-5 p-6">
+                <h3 className="text-sm font-semibold text-ink">
+                  Información profesional
+                </h3>
+                <div className="grid gap-5 sm:grid-cols-3">
+                  <FormField
+                    control={form.control}
+                    name="licenceNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Número de licencia <Req />
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="LIC-000"
+                            disabled={formDisabled}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="specialty"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Especialidad</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Ej: Ortodoncia"
+                            disabled={formDisabled}
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Género <Req />
+                        </FormLabel>
+                        <FormControl>
+                          <Select
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            options={GENDER_OPTIONS}
+                            placeholder="Seleccione género"
+                            disabled={formDisabled}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Descripción / biografía</FormLabel>
+                      <FormControl>
+                        <TextArea
+                          rows={3}
+                          placeholder="Información adicional sobre el doctor…"
+                          disabled={formDisabled}
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </Form.Item>
+              </section>
 
-              {showRoleStatusFields ? <RoleStatusFields /> : null}
-            </Flex>
-          </Col>
-        </Row>
-        <Row gutter={[16, 16]}>
-          <DoctorScheduleFields />
-        </Row>
-      </Card>
+              {showRoleStatusFields && (
+                <section className="bento space-y-5 p-6">
+                  <h3 className="text-sm font-semibold text-ink">Acceso</h3>
+                  <div className="grid items-start gap-5 sm:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="roleId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Rol <Req />
+                          </FormLabel>
+                          <FormControl>
+                            <Select
+                              value={field.value ?? ""}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              options={roleOptions}
+                              placeholder={
+                                rolesLoading
+                                  ? "Cargando roles…"
+                                  : "Seleccione un rol"
+                              }
+                              disabled={formDisabled || rolesLoading}
+                              searchable
+                              searchPlaceholder="Buscar rol…"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="active"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-xl border border-hairline bg-elevated px-4 py-3">
+                          <div className="space-y-0.5">
+                            <FormLabel>Estado</FormLabel>
+                            <p className="text-xs text-subtle">
+                              {field.value ? "Activo" : "Inactivo"}
+                            </p>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={!!field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={formDisabled}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </section>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* ───────────────── Horarios ───────────────── */}
+          <TabsContent value="horarios" className="mt-4">
+            <section className="bento space-y-3 p-4 sm:p-6">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-brand" />
+                <div>
+                  <h3 className="text-sm font-semibold text-ink">
+                    Horarios de atención
+                  </h3>
+                  <p className="text-xs text-subtle">
+                    Configura los días y horarios de atención del doctor.
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {DAYS_OF_WEEK.map((day) => (
+                  <ScheduleDayRow
+                    key={day.key}
+                    form={form}
+                    dayKey={day.key}
+                    label={day.label}
+                    disabled={formDisabled}
+                  />
+                ))}
+              </div>
+            </section>
+          </TabsContent>
+        </Tabs>
+
+        {!readOnly && (
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={handleCancel}
+              disabled={loading}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" loading={loading}>
+              {isEdit ? "Actualizar" : "Guardar"}
+            </Button>
+          </div>
+        )}
+      </form>
     </Form>
   );
 }

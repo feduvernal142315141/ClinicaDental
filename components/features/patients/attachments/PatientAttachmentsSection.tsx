@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Spin, Button, message } from "antd";
+import { Spin, Button } from "antd";
 import { Paperclip, FileX2, Plus } from "lucide-react";
 import { usePatientAttachments } from "@/lib/hooks/patientAttachments/usePatientAttachments";
 import { ATTACHMENT_CATEGORIES, type AttachmentCategory } from "@/lib/entity/patientAttachment";
 import { AttachmentCard } from "./AttachmentCard";
 import { AttachmentUploadModal } from "./AttachmentUploadModal";
+import { notify } from "@/lib/utils/notify";
 
 interface PatientAttachmentsSectionProps {
   patientId: string;
@@ -22,18 +23,18 @@ export function PatientAttachmentsSection({ patientId, canUpload, canDelete, act
   const handleUpload = async (file: File, category: AttachmentCategory, notes?: string) => {
     try {
       await upload(file, category, notes, activeAppointmentId);
-      void message.success("Archivo subido correctamente");
+      void notify.success("Archivo subido correctamente");
     } catch {
-      void message.error("Error al subir el archivo");
+      void notify.error("Error al subir el archivo");
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await remove(id);
-      void message.success("Archivo eliminado");
+      void notify.success("Archivo eliminado");
     } catch {
-      void message.error("Error al eliminar el archivo");
+      void notify.error("Error al eliminar el archivo");
     }
   };
 

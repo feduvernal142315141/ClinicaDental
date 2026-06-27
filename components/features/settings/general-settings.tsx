@@ -427,7 +427,7 @@ function ScheduleDayRow({
         const enabled = getFieldValue(["schedule", dayKey, "enabled"]);
 
         return (
-          <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-4">
+          <div className="rounded-xl border border-hairline bg-hover p-4">
             <Row gutter={[16, 12]} align="middle">
               <Col xs={24} md={6}>
                 <Text strong>{label}</Text>

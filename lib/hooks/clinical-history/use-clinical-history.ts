@@ -1,13 +1,13 @@
 import { useState, useCallback, useRef } from "react";
-import { App } from "antd";
+
 import { clinicalHistoryService } from "@/lib/services/clinical-history";
 import type {
   ClinicalHistorySnapshot,
   UpdateMedicalHistoryRequest,
 } from "@/lib/entity/clinical-history";
+import { notify } from "@/lib/utils/notify";
 
 export function useClinicalHistory() {
-  const { message } = App.useApp();
   const [snapshot, setSnapshot] = useState<ClinicalHistorySnapshot | null>(
     null,
   );
@@ -46,17 +46,17 @@ export function useClinicalHistory() {
       setLoading(true);
       try {
         await clinicalHistoryService.updateMedicalHistory(patientId, data);
-        message.success("Historia médica actualizada exitosamente");
+        notify.success("Historia médica actualizada exitosamente");
         await loadSnapshot(patientId);
         return true;
       } catch (err: unknown) {
-        message.error(err.message || "Error al actualizar historia médica");
+        notify.error(err.message || "Error al actualizar historia médica");
         throw err;
       } finally {
         setLoading(false);
       }
     },
-    [message, loadSnapshot],
+    [loadSnapshot],
   );
 
   const validateMedicalHistory = useCallback(
@@ -64,17 +64,17 @@ export function useClinicalHistory() {
       setLoading(true);
       try {
         await clinicalHistoryService.validateMedicalHistory(patientId);
-        message.success("Historia médica validada exitosamente");
+        notify.success("Historia médica validada exitosamente");
         await loadSnapshot(patientId);
         return true;
       } catch (err: unknown) {
-        message.error(err.message || "Error al validar historia médica");
+        notify.error(err.message || "Error al validar historia médica");
         throw err;
       } finally {
         setLoading(false);
       }
     },
-    [message, loadSnapshot],
+    [loadSnapshot],
   );
 
   return {

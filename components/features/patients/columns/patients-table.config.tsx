@@ -1,4 +1,4 @@
-import { DataTableColumn } from "@/components/ui/antd";
+import { DataTableColumn } from "@/components/ui/data-display/data-table";
 import {
   EyeOutlined,
   EditOutlined,
@@ -48,14 +48,14 @@ export function getPatientsColumns({
       render: (_, record) => (
         <div className="flex items-center gap-3">
           {/* Avatar with initials */}
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-sm font-bold text-slate-400">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-hairline bg-hover text-sm font-bold text-subtle">
             {getInitials(record.name)}
           </div>
           <div>
-            <div className="text-sm font-bold text-slate-900">
+            <div className="text-sm font-bold text-ink">
               {record.name}
             </div>
-            <div className="font-mono text-[11px] text-slate-400 truncate max-w-[140px]">
+            <div className="font-mono text-[11px] text-subtle truncate max-w-[140px]">
               {record.id}
             </div>
           </div>
@@ -67,10 +67,10 @@ export function getPatientsColumns({
       title: "Edad",
       dataIndex: "dateOfBirth",
       render: (value) => {
-        if (!value) return <span className="text-sm text-slate-600">-</span>;
+        if (!value) return <span className="text-sm text-ink">-</span>;
         const age = calculateAge(value);
         return (
-          <span className="text-sm text-slate-600">
+          <span className="text-sm text-ink">
             {age.years} años y {age.months} meses
           </span>
         );
@@ -81,7 +81,7 @@ export function getPatientsColumns({
       title: "Contacto",
       render: (_, record) => (
         <div>
-          <div className="text-[13px] font-medium text-slate-900">
+          <div className="text-[13px] font-medium text-ink">
             {record.email || "-"}
           </div>
           {record.phone ? (
@@ -89,12 +89,12 @@ export function getPatientsColumns({
               href={`https://wa.me/${record.phone.replace(/\D/g, "")}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[11px] text-slate-500 hover:text-green-600 transition-colors"
+              className="text-[11px] text-subtle hover:text-green-600 transition-colors"
             >
               {record.phone}
             </a>
           ) : (
-            <span className="text-[11px] text-slate-500">-</span>
+            <span className="text-[11px] text-subtle">-</span>
           )}
         </div>
       ),
@@ -104,7 +104,7 @@ export function getPatientsColumns({
       title: "Dirección",
       dataIndex: "address",
       render: (value) => (
-        <span className="block max-w-[200px] truncate text-[13px] text-slate-500">
+        <span className="block max-w-[200px] truncate text-[13px] text-subtle">
           {value || "-"}
         </span>
       ),
@@ -119,7 +119,7 @@ export function getPatientsColumns({
             Activo
           </span>
         ) : (
-          <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
+          <span className="rounded-full border border-hairline bg-hover px-2.5 py-0.5 text-[11px] font-bold text-ink">
             Inactivo
           </span>
         ),

@@ -53,7 +53,7 @@ export default function LabelsSettingsPage() {
       ) : (
         <>
           {active.length === 0 ? (
-            <div className="p-12 text-center bg-white rounded-xl border border-dashed border-gray-300">
+            <div className="p-12 text-center bg-surface rounded-xl border border-dashed border-hairline">
               <Text type="secondary" className="text-lg">No hay etiquetas activas.</Text>
             </div>
           ) : (
@@ -75,7 +75,7 @@ export default function LabelsSettingsPage() {
                 items={[
                   {
                     key: "archived",
-                    label: <Text strong className="text-gray-500">Archivadas ({archived.length})</Text>,
+                    label: <Text strong className="text-subtle">Archivadas ({archived.length})</Text>,
                     children: (
                       <div style={{
                         display: "grid",

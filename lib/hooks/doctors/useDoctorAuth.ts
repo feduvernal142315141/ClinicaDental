@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { App } from "antd";
+
 import { doctorAuthService } from "@/lib/services/doctors";
 import type {
   LoginRequest,
@@ -12,6 +12,7 @@ import type {
   ResetPasswordRequest,
   ChangePasswordRequest,
 } from "@/lib/entity/doctors";
+import { notify } from "@/lib/utils/notify";
 
 /**
  * useDoctorAuth Hook
@@ -19,7 +20,6 @@ import type {
  * Hook for managing doctor authentication operations
  */
 export function useDoctorAuth() {
-  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
 
   /**
@@ -31,16 +31,16 @@ export function useDoctorAuth() {
       try {
         const response = await doctorAuthService.login(credentials);
         // En este proyecto el login inicia el flujo OTP
-        message.success("Código enviado. Verifica tu correo");
+        notify.success("Código enviado. Verifica tu correo");
         return response;
       } catch (error: unknown) {
-        message.error(error.message || "Error al iniciar sesión");
+        notify.error(error.message || "Error al iniciar sesión");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message]
+    []
   );
 
   /**
@@ -51,16 +51,16 @@ export function useDoctorAuth() {
       setLoading(true);
       try {
         const response = await doctorAuthService.validateOtp(data);
-        message.success("OTP validado correctamente");
+        notify.success("OTP validado correctamente");
         return response;
       } catch (error: unknown) {
-        message.error(error.message || "Error al validar OTP");
+        notify.error(error.message || "Error al validar OTP");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message]
+    []
   );
 
   /**
@@ -73,13 +73,13 @@ export function useDoctorAuth() {
         const response = await doctorAuthService.refreshToken(data);
         return response;
       } catch (error: unknown) {
-        message.error(error.message || "Error al refrescar la sesión");
+        notify.error(error.message || "Error al refrescar la sesión");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message]
+    []
   );
 
   /**
@@ -90,15 +90,15 @@ export function useDoctorAuth() {
       setLoading(true);
       try {
         await doctorAuthService.logout({ refreshToken: refreshTokenValue });
-        message.success("Sesión cerrada exitosamente");
+        notify.success("Sesión cerrada exitosamente");
       } catch (error: unknown) {
-        message.error(error.message || "Error al cerrar sesión");
+        notify.error(error.message || "Error al cerrar sesión");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message]
+    []
   );
 
   /**
@@ -109,11 +109,11 @@ export function useDoctorAuth() {
       setLoading(true);
       try {
         await doctorAuthService.forgotPassword(data);
-        message.success(
+        notify.success(
           "Se ha enviado un correo con instrucciones para restablecer tu contraseña"
         );
       } catch (error: unknown) {
-        message.error(
+        notify.error(
           error.message || "Error al solicitar restablecimiento de contraseña"
         );
         throw error;
@@ -121,7 +121,7 @@ export function useDoctorAuth() {
         setLoading(false);
       }
     },
-    [message]
+    []
   );
 
   /**
@@ -132,15 +132,15 @@ export function useDoctorAuth() {
       setLoading(true);
       try {
         await doctorAuthService.resetPassword(data);
-        message.success("Contraseña restablecida exitosamente");
+        notify.success("Contraseña restablecida exitosamente");
       } catch (error: unknown) {
-        message.error(error.message || "Error al restablecer contraseña");
+        notify.error(error.message || "Error al restablecer contraseña");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message]
+    []
   );
 
   /**
@@ -151,15 +151,15 @@ export function useDoctorAuth() {
       setLoading(true);
       try {
         await doctorAuthService.changePassword(data);
-        message.success("Contraseña cambiada exitosamente");
+        notify.success("Contraseña cambiada exitosamente");
       } catch (error: unknown) {
-        message.error(error.message || "Error al cambiar contraseña");
+        notify.error(error.message || "Error al cambiar contraseña");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message]
+    []
   );
 
   /**
@@ -172,13 +172,13 @@ export function useDoctorAuth() {
         const isValid = await doctorAuthService.verifyResetToken(token);
         return isValid;
       } catch (error: unknown) {
-        message.error(error.message || "Token inválido o expirado");
+        notify.error(error.message || "Token inválido o expirado");
         return false;
       } finally {
         setLoading(false);
       }
     },
-    [message]
+    []
   );
 
   return {

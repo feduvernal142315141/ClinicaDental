@@ -139,15 +139,16 @@ function FormMessage({ className, ...props }: React.ComponentProps<'p'>) {
   const { error, formMessageId } = useFormField()
   const body = error ? String(error?.message ?? '') : props.children
 
-  if (!body) {
-    return null
-  }
-
+  // Reserva siempre la altura de una línea para que mostrar/ocultar el error
+  // NO desplace ni desalinee los campos (estándar de formularios del proyecto).
   return (
     <p
       data-slot="form-message"
       id={formMessageId}
-      className={cn('text-destructive text-sm', className)}
+      className={cn(
+        'min-h-[1.125rem] text-[0.8rem] leading-tight text-destructive',
+        className,
+      )}
       {...props}
     >
       {body}

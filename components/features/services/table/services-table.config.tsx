@@ -1,13 +1,17 @@
-import { DataTableColumn } from "@/components/ui/antd";
+import { Pencil, Ban, CheckCircle2, MoreHorizontal } from "lucide-react";
 import {
-  EditOutlined,
-  StopOutlined,
-  CheckCircleOutlined,
-  MoreOutlined,
-} from "@ant-design/icons";
-import { Dropdown, Tag } from "antd";
-import type { ServiceListItem } from "@/lib/entity/services";
-import { SERVICE_TYPE_LABELS } from "@/lib/entity/services";
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/primitives/shadcn/dropdown-menu";
+import { DataTableColumn } from "@/components/ui/data-display/data-table";
+import type { ServiceListItem, ServiceType } from "@/lib/entity/services";
+import {
+  SERVICE_TYPE_LABELS,
+  SERVICE_CATEGORY_LABELS,
+} from "@/lib/entity/services";
+import { cn } from "@/lib/utils/utils";
 import dayjs from "dayjs";
 
 interface GetServicesColumnsParams {
@@ -17,11 +21,11 @@ interface GetServicesColumnsParams {
   canBlock: boolean;
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  TREATMENT: "blue",
-  PROCEDURE: "green",
-  PRODUCT: "orange",
-  ADVANCE: "purple",
+const TYPE_BADGE: Record<ServiceType, string> = {
+  TREATMENT: "bg-brand/10 text-brand ring-brand/20",
+  PROCEDURE: "bg-emerald-500/15 text-emerald-600 ring-emerald-400/25 dark:text-emerald-300",
+  PRODUCT: "bg-amber-500/15 text-amber-600 ring-amber-400/25 dark:text-amber-300",
+  ADVANCE: "bg-violet-500/15 text-violet-600 ring-violet-400/25 dark:text-violet-300",
 };
 
 export function getServicesColumns({
@@ -36,9 +40,11 @@ export function getServicesColumns({
       title: "Código",
       dataIndex: "code",
       sorter: true,
-      width: 120,
+      width: 110,
       render: (value) => (
-        <span className="font-mono text-xs text-slate-600">{value}</span>
+        <span className="font-mono text-xs text-subtle">
+          {(value as string) || "-"}
+        </span>
       ),
     },
     {
@@ -47,18 +53,39 @@ export function getServicesColumns({
       dataIndex: "name",
       sorter: true,
       render: (value) => (
-        <div className="text-sm font-bold text-slate-900">{value}</div>
+        <span className="text-sm font-semibold text-ink">{value as string}</span>
       ),
     },
     {
       key: "type",
       title: "Tipo",
       dataIndex: "type",
-      render: (value: string) => (
-        <Tag color={TYPE_COLORS[value] ?? "default"}>
-          {SERVICE_TYPE_LABELS[value as keyof typeof SERVICE_TYPE_LABELS] ??
-            value}
-        </Tag>
+      render: (value) => {
+        const type = value as ServiceType;
+        return (
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1",
+              TYPE_BADGE[type] ?? "bg-hover text-subtle ring-hairline",
+            )}
+          >
+            {SERVICE_TYPE_LABELS[type] ?? type}
+          </span>
+        );
+      },
+    },
+    {
+      key: "category",
+      title: "Categoría",
+      dataIndex: "category",
+      render: (value) => (
+        <span className="text-sm text-ink">
+          {value
+            ? SERVICE_CATEGORY_LABELS[
+                value as keyof typeof SERVICE_CATEGORY_LABELS
+              ] ?? (value as string)
+            : "—"}
+        </span>
       ),
     },
     {
@@ -66,9 +93,20 @@ export function getServicesColumns({
       title: "Costo",
       dataIndex: "cost",
       align: "right",
-      render: (value: number) => (
-        <span className="text-sm text-slate-600">
+      render: (value) => (
+        <span className="text-sm tabular-nums text-ink">
           {typeof value === "number" ? `$${value.toFixed(2)}` : "-"}
+        </span>
+      ),
+    },
+    {
+      key: "duration",
+      title: "Duración",
+      dataIndex: "duration",
+      align: "right",
+      render: (value) => (
+        <span className="text-sm tabular-nums text-subtle">
+          {typeof value === "number" && value > 0 ? `${value} min` : "—"}
         </span>
       ),
     },
@@ -77,20 +115,28 @@ export function getServicesColumns({
       title: "Odontograma",
       dataIndex: "odontogramEnabled",
       align: "center",
-      render: (value: boolean) =>
-        value ? <Tag color="success">Sí</Tag> : <Tag color="default">No</Tag>,
+      render: (value) =>
+        value ? (
+          <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-400/25 dark:text-emerald-300">
+            Sí
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-full bg-hover px-2.5 py-0.5 text-xs font-semibold text-subtle ring-1 ring-hairline">
+            No
+          </span>
+        ),
     },
     {
       key: "active",
       title: "Estado",
       dataIndex: "active",
-      render: (value: boolean) =>
+      render: (value) =>
         value ? (
-          <span className="rounded-full border border-green-100 bg-green-50 px-2.5 py-0.5 text-[11px] font-bold text-green-700">
+          <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-400/25 dark:text-emerald-300">
             Activo
           </span>
         ) : (
-          <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
+          <span className="inline-flex items-center rounded-full bg-hover px-2.5 py-0.5 text-xs font-semibold text-subtle ring-1 ring-hairline">
             Inactivo
           </span>
         ),
@@ -100,65 +146,58 @@ export function getServicesColumns({
       title: "Fecha Creación",
       dataIndex: "createAt",
       render: (value) => (
-        <span className="text-sm text-slate-600">
-          {value ? dayjs(value).format("DD/MM/YYYY") : "-"}
+        <span className="text-sm tabular-nums text-subtle">
+          {value ? dayjs(value as string).format("DD/MM/YYYY") : "-"}
         </span>
       ),
     },
     {
       key: "actions",
-      title: "ACCIONES",
+      title: "Acciones",
       align: "center",
       fixed: "right",
-      width: 100,
-      render: (_, record) => {
-        const dropdownItems = [];
-
-        if (canBlock) {
-          if (record.active) {
-            dropdownItems.push({
-              key: "deactivate",
-              label: "Desactivar",
-              icon: <StopOutlined />,
-              danger: true,
-              onClick: () => onToggleStatus(record.id, true),
-            });
-          } else {
-            dropdownItems.push({
-              key: "activate",
-              label: "Activar",
-              icon: <CheckCircleOutlined />,
-              className: "menu-item-success",
-              onClick: () => onToggleStatus(record.id, false),
-            });
-          }
-        }
-
-        return (
-          <div className="flex items-center justify-center gap-2">
-            {canEdit && (
-              <button
-                onClick={() => onEdit(record.id)}
-                title="Editar Servicio"
-                className="btn-action-edit"
-              >
-                <EditOutlined className="text-sm" />
-              </button>
-            )}
-            {canBlock && dropdownItems.length > 0 && (
-              <Dropdown
-                menu={{ items: dropdownItems }}
-                trigger={["click"]}
-                placement="bottomRight"
-              >
-                <button title="Más acciones" className="btn-action-more">
-                  <MoreOutlined className="text-sm" />
+      width: 110,
+      render: (_, record) => (
+        <div className="flex items-center justify-center gap-1">
+          {canEdit && (
+            <button
+              onClick={() => onEdit(record.id)}
+              title="Editar servicio"
+              className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          )}
+          {canBlock && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  title="Más acciones"
+                  className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
                 </button>
-              </Dropdown>
-            )}
-          </div>
-        );
-      },
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {record.active ? (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => onToggleStatus(record.id, true)}
+                  >
+                    <Ban className="h-4 w-4" />
+                    Desactivar
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => onToggleStatus(record.id, false)}>
+                    <CheckCircle2 className="h-4 w-4" />
+                    Activar
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      ),
     },
   ];
 }

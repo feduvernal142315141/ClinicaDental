@@ -34,8 +34,18 @@ export function MedicalHistoryFormFields({
   compact = false,
 }: MedicalHistoryFormFieldsProps) {
   const painBoxStyle = compact
-    ? { background: "#fafafa", padding: 12, borderRadius: 8, marginBottom: 16 }
-    : { background: "#fafafa", padding: 16, borderRadius: 8, marginBottom: 24 };
+    ? {
+        background: "var(--hover)",
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 16,
+      }
+    : {
+        background: "var(--hover)",
+        padding: 16,
+        borderRadius: 8,
+        marginBottom: 24,
+      };
 
   const painTitleStyle = compact
     ? { fontWeight: 600, marginBottom: 8, fontSize: 12 }

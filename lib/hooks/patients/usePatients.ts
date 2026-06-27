@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { App } from "antd";
+
 import { patientsService } from "@/lib/services/patients";
 import type {
   Patient,
@@ -8,6 +8,7 @@ import type {
   PatientsQueryParams,
   PaginatedPatientsResponse,
 } from "@/lib/entity/patients";
+import { notify } from "@/lib/utils/notify";
 
 /**
  * usePatients Hook
@@ -15,7 +16,6 @@ import type {
  * Hook for managing patients CRUD operations using the backend API
  */
 export function usePatients() {
-  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [pagination, setPagination] = useState({
@@ -46,13 +46,13 @@ export function usePatients() {
 
         return response;
       } catch (error: unknown) {
-        message.error(error.message || "Error al cargar pacientes");
+        notify.error(error.message || "Error al cargar pacientes");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -65,13 +65,13 @@ export function usePatients() {
         const patient = await patientsService.getPatientById(id);
         return patient;
       } catch (error: unknown) {
-        message.error(error.message || "Error al cargar paciente");
+        notify.error(error.message || "Error al cargar paciente");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -83,16 +83,16 @@ export function usePatients() {
       setLoading(true);
       try {
         const patientId = await patientsService.createPatient(data);
-        message.success("Paciente creado exitosamente");
+        notify.success("Paciente creado exitosamente");
         return patientId;
       } catch (error: unknown) {
-        message.error(error.message || "Error al crear paciente");
+        notify.error(error.message || "Error al crear paciente");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -103,16 +103,16 @@ export function usePatients() {
       setLoading(true);
       try {
         await patientsService.updatePatient(data);
-        message.success("Paciente actualizado exitosamente");
+        notify.success("Paciente actualizado exitosamente");
         return true;
       } catch (error: unknown) {
-        message.error(error.message || "Error al actualizar paciente");
+        notify.error(error.message || "Error al actualizar paciente");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -123,16 +123,16 @@ export function usePatients() {
       setLoading(true);
       try {
         await patientsService.deletePatient(id);
-        message.success("Paciente eliminado exitosamente");
+        notify.success("Paciente eliminado exitosamente");
         return true;
       } catch (error: unknown) {
-        message.error(error.message || "Error al eliminar paciente");
+        notify.error(error.message || "Error al eliminar paciente");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -143,10 +143,10 @@ export function usePatients() {
       setLoading(true);
       try {
         await patientsService.activatePatient(id);
-        message.success("Paciente activado exitosamente");
+        notify.success("Paciente activado exitosamente");
         return true;
       } catch (error: unknown) {
-        message.error(
+        notify.error(
           (error as Error).message || "Error al activar paciente",
         );
         throw error;
@@ -154,7 +154,7 @@ export function usePatients() {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -165,16 +165,16 @@ export function usePatients() {
       setLoading(true);
       try {
         await patientsService.restorePatient(id);
-        message.success("Paciente restaurado exitosamente");
+        notify.success("Paciente restaurado exitosamente");
         return true;
       } catch (error: unknown) {
-        message.error(error.message || "Error al restaurar paciente");
+        notify.error(error.message || "Error al restaurar paciente");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   /**
@@ -185,18 +185,18 @@ export function usePatients() {
       setLoading(true);
       try {
         await patientsService.updatePatient({ id, active });
-        message.success(
+        notify.success(
           `Paciente ${active ? "activado" : "desactivado"} exitosamente`,
         );
         return true;
       } catch (error: unknown) {
-        message.error(error.message || "Error al cambiar estado");
+        notify.error(error.message || "Error al cambiar estado");
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [message],
+    [],
   );
 
   return {

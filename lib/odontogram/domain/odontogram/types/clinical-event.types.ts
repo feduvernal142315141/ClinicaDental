@@ -93,6 +93,10 @@ export interface ClinicalEvent {
   serviceName?: string;
   /** Cost snapshot from the service catalog at event creation time */
   serviceCost?: number;
+  /** Per-service custom odontogram symbol (TEXT mode): short text drawn on the tooth */
+  serviceSymbolText?: string;
+  /** Per-service custom odontogram symbol (ASSET mode): image URL drawn on the tooth */
+  serviceSymbolUrl?: string;
   createdAt: string;
   updatedAt: string;
   authorId?: string;

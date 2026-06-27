@@ -45,7 +45,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-3">
+    <section className="bento p-5 space-y-3">
       <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
         {title}
       </h3>
@@ -74,9 +74,9 @@ export function PatientInfoColumn({
   return (
     <div className="flex flex-col h-full overflow-y-auto pr-3 gap-5 py-2">
       {/* Profile card */}
-      <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col items-center text-center">
-        <div className="h-20 w-20 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center mb-3">
-          <User className="h-10 w-10 text-blue-400" />
+      <section className="bento p-6 flex flex-col items-center text-center">
+        <div className="h-20 w-20 rounded-full bg-brand/15 border border-brand/25 flex items-center justify-center mb-3">
+          <User className="h-10 w-10 text-brand" />
         </div>
         <h2 className="text-lg font-bold leading-tight">{patient.name}</h2>
         {profileMeta && (

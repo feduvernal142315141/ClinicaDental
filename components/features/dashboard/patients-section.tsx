@@ -23,6 +23,7 @@ import {
 } from "recharts";
 import { Users, UserPlus, Briefcase, AlertTriangle } from "lucide-react";
 import { DashboardSummary, ServiceDemandItem } from "@/lib/entity/dashboard";
+import { useChartTheme } from "@/lib/hooks/use-chart-theme";
 import {
   formatClinicCurrency,
   formatClinicCurrencyShort,
@@ -37,6 +38,7 @@ interface PatientsSectionProps {
 
 export function PatientsSection({ data, currency }: PatientsSectionProps) {
   const { patientSignals, serviceDemand } = data;
+  const chart = useChartTheme();
   const [topSource, setTopSource] = useState<DemandSource>("consolidated");
   const [bottomSource, setBottomSource] =
     useState<DemandSource>("appointments");
@@ -181,7 +183,11 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip
+                  contentStyle={chart.tooltip.contentStyle}
+                  labelStyle={chart.tooltip.labelStyle}
+                  itemStyle={chart.tooltip.itemStyle}
+                />
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -212,15 +218,19 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
           {categoryData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={categoryData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke={chart.gridStroke} />
                 <XAxis type="number" allowDecimals={false} />
                 <YAxis
                   type="category"
                   dataKey="name"
-                  tick={{ fontSize: 11 }}
+                  tick={chart.axisTick}
                   width={90}
                 />
-                <Tooltip />
+                <Tooltip
+                  contentStyle={chart.tooltip.contentStyle}
+                  labelStyle={chart.tooltip.labelStyle}
+                  itemStyle={chart.tooltip.itemStyle}
+                />
                 <Legend />
                 {CATEGORY_COLORS.map((color, idx) => {
                   const keys = ["Citas", "Planes", "Realizados"] as const;
@@ -275,10 +285,10 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke={chart.gridStroke} />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11 }}
+                  tick={chart.axisTick}
                   angle={topDemandData.length > 4 ? -35 : 0}
                   textAnchor={topDemandData.length > 4 ? "end" : "middle"}
                   height={topDemandData.length > 4 ? 80 : 32}
@@ -289,17 +299,28 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                 <YAxis
                   yAxisId="left"
                   allowDecimals={false}
-                  tick={{ fontSize: 11 }}
+                  tick={chart.axisTick}
                 />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
-                  tick={{ fontSize: 11 }}
+                  tick={chart.axisTick}
                   tickFormatter={(v) =>
                     formatClinicCurrencyShort(Number(v), currency)
                   }
                 />
-                <Tooltip formatter={(value, name) => formatDemandTooltip(value, name, currency)} />
+                <Tooltip
+                  formatter={(value, name) =>
+                    formatDemandTooltip(
+                      value as number | string,
+                      name as string,
+                      currency,
+                    )
+                  }
+                  contentStyle={chart.tooltip.contentStyle}
+                  labelStyle={chart.tooltip.labelStyle}
+                  itemStyle={chart.tooltip.itemStyle}
+                />
                 <Legend
                   verticalAlign="bottom"
                   height={28}
@@ -370,10 +391,10 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                     <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke={chart.gridStroke} />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11 }}
+                  tick={chart.axisTick}
                   angle={bottomDemandData.length > 4 ? -35 : 0}
                   textAnchor={bottomDemandData.length > 4 ? "end" : "middle"}
                   height={bottomDemandData.length > 4 ? 80 : 32}
@@ -384,17 +405,28 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                 <YAxis
                   yAxisId="left"
                   allowDecimals={false}
-                  tick={{ fontSize: 11 }}
+                  tick={chart.axisTick}
                 />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
-                  tick={{ fontSize: 11 }}
+                  tick={chart.axisTick}
                   tickFormatter={(v) =>
                     formatClinicCurrencyShort(Number(v), currency)
                   }
                 />
-                <Tooltip formatter={(value, name) => formatDemandTooltip(value, name, currency)} />
+                <Tooltip
+                  formatter={(value, name) =>
+                    formatDemandTooltip(
+                      value as number | string,
+                      name as string,
+                      currency,
+                    )
+                  }
+                  contentStyle={chart.tooltip.contentStyle}
+                  labelStyle={chart.tooltip.labelStyle}
+                  itemStyle={chart.tooltip.itemStyle}
+                />
                 <Legend
                   verticalAlign="bottom"
                   height={28}
@@ -493,13 +525,13 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                     <span className="truncate max-w-[180px]">
                       {item.serviceName}
                     </span>
-                    <span className="font-medium text-muted-foreground">
+                    <span className="font-medium text-muted-foreground tabular-nums">
                       {item.conversionRate.toFixed(0)}%
                     </span>
                   </div>
                   <div className="h-2 rounded-full bg-muted overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-blue-500 transition-all"
+                      className="h-full rounded-full bg-brand transition-all"
                       style={{
                         width: `${Math.min(item.conversionRate, 100)}%`,
                       }}

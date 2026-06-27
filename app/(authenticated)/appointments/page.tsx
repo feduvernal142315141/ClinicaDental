@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Modal, Button } from "antd";
-import { CloseCircleOutlined, PlayCircleOutlined } from "@ant-design/icons";
-import { toast } from "sonner";
-import { SectionTitle } from "@/components/ui/antd";
+import { PlayCircle } from "lucide-react";
+import { PageHeader } from "@/components/ui/layout/page-header";
+import { Modal } from "@/components/ui/primitives/custom";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import { notify } from "@/lib/utils/notify";
 import { AppointmentsSchedulerShell } from "@/components/features/appointments/scheduler/AppointmentsSchedulerShell";
 import { useAppointmentsPage } from "@/lib/hooks/appointments";
 import { usePermission } from "@/lib/hooks/use-permission";
@@ -56,7 +57,7 @@ export default function AppointmentsPage() {
       }
       navigateToConsultation(appointment);
     } catch (e) {
-      toast.error((e as Error).message || "No se pudo iniciar la cita");
+      notify.error((e as Error).message || "No se pudo iniciar la cita");
     } finally {
       setStartLoading(false);
       setPendingAppointment(null);
@@ -77,7 +78,7 @@ export default function AppointmentsPage() {
 
   return (
     <>
-      <SectionTitle
+      <PageHeader
         title="Gestión de Citas"
         subtitle="Agenda de citas por especialista"
       />
@@ -93,41 +94,45 @@ export default function AppointmentsPage() {
       />
 
       <Modal
-        title="Iniciar consulta"
         open={!!pendingAppointment}
-        onCancel={() => !startLoading && setPendingAppointment(null)}
-        footer={null}
-        mask={{ closable: !startLoading }}
-        destroyOnHidden
-      >
-        {pendingAppointment && (
-          <>
-            <p className="mb-4">
-              Esta cita está programada para el{" "}
-              <strong>{pendingAppointment.date}</strong>. ¿Deseas iniciarla ahora de todas formas?
-            </p>
-            <div className="flex gap-2 pt-2">
+        onOpenChange={(next) => {
+          if (!next && !startLoading) setPendingAppointment(null);
+        }}
+        icon={<PlayCircle className="h-5 w-5" />}
+        title="Iniciar consulta"
+        className="w-full sm:max-w-lg"
+        footer={
+          pendingAppointment ? (
+            <>
               <Button
-                type="default"
-                danger
-                icon={<CloseCircleOutlined />}
-                style={{ flex: 1 }}
+                variant="outline"
+                type="button"
                 onClick={() => setPendingAppointment(null)}
                 disabled={startLoading}
               >
                 No, cancelar
               </Button>
               <Button
-                type="primary"
-                icon={<PlayCircleOutlined />}
-                style={{ flex: 1 }}
-                loading={startLoading}
+                type="button"
                 onClick={() => void doStartAndNavigate(pendingAppointment)}
+                loading={startLoading}
               >
                 Sí, iniciar consulta
               </Button>
-            </div>
-          </>
+            </>
+          ) : undefined
+        }
+      >
+        {pendingAppointment && (
+          <div className="px-6 pb-5">
+            <p className="text-sm text-subtle">
+              Esta cita está programada para el{" "}
+              <strong className="font-semibold text-ink">
+                {pendingAppointment.date}
+              </strong>
+              . ¿Deseas iniciarla ahora de todas formas?
+            </p>
+          </div>
         )}
       </Modal>
     </>

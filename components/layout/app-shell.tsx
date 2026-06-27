@@ -42,40 +42,37 @@ export function AppShell({ children }: AppShellProps) {
   if (!user) return null;
 
   return (
-    <div className="h-screen bg-slate-900 overflow-hidden">
-      {/* Inner container with rounded corners */}
-      <div className="h-full flex overflow-hidden rounded-2xl bg-background">
-        {/* Sidebar - dynamic width based on collapsed state */}
-        <aside
-          className={`hidden lg:flex flex-col bg-muted/30 rounded-l-2xl transition-all duration-300 ${
-            isSidebarCollapsed ? "w-20" : "w-64"
-          }`}
-        >
-          <Sidebar
-            currentPath={pathname}
-            isOpen={isSidebarOpen}
-            onClose={closeSidebar}
-            isCollapsed={isSidebarCollapsed}
-            onToggleCollapse={toggleSidebarCollapse}
-          />
-        </aside>
+    <div className="flex h-screen overflow-hidden bg-canvas">
+      {/* Sidebar - ancho dinámico según estado colapsado */}
+      <aside
+        className={`hidden lg:flex flex-col border-r border-hairline bg-surface transition-all duration-300 ${
+          isSidebarCollapsed ? "w-20" : "w-64"
+        }`}
+      >
+        <Sidebar
+          currentPath={pathname}
+          isOpen={isSidebarOpen}
+          onClose={closeSidebar}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={toggleSidebarCollapse}
+        />
+      </aside>
 
-        {/* Main content area */}
-        <div className="flex-1 flex flex-col overflow-hidden rounded-r-2xl">
-          {/* Mobile header - solo visible en mobile */}
-          <MobileHeader
-            isSidebarOpen={isSidebarOpen}
-            onToggleSidebar={toggleSidebar}
-          />
+      {/* Área principal */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Header móvil */}
+        <MobileHeader
+          isSidebarOpen={isSidebarOpen}
+          onToggleSidebar={toggleSidebar}
+        />
 
-          {/* Desktop header */}
-          <AppHeader />
+        {/* Header desktop */}
+        <AppHeader />
 
-          {/* Content area with scroll */}
-          <main className="flex-1 overflow-auto p-4 lg:p-6 bg-background">
-            {children}
-          </main>
-        </div>
+        {/* Contenido con scroll */}
+        <main className="flex-1 overflow-auto bg-canvas p-4 lg:p-6">
+          {children}
+        </main>
       </div>
     </div>
   );

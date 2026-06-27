@@ -82,29 +82,29 @@ const variantConfig: Record<
   }
 > = {
   info: {
-    bg: "bg-blue-50 dark:bg-blue-900/20",
-    titleColor: "text-blue-800 dark:text-blue-200",
-    descColor: "text-blue-600 dark:text-blue-300",
+    bg: "bg-sky-500/15",
+    titleColor: "text-sky-800 dark:text-sky-200",
+    descColor: "text-sky-600 dark:text-sky-300",
   },
   success: {
-    bg: "bg-green-50 dark:bg-green-900/20",
-    titleColor: "text-green-800 dark:text-green-200",
-    descColor: "text-green-600 dark:text-green-300",
+    bg: "bg-emerald-500/15",
+    titleColor: "text-emerald-800 dark:text-emerald-200",
+    descColor: "text-emerald-600 dark:text-emerald-300",
   },
   warning: {
-    bg: "bg-amber-50 dark:bg-amber-900/20",
+    bg: "bg-amber-500/15",
     titleColor: "text-amber-800 dark:text-amber-200",
     descColor: "text-amber-600 dark:text-amber-300",
   },
   error: {
-    bg: "bg-red-50 dark:bg-red-900/20",
-    titleColor: "text-red-800 dark:text-red-200",
-    descColor: "text-red-600 dark:text-red-300",
+    bg: "bg-rose-500/15",
+    titleColor: "text-rose-800 dark:text-rose-200",
+    descColor: "text-rose-600 dark:text-rose-300",
   },
   default: {
-    bg: "bg-gray-50 dark:bg-gray-800",
-    titleColor: "text-gray-800 dark:text-gray-200",
-    descColor: "text-gray-600 dark:text-gray-400",
+    bg: "bg-hover",
+    titleColor: "text-ink",
+    descColor: "text-subtle",
   },
 };
 

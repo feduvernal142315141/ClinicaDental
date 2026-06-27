@@ -18,14 +18,17 @@ export type OdontogramSymbolMode = "NONE" | "ASSET" | "TEXT" | "MANUAL";
  * Dental service category for odontogram integration
  */
 export type ServiceCategory =
+  | "DIAGNOSTICO"
+  | "PREVENTIVO"
   | "RESTAURADOR"
   | "ENDODONCIA"
+  | "PERIODONCIA"
   | "PROTESIS"
   | "IMPLANTE"
-  | "PREVENTIVO"
-  | "PERIODONCIA"
+  | "CIRUGIA"
+  | "ORTODONCIA"
   | "ESTETICO"
-  | "CIRUGIA";
+  | "GENERAL";
 
 /**
  * Service entity - Full representation
@@ -91,6 +94,8 @@ export interface CreateServiceRequest {
   /** Base64 data URI of the symbol image for upload (ASSET mode) */
   symbolImage?: string;
   symbolText?: string;
+  /** Default duration in minutes (drives appointment block sizing) */
+  duration?: number;
 }
 
 /**
@@ -131,6 +136,8 @@ export interface ServiceSnapshot {
   serviceCode: string;
   serviceName: string;
   serviceCost: number;
+  /** Frozen default duration (minutes) for historical reproducibility */
+  serviceDuration?: number;
   serviceSymbolMode?: OdontogramSymbolMode;
   serviceSymbolUrl?: string;
   serviceSymbolText?: string;
@@ -160,12 +167,25 @@ export const SYMBOL_MODE_LABELS: Record<OdontogramSymbolMode, string> = {
  * Service category labels (Spanish)
  */
 export const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
+  DIAGNOSTICO: "Diagnóstico",
+  PREVENTIVO: "Preventivo",
   RESTAURADOR: "Restaurador",
   ENDODONCIA: "Endodoncia",
+  PERIODONCIA: "Periodoncia",
   PROTESIS: "Prótesis",
   IMPLANTE: "Implante",
-  PREVENTIVO: "Preventivo",
-  PERIODONCIA: "Periodoncia",
-  ESTETICO: "Estético",
   CIRUGIA: "Cirugía",
+  ORTODONCIA: "Ortodoncia",
+  ESTETICO: "Estético",
+  GENERAL: "General",
 };
+
+/**
+ * Service types that can be booked into the agenda (visit codes).
+ * PRODUCT/ADVANCE are non-visit codes: sellable but not schedulable.
+ */
+export const SCHEDULABLE_SERVICE_TYPES: ServiceType[] = ["TREATMENT", "PROCEDURE"];
+
+export function isSchedulableType(type: ServiceType): boolean {
+  return SCHEDULABLE_SERVICE_TYPES.includes(type);
+}

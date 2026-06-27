@@ -6,8 +6,10 @@
  */
 
 import dayjs, { type Dayjs } from "dayjs";
+import { dateToLocalDate } from "@/lib/datetime";
 import { Appointment } from "@/lib/entity/appointment/appointments";
-import type { WeekSchedule } from "@/lib/entity/schedule";
+import type { DaySchedule, WeekSchedule } from "@/lib/entity/schedule";
+import { DAYS_OF_WEEK } from "@/lib/entity/schedule";
 
 /**
  * Obtiene las clases CSS para el badge de estado de appointment
@@ -75,10 +77,12 @@ export function formatMonthYear(date: Date): string {
 }
 
 /**
- * Convierte una fecha a formato ISO string (YYYY-MM-DD)
+ * Convierte una fecha a 'YYYY-MM-DD' usando componentes LOCALES (regla de oro).
+ * No usar toISOString(): convertiría a UTC y produciría off-by-one cerca de
+ * medianoche en zonas con desfase horario.
  */
 export function toISODateString(date: Date): string {
-  return date.toISOString().split("T")[0];
+  return dateToLocalDate(date);
 }
 
 /**
@@ -173,8 +177,36 @@ export function getTemporalCategory(
  *
  * Si no se proporciona schedule, solo deshabilita fechas pasadas.
  */
+type ScheduleLike = WeekSchedule | Record<string, unknown> | undefined | null;
+
+/** Devuelve el DaySchedule del día correspondiente a `date`, o undefined. */
+function getDayScheduleFor(
+  schedule: ScheduleLike,
+  date: Dayjs,
+): DaySchedule | undefined {
+  if (!schedule) return undefined;
+  const dayKey = DAY_INDEX_TO_KEY[date.day()];
+  if (!dayKey) return undefined;
+  const day = (schedule as Record<string, unknown>)[dayKey];
+  return day && typeof day === "object" ? (day as DaySchedule) : undefined;
+}
+
+/**
+ * Indica si el doctor atiende en la fecha dada según su horario semanal.
+ * Un día se considera laboral si existe en el schedule y `enabled !== false`
+ * (compatibilidad legacy: presencia sin `enabled` ⇒ habilitado).
+ */
+export function isDoctorWorkingDay(
+  schedule: ScheduleLike,
+  date: Dayjs,
+): boolean {
+  const day = getDayScheduleFor(schedule, date);
+  if (!day) return false;
+  return day.enabled !== false;
+}
+
 export function buildDisabledDate(
-  schedule: WeekSchedule | Record<string, unknown> | undefined | null,
+  schedule: ScheduleLike,
 ): (current: Dayjs) => boolean {
   return (current: Dayjs): boolean => {
     if (!current) return false;
@@ -184,22 +216,46 @@ export function buildDisabledDate(
       return true;
     }
 
-    // Si hay schedule, deshabilitar días donde el doctor no trabaja
-    if (schedule) {
-      const dayKey = DAY_INDEX_TO_KEY[current.day()];
-      if (dayKey) {
-        const daySchedule = (schedule as Record<string, unknown>)[dayKey];
-        if (
-          daySchedule &&
-          typeof daySchedule === "object" &&
-          "enabled" in daySchedule &&
-          (daySchedule as { enabled: boolean }).enabled === false
-        ) {
-          return true;
-        }
+    // Sin schedule cargado aún: no sobre-deshabilitar (solo fechas pasadas).
+    if (!schedule) return false;
+
+    // El doctor no atiende ese día → deshabilitado.
+    return !isDoctorWorkingDay(schedule, current);
+  };
+}
+
+export interface DoctorScheduleSummary {
+  workingDays: { key: string; short: string }[];
+  range?: { start: string; end: string };
+  break?: { start: string; end: string };
+}
+
+/**
+ * Construye un resumen legible del horario del doctor para mostrar como chip:
+ * días que atiende + un rango representativo + descanso si aplica.
+ */
+export function getDoctorScheduleSummary(
+  schedule: ScheduleLike,
+): DoctorScheduleSummary | null {
+  if (!schedule) return null;
+  const source = schedule as Record<string, DaySchedule | undefined>;
+
+  const workingDays: { key: string; short: string }[] = [];
+  let range: { start: string; end: string } | undefined;
+  let brk: { start: string; end: string } | undefined;
+
+  for (const { key, shortLabel } of DAYS_OF_WEEK) {
+    const day = source[key];
+    if (day && day.enabled !== false) {
+      workingDays.push({ key, short: shortLabel });
+      if (!range && day.startTime && day.endTime) {
+        range = { start: day.startTime, end: day.endTime };
+      }
+      if (!brk && day.breakStart && day.breakEnd) {
+        brk = { start: day.breakStart, end: day.breakEnd };
       }
     }
+  }
 
-    return false;
-  };
+  return { workingDays, range, break: brk };
 }
