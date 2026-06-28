@@ -50,3 +50,6 @@ Thumbs.db
 *.mov
 *.wmv
 
+# Claude Code project instructions — re-included aquí pese al ignore global
+!CLAUDE.md
+
