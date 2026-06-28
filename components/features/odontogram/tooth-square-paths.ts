@@ -26,6 +26,8 @@ export interface ToothViewPaths {
   surfaces: SurfacePath[];
   roots: string[];
   highlights: string[];
+  /** Centro de la corona para anclar el símbolo (evita dibujarlo sobre la raíz). */
+  symbolAnchor?: { x: number; y: number };
 }
 
 export interface ToothTypePaths {

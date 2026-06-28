@@ -162,6 +162,58 @@ export function VisitHistoryDrawer({
                 )}
               </section>
 
+              {/* Anamnesis congelada al momento de la visita */}
+              <section>
+                <SectionTitle>Anamnesis (al momento de la visita)</SectionTitle>
+                {record?.medicalSnapshot ? (
+                  <div className="space-y-2 text-sm">
+                    {(
+                      [
+                        ["Alergias", record.medicalSnapshot.allergies],
+                        ["Medicación", record.medicalSnapshot.currentMedications],
+                        ["Enfermedades", record.medicalSnapshot.systemicDiseases],
+                        ["Cirugías", record.medicalSnapshot.previousSurgeries],
+                        ["Hábitos", record.medicalSnapshot.habits],
+                      ] as const
+                    ).map(([label, items]) => (
+                      <div key={label}>
+                        <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                          {label}
+                        </span>
+                        {items && items.length > 0 ? (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {items.map((it, idx) => (
+                              <Badge key={`${label}-${idx}`} variant="outline">
+                                {it}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground">—</p>
+                        )}
+                      </div>
+                    ))}
+                    {record.medicalSnapshot.capturedAt && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Congelada el{" "}
+                        {new Date(
+                          record.medicalSnapshot.capturedAt,
+                        ).toLocaleString("es-ES")}
+                      </p>
+                    )}
+                  </div>
+                ) : record ? (
+                  <p className="text-sm text-muted-foreground italic">
+                    Anamnesis no congelada para esta visita (previa al registro
+                    por visita); ver datos actuales en Historia Clínica.
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    Sin registro de visita.
+                  </p>
+                )}
+              </section>
+
               {/* Notas del médico */}
               <section>
                 <SectionTitle>

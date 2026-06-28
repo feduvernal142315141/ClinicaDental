@@ -74,36 +74,40 @@ export class OdontogramColorService {
   }
 
   /**
-   * Determina el color base de un diente (para vista global)
+   * Color base aportado SOLO por eventos a NIVEL DIENTE (sin superficie) que
+   * afectan el odontograma: ausente, implante, corona, endodoncia. Devuelve
+   * `null` cuando no hay ninguno → el diente conserva su color natural.
+   *
+   * El renderer lo usa como relleno base de TODAS las caras (en las 3 vistas);
+   * las caries por superficie conservan precedencia por cara vía getSurfaceColor.
    */
-  static getToothColor(
+  static getToothLevelColor(
     toothNumber: number,
     allEvents: ClinicalEvent[],
-  ): string {
-    const toothEvents = allEvents.filter(
+  ): string | null {
+    const toothLevelEvents = allEvents.filter(
       (e) =>
         e.toothNumber === toothNumber &&
-        e.visualState?.affectsOdontogram !== false,
+        e.surfaces.length === 0 &&
+        e.visualState?.affectsOdontogram === true,
     );
 
-    if (toothEvents.length === 0) {
-      return ODONTOGRAM_STATE_COLORS.HEALTHY;
+    if (toothLevelEvents.length === 0) {
+      return null;
     }
 
-    // Buscar el evento de mayor prioridad a nivel de diente
-    const eventWithPriority = toothEvents.map((event) => ({
-      event,
+    const withPriority = toothLevelEvents.map((event) => ({
       priority: this.getEventPriority(event),
       color: this.getEventColor(event),
     }));
 
-    eventWithPriority.sort((a, b) => {
-      const aPriorityIndex = COLOR_PRIORITY_ORDER.indexOf(a.priority);
-      const bPriorityIndex = COLOR_PRIORITY_ORDER.indexOf(b.priority);
-      return aPriorityIndex - bPriorityIndex;
-    });
+    withPriority.sort(
+      (a, b) =>
+        COLOR_PRIORITY_ORDER.indexOf(a.priority) -
+        COLOR_PRIORITY_ORDER.indexOf(b.priority),
+    );
 
-    return eventWithPriority[0]?.color || ODONTOGRAM_STATE_COLORS.HEALTHY;
+    return withPriority[0]?.color ?? null;
   }
 
   /**

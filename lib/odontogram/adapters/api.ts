@@ -7,6 +7,10 @@ import {
   type OdontogramSnapshot,
 } from "@/lib/odontogram/store";
 
+/** UUID v4 — el odontograma siempre debe guardarse ligado a una visita real. */
+const UUID_V4 =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 /**
  * Options for the API adapter.
  * `authorId` and `clinicId` are provided by the host context (auth / patient).
@@ -78,6 +82,15 @@ export function createApiOdontogramAdapter(
     },
 
     async save(patientId, snapshot, clinicId) {
+      // Integridad: nunca persistir un odontograma sin una visita real. Evita
+      // snapshots huérfanos (visitId null) que el histórico no podría recuperar.
+      const visitId = snapshot.metadata.visitId ?? options.visitId ?? null;
+      if (!visitId || !UUID_V4.test(visitId)) {
+        throw new Error(
+          "No se puede guardar el odontograma sin una visita activa.",
+        );
+      }
+
       const state = JSON.stringify({
         schemaVersion: snapshot.schemaVersion,
         teeth: snapshot.teeth,
@@ -86,7 +99,7 @@ export function createApiOdontogramAdapter(
 
       await odontogramService.saveOdontogram({
         patientId,
-        visitId: snapshot.metadata.visitId ?? options.visitId ?? null,
+        visitId,
         authorId: snapshot.metadata.authorId ?? options.authorId,
         clinicId: clinicId ?? snapshot.metadata.clinicId ?? options.clinicId,
         version: (snapshot.metadata.version ?? 0) + 1,

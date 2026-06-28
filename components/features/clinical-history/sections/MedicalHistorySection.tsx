@@ -75,9 +75,7 @@ export function MedicalHistorySection({
     currentMedications,
     allergies,
     previousSurgeries,
-    chiefComplaint,
     habits,
-    currentPain,
     lastDentalVisit,
     isValidated,
     validatedAt,
@@ -176,9 +174,6 @@ export function MedicalHistorySection({
             style={{ height: "100%" }}
           >
             <Descriptions column={1} size="small">
-              <Descriptions.Item label="Motivo de consulta">
-                {chiefComplaint ?? "-"}
-              </Descriptions.Item>
               <Descriptions.Item label="Hábitos">
                 {habits.length > 0 ? (
                   <TagList items={habits} color="cyan" />
@@ -187,36 +182,8 @@ export function MedicalHistorySection({
                 )}
               </Descriptions.Item>
             </Descriptions>
-
-            {currentPain && (
-              <div style={{ marginTop: 8 }}>
-                <Text strong style={{ fontSize: 13 }}>
-                  Dolor actual
-                </Text>
-                <Descriptions column={1} size="small" style={{ marginTop: 4 }}>
-                  {currentPain.location && (
-                    <Descriptions.Item label="Ubicación">
-                      {currentPain.location}
-                    </Descriptions.Item>
-                  )}
-                  {currentPain.intensity !== undefined && (
-                    <Descriptions.Item label="Intensidad">
-                      {currentPain.intensity}/10
-                    </Descriptions.Item>
-                  )}
-                  {currentPain.type && (
-                    <Descriptions.Item label="Tipo">
-                      {currentPain.type}
-                    </Descriptions.Item>
-                  )}
-                  {currentPain.duration && (
-                    <Descriptions.Item label="Duración">
-                      {currentPain.duration}
-                    </Descriptions.Item>
-                  )}
-                </Descriptions>
-              </div>
-            )}
+            {/* Motivo de consulta y dolor actual son per-visita: se ven en el
+                workspace de la consulta y en el historial de visitas. */}
           </Card>
         </Col>
       </Row>

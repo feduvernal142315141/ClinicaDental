@@ -114,6 +114,22 @@ export interface ClinicalHistorySnapshot {
 // Visit Record types (HU-CLIN-005)
 // ---------------------------------------------------------------------------
 
+/** Anamnesis congelada al completar la cita (null en visitas legacy pre-F3). */
+export interface VisitMedicalSnapshot {
+  allergies?: string[];
+  currentMedications?: string[];
+  systemicDiseases?: string[];
+  previousSurgeries?: string[];
+  habits?: string[];
+  occupation?: string;
+  maritalStatus?: string;
+  bloodType?: string;
+  insurancePlan?: string;
+  lastDentalVisit?: string;
+  validated?: boolean;
+  capturedAt?: string;
+}
+
 export interface PatientVisitRecord {
   appointmentId: string;
   patientId: string;
@@ -124,6 +140,8 @@ export interface PatientVisitRecord {
     type?: string;
     duration?: string;
   };
+  /** Snapshot inmutable de la anamnesis al momento de la visita. */
+  medicalSnapshot?: VisitMedicalSnapshot | null;
   clinicalNotes?: string;
   clinicalNotesUpdatedAt?: string;
   clinicalNotesUpdatedBy?: string;

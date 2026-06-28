@@ -30,6 +30,7 @@ interface PerformedTabProps {
   plans?: ProcedurePlan[];
   performed?: PerformedProcedure[];
   patientRisk?: PatientRiskLevel;
+  patientRiskReasons?: string[];
   readOnly?: boolean;
   onNavigateToTab?: (tab: string) => void;
   onSave?: (performed: PerformedProcedure[]) => void;
@@ -262,6 +263,7 @@ export function PerformedTab({
   plans = [],
   performed = [],
   patientRisk = "medio",
+  patientRiskReasons,
   readOnly = false,
   onNavigateToTab,
   onSave,
@@ -539,7 +541,11 @@ export function PerformedTab({
         </div>
 
         <div className="flex flex-wrap gap-2 lg:justify-end">
-          <Badge variant="outline" className={getRiskColor(patientRisk)}>
+          <Badge
+            variant="outline"
+            className={getRiskColor(patientRisk)}
+            title={patientRiskReasons?.join(" · ")}
+          >
             Riesgo: {patientRisk.charAt(0).toUpperCase() + patientRisk.slice(1)}
           </Badge>
           <Badge variant="outline" className="bg-elevated text-xs">

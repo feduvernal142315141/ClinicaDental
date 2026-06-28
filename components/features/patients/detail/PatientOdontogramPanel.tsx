@@ -11,6 +11,7 @@ import { OdontogramReadOnlyOverlay } from "@/components/features/odontogram/ui/O
 import { OdontogramHistoryTimeline } from "@/components/features/odontogram/ui/OdontogramHistoryTimeline";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
 import { notify } from "@/lib/utils/notify";
+import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
 
 interface PatientOdontogramPanelProps {
   patient: {
@@ -25,6 +26,8 @@ interface PatientOdontogramPanelProps {
   appointments?: Appointment[];
   /** Called when user selects a historic visit from the timeline */
   onSelectHistoricVisit?: (appointmentId: string) => void;
+  /** CTA del overlay solo-lectura cuando no hay consulta activa. */
+  onStartConsultation?: () => void;
   finalizeOpen?: boolean;
   onFinalizeClose?: () => void;
   onFinalizeSuccess?: (result: { followUpId?: string }) => void;
@@ -37,6 +40,7 @@ export function PatientOdontogramPanel({
   onClearHistoric,
   appointments,
   onSelectHistoricVisit,
+  onStartConsultation,
   finalizeOpen,
   onFinalizeClose,
   onFinalizeSuccess,
@@ -99,8 +103,39 @@ export function PatientOdontogramPanel({
   }, [historicSnapshot]);
 
   const isHistoricMode = !!historicAppointmentId;
-  // US-03: odontogram is read-only when no active consultation OR in historic mode
-  const readOnly = isHistoricMode || !activeAppointmentId || !(isAdmin || can("patients", PermissionAction.EDIT));
+
+  // Una cita finalizada (completed) NO debe ser editable: red de seguridad
+  // determinista frente a la redirección asíncrona de la página.
+  const activeAppointment = useMemo(
+    () => appointments?.find((a) => a.id === activeAppointmentId),
+    [appointments, activeAppointmentId],
+  );
+  const isCompleted = activeAppointment?.status === "completed";
+
+  // El odontograma es documentación clínica: su edición se gatea con permiso
+  // clínico (clinical_history), no con patients:EDIT.
+  const canEditClinical =
+    isAdmin ||
+    can("clinical_history", PermissionAction.EDIT) ||
+    can("clinical_history", PermissionAction.CREATE);
+
+  // US-03: odontogram is read-only when no active consultation, historic mode,
+  // a finalized visit, or insufficient clinical permission.
+  const readOnly =
+    isHistoricMode || !activeAppointmentId || isCompleted || !canEditClinical;
+
+  // Motivo del modo solo-lectura → feedback coherente en el overlay.
+  // Precedencia: sin permiso (no accionable) > finalizada > sin consulta.
+  const readOnlyReason: "no-consultation" | "completed" | "no-permission" | null =
+    isHistoricMode
+      ? null
+      : !canEditClinical
+        ? "no-permission"
+        : isCompleted
+          ? "completed"
+          : !activeAppointmentId
+            ? "no-consultation"
+            : null;
 
   const adapter = isHistoricMode && historicAdapter ? historicAdapter : apiAdapter;
 
@@ -141,7 +176,22 @@ export function PatientOdontogramPanel({
             readOnly={readOnly}
             showHeader={false}
             initialTab="odontogram"
+            onSaveStart={
+              !readOnly && !isHistoricMode
+                ? () => useAutosaveStatus.getState().markSaving()
+                : undefined
+            }
+            onSaveSuccess={
+              !readOnly && !isHistoricMode
+                ? () => useAutosaveStatus.getState().markSaved()
+                : undefined
+            }
             onError={() => {
+              // Solo marca error de autosave en edición real (no en carga
+              // histórica/solo-lectura, donde no hay sesión de guardado activa).
+              if (!readOnly && !isHistoricMode) {
+                useAutosaveStatus.getState().markError();
+              }
               notify.error("No se pudo sincronizar el odontograma del paciente");
             }}
             finalizeOpen={finalizeOpen}
@@ -149,9 +199,12 @@ export function PatientOdontogramPanel({
             onFinalizeSuccess={onFinalizeSuccess}
           />
         </Spin>
-        {/* Read-only overlay — shown when no active consultation and not in historic mode */}
-        {!activeAppointmentId && !isHistoricMode && (
-          <OdontogramReadOnlyOverlay />
+        {/* Read-only overlay — coherente para todos los motivos (no histórico) */}
+        {readOnly && !isHistoricMode && readOnlyReason && (
+          <OdontogramReadOnlyOverlay
+            reason={readOnlyReason}
+            onStartConsultation={onStartConsultation}
+          />
         )}
       </div>
     </div>

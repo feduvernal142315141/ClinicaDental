@@ -93,8 +93,8 @@ export function useFinalizeAppointment({
       followUp,
       pendingServices,
     }: FinalizeAppointmentInput): Promise<{ followUpId?: string }> => {
-      if (!visitId) {
-        const msg = "No hay cita activa para finalizar.";
+      if (!visitId || !UUID_V4.test(visitId)) {
+        const msg = "No hay una cita válida para finalizar.";
         setError(msg);
         notify.error(msg);
         throw new Error(msg);

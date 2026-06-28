@@ -13,14 +13,16 @@
  * Estos son los colores que se ven en el odontograma
  */
 export const ODONTOGRAM_STATE_COLORS = {
-  // PATOLOGÍA ACTIVA - Necesita atención inmediata
+  // PATOLOGÍA ACTIVA - Rampa monótona de rojos (ICDAS 1→6) con contraste WCAG
+  // suficiente incluso a fillOpacity 0.75 sobre blanco (1-2 ya NO casi-invisibles).
+  // Fuente única de verdad ICDAS→color: la consumen grilla y modal por igual.
   CARIES_ACTIVE: {
-    1: "#FFEBEE", // ICDAS 1 - Mancha blanca
-    2: "#FFCDD2", // ICDAS 2 - Cambio de color
-    3: "#EF9A9A", // ICDAS 3 - Microcavidad
-    4: "#E57373", // ICDAS 4 - Sombra dentina
-    5: "#EF5350", // ICDAS 5 - Cavidad pequeña
-    6: "#F44336", // ICDAS 6 - Cavidad extensa
+    1: "#FCA5A5", // ICDAS 1 - Mancha blanca (rojo claro pero visible)
+    2: "#F87171", // ICDAS 2 - Cambio de color
+    3: "#EF4444", // ICDAS 3 - Microcavidad
+    4: "#DC2626", // ICDAS 4 - Sombra dentina
+    5: "#B91C1C", // ICDAS 5 - Cavidad pequeña
+    6: "#991B1B", // ICDAS 6 - Cavidad extensa
   },
   
   // TRABAJOS PLANIFICADOS - Amarillo/Naranja

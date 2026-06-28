@@ -43,7 +43,10 @@ import { PerformedTab } from "./performed-tab";
 
 import { SchedulePlanModal } from "./schedule-plan-modal";
 import { useOdontogramStore } from "@/lib/odontogram/store";
-import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services";
+import {
+  ToothTypeService,
+  CariesRiskService,
+} from "@/lib/odontogram/domain/odontogram/services";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
 import {
   AlertTriangle,
@@ -206,6 +209,13 @@ export function ToothModal({
   const visitId = useOdontogramStore((state) => state.metadata.visitId);
   const odontogramConfirm = useOdontogramConfirm();
 
+  // Riesgo de caries a nivel PACIENTE (CAMBRA/ICCMS lite), calculado desde la
+  // carga/actividad de lesiones del odontograma (ya no es un valor fijo "medio").
+  const cariesRisk = useMemo(
+    () => CariesRiskService.assess(clinicalEvents),
+    [clinicalEvents],
+  );
+
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   // confirmación de cierre sin guardar se maneja con odontogramConfirm
   const [tempGlobalStatus, setTempGlobalStatus] =
@@ -310,13 +320,28 @@ export function ToothModal({
     [],
   );
 
+  const initializedToothRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (isOpen && tooth) {
+    if (!isOpen || !tooth) {
+      if (!isOpen) initializedToothRef.current = null;
+      return;
+    }
+
+    // Re-inicialización COMPLETA (pestaña, estado global, selección) solo al
+    // abrir o cambiar de diente. Los cambios de clinicalEvents (autosave) NO
+    // deben resetear la pestaña ni borrar selecciones de caras en curso.
+    const initKey = `${tooth.number}`;
+    const isFirstInitForTooth = initializedToothRef.current !== initKey;
+    if (isFirstInitForTooth) {
+      initializedToothRef.current = initKey;
       setTempGlobalStatus(tooth.globalStatus);
       setHasUnsavedChanges(false);
       setSaveErrors([]);
       setActiveTab("superficies");
+    }
 
+    {
       // Obtener eventos clínicos del diente desde el store
       const events = getToothEvents(tooth.number);
 
@@ -407,7 +432,13 @@ export function ToothModal({
       );
       console.groupEnd();
 
-      setSelectedSurfaces(loadedSurfaces);
+      // En re-sync (mismo diente, cambiaron eventos) preserva las caras que el
+      // usuario seleccionó pero aún no tienen evento (p.ej. caras sanas).
+      setSelectedSurfaces((prev) =>
+        isFirstInitForTooth
+          ? loadedSurfaces
+          : Array.from(new Set<ToothSurface>([...loadedSurfaces, ...prev])),
+      );
       setInitialSurfaceStates(computedStates);
 
       // Cargar diagnósticos
@@ -750,10 +781,16 @@ export function ToothModal({
               },
               visualState: {
                 affectsOdontogram: diagnosis.icdasScore > 0,
+                // Prioridad derivada de la severidad ICDAS (no 'surface-diagnosis'
+                // fijo, que colapsaba 5-6 a 'caries-active').
                 priorityKey:
-                  diagnosis.icdasScore > 0
-                    ? "surface-diagnosis"
-                    : "support-only",
+                  diagnosis.icdasScore >= 5
+                    ? "caries-urgent"
+                    : diagnosis.icdasScore >= 3
+                      ? "caries-active"
+                      : diagnosis.icdasScore >= 1
+                        ? "caries-initial"
+                        : "support-only",
               },
               automationHints: {
                 suggestPlan:
@@ -794,10 +831,16 @@ export function ToothModal({
               },
               visualState: {
                 affectsOdontogram: diagnosis.icdasScore > 0,
+                // Prioridad derivada de la severidad ICDAS (no 'surface-diagnosis'
+                // fijo, que colapsaba 5-6 a 'caries-active').
                 priorityKey:
-                  diagnosis.icdasScore > 0
-                    ? "surface-diagnosis"
-                    : "support-only",
+                  diagnosis.icdasScore >= 5
+                    ? "caries-urgent"
+                    : diagnosis.icdasScore >= 3
+                      ? "caries-active"
+                      : diagnosis.icdasScore >= 1
+                        ? "caries-initial"
+                        : "support-only",
               },
               automationHints: {
                 suggestPlan:
@@ -821,6 +864,9 @@ export function ToothModal({
 
     // Auto-generar eventos de diagnóstico desde templates aplicados en SurfacesTab
     const surfaceStates = surfaceStatesRef.current;
+    // Ids de planes materializados desde plantillas en ESTA pasada, para que el
+    // barrido de huérfanos (más abajo) no los borre por no estar aún en `plans`.
+    const materializedPlanIds: string[] = [];
     surfaceStates.forEach((state) => {
       if (
         state.status === "pathology" &&
@@ -877,6 +923,48 @@ export function ToothModal({
             });
           }
         }
+      } else if (
+        state.status === "planned" ||
+        state.status === "preventive"
+      ) {
+        // Materializa como evento de PLAN las plantillas de tratamiento/
+        // preventivas aplicadas en la pestaña Superficies (antes se descartaban
+        // en silencio al guardar). visitId lo inyecta el store.
+        const existingSurfacePlan = getToothEvents(tooth.number).find(
+          (e) =>
+            e.type === "plan" &&
+            e.surfaces.includes(state.surface) &&
+            e.status !== "done" &&
+            e.status !== "canceled",
+        );
+        if (!existingSurfacePlan) {
+          const newPlanId = addClinicalEvent({
+            toothNumber: tooth.number,
+            surfaces: [state.surface],
+            level: "surface",
+            type: "plan",
+            status: "plan",
+            priority: "media",
+            notes:
+              state.treatmentType ||
+              (state.status === "preventive"
+                ? "Preventivo"
+                : "Tratamiento planificado"),
+            visualState:
+              state.status === "preventive"
+                ? {
+                    affectsOdontogram: true,
+                    priorityKey: "preventive",
+                    colorKey: "preventive",
+                  }
+                : {
+                    affectsOdontogram: true,
+                    priorityKey: "planned",
+                    colorKey: "planned",
+                  },
+          });
+          if (newPlanId) materializedPlanIds.push(newPlanId);
+        }
       }
     });
 
@@ -885,6 +973,10 @@ export function ToothModal({
     );
 
     existingPlanEvents.forEach((event) => {
+      // No borrar los planes recién materializados desde plantillas (aún no
+      // están en `plans`, se cargarán al reabrir).
+      if (materializedPlanIds.includes(event.id)) return;
+
       const stillExists = currentPlans.some(
         (plan) =>
           plan.id === event.id ||
@@ -1154,6 +1246,7 @@ export function ToothModal({
           tooth={tooth}
           initialSurfaces={selectedSurfaces}
           initialSurfaceStates={initialSurfaceStates}
+          readOnly={readOnly}
           onNavigateToTab={handleNavigateToTab}
           onSurfacesChange={handleSurfacesChange}
           onSurfaceStatesChange={handleSurfaceStatesChange}
@@ -1170,6 +1263,8 @@ export function ToothModal({
           selectedSurfaces={selectedSurfaces}
           initialDiagnoses={diagnoses}
           initialToothDiagnosis={toothDiagnosis}
+          patientRisk={cariesRisk.level}
+          patientRiskReasons={cariesRisk.reasons}
           onNavigateToTab={handleNavigateToTab}
           onDiagnosesChange={handleDiagnosesChange}
           onToothDiagnosisChange={handleToothDiagnosisChange}
@@ -1187,6 +1282,8 @@ export function ToothModal({
           diagnoses={diagnoses}
           pulpalStatus={toothDiagnosis?.pulpalStatus ?? "normal"}
           initialPlans={plans}
+          patientRisk={cariesRisk.level}
+          patientRiskReasons={cariesRisk.reasons}
           onNavigateToTab={handleNavigateToTab}
           onPlansChange={handlePlansChange}
           onSchedulePlans={(p) => {
@@ -1213,6 +1310,8 @@ export function ToothModal({
           plans={plans}
           performed={performedProcedures}
           readOnly={readOnly}
+          patientRisk={cariesRisk.level}
+          patientRiskReasons={cariesRisk.reasons}
           onNavigateToTab={handleNavigateToTab}
           onSave={handlePerformedSave}
           onPlansChange={handlePlansChange}

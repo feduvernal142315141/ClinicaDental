@@ -5,24 +5,30 @@ export { PROCEDURE_CATALOG_MOCK as PROCEDURE_CATALOG } from "@/lib/odontogram/in
 export { PROCEDURE_TEMPLATES_MOCK as PROCEDURE_TEMPLATES } from "@/lib/odontogram/infrastructure/data/mock/procedure-templates.mock"
 export { TOOTH_TEMPLATES_MOCK as TOOTH_TEMPLATES } from "@/lib/odontogram/infrastructure/data/mock/tooth-templates.mock"
 export { PROCEDURE_PROTOCOLS_MOCK as PROCEDURE_PROTOCOLS } from "@/lib/odontogram/infrastructure/data/mock/procedure-protocols.mock"
-import { 
-  ColorService, 
-  ToothTypeService, 
-  ICDASService, 
+import {
+  ColorService,
+  ToothTypeService,
+  ICDASService,
   LesionService,
   TreatmentSuggestionService,
   ProcedureFilterService,
-  PlanCalculationService 
+  PlanCalculationService,
+  CariesRiskService,
+  ClinicalConsistencyService,
+  ClinicalEventStateMachine,
 } from "@/lib/odontogram/domain/odontogram/services"
 
-export { 
-  ColorService, 
-  ToothTypeService, 
-  ICDASService, 
+export {
+  ColorService,
+  ToothTypeService,
+  ICDASService,
   LesionService,
   TreatmentSuggestionService,
   ProcedureFilterService,
-  PlanCalculationService
+  PlanCalculationService,
+  CariesRiskService,
+  ClinicalConsistencyService,
+  ClinicalEventStateMachine,
 }
 
 export const getEventColor = ColorService.getEventColor

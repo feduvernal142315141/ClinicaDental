@@ -5,45 +5,13 @@ import type { ToothSurface, SurfaceState } from "./types";
 import type { SurfacePath } from "./tooth-square-paths";
 import { cn } from "@/lib/odontogram/utils";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
+import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
 
 interface SurfaceSelectorProps {
   toothNumber: number;
   surfaces: SurfaceState[];
   onSurfaceToggle: (surface: ToothSurface) => void;
   disabled?: boolean;
-}
-
-function isAnterior(toothNumber: number): boolean {
-  const position = toothNumber % 10;
-  return position >= 1 && position <= 3;
-}
-
-/** Etiquetas de superficie según posición anterior/posterior */
-function getSurfaceLabel(
-  surface: ToothSurface,
-  anterior: boolean,
-): { short: string; full: string } {
-  switch (surface) {
-    case "mesial":
-      return { short: "M", full: "Mesial" };
-    case "distal":
-      return { short: "D", full: "Distal" };
-    case "facial":
-      return {
-        short: anterior ? "Lab" : "V",
-        full: anterior ? "Labial" : "Vestibular",
-      };
-    case "lingual":
-      return {
-        short: anterior ? "P" : "L",
-        full: anterior ? "Palatino" : "Lingual",
-      };
-    case "oclusal":
-      return {
-        short: anterior ? "I" : "O",
-        full: anterior ? "Incisal" : "Oclusal",
-      };
-  }
 }
 
 /* ---- Tema visual idéntico al odontograma principal ---- */
@@ -66,7 +34,10 @@ export function SurfaceSelector({
   const [hoveredSurface, setHoveredSurface] = useState<ToothSurface | null>(
     null,
   );
-  const anterior = isAnterior(toothNumber);
+  const anterior = ToothTypeService.isAnterior(toothNumber);
+  const maxillary = ToothTypeService.isMaxillary(toothNumber);
+  const surfaceLabel = (surface: ToothSurface) =>
+    ToothTypeService.getSurfaceLabel(toothNumber, surface);
 
   const isSelected = (surface: ToothSurface): boolean => {
     return surfaces.some((s) => s.surface === surface);
@@ -106,7 +77,8 @@ export function SurfaceSelector({
     {
       key: "lateral",
       label: "Lateral",
-      helper: anterior ? "Palatino visible" : "Lingual visible",
+      // Palatino/Lingual depende de la ARCADA, no de anterior/posterior.
+      helper: maxillary ? "Palatino visible" : "Lingual visible",
     },
   ];
 
@@ -141,8 +113,7 @@ export function SurfaceSelector({
     const visibleSurfaceLabels = viewPaths.surfaces
       .filter((surfacePath) => Boolean(surfacePath.d))
       .map(
-        (surfacePath) =>
-          getSurfaceLabel(surfacePath.surface as ToothSurface, anterior).short,
+        (surfacePath) => surfaceLabel(surfacePath.surface as ToothSurface).short,
       )
       .join(" · ");
 
@@ -282,7 +253,7 @@ export function SurfaceSelector({
         >
           {activeSurface
             ? `${isSelected(activeSurface) ? "✓" : ""} ${
-                getSurfaceLabel(activeSurface, anterior).full
+                surfaceLabel(activeSurface).full
               }`
             : "Esperando selección..."}
         </div>

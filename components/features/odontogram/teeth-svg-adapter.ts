@@ -21,49 +21,17 @@ import type { ToothViewPaths, SurfacePath } from "./tooth-square-paths";
 type DentalSurface = "oclusal" | "facial" | "lingual" | "mesial" | "distal";
 
 /**
- * Zone-to-surface mapping for the 4 interactive zones in the designer's SVG.
- *
- * The SVG divides each view into 4 quadrants (-01 to -04).
- * Their anatomical meaning depends on the view:
- *
- * VESTIBULAR (frontal) view:
- *   -01 = mesial, -02 = distal, -03 = oclusal/incisal, -04 = cervical/facial
- *
- * OCCLUSAL view (top-down):
- *   -01 = mesial, -02 = distal, -03 = oclusal (center), -04 = lingual/palatinal
- *
- * LINGUAL/PALATINAL (lateral) view:
- *   -01 = mesial, -02 = distal, -03 = oclusal/incisal, -04 = cervical/lingual
- *
- * Note: The designer's SVG has 4 zones while we have 5 surfaces. The missing
- * surface in each view is the one not visible from that angle (e.g., lingual
- * isn't visible from vestibular).
+ * La asignación zona→superficie ya NO es una tabla fija por número de zona: el
+ * número de zona del SVG es orden de dibujo de Illustrator, no anatomía (la misma
+ * etiqueta significa caras distintas según diente/cuadrante/vista). El extractor
+ * la calcula por GEOMETRÍA (centroide) y la emite en `viewData.zoneSurfaces`.
+ * Aquí solo la leemos. Ver scripts/extract-teeth-svg.mjs (classifyView).
  */
-const ZONE_SURFACE_MAP: Record<
-  "vestibular" | "occlusal" | "lateral",
-  Record<string, DentalSurface>
-> = {
-  vestibular: {
-    "01": "mesial",
-    "02": "distal",
-    "03": "oclusal",
-    "04": "facial",
-    "05": "lingual",
-  },
-  occlusal: {
-    "01": "mesial",
-    "02": "distal",
-    "03": "oclusal",
-    "04": "facial",
-    "05": "lingual",
-  },
-  lateral: {
-    "01": "mesial",
-    "02": "distal",
-    "03": "oclusal",
-    "04": "facial",
-    "05": "lingual",
-  },
+
+/** Espejo M↔D usado cuando una vista se toma del diente contralateral. */
+const MIRROR_SURFACE: Partial<Record<DentalSurface, DentalSurface>> = {
+  mesial: "distal",
+  distal: "mesial",
 };
 
 /**
@@ -79,26 +47,30 @@ function mergePaths(paths: string[]): string {
  */
 function adaptToothView(
   viewData: ToothViewData,
-  view: "vestibular" | "occlusal" | "lateral"
+  mirrored = false,
 ): ToothViewPaths {
-  const zoneMap = ZONE_SURFACE_MAP[view];
+  const zoneSurfaces = viewData.zoneSurfaces ?? {};
 
-  // Build surface paths from zones
+  // Build surface paths from zones using the geometric classification baked in
+  // by the extractor. `mirrored` swaps mesial↔distal when the view was borrowed
+  // from the contralateral tooth (opposite side → proximal faces inverted).
   const surfaces: SurfacePath[] = [];
   const usedSurfaces = new Set<DentalSurface>();
 
   for (const [zoneId, paths] of Object.entries(viewData.zones)) {
-    // Normalize zone ID (handle extended zones like "011", "012")
-    const normalizedZone = zoneId.length <= 2 ? zoneId : zoneId.slice(0, 2);
-    const surface = zoneMap[normalizedZone];
+    let surface = zoneSurfaces[zoneId] as DentalSurface | undefined;
+    if (!surface) continue;
+    if (mirrored && MIRROR_SURFACE[surface]) {
+      surface = MIRROR_SURFACE[surface] as DentalSurface;
+    }
 
-    if (surface && !usedSurfaces.has(surface)) {
+    if (!usedSurfaces.has(surface)) {
       surfaces.push({
         surface,
         d: mergePaths(paths),
       });
       usedSurfaces.add(surface);
-    } else if (surface && usedSurfaces.has(surface)) {
+    } else {
       // Merge with existing surface path
       const existing = surfaces.find((s) => s.surface === surface);
       if (existing) {
@@ -133,6 +105,7 @@ function adaptToothView(
     surfaces,
     roots,
     highlights: [], // The designer's SVG doesn't have separate highlight paths
+    symbolAnchor: viewData.symbolAnchor,
   };
 }
 
@@ -182,17 +155,20 @@ export function getDesignedToothPaths(
 
   const internalView = viewMap[view];
   let viewData = getToothView(fdi, internalView);
+  let mirrored = false;
 
   // Fallback: if the view is missing, use the contralateral tooth
-  // (same position on the opposite side of the arch — anatomical mirror)
+  // (same position on the opposite side of the arch — anatomical mirror).
+  // Marca `mirrored` para invertir mesial↔distal en la clasificación.
   if (!viewData) {
     const contralateral = getContralateralFDI(fdi);
     viewData = getToothView(contralateral, internalView);
+    mirrored = true;
   }
 
   if (!viewData) return null;
 
-  const result = adaptToothView(viewData, internalView);
+  const result = adaptToothView(viewData, mirrored);
 
   // Fallback for missing roots: if the vestibular view exists but has no root,
   // borrow the root data from the contralateral tooth (e.g., 13V has no ROOT

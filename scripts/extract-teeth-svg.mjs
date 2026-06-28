@@ -78,6 +78,25 @@ function extractPaths(content) {
       paths.push(d);
     }
   }
+  // Also extract <rect> → path. The designer drew the CENTRAL occlusal zone of
+  // posterior teeth (and the central facial zone of anterior V views) as <rect>;
+  // without this they were silently dropped, leaving the occlusal face
+  // unpaintable. Attributes are read BY NAME (Illustrator order varies).
+  const rectRegex = /<rect\b[^>]*?\/?>/g;
+  while ((m = rectRegex.exec(content)) !== null) {
+    const tag = m[0];
+    const attr = (name) => {
+      const a = tag.match(new RegExp(`\\s${name}="([^"]+)"`));
+      return a ? parseFloat(a[1]) : NaN;
+    };
+    const x = attr("x");
+    const y = attr("y");
+    const w = attr("width");
+    const h = attr("height");
+    if ([x, y, w, h].every((n) => Number.isFinite(n))) {
+      paths.push(`M${x},${y} H${x + w} V${y + h} H${x} Z`);
+    }
+  }
   return paths;
 }
 
@@ -213,6 +232,66 @@ function combineBounds(boundsArr) {
   };
 }
 
+// ── 5b. Clasificador GEOMÉTRICO zona → superficie dental ──────────────────────
+// El número de zona del SVG es orden de dibujo de Illustrator, NO anatomía
+// (verificado: el mismo número significa caras distintas según diente/cuadrante).
+// Por eso clasificamos cada zona por la POSICIÓN de su centroide dentro del
+// viewBox, no por su id. FDI/ISO 3950: mesial apunta a la línea media (su lado
+// físico depende del cuadrante); el borde incisal/oclusal queda abajo en
+// maxilares y arriba en mandibulares; la cara interna es palatina (maxilar) o
+// lingual (mandibular). 'incisal' se codifica como 'oclusal' en el enum del render.
+function classifyView(zones, viewBounds, fdi, viewCategory) {
+  const q = parseInt(fdi[0], 10);
+  const maxillary = q === 1 || q === 2;
+  const mesialOnRight = q === 1 || q === 4; // hacia la línea media del lienzo
+  const w = viewBounds.maxX - viewBounds.minX || 1;
+  const h = viewBounds.maxY - viewBounds.minY || 1;
+  const proximalLeft = mesialOnRight ? "distal" : "mesial";
+  const proximalRight = mesialOnRight ? "mesial" : "distal";
+  const bodySurface = viewCategory === "vestibular" ? "facial" : "lingual";
+
+  const entries = Object.entries(zones).map(([z, paths]) => {
+    const b = combineBounds(paths.map(pathBounds));
+    return {
+      z,
+      cx: b ? ((b.minX + b.maxX) / 2 - viewBounds.minX) / w : 0.5,
+      cy: b ? ((b.minY + b.maxY) / 2 - viewBounds.minY) / h : 0.5,
+    };
+  });
+
+  const result = {};
+  const centers = [];
+  for (const e of entries) {
+    if (e.cx < 0.35) result[e.z] = proximalLeft;
+    else if (e.cx > 0.65) result[e.z] = proximalRight;
+    else centers.push(e);
+  }
+
+  if (viewCategory === "occlusal") {
+    // Vista oclusal (top-down): banda superior/inferior = bucal/lingual según
+    // arcada; la central (mesa oclusal, rect) = oclusal.
+    for (const e of centers) {
+      if (e.cy < 0.35) result[e.z] = maxillary ? "facial" : "lingual";
+      else if (e.cy > 0.65) result[e.z] = maxillary ? "lingual" : "facial";
+      else result[e.z] = "oclusal";
+    }
+  } else {
+    // Vestibular/lateral: la zona central en el EXTREMO (maxilar=abajo,
+    // mandibular=arriba) es el filo incisal/oclusal; el resto es el cuerpo
+    // facial/lingual. Relativo (no umbral fijo) para no confundir cuerpo y filo.
+    let edge = null;
+    for (const e of centers) {
+      if (!edge || (maxillary ? e.cy > edge.cy : e.cy < edge.cy)) edge = e;
+    }
+    const edgeIsReal = edge && (maxillary ? edge.cy > 0.6 : edge.cy < 0.4);
+    for (const e of centers) {
+      result[e.z] = edgeIsReal && e === edge ? "oclusal" : bodySurface;
+    }
+  }
+
+  return result;
+}
+
 // ── 6. Main extraction ──────────────────────────────────────────────────────
 const { groups, groupOrder } = extractGroups(svg);
 
@@ -332,9 +411,55 @@ for (const fdi of FDI_NUMBERS) {
       const vbW = Math.ceil(bounds.maxX - bounds.minX + padding * 2);
       const vbH = Math.ceil(bounds.maxY - bounds.minY + padding * 2);
 
+      // Clasifica las zonas por geometría (centroide relativo) → superficie dental.
+      const viewCategory =
+        view === "V" ? "vestibular" : view === "O" ? "occlusal" : "lateral";
+      const zoneSurfaces = classifyView(zones, bounds, fdi, viewCategory);
+
+      // Validación de coherencia: detecta arte degenerado (zonas duplicadas o
+      // vistas oclusales posteriores sin las caras bucal/lingual). Avisa ruidoso
+      // para revisar el SVG fuente en vez de generar datos clínicos corruptos.
+      const surfVals = Object.values(zoneSurfaces);
+      const seen = new Set();
+      const dups = [];
+      for (const s of surfVals) {
+        // facial/lingual pueden venir de 2 zonas (cuerpo + cervical) → no es dup.
+        if (s === "facial" || s === "lingual") continue;
+        if (seen.has(s)) dups.push(s);
+        seen.add(s);
+      }
+      if (dups.length) {
+        console.warn(
+          `  ⚠ ${fdi}${view}: superficies duplicadas [${dups.join(", ")}] → ${JSON.stringify(zoneSurfaces)} (revisar arte)`,
+        );
+      }
+      const pos = parseInt(fdi[1], 10);
+      if (
+        viewCategory === "occlusal" &&
+        pos >= 4 &&
+        (!surfVals.includes("facial") || !surfVals.includes("lingual"))
+      ) {
+        console.warn(
+          `  ⚠ ${fdi}${view}: oclusal posterior sin facial/lingual → ${JSON.stringify(zoneSurfaces)} (revisar arte)`,
+        );
+      }
+
+      // Ancla del símbolo = centro de la CORONA (bbox de las zonas, sin raíz),
+      // para que la letra/ícono no caiga sobre la raíz en la vista vestibular.
+      const crownPaths = Object.values(zones).flat();
+      const crownBounds = crownPaths.length
+        ? combineBounds(crownPaths.map(pathBounds))
+        : combineBounds((outline || []).map(pathBounds));
+      const symbolAnchor = {
+        x: Math.round(((crownBounds.minX + crownBounds.maxX) / 2) * 100) / 100,
+        y: Math.round(((crownBounds.minY + crownBounds.maxY) / 2) * 100) / 100,
+      };
+
       registry[fdi][view] = {
         outline: outline || [],
         zones,
+        zoneSurfaces,
+        symbolAnchor,
         root: root || null,
         viewBox: `${vbX} ${vbY} ${vbW} ${vbH}`,
       };
@@ -367,8 +492,16 @@ export type ToothZone = string; // "01" | "02" | "03" | "04" | "05" or extended
 export interface ToothViewData {
   /** SVG paths for the complete outline/contour of the tooth in this view */
   outline: string[];
-  /** SVG paths for each interactive zone (typically 4 zones per view) */
+  /** SVG paths for each interactive zone (typically 4-5 zones per view) */
   zones: Record<string, string[]>;
+  /**
+   * Surface assigned to each zone by geometric classification (centroid-based,
+   * not by zone id which is just Illustrator draw order). Values:
+   * "oclusal" | "facial" | "lingual" | "mesial" | "distal".
+   */
+  zoneSurfaces: Record<string, string>;
+  /** Center of the CROWN (zones bbox, excludes root) — anchor for the symbol. */
+  symbolAnchor: { x: number; y: number };
   /** SVG paths for the root (only in vestibular view) */
   root: string[] | null;
   /** Calculated viewBox for this tooth in this view */
@@ -406,6 +539,12 @@ for (const [fdi, views] of Object.entries(registry)) {
       ts += `        ],\n`;
     }
     ts += `      },\n`;
+
+    // Zone → surface (geometric classification)
+    ts += `      zoneSurfaces: ${JSON.stringify(data.zoneSurfaces || {})},\n`;
+
+    // Symbol anchor (crown center)
+    ts += `      symbolAnchor: ${JSON.stringify(data.symbolAnchor || { x: 0, y: 0 })},\n`;
 
     // Root
     if (data.root) {

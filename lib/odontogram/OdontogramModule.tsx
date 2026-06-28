@@ -19,6 +19,8 @@ function OdontogramModuleRuntime({
   initialTab,
   onChange,
   onError,
+  onSaveStart,
+  onSaveSuccess,
   finalizeOpen,
   onFinalizeClose,
   onFinalizeSuccess,
@@ -28,12 +30,17 @@ function OdontogramModuleRuntime({
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const hydratingRef = useRef(true);
+  // Integridad: si la carga falla, NO habilitamos el autosave. Evita que una
+  // edición posterior persista un snapshot vacío y sobrescriba el odontograma
+  // real del paciente (el GET pudo fallar transitoriamente).
+  const loadFailedRef = useRef(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let active = true;
 
     hydratingRef.current = true;
+    loadFailedRef.current = false;
     setIsLoading(true);
 
     void (async () => {
@@ -45,13 +52,15 @@ function OdontogramModuleRuntime({
         if (!active) return;
 
         storeApi.getState().replaceSnapshot(snapshot);
+        loadFailedRef.current = false;
         setLoadError(null);
       } catch (error) {
         if (!active) return;
 
-        storeApi
-          .getState()
-          .replaceSnapshot(createEmptySnapshot({ patientId, clinicId }));
+        // No reemplazamos por un snapshot vacío editable: marcamos el fallo para
+        // bloquear el autosave y mostramos el error. Así un estado vacío nunca
+        // llega a sobrescribir lo persistido.
+        loadFailedRef.current = true;
         setLoadError("No se pudo cargar el odontograma.");
         onError?.(error);
       } finally {
@@ -71,7 +80,10 @@ function OdontogramModuleRuntime({
 
   useEffect(() => {
     const unsubscribe = storeApi.subscribe((state) => {
-      if (hydratingRef.current) return;
+      // No autosave durante la hidratación, en solo-lectura (histórico / visita
+      // finalizada / sin cita) NI tras un fallo de carga: evita PUTs no deseados,
+      // con visita stale, o que sobrescriban lo persistido con un estado vacío.
+      if (hydratingRef.current || state.readOnly || loadFailedRef.current) return;
 
       const snapshot = state.getSnapshot();
       onChange?.(snapshot);
@@ -81,10 +93,14 @@ function OdontogramModuleRuntime({
       }
 
       saveTimeoutRef.current = setTimeout(() => {
-        void adapter.save(patientId, snapshot, clinicId).catch((error) => {
-          setLoadError("No se pudo sincronizar el odontograma.");
-          onError?.(error);
-        });
+        onSaveStart?.();
+        void adapter
+          .save(patientId, snapshot, clinicId)
+          .then(() => onSaveSuccess?.())
+          .catch((error) => {
+            setLoadError("No se pudo sincronizar el odontograma.");
+            onError?.(error);
+          });
       }, 300);
     });
 
@@ -94,7 +110,16 @@ function OdontogramModuleRuntime({
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [adapter, clinicId, onChange, onError, patientId, storeApi]);
+  }, [
+    adapter,
+    clinicId,
+    onChange,
+    onError,
+    onSaveStart,
+    onSaveSuccess,
+    patientId,
+    storeApi,
+  ]);
 
   if (isLoading) {
     return (
@@ -138,6 +163,8 @@ export function OdontogramModule({
   initialTab = "odontogram",
   onChange,
   onError,
+  onSaveStart,
+  onSaveSuccess,
   finalizeOpen,
   onFinalizeClose,
   onFinalizeSuccess,
@@ -157,6 +184,8 @@ export function OdontogramModule({
         initialTab={initialTab}
         onChange={onChange}
         onError={onError}
+        onSaveStart={onSaveStart}
+        onSaveSuccess={onSaveSuccess}
         finalizeOpen={finalizeOpen}
         onFinalizeClose={onFinalizeClose}
         onFinalizeSuccess={onFinalizeSuccess}

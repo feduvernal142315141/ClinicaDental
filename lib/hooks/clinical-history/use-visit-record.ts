@@ -8,6 +8,7 @@ import type {
   UpsertVisitRecordRequest,
 } from "@/lib/entity/clinical-history";
 import { notify } from "@/lib/utils/notify";
+import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
 
 export function useVisitRecord(patientId: string, appointmentId?: string) {
   const [record, setRecord] = useState<PatientVisitRecord | null>(null);
@@ -49,6 +50,7 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
     async (data: UpsertVisitRecordRequest, options?: { silent?: boolean }) => {
       if (!appointmentId) return;
       setSaving(true);
+      useAutosaveStatus.getState().markSaving();
       try {
         await clinicalHistoryService.upsertVisitRecord(
           patientId,
@@ -69,11 +71,13 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
           }
           return { appointmentId: appointmentId!, patientId, ...data, currentPain: cleanPain };
         });
+        useAutosaveStatus.getState().markSaved();
         if (!options?.silent) {
           notify.success("Registro de visita guardado");
         }
       } catch (err: unknown) {
         const e = err as { message?: string };
+        useAutosaveStatus.getState().markError();
         notify.error(e?.message || "Error al guardar registro de visita");
         throw err;
       } finally {
@@ -87,6 +91,7 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
     async (html: string): Promise<{ updatedAt: string; updatedBy: string }> => {
       if (!appointmentId) throw new Error("No hay consulta activa");
       setSaving(true);
+      useAutosaveStatus.getState().markSaving();
       try {
         const result = await clinicalHistoryService.saveVisitNotes(
           patientId,
@@ -109,9 +114,11 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
                 clinicalNotesUpdatedBy: result.updatedBy,
               },
         );
+        useAutosaveStatus.getState().markSaved();
         return result;
       } catch (err: unknown) {
         const e = err as { message?: string };
+        useAutosaveStatus.getState().markError();
         notify.error(e?.message || "Error al guardar notas de visita");
         throw err;
       } finally {

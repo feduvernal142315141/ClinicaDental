@@ -10,6 +10,7 @@ export type LegacyToothSurface = ToothSurface;
 export type SurfaceZoneCode =
   | ToothSurface
   | "incisal"
+  | "palatino"
   | "cervical"
   | "radicular";
 
@@ -73,6 +74,12 @@ export function isAnteriorToothNumber(toothNumber: number): boolean {
   return position >= 1 && position <= 3;
 }
 
+/** Maxilar = cuadrantes 1 y 2 (FDI/ISO 3950). */
+export function isMaxillaryToothNumber(toothNumber: number): boolean {
+  const quadrant = Math.floor(toothNumber / 10);
+  return quadrant === 1 || quadrant === 2;
+}
+
 export function createSurfaceRef(
   toothNumber: number,
   surface: ToothSurface,
@@ -93,6 +100,17 @@ export function createSurfaceRef(
       region: "crown",
       legacyCode: surface,
       displayLabel: "Incisal",
+    };
+  }
+
+  // Cara lingual en dientes maxilares = Palatino (FDI). Conserva legacyCode
+  // 'lingual' para compatibilidad con datos/render existentes.
+  if (surface === "lingual" && isMaxillaryToothNumber(toothNumber)) {
+    return {
+      code: "palatino",
+      region: "crown",
+      legacyCode: surface,
+      displayLabel: "Palatino",
     };
   }
 

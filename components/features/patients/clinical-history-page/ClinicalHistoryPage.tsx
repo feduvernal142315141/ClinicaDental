@@ -195,6 +195,7 @@ export function ClinicalHistoryPage({
           onClearHistoric={handleBackToCurrentOdontogram}
           appointments={appointments}
           onSelectHistoricVisit={handleSelectHistoricVisit}
+          onStartConsultation={openStartNow}
         />
       ),
     });

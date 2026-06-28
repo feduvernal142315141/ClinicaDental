@@ -46,6 +46,7 @@ import {
   GLOBAL_STATUS_LABELS,
   PROCEDURE_TEMPLATES,
   TreatmentSuggestionService,
+  ClinicalConsistencyService,
 } from "./types";
 import { useOdontogramServices } from "@/lib/odontogram/application/hooks/useOdontogramServices";
 import { useIcdasTemplateSuggestions } from "@/lib/odontogram/application/hooks/useIcdasTemplateSuggestions";
@@ -57,6 +58,7 @@ interface PlanTabProps {
   pulpalStatus?: PulpalStatus;
   initialPlans?: ProcedurePlan[];
   patientRisk?: PatientRiskLevel;
+  patientRiskReasons?: string[];
   onNavigateToTab?: (tab: string) => void;
   onPlansChange?: (plans: ProcedurePlan[]) => void;
   onSchedulePlans?: (plans: ProcedurePlan[]) => void;
@@ -82,6 +84,7 @@ export function PlanTab({
   pulpalStatus = "normal",
   initialPlans,
   patientRisk = "medio",
+  patientRiskReasons,
   onNavigateToTab,
   onPlansChange,
   onSchedulePlans,
@@ -327,6 +330,17 @@ export function PlanTab({
     (tooth.globalStatus === "absent" || tooth.globalStatus === "implant") &&
     plans.some((p) => p.category === "restaurador");
 
+  // Avisos de coherencia diagnóstico↔plan según ICCMS/ICDAS (no bloqueantes).
+  const consistencyWarnings = useMemo(
+    () =>
+      ClinicalConsistencyService.check({
+        diagnoses: diagnoses ? Array.from(diagnoses.values()) : [],
+        plans,
+        pulpalStatus,
+      }),
+    [diagnoses, plans, pulpalStatus],
+  );
+
   if (selectedSurfaces.length === 0 && !diagnoses) {
     return (
       <Card className="p-8 text-center">
@@ -369,7 +383,11 @@ export function PlanTab({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className={getRiskColor(patientRisk)}>
+          <Badge
+            variant="outline"
+            className={getRiskColor(patientRisk)}
+            title={patientRiskReasons?.join(" · ")}
+          >
             Riesgo: {patientRisk.charAt(0).toUpperCase() + patientRisk.slice(1)}
           </Badge>
           <OdontogramSelect
@@ -395,6 +413,41 @@ export function PlanTab({
             </p>
           </div>
         </Card>
+      )}
+
+      {/* Avisos de coherencia diagnóstico↔plan (ICCMS/ICDAS), no bloqueantes */}
+      {consistencyWarnings.length > 0 && (
+        <div className="space-y-1.5">
+          {consistencyWarnings.map((w, i) => (
+            <Card
+              key={i}
+              className={
+                w.level === "warn"
+                  ? "p-2.5 bg-amber-500/15 border-amber-400/25"
+                  : "p-2.5 bg-sky-500/15 border-sky-400/25"
+              }
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle
+                  className={
+                    w.level === "warn"
+                      ? "w-4 h-4 shrink-0 text-amber-600 dark:text-amber-300"
+                      : "w-4 h-4 shrink-0 text-sky-600 dark:text-sky-300"
+                  }
+                />
+                <p
+                  className={
+                    w.level === "warn"
+                      ? "text-xs text-amber-700 dark:text-amber-200"
+                      : "text-xs text-sky-700 dark:text-sky-200"
+                  }
+                >
+                  {w.message}
+                </p>
+              </div>
+            </Card>
+          ))}
+        </div>
       )}
 
       {/* Main 2-column layout — Plan primary (left), Suggestions sidebar (right) */}

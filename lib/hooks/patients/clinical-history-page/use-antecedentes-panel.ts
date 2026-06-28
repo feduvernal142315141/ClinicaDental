@@ -37,10 +37,6 @@ export function useAntecedentesPanel({
         lastDentalVisit: medicalHistory.lastDentalVisit
           ? dayjs(medicalHistory.lastDentalVisit)
           : undefined,
-        painLocation: medicalHistory.currentPain?.location,
-        painIntensity: medicalHistory.currentPain?.intensity ?? 0,
-        painType: medicalHistory.currentPain?.type,
-        painDuration: medicalHistory.currentPain?.duration,
       });
       return;
     }
@@ -50,15 +46,8 @@ export function useAntecedentesPanel({
 
   const handleFinish = useCallback(
     async (values: Record<string, unknown>) => {
-      const rawIntensity = values.painIntensity as number | undefined;
-      const intensity = rawIntensity && rawIntensity > 0 ? rawIntensity : null;
-
-      const hasPainData =
-        intensity !== null ||
-        (values.painLocation as string)?.trim() ||
-        values.painType ||
-        (values.painDuration as string)?.trim();
-
+      // Motivo de consulta y dolor actual son per-visita (PatientVisitRecord),
+      // ya no se capturan ni envían desde la anamnesis (fuente única).
       const data: UpdateMedicalHistoryRequest = {
         occupation: values.occupation as string,
         maritalStatus: values.maritalStatus as string,
@@ -66,16 +55,7 @@ export function useAntecedentesPanel({
         currentMedications: (values.currentMedications as string[]) ?? [],
         allergies: (values.allergies as string[]) ?? [],
         previousSurgeries: (values.previousSurgeries as string[]) ?? [],
-        chiefComplaint: values.chiefComplaint as string,
         habits: (values.habits as string[]) ?? [],
-        currentPain: hasPainData
-          ? {
-              location: values.painLocation as string,
-              intensity: intensity ?? undefined,
-              type: values.painType as string,
-              duration: values.painDuration as string,
-            }
-          : undefined,
         lastDentalVisit: values.lastDentalVisit
           ? (
               values.lastDentalVisit as { format: (pattern: string) => string }

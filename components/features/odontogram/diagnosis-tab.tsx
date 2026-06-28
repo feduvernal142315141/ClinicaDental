@@ -47,6 +47,7 @@ import {
   VITALITY_TEST_LABELS,
   GLOBAL_STATUS_LABELS,
 } from "./types";
+import { ODONTOGRAM_STATE_COLORS } from "@/lib/odontogram/domain/odontogram/constants/odontogram-colors.constants";
 
 interface DiagnosisTabProps {
   tooth: Tooth;
@@ -54,6 +55,7 @@ interface DiagnosisTabProps {
   initialDiagnoses?: Map<ToothSurface, SurfaceDiagnosis>;
   initialToothDiagnosis?: ToothDiagnosis;
   patientRisk?: PatientRiskLevel;
+  patientRiskReasons?: string[];
   onNavigateToTab?: (tab: string) => void;
   onDiagnosesChange?: (diagnoses: Map<ToothSurface, SurfaceDiagnosis>) => void;
   onToothDiagnosisChange?: (diagnosis: ToothDiagnosis) => void;
@@ -69,10 +71,9 @@ function getToothTypeName(toothNumber: number): string {
 }
 
 function getICDASColor(score: ICDASScore): string {
+  // Verde "sano" para el badge del modal; para 1-6, la MISMA rampa que la grilla.
   if (score === 0) return "#10B981";
-  if (score <= 2) return "#F59E0B";
-  if (score <= 4) return "#EF4444";
-  return "#991B1B";
+  return ODONTOGRAM_STATE_COLORS.CARIES_ACTIVE[score as 1 | 2 | 3 | 4 | 5 | 6];
 }
 
 function getLesionIcon(lesion: NonCariousLesion): string {
@@ -121,6 +122,7 @@ export function DiagnosisTab({
   initialDiagnoses,
   initialToothDiagnosis,
   patientRisk = "medio",
+  patientRiskReasons,
   onNavigateToTab,
   onDiagnosesChange,
   onToothDiagnosisChange,
@@ -387,7 +389,11 @@ export function DiagnosisTab({
           </p>
         </div>
         <div className="flex gap-2">
-          <Badge variant="outline" className={getRiskColor(patientRisk)}>
+          <Badge
+            variant="outline"
+            className={getRiskColor(patientRisk)}
+            title={patientRiskReasons?.join(" · ")}
+          >
             Riesgo: {patientRisk.charAt(0).toUpperCase() + patientRisk.slice(1)}
           </Badge>
           <Badge variant="outline" className="bg-muted">

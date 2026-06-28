@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Popover } from "antd";
 import { SurfaceSelector } from "./surface-selector";
+import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
 import {
   X,
   CheckSquare,
@@ -31,6 +32,8 @@ interface SurfacesTabProps {
   tooth: Tooth;
   initialSurfaces?: ToothSurface[];
   initialSurfaceStates?: SurfaceState[];
+  /** Modo solo-lectura (sin consulta activa / visita finalizada / sin permiso). */
+  readOnly?: boolean;
   onNavigateToTab?: (tab: string) => void;
   onSurfacesChange?: (surfaces: ToothSurface[]) => void;
   onSurfaceStatesChange?: (states: SurfaceState[]) => void;
@@ -54,6 +57,7 @@ export function SurfacesTab({
   tooth,
   initialSurfaces = [],
   initialSurfaceStates,
+  readOnly = false,
   onNavigateToTab,
   onSurfacesChange,
   onSurfaceStatesChange,
@@ -67,7 +71,9 @@ export function SurfacesTab({
   const pendingInit = useRef(false);
   const anterior = isAnterior(tooth.number);
   const isDisabled =
-    tooth.globalStatus === "absent" || tooth.globalStatus === "implant";
+    readOnly ||
+    tooth.globalStatus === "absent" ||
+    tooth.globalStatus === "implant";
 
   useEffect(() => {
     // Only initialize once per tooth or when tooth changes
@@ -423,7 +429,11 @@ export function SurfacesTab({
                         : {}),
                     }}
                   >
-                    {surface.surface.charAt(0).toUpperCase()} ·{" "}
+                    {ToothTypeService.getSurfaceLabel(
+                      tooth.number,
+                      surface.surface,
+                    ).short}{" "}
+                    ·{" "}
                     {surface.status === "pathology" &&
                     (surface.icdasScore ?? 0) > 0
                       ? `ICDAS ${surface.icdasScore}`
@@ -503,7 +513,7 @@ export function SurfacesTab({
                 onClick={() => handleToggleZone(["facial"])}
                 disabled={isDisabled}
               >
-                {anterior ? "Labial" : "Vestibular"}
+                {ToothTypeService.getSurfaceLabel(tooth.number, "facial").full}
               </Button>
               <Button
                 variant={isZoneSelected(["lingual"]) ? "default" : "outline"}
@@ -512,7 +522,7 @@ export function SurfacesTab({
                 onClick={() => handleToggleZone(["lingual"])}
                 disabled={isDisabled}
               >
-                {anterior ? "Palatino" : "Lingual"}
+                {ToothTypeService.getSurfaceLabel(tooth.number, "lingual").full}
               </Button>
             </div>
           </Card>

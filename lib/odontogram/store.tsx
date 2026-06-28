@@ -17,6 +17,7 @@ import type {
   VitalityTest,
 } from "@/components/odontogram/types";
 import { OdontogramColorService } from "@/lib/odontogram/domain/odontogram/services/OdontogramColorService";
+import { ClinicalEventStateMachine } from "@/lib/odontogram/domain/odontogram/services/ClinicalEventStateMachine";
 
 export const ODONTOGRAM_SCHEMA_VERSION = 2;
 
@@ -66,6 +67,10 @@ export interface OdontogramModuleProps {
     | "performed";
   onChange?: (snapshot: OdontogramSnapshot) => void;
   onError?: (error: unknown) => void;
+  /** Autosave del odontograma comenzó (el host puede reflejar "guardando…"). */
+  onSaveStart?: () => void;
+  /** Autosave del odontograma OK (el host puede reflejar "guardado"). */
+  onSaveSuccess?: () => void;
   finalizeOpen?: boolean;
   onFinalizeClose?: () => void;
   onFinalizeSuccess?: (result: { followUpId?: string }) => void;
@@ -126,6 +131,22 @@ const quadrants = [
   [31, 32, 33, 34, 35, 36, 37, 38],
   [41, 42, 43, 44, 45, 46, 47, 48],
 ];
+
+/**
+ * Mapa categoría de procedimiento → symbolKey del odontograma. Permite que un
+ * procedimiento REALIZADO muestre su letra clínica (E/C/X/P/I) en lugar de la
+ * "R" genérica. Coherente con FDI/ISO 3950.
+ */
+const PERFORMED_CATEGORY_SYMBOL: Record<string, string> = {
+  restaurador: "restoration",
+  endodoncia: "endodontics",
+  protesis: "crown",
+  implante: "implant",
+  preventivo: "preventive",
+  periodoncia: "restoration",
+  estetico: "restoration",
+  cirugia: "extraction",
+};
 
 const OdontogramStoreContext = createContext<OdontogramStoreApi | null>(null);
 
@@ -402,6 +423,18 @@ const normalizeClinicalEvent = (event: ClinicalEvent): ClinicalEvent => {
         },
       };
     }
+
+    if (statusFromNotes === "endodontic") {
+      return {
+        ...normalizedEvent,
+        visualState: {
+          affectsOdontogram: true,
+          priorityKey: "endodontic",
+          colorKey: "endodontic",
+          symbolKey: "endodontics",
+        },
+      };
+    }
   }
 
   if (
@@ -414,6 +447,32 @@ const normalizeClinicalEvent = (event: ClinicalEvent): ClinicalEvent => {
       visualState: {
         affectsOdontogram: false,
         priorityKey: "support-only",
+      },
+    };
+  }
+
+  // Datos legacy con type ausente/implante pero sin visualState: reconstruirlo
+  // para que reciban el relleno de pieza completa (getToothLevelColor) y símbolo.
+  if (normalizedEvent.type === "ausente") {
+    return {
+      ...normalizedEvent,
+      visualState: {
+        affectsOdontogram: true,
+        priorityKey: "absent",
+        colorKey: "absent",
+        symbolKey: "extraction",
+      },
+    };
+  }
+
+  if (normalizedEvent.type === "implante") {
+    return {
+      ...normalizedEvent,
+      visualState: {
+        affectsOdontogram: true,
+        priorityKey: "implant",
+        colorKey: "implant",
+        symbolKey: "implant",
       },
     };
   }
@@ -709,11 +768,18 @@ const createOdontogramStore = ({
                     colorKey: "implant",
                     symbolKey: "implant",
                   }
-                : {
-                    affectsOdontogram: false,
-                    priorityKey: "healthy",
-                    colorKey: "healthy",
-                  },
+                : status === "endodontic"
+                  ? {
+                      affectsOdontogram: true,
+                      priorityKey: "endodontic",
+                      colorKey: "endodontic",
+                      symbolKey: "endodontics",
+                    }
+                  : {
+                      affectsOdontogram: false,
+                      priorityKey: "healthy",
+                      colorKey: "healthy",
+                    },
       });
     },
     addSurfaceTreatment: (toothNumber, treatment) => {
@@ -898,6 +964,9 @@ const createOdontogramStore = ({
 
       const newEvent: ClinicalEvent = {
         ...event,
+        // Asocia el evento a la visita activa si quien lo crea no lo hizo
+        // (trazabilidad por visita; pickPreferredEvent lo usa al rehidratar).
+        visitId: event.visitId ?? get().metadata.visitId,
         schemaVersion: event.schemaVersion ?? ODONTOGRAM_SCHEMA_VERSION,
         id: crypto.randomUUID(),
         createdAt: nowIso(),
@@ -958,6 +1027,25 @@ const createOdontogramStore = ({
                 (!!e.serviceSymbolText || !!e.serviceSymbolUrl),
             );
 
+          // Categoría del procedimiento (del plan/diagnóstico vinculado) para
+          // derivar el símbolo clínico correcto en vez de "R" siempre.
+          const categorySource =
+            currentToothEvents.find(
+              (e) =>
+                !!e.procedureId &&
+                e.procedureId === item.procedureId &&
+                !!e.category,
+            ) ??
+            (item.fromPlanId
+              ? currentToothEvents.find(
+                  (e) => e.id === item.fromPlanId && !!e.category,
+                )
+              : undefined);
+          const performedCategory = categorySource?.category;
+          const performedSymbolKey =
+            (performedCategory && PERFORMED_CATEGORY_SYMBOL[performedCategory]) ||
+            "restoration";
+
           return {
             ...(existingEvent ?? {
               id: item.id,
@@ -981,6 +1069,7 @@ const createOdontogramStore = ({
                   ? "canceled"
                   : "done",
             procedureId: item.procedureId,
+            category: performedCategory ?? existingEvent?.category,
             procedureName:
               item.adHocName ||
               existingEvent?.procedureName ||
@@ -994,7 +1083,7 @@ const createOdontogramStore = ({
             visualState: {
               affectsOdontogram: true,
               priorityKey: "completed",
-              symbolKey: "restoration",
+              symbolKey: performedSymbolKey,
             },
             updatedAt: now,
           } as ClinicalEvent;
@@ -1007,14 +1096,15 @@ const createOdontogramStore = ({
         );
 
         const updatedNonPerformedEvents = nonPerformedEvents.map((event) => {
+          // Promueve a 'done' los planes con un performed done vinculado.
+          // NO se demota aquí: revertir un plan completado debe ser una enmienda
+          // explícita, no un efecto colateral de re-guardar realizados (una lista
+          // de performed parcial/filtrada reabriría tratamientos ya completados).
           if (event.type === "plan" && donePlanIds.has(event.id)) {
-            return {
-              ...event,
-              status: "done" as const,
-              updatedAt: now,
-            };
+            return event.status === "done"
+              ? event
+              : { ...event, status: "done" as const, updatedAt: now };
           }
-
           return event;
         });
 
@@ -1045,9 +1135,36 @@ const createOdontogramStore = ({
           return {} as Partial<OdontogramState>;
         }
 
+        // Guard de máquina de estados: si la transición de status es inválida
+        // (revertir un evento terminal done/canceled) NO descartamos el update
+        // entero — aplicamos el resto de campos (prioridad, notas, costo…) y
+        // CONSERVAMOS el status terminal. La reversión real es vía enmienda
+        // (Fase legal). Así editar un plan ya finalizado deja de perder cambios.
+        let nextStatus = updates.status ?? currentEvent.status;
+        let safeUpdates = updates;
+        if (
+          updates.status !== undefined &&
+          !ClinicalEventStateMachine.canTransition(
+            currentEvent.status,
+            updates.status,
+          )
+        ) {
+          console.warn(
+            `[odontogram] Transición de estado inválida ignorada: ${currentEvent.status} → ${updates.status} (se conserva el status terminal; el resto de campos se aplica)`,
+          );
+          nextStatus = currentEvent.status;
+          // Conservamos el status terminal: descartamos también campos derivados
+          // del status (visualState) para no desincronizar status↔color/símbolo.
+          const { status: _status, visualState: _visualState, ...rest } = updates;
+          void _status;
+          void _visualState;
+          safeUpdates = rest;
+        }
+
         const nextEvent: ClinicalEvent = {
           ...currentEvent,
-          ...updates,
+          ...safeUpdates,
+          status: nextStatus,
           updatedAt: nowIso(),
         };
 

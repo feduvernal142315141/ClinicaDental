@@ -23,8 +23,6 @@ import {
   FormMessage,
 } from "@/components/ui/atomic/forms/form";
 import { Input } from "@/components/ui/atomic/forms/input";
-import TextArea from "@/components/ui/atomic/forms/textarea";
-import { Slider } from "@/components/ui/atomic/forms/slider";
 import { Select } from "@/components/ui/controls/select";
 import { DateTimePicker } from "@/components/ui/controls/date-time-picker";
 import { cn } from "@/lib/utils/utils";
@@ -33,17 +31,6 @@ import type {
   UpdateMedicalHistoryRequest,
 } from "@/lib/entity/clinical-history";
 
-// Opciones locales (equivalentes a las exportadas por MedicalHistoryFormFields,
-// que sigue sirviendo a AntecedentesPanel en AntD). Se replican aquí para que
-// este drawer no dependa del módulo AntD.
-const PAIN_TYPE_OPTIONS = [
-  { label: "Agudo", value: "agudo" },
-  { label: "Pulsátil", value: "pulsátil" },
-  { label: "Sordo", value: "sordo" },
-  { label: "Punzante", value: "punzante" },
-  { label: "Intermitente", value: "intermitente" },
-  { label: "Constante", value: "constante" },
-];
 
 const MARITAL_STATUS_OPTIONS = [
   { label: "Soltero/a", value: "Soltero/a" },
@@ -70,13 +57,8 @@ const formSchema = z.object({
   currentMedications: z.array(z.string()),
   allergies: z.array(z.string()),
   previousSurgeries: z.array(z.string()),
-  chiefComplaint: z.string().optional(),
   habits: z.array(z.string()),
   lastDentalVisit: z.string().optional(),
-  painLocation: z.string().optional(),
-  painIntensity: z.number(),
-  painType: z.string().optional(),
-  painDuration: z.string().optional(),
 });
 
 type MedicalHistoryFormValues = z.infer<typeof formSchema>;
@@ -88,13 +70,8 @@ const EMPTY_VALUES: MedicalHistoryFormValues = {
   currentMedications: [],
   allergies: [],
   previousSurgeries: [],
-  chiefComplaint: "",
   habits: [],
   lastDentalVisit: "",
-  painLocation: "",
-  painIntensity: 0,
-  painType: "",
-  painDuration: "",
 };
 
 function toFormValues(
@@ -107,14 +84,9 @@ function toFormValues(
     currentMedications: mh.currentMedications ?? [],
     allergies: mh.allergies ?? [],
     previousSurgeries: mh.previousSurgeries ?? [],
-    chiefComplaint: mh.chiefComplaint ?? "",
     habits: mh.habits ?? [],
     // El picker Bento trabaja con strings 'YYYY-MM-DD'.
     lastDentalVisit: mh.lastDentalVisit ? mh.lastDentalVisit.slice(0, 10) : "",
-    painLocation: mh.currentPain?.location ?? "",
-    painIntensity: mh.currentPain?.intensity ?? 0,
-    painType: mh.currentPain?.type ?? "",
-    painDuration: mh.currentPain?.duration ?? "",
   };
 }
 
@@ -225,20 +197,8 @@ export function MedicalHistoryDrawer({
   }, [open, medicalHistory, form]);
 
   const onSubmit = async (values: MedicalHistoryFormValues) => {
-    // intensity 0 = "sin dolor" — backend validator rejects 0, expects null when not applicable
-    const rawIntensity = values.painIntensity;
-    const intensity = rawIntensity && rawIntensity > 0 ? rawIntensity : null;
-
-    // Only include currentPain object if at least one field is filled
-    const hasPainData =
-      intensity !== null ||
-      values.painLocation?.trim() ||
-      values.painType ||
-      values.painDuration?.trim();
-
-    // Preserva la semántica de HEAD: se envían los strings crudos (""
-    // cuando el usuario vacía el campo) para no alterar el "limpiar campo"
-    // si el backend distingue "" de ausente en el PATCH parcial.
+    // Motivo de consulta y dolor actual son per-visita (PatientVisitRecord);
+    // la anamnesis ya no los captura ni envía (fuente única de verdad).
     const data: UpdateMedicalHistoryRequest = {
       occupation: values.occupation,
       maritalStatus: values.maritalStatus,
@@ -246,16 +206,7 @@ export function MedicalHistoryDrawer({
       currentMedications: values.currentMedications ?? [],
       allergies: values.allergies ?? [],
       previousSurgeries: values.previousSurgeries ?? [],
-      chiefComplaint: values.chiefComplaint,
       habits: values.habits ?? [],
-      currentPain: hasPainData
-        ? {
-            location: values.painLocation,
-            intensity: intensity ?? undefined,
-            type: values.painType,
-            duration: values.painDuration,
-          }
-        : undefined,
       lastDentalVisit: values.lastDentalVisit || undefined,
     };
     await onSave(data);
@@ -402,25 +353,6 @@ export function MedicalHistoryDrawer({
 
               <FormField
                 control={form.control}
-                name="chiefComplaint"
-                render={({ field, fieldState }) => (
-                  <FormItem>
-                    <FormLabel>Motivo de consulta</FormLabel>
-                    <FormControl>
-                      <TextArea
-                        rows={3}
-                        placeholder="Describa el motivo de consulta"
-                        aria-invalid={!!fieldState.error}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="habits"
                 render={({ field, fieldState }) => (
                   <FormItem>
@@ -455,94 +387,6 @@ export function MedicalHistoryDrawer({
                 )}
               />
 
-              {/* Current pain */}
-              <div className="space-y-4 rounded-xl border border-hairline bg-elevated p-4">
-                <div className="text-sm font-semibold text-ink">Dolor actual</div>
-
-                <FormField
-                  control={form.control}
-                  name="painLocation"
-                  render={({ field, fieldState }) => (
-                    <FormItem>
-                      <FormLabel>Ubicación</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Ej: Molar inferior derecho"
-                          aria-invalid={!!fieldState.error}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="painIntensity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex items-center justify-between">
-                        <FormLabel>Intensidad (0-10)</FormLabel>
-                        <span className="text-sm font-medium tabular-nums text-ink">
-                          {field.value ?? 0}
-                        </span>
-                      </div>
-                      <Slider
-                        min={0}
-                        max={10}
-                        step={1}
-                        value={[field.value ?? 0]}
-                        onValueChange={(v) => field.onChange(v[0])}
-                        aria-label="Intensidad del dolor"
-                      />
-                      <div className="flex justify-between text-[11px] text-subtle">
-                        <span>0</span>
-                        <span>5</span>
-                        <span>10</span>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="painType"
-                  render={({ field, fieldState }) => (
-                    <FormItem>
-                      <FormLabel>Tipo de dolor</FormLabel>
-                      <Select
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        options={[EMPTY_OPTION, ...PAIN_TYPE_OPTIONS]}
-                        placeholder="Seleccionar tipo"
-                        aria-invalid={!!fieldState.error}
-                        aria-label="Tipo de dolor"
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="painDuration"
-                  render={({ field, fieldState }) => (
-                    <FormItem>
-                      <FormLabel>Duración</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Ej: 2 días, 1 semana..."
-                          aria-invalid={!!fieldState.error}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
             </div>
 
             <SheetFooter className="flex-row justify-end gap-2 border-t border-hairline">

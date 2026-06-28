@@ -5,14 +5,13 @@ import { useOdontogramStore } from "@/lib/odontogram/store";
 import type { ToothSurface } from "./types";
 import { useEffect, useMemo, useState } from "react";
 import { ToothSymbolService } from "@/lib/odontogram/domain/odontogram/services/ToothSymbolService";
+import { OdontogramColorService } from "@/lib/odontogram/domain/odontogram/services/OdontogramColorService";
 import type { ToothViewPaths, SurfacePath } from "./tooth-square-paths";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
 
 interface ToothSVGMultiViewProps {
   toothNumber: number;
   view: "frontal" | "oclusal" | "lateral";
-  surfaceTreatments?: unknown[];
-  surfaceConditions?: unknown[];
   onSurfaceClick: (surface: ToothSurface) => void;
 }
 
@@ -80,6 +79,17 @@ function _ToothSVGMultiView({
     return ToothSymbolService.getToothSymbolImage(toothNumber, clinicalEvents);
   }, [toothNumber, clinicalEvents, isClient]);
 
+  // Color base de la pieza completa (ausente/implante/corona/endo): se aplica a
+  // todas las caras en las 3 vistas. Las caries por superficie tienen precedencia.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const toothLevelColor = useMemo(() => {
+    if (!isClient) return null;
+    return OdontogramColorService.getToothLevelColor(
+      toothNumber,
+      clinicalEvents,
+    );
+  }, [toothNumber, clinicalEvents, isClient]);
+
   // Use the professionally designed SVG paths
   const viewPaths = getDesignedToothPaths(toothNumber, view);
 
@@ -89,6 +99,7 @@ function _ToothSVGMultiView({
     <DesignedToothView
       viewPaths={viewPaths}
       surfaceColors={surfaceColors}
+      toothLevelColor={toothLevelColor}
       symbol={toothSymbol}
       symbolImage={toothSymbolImage}
       onSurfaceClick={onSurfaceClick}
@@ -101,6 +112,7 @@ function _ToothSVGMultiView({
 function DesignedToothView({
   viewPaths,
   surfaceColors,
+  toothLevelColor,
   symbol,
   symbolImage,
   onSurfaceClick,
@@ -108,17 +120,20 @@ function DesignedToothView({
 }: {
   viewPaths: ToothViewPaths;
   surfaceColors: Record<ToothSurface, string>;
+  toothLevelColor?: string | null;
   symbol: string | null;
   symbolImage?: string | null;
   onSurfaceClick: (surface: ToothSurface) => void;
   view: "frontal" | "oclusal" | "lateral";
 }) {
-  const { viewBox, outline, surfaces, roots, highlights } = viewPaths;
+  const { viewBox, outline, surfaces, roots, highlights, symbolAnchor } =
+    viewPaths;
 
-  // Calcular centro del viewBox para posicionar el símbolo
+  // Posición del símbolo: centro de la CORONA (symbolAnchor), no del viewBox
+  // completo — así no cae sobre la raíz en la vista vestibular.
   const vbParts = viewBox.split(" ").map(Number);
-  const cx = vbParts[0] + vbParts[2] / 2;
-  const cy = vbParts[1] + vbParts[3] / 2;
+  const cx = symbolAnchor?.x ?? vbParts[0] + vbParts[2] / 2;
+  const cy = symbolAnchor?.y ?? vbParts[1] + vbParts[3] / 2;
   // Scale font size relative to viewBox width
   const fontSize = Math.round(vbParts[2] * 0.22);
 
@@ -150,14 +165,24 @@ function DesignedToothView({
       {/* Superficies clickeables (zonas del diseño) */}
       {surfaces.map((sp: SurfacePath) => {
         if (!sp.d) return null; // Skip empty paths (non-visible surface)
-        const color = surfaceColors[sp.surface];
-        const hasTreatment = color !== "transparent";
+        const surfaceColor = surfaceColors[sp.surface];
+        const hasSurfaceTreatment = surfaceColor !== "transparent";
+        // Precedencia: color por superficie (caries) > color a nivel diente
+        // (ausente/implante/corona/endo) > color natural del diente.
+        const fill = hasSurfaceTreatment
+          ? surfaceColor
+          : (toothLevelColor ?? THEME.surfaceDefault);
+        const fillOpacity = hasSurfaceTreatment
+          ? 0.75
+          : toothLevelColor
+            ? 0.6
+            : 1;
         return (
           <path
             key={sp.surface}
             d={sp.d}
-            fill={hasTreatment ? color : THEME.surfaceDefault}
-            fillOpacity={hasTreatment ? 0.75 : 1}
+            fill={fill}
+            fillOpacity={fillOpacity}
             stroke={THEME.outlineStroke}
             strokeWidth="0.5"
             strokeLinejoin="round"
@@ -196,8 +221,10 @@ function DesignedToothView({
         />
       ))}
 
-      {/* Símbolo del servicio en modo imagen (precede al texto). */}
-      {showImage && view === "oclusal" && (
+      {/* Símbolo del servicio en modo imagen (precede al texto). Se dibuja en
+          las 3 vistas para que estados de pieza y tratamientos realizados sean
+          visibles también en Frontal y Lateral, no solo en Oclusal. */}
+      {showImage && (
         <image
           href={symbolImage as string}
           x={cx - fontSize * 0.8}
@@ -210,8 +237,9 @@ function DesignedToothView({
         />
       )}
 
-      {/* Símbolo profesional (texto: letra de tratamiento o texto del servicio) */}
-      {!showImage && symbol && view === "oclusal" && (
+      {/* Símbolo profesional (texto: letra de tratamiento o texto del servicio).
+          Halo blanco para legibilidad sobre cualquier vista/relleno. */}
+      {!showImage && symbol && (
         <text
           x={cx}
           y={cy + fontSize * 0.35}
@@ -220,7 +248,8 @@ function DesignedToothView({
           textAnchor="middle"
           fill="#1F2937"
           stroke="#FFFFFF"
-          strokeWidth="0.5"
+          strokeWidth="0.9"
+          paintOrder="stroke"
           pointerEvents="none"
           style={{ userSelect: "none" }}
         >

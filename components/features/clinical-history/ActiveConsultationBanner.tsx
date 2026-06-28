@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 
-import { CheckCircle, Timer } from "lucide-react";
+import { CheckCircle, Timer, Loader2, AlertTriangle } from "lucide-react";
 import { useActiveConsultation } from "@/lib/store/useActiveConsultation";
-import { notify } from "@/lib/utils/notify";
+import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
 
 interface ActiveConsultationBannerProps {
   /** Called when the doctor clicks "Finalizar Consulta" — should navigate to Odontograma tab */
@@ -21,10 +21,20 @@ function formatElapsed(ms: number): string {
   return `${pad(minutes)}:${pad(seconds)}`;
 }
 
+function formatSavedAgo(lastSavedAt: number | null): string {
+  if (!lastSavedAt) return "Guardado";
+  const secs = Math.max(0, Math.floor((Date.now() - lastSavedAt) / 1000));
+  if (secs < 5) return "Guardado";
+  if (secs < 60) return `Guardado hace ${secs}s`;
+  const mins = Math.floor(secs / 60);
+  return `Guardado hace ${mins} min`;
+}
+
 export function ActiveConsultationBanner({
   onFinalizeClick,
 }: ActiveConsultationBannerProps) {
   const { patientName, criticalAlerts, startTime } = useActiveConsultation();
+  const { status: saveStatus, lastSavedAt } = useAutosaveStatus();
 
   // Avoid SSR hydration mismatch with localStorage-persisted store
   const [mounted, setMounted] = useState(false);
@@ -32,6 +42,8 @@ export function ActiveConsultationBanner({
 
   useEffect(() => {
     setMounted(true);
+    // Al desmontar el banner (cerrar/cambiar de consulta) se reinicia el estado.
+    return () => useAutosaveStatus.getState().reset();
   }, []);
 
   useEffect(() => {
@@ -41,10 +53,6 @@ export function ActiveConsultationBanner({
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [startTime, mounted]);
-
-  const handleSaveDraft = useCallback(() => {
-    void notify.info("Los datos se guardan automáticamente");
-  }, []);
 
   if (!mounted || !patientName) return null;
 
@@ -85,12 +93,25 @@ export function ActiveConsultationBanner({
 
       {/* Right: actions */}
       <div className="flex items-center gap-2 shrink-0">
-        <button
-          onClick={handleSaveDraft}
-          className="bg-elevated border border-hairline text-subtle px-4 py-1.5 rounded-lg text-xs font-semibold hover:bg-hover transition-colors"
-        >
-          Guardado automático ✓
-        </button>
+        {/* Indicador de autosave real (guardando / guardado / error) */}
+        {saveStatus === "saving" ? (
+          <span className="flex items-center gap-1.5 rounded-lg border border-hairline bg-elevated px-3 py-1.5 text-xs font-semibold text-subtle">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Guardando…
+          </span>
+        ) : saveStatus === "error" ? (
+          <span className="flex items-center gap-1.5 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-600 dark:text-rose-300">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Error al guardar
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5 rounded-lg border border-hairline bg-elevated px-3 py-1.5 text-xs font-semibold text-subtle">
+            <CheckCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-300" />
+            {saveStatus === "saved"
+              ? formatSavedAgo(lastSavedAt)
+              : "Guardado automático"}
+          </span>
+        )}
         <button
           onClick={onFinalizeClick}
           className="bg-destructive text-white px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm hover:bg-destructive/90 active:scale-95 transition-all flex items-center gap-1.5"
