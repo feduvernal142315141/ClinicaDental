@@ -1,99 +1,119 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { ArrowLeft, KeyRound, Save } from "lucide-react";
 import { Button } from "@/components/ui/primitives/shadcn/button";
-import { Form, Input as AntInput } from "antd";
-import { PasswordStrength } from "@/components/ui/PasswordStrength";
+import { notify } from "@/lib/utils/notify";
 import { useDoctorAuth } from "@/lib/hooks/doctors/useDoctorAuth";
-import { AuthFormCard } from "../components/auth-form-card";
+import { AuthShell } from "../components/auth-shell";
+import { AuthCard } from "../components/auth-card";
+import { FloatingField } from "../components/floating-field";
+import { PasswordStrength } from "../components/password-strength";
 
-function validatePassword(pwd: string): string | null {
-  if (pwd.length < 8 || pwd.length > 20)
-    return "La contraseña debe tener entre 8 y 20 caracteres";
-  if (!/[A-Z]/.test(pwd)) return "Debe contener al menos una letra mayúscula";
-  if (!/[a-z]/.test(pwd)) return "Debe contener al menos una letra minúscula";
-  if (!/\d/.test(pwd)) return "Debe contener al menos un número";
-  if (!/[^a-zA-Z0-9]/.test(pwd))
-    return "Debe contener al menos un carácter especial";
-  return null;
-}
+// Reglas conservadas exactamente desde la versión antd (8-20 + complejidad).
+const schema = z.object({
+  code: z.string().min(1, "El código es requerido"),
+  password: z
+    .string()
+    .min(8, "La contraseña debe tener entre 8 y 20 caracteres")
+    .max(20, "La contraseña debe tener entre 8 y 20 caracteres")
+    .regex(/[A-Z]/, "Debe contener al menos una letra mayúscula")
+    .regex(/[a-z]/, "Debe contener al menos una letra minúscula")
+    .regex(/\d/, "Debe contener al menos un número")
+    .regex(/[^a-zA-Z0-9]/, "Debe contener al menos un carácter especial"),
+});
+
+type ResetPasswordValues = z.infer<typeof schema>;
 
 export function ResetPasswordForm() {
   const router = useRouter();
   const params = useSearchParams();
   const { resetPassword, loading } = useDoctorAuth();
-  const [localError, setLocalError] = useState<string | null>(null);
 
   const codeFromUrl = useMemo(() => params.get("code") ?? "", [params]);
 
-  const [form] = Form.useForm();
+  const form = useForm<ResetPasswordValues>({
+    resolver: zodResolver(schema),
+    mode: "onBlur",
+    defaultValues: { code: codeFromUrl, password: "" },
+  });
 
-  const handleSubmit = async (values: { code: string; password: string }) => {
-    setLocalError(null);
-    const pwdError = validatePassword(values.password);
-    if (pwdError) {
-      setLocalError(pwdError);
-      return;
-    }
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, touchedFields },
+  } = form;
 
+  const passwordValue = watch("password") ?? "";
+
+  const onSubmit = handleSubmit(async (values) => {
     try {
       await resetPassword({ code: values.code, password: values.password });
       router.push("/login");
     } catch (err) {
-      setLocalError(
-        err instanceof Error ? err.message : "Error al restablecer contraseña"
+      notify.error(
+        err instanceof Error ? err.message : "Error al restablecer contraseña",
       );
     }
-  };
+  });
 
   return (
-    <AuthFormCard
-      title="Restablecer contraseña"
-      description="Ingresa el código recibido por correo y tu nueva contraseña."
-    >
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={{ code: codeFromUrl, password: "" }}
-        onFinish={handleSubmit}
+    <AuthShell>
+      <AuthCard
+        title="Restablecer contraseña"
+        description="Ingresa el código recibido por correo y define tu nueva contraseña."
+        icon={<KeyRound className="h-7 w-7" />}
+        footer={
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={() => router.push("/login")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Volver al inicio de sesión
+          </Button>
+        }
       >
-        <Form.Item
-          label="Código"
-          name="code"
-          rules={[{ required: true, message: "El código es requerido" }]}
-        >
-          <AntInput placeholder="Código" disabled={loading} />
-        </Form.Item>
+        <form onSubmit={onSubmit} className="space-y-4" noValidate>
+          <FloatingField
+            id="code"
+            label="Código de verificación"
+            inputMode="text"
+            autoComplete="one-time-code"
+            disabled={loading}
+            error={errors.code?.message}
+            success={!!touchedFields.code && !errors.code}
+            {...register("code")}
+          />
 
-        <Form.Item
-          label="Nueva contraseña"
-          name="password"
-          rules={[{ required: true, message: "La contraseña es requerida" }]}
-        >
-          <AntInput.Password placeholder="••••••••" disabled={loading} />
-        </Form.Item>
+          <FloatingField
+            id="password"
+            label="Nueva contraseña"
+            type="password"
+            autoComplete="new-password"
+            disabled={loading}
+            error={errors.password?.message}
+            {...register("password")}
+          />
 
-        <PasswordStrength />
+          <PasswordStrength password={passwordValue} />
 
-        {localError && (
-          <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md border border-red-200 mb-3">
-            {localError}
-          </div>
-        )}
-
-        <Button type="submit" className="w-full" loading={loading}>
-          {loading ? "Guardando..." : "Guardar contraseña"}
-        </Button>
-      </Form>
-
-      <Button
-        variant="ghost"
-        className="w-full"
-        onClick={() => router.push("/login")}
-      >
-        Volver al login
-      </Button>
-    </AuthFormCard>
+          <Button
+            type="submit"
+            loading={loading}
+            className="auth-sheen relative h-12 w-full overflow-hidden bg-brand text-white hover:bg-brand-strong"
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {loading ? "Guardando..." : "Guardar contraseña"}
+          </Button>
+        </form>
+      </AuthCard>
+    </AuthShell>
   );
 }

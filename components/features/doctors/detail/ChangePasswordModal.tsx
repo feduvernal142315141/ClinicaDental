@@ -14,8 +14,8 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  Input,
 } from "@/components/ui/atomic/forms";
+import { PasswordInput } from "@/components/ui/atomic/forms/password-input";
 import { useDoctorChangePassword } from "@/lib/hooks/doctors";
 import { cn } from "@/lib/utils/utils";
 
@@ -184,8 +184,7 @@ export function ChangePasswordModal({
                     Contraseña actual <span className="text-rose-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       placeholder="Contraseña actual"
                       autoComplete="current-password"
                       disabled={loading}
@@ -206,8 +205,7 @@ export function ChangePasswordModal({
                     Nueva contraseña <span className="text-rose-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       placeholder="Mínimo 8 caracteres"
                       autoComplete="new-password"
                       disabled={loading}
@@ -229,8 +227,7 @@ export function ChangePasswordModal({
                     Confirmar Contraseña <span className="text-rose-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       placeholder="Repita la contraseña"
                       autoComplete="new-password"
                       disabled={loading}

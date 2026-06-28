@@ -2,16 +2,18 @@
  * Auth Components Module
  *
  * Barrel export del módulo de autenticación.
- * Consumir vía `@/components/auth`.
+ * Consumir vía `@/components/features/auth`.
  */
 
-// Shared
-export { AuthFormCard } from "./components/auth-form-card";
+// Shared (2026: shell con partículas + tarjeta glass bento + campos flotantes)
+export { AuthShell } from "./components/auth-shell";
+export { AuthCard } from "./components/auth-card";
+export { AuthParticles } from "./components/auth-particles";
+export { FloatingField } from "./components/floating-field";
+export { PasswordStrength } from "./components/password-strength";
 
 // Login
 export { LoginForm } from "./login/login-form";
-export { LoginFormCard } from "./login/login-form-card";
-export { LoginHeroSection } from "./login/login-hero-section";
 
 // Flujos
 export { ForgotPasswordForm } from "./forgot-password/forgot-password-form";

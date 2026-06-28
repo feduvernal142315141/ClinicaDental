@@ -1,15 +1,9 @@
 import { LoginForm } from "@/components/features/auth";
 
 /**
- * LOGIN PAGE (SERVER COMPONENT)
- *
- * Server Component para la página de login
- * LoginForm ya es un Client Component, no necesita wrapper adicional
+ * LOGIN PAGE (Server Component). El layout completo (fondo, partículas, panel de
+ * marca) lo aporta <AuthShell> dentro de LoginForm.
  */
 export default function LoginPage() {
-  return (
-    <div className="min-h-screen bg-background">
-      <LoginForm />
-    </div>
-  );
+  return <LoginForm />;
 }
