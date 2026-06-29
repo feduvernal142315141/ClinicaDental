@@ -9,6 +9,10 @@
 node_modules/
 dist/
 
+# Next.js build output — dev usa .next, el build de prod usa .next-build
+.next/
+.next-build/
+
 # Compiled Java class files
 *.class
 
