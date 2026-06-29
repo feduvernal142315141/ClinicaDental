@@ -59,17 +59,27 @@ html {
   --hover: rgba(15, 23, 42, 0.045);
   --hover-strong: rgba(15, 23, 42, 0.08);
   --overlay: rgba(15, 23, 42, 0.42);
+
+  /* Permite animar height/grid hacia `auto`/`max-content` donde el navegador
+     lo soporte (Chrome/Edge 129+); fallback transparente en el resto. */
+  interpolate-size: allow-keywords;
 }
 
 .dark {
-  /* Capas con luminosidad creciente para dar profundidad sobre fondo oscuro:
-     background (más oscuro) < card/popover (elevado) < border (tenue). */
-  --background: oklch(0.12 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.165 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.165 0 0);
-  --popover-foreground: oklch(0.985 0 0);
+  /* Tokens shadcn alineados al slate AZULADO Bento (antes eran gris NEUTRO
+     —chroma 0— y "rompían" con el resto de la app: tarjetas que parecían cajas
+     negras desconectadas). Ahora: background=canvas < card/popover=elevated,
+     border/input=hairline. Misma jerarquía de profundidad, color cohesivo. */
+  --background: rgb(var(--canvas));
+  --foreground: rgb(var(--ink));
+  /* Panel navy CLARAMENTE elevado sobre el canvas (#090D14): antes usaba
+     `elevated` (#161D29), demasiado cercano al fondo → en tarjetas grandes y
+     planas (dashboard) se leía negro. Este valor da contraste tipo TicketsSmart
+     y solo afecta superficies shadcn (`bg-card`/`bg-popover`), no las Bento. */
+  --card: rgb(28 38 60);
+  --card-foreground: rgb(var(--ink));
+  --popover: rgb(28 38 60);
+  --popover-foreground: rgb(var(--ink));
   --primary: oklch(0.7 0.15 270);
   --primary-foreground: oklch(0.145 0 0);
   --secondary: oklch(0.245 0 0);
@@ -80,8 +90,10 @@ html {
   --accent-foreground: oklch(0.145 0 0);
   --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.24 0 0);
-  --input: oklch(0.22 0 0);
+  /* Borde visible que DEFINE las tarjetas sobre el fondo oscuro (antes hairline
+     #1F2A38, casi invisible al 70% del átomo Card). */
+  --border: rgb(46 60 86);
+  --input: rgb(46 60 86);
   --ring: oklch(0.7 0.15 270 / 0.5);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
@@ -172,6 +184,11 @@ html {
   --color-hover: var(--hover);
   --color-hover-strong: var(--hover-strong);
   --color-overlay: var(--overlay);
+  /* Curvas de easing "emphasized" (Material 3) → utilidades `ease-emphasized`
+     / `ease-emphasized-accel`. Para desplazar/colapsar con sensación premium
+     en vez del `ease-in-out` plano. */
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized-accel: cubic-bezier(0.3, 0, 1, 1);
   --radius-bento: 1.25rem;
   --shadow-bento:
     0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px -18px rgba(16, 24, 40, 0.22);
@@ -394,4 +411,14 @@ html {
   box-shadow:
     inset 0 1px 0 0 rgb(255 255 255 / 0.06),
     0 24px 60px -28px rgb(0 0 0 / 0.8);
+}
+
+/* ── Sileo toasts (estándar de mensajería) ───────────────────────────────────
+   Conservamos el theming NATIVO de sileo (burbuja contrastante + su color de
+   texto coherente). Solo corregimos el `text-transform: capitalize` del título
+   de sileo, que en español produce Title-Case incorrecto ("El Nuevo Horario Del
+   Doctor…"). El tono de estado (rojo/verde/…) del título lo mantiene sileo. */
+[data-sileo-viewport] [data-sileo-title] {
+  text-transform: none;
+  letter-spacing: -0.01em;
 }
