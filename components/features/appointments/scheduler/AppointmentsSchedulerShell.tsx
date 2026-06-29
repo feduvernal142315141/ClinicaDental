@@ -273,11 +273,10 @@ export function AppointmentsSchedulerShell({
         className="grid gap-4"
         style={{ gridTemplateColumns: isMobile ? "1fr" : "260px 1fr" }}
       >
-        {/* Sidebar — desktop only */}
+        {/* Sidebar — desktop only. Altura definida → la lista interna es el
+            único scroll (CTA, encabezado y etiquetas quedan fijos). */}
         {!isMobile && (
-          <div className="max-h-[calc(100vh-240px)] overflow-y-auto border-r border-hairline pr-4">
-            {sidebarContent}
-          </div>
+          <div className="h-[calc(100vh-240px)]">{sidebarContent}</div>
         )}
 
         {/* Agenda view */}
@@ -306,7 +305,7 @@ export function AppointmentsSchedulerShell({
                   Filtra la agenda por especialista y etiquetas
                 </SheetDescription>
               </SheetHeader>
-              <div className="overflow-y-auto p-4">{sidebarContent}</div>
+              <div className="min-h-0 flex-1 p-4">{sidebarContent}</div>
             </SheetContent>
           </Sheet>
         </>

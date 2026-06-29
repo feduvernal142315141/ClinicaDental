@@ -124,8 +124,9 @@ export function AppointmentsSchedulerToolbar({
           </button>
         </div>
 
-        {/* Etiqueta de rango */}
-        <span className="whitespace-nowrap text-[15px] font-semibold capitalize text-ink">
+        {/* Etiqueta de rango (solo la 1ª letra en mayúscula; `capitalize`
+            ponía "De Junio De" — incorrecto en español). */}
+        <span className="whitespace-nowrap text-[15px] font-semibold text-ink first-letter:uppercase">
           {rangeLabel}
         </span>
 

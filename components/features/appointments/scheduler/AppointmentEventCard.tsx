@@ -2,7 +2,6 @@
 
 import dayjs from "dayjs";
 import type { AppointmentStatus, SchedulerEvent } from "@/lib/entity/appointment";
-import { LabelChip } from "@/components/app/labels";
 import { cn } from "@/lib/utils/utils";
 
 interface AppointmentEventCardProps {
@@ -75,6 +74,9 @@ export function AppointmentEventCard({
     `${displayTime} — ${appointment.duration} min`,
     appointment.doctorName ? `Dr. ${appointment.doctorName}` : null,
     servicesLabel || null,
+    appointment.labels && appointment.labels.length > 0
+      ? `Etiquetas: ${appointment.labels.map((l) => l.name).join(", ")}`
+      : null,
   ]
     .filter(Boolean)
     .join("\n");
@@ -92,8 +94,8 @@ export function AppointmentEventCard({
         }
       }}
       className={cn(
-        "absolute inset-0 flex cursor-pointer flex-col overflow-hidden rounded-md border-l-[3px]",
-        "transition-shadow hover:shadow-md",
+        "absolute inset-0 flex cursor-pointer flex-col overflow-hidden rounded-lg border-l-[3px] ring-1 ring-inset ring-black/[0.03]",
+        "transition-shadow hover:shadow-sm",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
         isCompact ? "px-1.5 py-0.5" : "px-2 py-1",
         accent.muted && "opacity-70",
@@ -130,13 +132,19 @@ export function AppointmentEventCard({
       )}
 
       {!isCompact && appointment.labels && appointment.labels.length > 0 && (
-        <div className="mt-0.5 flex flex-wrap gap-0.5">
-          {appointment.labels.slice(0, 3).map((labelItem) => (
-            <LabelChip key={labelItem.id} label={labelItem} size="xs" />
+        <div className="mt-1 flex flex-wrap items-center gap-1">
+          {appointment.labels.slice(0, 4).map((labelItem) => (
+            <span
+              key={labelItem.id}
+              aria-hidden
+              title={labelItem.name}
+              className="h-1.5 w-1.5 rounded-full ring-1 ring-inset ring-black/10"
+              style={{ backgroundColor: labelItem.color }}
+            />
           ))}
-          {appointment.labels.length > 3 && (
-            <span className="text-[10px] text-subtle">
-              +{appointment.labels.length - 3}
+          {appointment.labels.length > 4 && (
+            <span className="text-[10px] leading-none text-subtle">
+              +{appointment.labels.length - 4}
             </span>
           )}
         </div>

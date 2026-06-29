@@ -60,7 +60,7 @@ export function AppointmentsMonthGrid({
   // ---- Estado de carga inicial (sin datos aún): esqueleto Bento -----------
   if (loading && !hasAnyEvents) {
     return (
-      <div className="overflow-hidden rounded-xl border border-hairline bg-surface">
+      <div className="overflow-hidden rounded-bento border border-hairline bg-surface shadow-sm">
         <div className="grid grid-cols-7 border-b border-hairline bg-elevated text-center text-[11px] font-medium text-subtle">
           {WEEKDAYS_ES_MON.map((d) => (
             <div key={d} className="py-2">
@@ -80,7 +80,7 @@ export function AppointmentsMonthGrid({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-hairline bg-surface">
+    <div className="overflow-hidden rounded-bento border border-hairline bg-surface shadow-sm">
       {/* Cabecera de días de la semana (lunes primero) */}
       <div className="grid grid-cols-7 border-b border-hairline bg-elevated text-center text-[11px] font-medium text-subtle">
         {WEEKDAYS_ES_MON.map((d) => (

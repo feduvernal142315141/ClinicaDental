@@ -98,28 +98,31 @@ export function AppointmentsDayGrid({
   return (
     <div
       ref={containerRef}
-      className="relative overflow-y-auto rounded-lg border border-hairline bg-surface"
-      style={{ height: "calc(100vh - 260px)", minHeight: 400 }}
+      className="relative overflow-y-auto rounded-bento border border-hairline bg-surface shadow-sm"
+      // Mismo offset que el sidebar (Shell: h-[calc(100vh-240px)]) → misma altura.
+      style={{ height: "calc(100vh - 240px)", minHeight: 400 }}
     >
       <div className="relative" style={{ height: totalHeight }}>
-        {/* Time labels + horizontal lines */}
-        {slots.map((slot, i) => (
-          <div
-            key={slot}
-            className="absolute inset-x-0 flex items-start border-t border-hairline"
-            style={{ top: i * slotHeight, height: slotHeight }}
-          >
-            <span
-              className="sticky left-0 z-[2] shrink-0 select-none bg-surface pr-2 text-right text-[11px] text-subtle"
-              style={{
-                width: TIME_COL_WIDTH,
-                lineHeight: `${slotHeight}px`,
-              }}
+        {/* Líneas + etiquetas SOLO a la hora en punto (aire Bento) */}
+        {slots.map((slot, i) =>
+          slot.endsWith(":00") ? (
+            <div
+              key={slot}
+              className="absolute inset-x-0 flex items-start border-t border-hairline"
+              style={{ top: i * slotHeight, height: slotHeight }}
             >
-              {slot}
-            </span>
-          </div>
-        ))}
+              <span
+                className="sticky left-0 z-[2] shrink-0 select-none bg-surface pr-2 text-right text-[11px] font-medium text-subtle tabular-nums"
+                style={{
+                  width: TIME_COL_WIDTH,
+                  lineHeight: `${slotHeight}px`,
+                }}
+              >
+                {slot}
+              </span>
+            </div>
+          ) : null,
+        )}
 
         {/* Empty state */}
         {events.length === 0 && !loading && (

@@ -117,45 +117,58 @@ export function AppointmentsWeekGrid({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-hairline bg-surface">
-      {/* Header: days (sticky vertically — fuera del área de scroll) */}
-      <div
-        className="sticky top-0 z-20 grid border-b border-hairline bg-canvas"
-        style={{
-          gridTemplateColumns: `${TIME_COL_WIDTH}px repeat(7, 1fr)`,
-        }}
-      >
-        <div style={{ width: TIME_COL_WIDTH }} />
-        {weekDays.map((day) => {
-          const d = dayjs(day);
-          const isToday = day === todayStr;
-          return (
-            <div
-              key={day}
-              className="border-l border-hairline px-1 py-2 text-center"
-            >
-              <span className="block text-[11px] capitalize text-subtle">
-                {d.format("ddd")}
-              </span>
-              <span
-                className={cn(
-                  "mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg font-semibold",
-                  isToday ? "bg-brand text-white" : "text-ink",
-                )}
-              >
-                {d.format("D")}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Body: scroll area */}
+    <div className="overflow-hidden rounded-bento border border-hairline bg-surface shadow-sm">
+      {/* Cabecera y cuerpo COMPARTEN el contenedor de scroll → mismas columnas y
+          mismo gutter de scrollbar (líneas verticales alineadas) + scroll
+          horizontal sincronizado. La cabecera queda sticky arriba. */}
       <div
         ref={containerRef}
         className="relative overflow-auto"
-        style={{ height: "calc(100vh - 310px)", minHeight: 400 }}
+        // Mismo offset que el sidebar (Shell: h-[calc(100vh-240px)]) → calendario
+        // y panel lateral a la MISMA altura, con los fondos alineados.
+        style={{ height: "calc(100vh - 240px)", minHeight: 400 }}
       >
+        {/* Header (sticky top, dentro del scroll) */}
+        <div
+          className="sticky top-0 z-30 grid border-b border-hairline bg-surface"
+          style={{
+            gridTemplateColumns: `${TIME_COL_WIDTH}px repeat(7, 1fr)`,
+            minWidth: 700,
+          }}
+        >
+          <div
+            className="sticky left-0 z-10 bg-surface"
+            style={{ width: TIME_COL_WIDTH }}
+          />
+          {weekDays.map((day) => {
+            const d = dayjs(day);
+            const isToday = day === todayStr;
+            const isWeekend = [0, 6].includes(d.day());
+            return (
+              <div
+                key={day}
+                className={cn(
+                  "border-l border-hairline px-1 py-2 text-center",
+                  !isToday && isWeekend && "bg-hover",
+                )}
+              >
+                <span className="block text-[11px] capitalize text-subtle">
+                  {d.format("ddd")}
+                </span>
+                <span
+                  className={cn(
+                    "mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg font-semibold",
+                    isToday ? "bg-brand text-white" : "text-ink",
+                  )}
+                >
+                  {d.format("D")}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Body grid */}
         <div
           className="relative grid"
           style={{
@@ -167,17 +180,26 @@ export function AppointmentsWeekGrid({
           {/* Time labels column (eje horario sticky horizontalmente) */}
           <div className="sticky left-0 z-20 bg-surface">
             <div className="relative h-full">
-              {slots.map((slot, i) => (
-                <div
-                  key={slot}
-                  className="absolute w-full"
-                  style={{ top: i * slotHeight, height: slotHeight }}
-                >
-                  <span className="-mt-1.5 block select-none pr-1.5 text-right text-[10px] text-subtle">
-                    {slot}
-                  </span>
-                </div>
-              ))}
+              {slots.map((slot, i) =>
+                slot.endsWith(":00") ? (
+                  <div
+                    key={slot}
+                    className="absolute w-full"
+                    style={{ top: i * slotHeight, height: slotHeight }}
+                  >
+                    <span
+                      className={cn(
+                        "block select-none pr-1.5 text-right text-[10px] font-medium text-subtle tabular-nums",
+                        // La 1ª etiqueta (07:00) no se desplaza hacia arriba o el
+                        // borde del scroll la recorta.
+                        i > 0 && "-mt-1.5",
+                      )}
+                    >
+                      {slot}
+                    </span>
+                  </div>
+                ) : null,
+              )}
             </div>
           </div>
 
@@ -185,6 +207,7 @@ export function AppointmentsWeekGrid({
           {weekDays.map((day) => {
             const dayEvents = eventsByDay.get(day) ?? [];
             const isToday = day === todayStr;
+            const isWeekend = [0, 6].includes(dayjs(day).day());
 
             return (
               <div
@@ -192,7 +215,7 @@ export function AppointmentsWeekGrid({
                 data-day={day}
                 className={cn(
                   "relative border-l border-hairline",
-                  isToday && "bg-brand/5",
+                  isToday ? "bg-brand/5" : isWeekend && "bg-hover",
                   onCreateSlot && "cursor-copy",
                 )}
                 onClick={(e) => {
@@ -209,14 +232,17 @@ export function AppointmentsWeekGrid({
                   );
                 }}
               >
-                {/* Horizontal slot lines (no interceptan el clic de crear) */}
-                {slots.map((slot, i) => (
-                  <div
-                    key={slot}
-                    className="pointer-events-none absolute left-0 right-0 border-t border-hairline"
-                    style={{ top: i * slotHeight, height: slotHeight }}
-                  />
-                ))}
+                {/* Líneas horizontales SOLO a la hora en punto (aire Bento; la
+                    media hora no lleva línea). No interceptan el clic de crear. */}
+                {slots.map((slot, i) =>
+                  slot.endsWith(":00") ? (
+                    <div
+                      key={slot}
+                      className="pointer-events-none absolute left-0 right-0 border-t border-hairline"
+                      style={{ top: i * slotHeight }}
+                    />
+                  ) : null,
+                )}
 
                 {/* Events */}
                 {dayEvents.map((ev) => {
