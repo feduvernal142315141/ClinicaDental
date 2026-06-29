@@ -24,6 +24,7 @@ import type {
 import type { CreatePatientRequest } from "@/lib/entity/patients";
 import type { WeekSchedule } from "@/lib/entity/schedule";
 import { isSchedulableType, type ServiceType } from "@/lib/entity/services";
+import { notify } from "@/lib/utils/notify";
 
 export type { AppointmentFormValues } from "@/lib/hooks/appointments/appointment-form.schema";
 
@@ -384,6 +385,10 @@ export function useAppointmentForm({
         const payload: UpdateAppointmentRequest = payloadBase;
         const updated = await updateAppointment(appointmentId, payload);
         if (updated) {
+          notify.success("Cita actualizada", {
+            description:
+              "Los cambios de la cita se guardaron. Revisa los detalles actualizados.",
+          });
           router.push(`${basePath}/${appointmentId}`);
         }
         return;
@@ -396,6 +401,10 @@ export function useAppointmentForm({
 
       const createdId = await createAppointment(payload);
       if (createdId) {
+        notify.success("Cita agendada", {
+          description:
+            "La cita se creó correctamente y ya aparece en la agenda.",
+        });
         router.push(basePath);
       }
     },

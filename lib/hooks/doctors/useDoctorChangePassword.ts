@@ -12,9 +12,15 @@ export function useDoctorChangePassword() {
       setLoading(true);
       try {
         await doctorsService.changeDoctorPassword(data);
-        notify.success("Contraseña cambiada exitosamente");
+        notify.success("Contraseña actualizada", {
+          description:
+            "Tu nueva contraseña ya está activa. Úsala la próxima vez que inicies sesión.",
+        });
       } catch (error: unknown) {
-        notify.error(error.message || "Error al cambiar contraseña");
+        notify.error(error.message || "No se pudo cambiar la contraseña", {
+          description:
+            "Verifica que la contraseña actual sea correcta e inténtalo de nuevo; si el problema persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);

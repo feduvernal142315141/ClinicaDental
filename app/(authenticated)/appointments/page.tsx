@@ -57,7 +57,10 @@ export default function AppointmentsPage() {
       }
       navigateToConsultation(appointment);
     } catch (e) {
-      notify.error((e as Error).message || "No se pudo iniciar la cita");
+      notify.error((e as Error).message || "No se pudo iniciar la cita", {
+        description:
+          "No fue posible iniciar la consulta. Revisa tu conexión e inténtalo de nuevo; si el problema persiste, contacta a soporte.",
+      });
     } finally {
       setStartLoading(false);
       setPendingAppointment(null);

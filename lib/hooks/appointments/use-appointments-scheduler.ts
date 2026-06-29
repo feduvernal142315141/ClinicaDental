@@ -433,7 +433,10 @@ export function useAppointmentsScheduler(
         });
         // El parche optimista ya refleja el resultado; NO invalidamos aquí para
         // evitar el flash de skeleton (invalidateCache vacía + recarga global).
-        notify.success("Cita reagendada.");
+        notify.success("Cita reagendada", {
+          description:
+            "La cita se movió a su nuevo horario y ya aparece en el calendario.",
+        });
       } catch {
         // El interceptor de Axios ya notifica el error (incl. el 409 con el
         // mensaje del backend); aquí sólo revertimos el parche optimista.

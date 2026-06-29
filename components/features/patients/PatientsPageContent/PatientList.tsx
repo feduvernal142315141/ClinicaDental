@@ -78,7 +78,10 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
           });
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_e) {
-          notify.error("No se pudo desactivar el paciente");
+          notify.error("No se pudo desactivar el paciente", {
+            description:
+              "El paciente sigue activo en el listado. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+          });
         }
       },
     });
@@ -106,7 +109,10 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
           });
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_e) {
-          notify.error("No se pudo activar el paciente");
+          notify.error("No se pudo activar el paciente", {
+            description:
+              "El paciente continúa inactivo. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+          });
         }
       },
     });

@@ -10,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { serviceCreateTemplate } from "@/lib/services/template/template";
+import { notify } from "@/lib/utils/notify";
 
 interface TemplateVariable {
   id: string;
@@ -324,6 +325,10 @@ const useTemplateForm = () => {
         });
 
         if (response?.status === 201) {
+          notify.success("Plantilla creada", {
+            description:
+              "La plantilla quedó registrada y podrás usarla al crear tus campañas de WhatsApp.",
+          });
           router.push("/campaigns");
         }
       } catch (error) {

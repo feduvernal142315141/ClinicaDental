@@ -35,6 +35,7 @@ import {
   saveNotificationSettings,
 } from "@/lib/notifications";
 import TextArea from "@/components/ui/atomic/forms/textarea";
+import { notify } from "@/lib/utils/notify";
 
 export function NotificationsSettings() {
   const [settings, setSettings] = useState<NotificationSettings>(
@@ -51,7 +52,10 @@ export function NotificationsSettings() {
 
   const handleSave = () => {
     saveNotificationSettings(settings);
-    alert("Configuración guardada exitosamente");
+    notify.success("Notificaciones guardadas", {
+      description:
+        "Las preferencias de notificaciones y plantillas quedaron guardadas y se aplicarán a los próximos mensajes.",
+    });
   };
 
   const handleEditTemplate = (template: WhatsAppTemplate) => {

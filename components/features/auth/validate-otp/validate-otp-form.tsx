@@ -18,6 +18,7 @@ import {
 } from "@/lib/auth/otp-session";
 import { doctorAuthService } from "@/lib/services/doctors";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { notify } from "@/lib/utils/notify";
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -148,6 +149,10 @@ export function ValidateOtpForm() {
         email,
         otpExpiresAt: newOtp.otpExpiresAt,
         otpExpiresInSeconds: newOtp.otpExpiresInSeconds,
+      });
+      notify.success("Código reenviado", {
+        description:
+          "Te enviamos un nuevo código a tu correo. Revísalo e ingrésalo para continuar.",
       });
       setOtp("");
       router.refresh();

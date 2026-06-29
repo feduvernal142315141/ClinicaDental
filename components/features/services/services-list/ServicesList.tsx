@@ -59,7 +59,10 @@ export function ServicesList({
         filters,
         orders: activeOrdersRef.current,
       }).catch((err) => {
-        notify.error(err?.message || "Error al cargar servicios");
+        notify.error(err?.message || "No se pudo cargar la lista de servicios", {
+          description:
+            "Revisa tu conexión e inténtalo de nuevo; si el problema persiste, contacta a soporte.",
+        });
       });
     }, 350);
     return () => clearTimeout(timer);

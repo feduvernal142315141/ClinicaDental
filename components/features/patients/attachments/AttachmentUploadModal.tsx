@@ -36,11 +36,15 @@ export function AttachmentUploadModal({ open, onClose, onUpload, uploading, appo
 
   const handleSubmit = async () => {
     if (!file) {
-      void notify.warning("Selecciona un archivo");
+      void notify.warning("Falta el archivo", {
+        description: "Arrastra o elige una imagen o PDF antes de subirlo al expediente del paciente.",
+      });
       return;
     }
     if (!category) {
-      void notify.warning("Selecciona una categoría");
+      void notify.warning("Falta la categoría", {
+        description: "Elige una categoría para clasificar el archivo dentro del expediente del paciente.",
+      });
       return;
     }
     await onUpload(file, category, notes.trim() || undefined, appointmentId);

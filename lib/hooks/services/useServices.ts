@@ -50,7 +50,10 @@ export function useServices() {
 
         return response;
       } catch (error: unknown) {
-        notify.error(errMsg(error, "Error al cargar servicios"));
+        notify.error(errMsg(error, "Error al cargar servicios"), {
+          description:
+            "No pudimos obtener el listado de servicios. Revisa tu conexión e inténtalo de nuevo; si continúa, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -69,7 +72,10 @@ export function useServices() {
         const service = await servicesService.getServiceById(id);
         return service;
       } catch (error: unknown) {
-        notify.error(errMsg(error, "Error al cargar servicio"));
+        notify.error(errMsg(error, "Error al cargar servicio"), {
+          description:
+            "No pudimos cargar los datos de este servicio. Vuelve a intentarlo en unos segundos; si persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -87,13 +93,19 @@ export function useServices() {
       try {
         const success = await servicesService.createService(data);
         if (success) {
-          notify.success("Servicio creado exitosamente");
+          notify.success("Servicio creado", {
+            description:
+              "El servicio ya está disponible en el listado y puedes asignarlo a las citas.",
+          });
           // No refrescamos aquí: el form navega de vuelta a la lista, que
           // re-monta y refetch-ea (evita un request desperdiciado).
         }
         return success;
       } catch (error: unknown) {
-        notify.error(errMsg(error, "Error al crear servicio"));
+        notify.error(errMsg(error, "Error al crear servicio"), {
+          description:
+            "No se pudo registrar el servicio. Verifica los datos y tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -111,12 +123,18 @@ export function useServices() {
       try {
         const success = await servicesService.updateService(id, data);
         if (success) {
-          notify.success("Servicio actualizado exitosamente");
+          notify.success("Servicio actualizado", {
+            description:
+              "Los cambios se guardaron y ya se reflejan en el listado de servicios.",
+          });
           // El form navega de vuelta a la lista (que refetch-ea al montar).
         }
         return success;
       } catch (error: unknown) {
-        notify.error(errMsg(error, "Error al actualizar servicio"));
+        notify.error(errMsg(error, "Error al actualizar servicio"), {
+          description:
+            "No se pudieron guardar los cambios. Revisa los datos y tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -135,16 +153,22 @@ export function useServices() {
         const success = await servicesService.toggleServiceStatus(id);
         if (success) {
           notify.success(
-            currentlyActive
-              ? "Servicio inactivado exitosamente"
-              : "Servicio activado exitosamente",
+            currentlyActive ? "Servicio inactivado" : "Servicio activado",
+            {
+              description: currentlyActive
+                ? "El servicio queda oculto para nuevas citas; puedes reactivarlo cuando lo necesites."
+                : "El servicio vuelve a estar disponible para asignarlo a las citas.",
+            },
           );
           // El refetch lo dispara la lista CON sus filtros/orden/página activos
           // (refetch sin args perdería el filtro "ocultar inactivos").
         }
         return success;
       } catch (error: unknown) {
-        notify.error(errMsg(error, "Error al cambiar estado del servicio"));
+        notify.error(errMsg(error, "Error al cambiar estado del servicio"), {
+          description:
+            "No se pudo actualizar el estado del servicio. Inténtalo de nuevo en unos segundos; si persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);

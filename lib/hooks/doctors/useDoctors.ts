@@ -46,7 +46,10 @@ export function useDoctors() {
 
         return response;
       } catch (error: unknown) {
-        notify.error(error.message || "Error al cargar doctores");
+        notify.error(error.message || "No se pudo cargar el listado de doctores", {
+          description:
+            "Revisa tu conexión e inténtalo de nuevo; si el problema persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -65,7 +68,10 @@ export function useDoctors() {
         const doctor = await doctorsService.getDoctorById(id);
         return doctor;
       } catch (error: unknown) {
-        notify.error(error.message || "Error al cargar doctor");
+        notify.error(error.message || "No se pudo cargar el doctor", {
+          description:
+            "No fue posible obtener los datos del doctor. Vuelve a intentarlo en unos segundos.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -81,6 +87,10 @@ export function useDoctors() {
     setLoading(true);
     try {
       const newDoctor = await doctorsService.createDoctor(data);
+      notify.success("Doctor creado", {
+        description:
+          "El doctor ya aparece en el listado y está disponible para agendar citas.",
+      });
       return newDoctor;
     } catch (error: unknown) {
       throw error;
@@ -97,6 +107,10 @@ export function useDoctors() {
       setLoading(true);
       try {
         const updatedDoctor = await doctorsService.updateDoctor(id, data);
+        notify.success("Doctor actualizado", {
+          description:
+            "Los cambios del doctor se guardaron y ya están disponibles en el listado.",
+        });
         return updatedDoctor;
       } catch (error: unknown) {
         throw error;
@@ -115,9 +129,15 @@ export function useDoctors() {
       setLoading(true);
       try {
         await doctorsService.deleteDoctor(id);
-        notify.success("Doctor eliminado exitosamente");
+        notify.success("Doctor eliminado", {
+          description:
+            "El doctor ya no aparece en el listado ni estará disponible para agendar nuevas citas.",
+        });
       } catch (error: unknown) {
-        notify.error(error.message || "Error al eliminar doctor");
+        notify.error(error.message || "No se pudo eliminar el doctor", {
+          description:
+            "Inténtalo de nuevo; si el doctor tiene citas asociadas, revísalas antes de continuar.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -135,10 +155,18 @@ export function useDoctors() {
       try {
         await doctorsService.updateDoctor(id, { active });
         notify.success(
-          `Doctor ${active ? "activado" : "desactivado"} exitosamente`,
+          `Doctor ${active ? "activado" : "desactivado"}`,
+          {
+            description: active
+              ? "El doctor vuelve a estar disponible para agendar citas."
+              : "El doctor queda inactivo y no se le podrán agendar nuevas citas.",
+          },
         );
       } catch (error: unknown) {
-        notify.error(error.message || "Error al cambiar estado");
+        notify.error(error.message || "No se pudo cambiar el estado del doctor", {
+          description:
+            "Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);

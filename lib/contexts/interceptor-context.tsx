@@ -128,16 +128,24 @@ export function InterceptorProvider({ children }: { children: ReactNode }) {
     // Mostrar toast con Sonner (API imperativa, sin contextHolder)
     switch (type) {
       case "success":
-        notify.success(message);
+        notify.success(message, {
+          description: "La acción se completó correctamente; ya puedes continuar con tu trabajo.",
+        });
         break;
       case "error":
-        notify.error(message);
+        notify.error(message, {
+          description: "Revisa los datos y tu conexión e inténtalo de nuevo; si el problema persiste, contacta a soporte.",
+        });
         break;
       case "warning":
-        notify.warning(message);
+        notify.warning(message, {
+          description: "Revisa la información antes de continuar para evitar inconvenientes.",
+        });
         break;
       case "info":
-        notify.info(message);
+        notify.info(message, {
+          description: "Toma en cuenta este aviso para continuar sin contratiempos.",
+        });
         break;
     }
 

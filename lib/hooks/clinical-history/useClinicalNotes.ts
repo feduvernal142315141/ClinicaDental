@@ -22,9 +22,13 @@ export function useClinicalNotes(patientId: string, initialNotes?: string) {
       try {
         const result = await clinicalHistoryService.saveClinicalNotes(patientId, content);
         setLastSaved({ at: result.updatedAt, by: result.updatedBy });
-        notify.success("Notas guardadas");
+        notify.success("Notas clínicas guardadas", {
+          description: "Los cambios quedaron registrados en la historia clínica del paciente.",
+        });
       } catch {
-        notify.error("No se pudieron guardar las notas");
+        notify.error("No se pudieron guardar las notas", {
+          description: "Revisa tu conexión e inténtalo de nuevo; si el problema persiste, contacta a soporte.",
+        });
       } finally {
         setSaving(false);
       }

@@ -21,7 +21,10 @@ export function RolesList({ basePath = "/settings/roles" }: RolesListProps) {
 
   useEffect(() => {
     fetchRoles({ page: 0, pageSize: 10 }).catch((err) => {
-      notify.error(err?.message || "Error al cargar roles");
+      notify.error(err?.message || "Error al cargar roles", {
+        description:
+          "No pudimos obtener la lista de roles. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+      });
     });
   }, [fetchRoles]);
 

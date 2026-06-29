@@ -12,6 +12,7 @@ import { localTodayInput } from "@/lib/datetime";
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
 import { doctorsService } from "@/lib/services/doctors/doctors.service";
 import { useOdontogramStore } from "@/lib/odontogram/store";
+import { notify } from "@/lib/utils/notify";
 import type { ProcedurePlan } from "./types";
 import type { AppointmentType } from "@/lib/entity/appointment/appointments";
 
@@ -115,6 +116,11 @@ export function SchedulePlanModal({
             }
           : p,
       );
+
+      notify.success("Cita programada", {
+        description:
+          "Los procedimientos pendientes quedaron agendados; revisa la cita en la agenda del paciente.",
+      });
 
       onScheduled?.(updatedPlans, appointmentId);
       onClose();

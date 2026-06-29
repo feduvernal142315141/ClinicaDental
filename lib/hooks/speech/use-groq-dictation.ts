@@ -124,7 +124,10 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
       setIsRecording(true);
     } catch (error) {
       console.error("[useGroqDictation] mic access error:", error);
-      notify.error("No se pudo acceder al micrófono");
+      notify.error("No se pudo acceder al micrófono", {
+        description:
+          "Permite el uso del micrófono en tu navegador y vuelve a intentar el dictado.",
+      });
       if (options.onError && error instanceof Error) {
         options.onError(error);
       }
@@ -156,7 +159,10 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
         }
       } catch (error) {
         console.error("[useGroqDictation] Groq transcription error:", error);
-        notify.error("No se pudo procesar el dictado por voz");
+        notify.error("No se pudo procesar el dictado por voz", {
+          description:
+            "Revisa tu conexión e inténtalo de nuevo; si el problema persiste, escribe la nota a mano.",
+        });
         if (optionsRef.current.onError && error instanceof Error) {
           optionsRef.current.onError(error);
         }

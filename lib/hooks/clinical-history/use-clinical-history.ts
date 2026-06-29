@@ -46,11 +46,17 @@ export function useClinicalHistory() {
       setLoading(true);
       try {
         await clinicalHistoryService.updateMedicalHistory(patientId, data);
-        notify.success("Historia médica actualizada exitosamente");
+        notify.success("Historia médica actualizada", {
+          description:
+            "Los antecedentes del paciente quedaron guardados y ya se reflejan en su historia clínica.",
+        });
         await loadSnapshot(patientId);
         return true;
       } catch (err: unknown) {
-        notify.error(err.message || "Error al actualizar historia médica");
+        notify.error(err.message || "Error al actualizar historia médica", {
+          description:
+            "No pudimos guardar los cambios. Revisa tu conexión e inténtalo de nuevo; si continúa, contacta a soporte.",
+        });
         throw err;
       } finally {
         setLoading(false);
@@ -64,11 +70,17 @@ export function useClinicalHistory() {
       setLoading(true);
       try {
         await clinicalHistoryService.validateMedicalHistory(patientId);
-        notify.success("Historia médica validada exitosamente");
+        notify.success("Historia médica validada", {
+          description:
+            "Confirmaste que los antecedentes están al día; el paciente queda listo para su atención clínica.",
+        });
         await loadSnapshot(patientId);
         return true;
       } catch (err: unknown) {
-        notify.error(err.message || "Error al validar historia médica");
+        notify.error(err.message || "Error al validar historia médica", {
+          description:
+            "No pudimos validar la historia médica. Revisa tu conexión e inténtalo otra vez; si persiste, contacta a soporte.",
+        });
         throw err;
       } finally {
         setLoading(false);

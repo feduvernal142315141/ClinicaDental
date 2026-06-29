@@ -61,6 +61,10 @@ export function useAvatarUpload({
         `Solo se permiten archivos: ${allowedFormats
           .map((f) => f.split("/")[1].toUpperCase())
           .join(", ")}`,
+        {
+          description:
+            "El archivo que elegiste no tiene un formato de imagen válido. Selecciona una foto en alguno de los formatos permitidos.",
+        },
       );
       return false;
     }
@@ -68,7 +72,10 @@ export function useAvatarUpload({
     // Check file size
     const isValidSize = file.size / 1024 / 1024 < maxSizeMB;
     if (!isValidSize) {
-      notify.error(`La imagen debe ser menor a ${maxSizeMB}MB`);
+      notify.error(`La imagen debe ser menor a ${maxSizeMB}MB`, {
+        description:
+          "La foto seleccionada supera el tamaño máximo permitido. Comprímela o elige una imagen más ligera e inténtalo de nuevo.",
+      });
       return false;
     }
 

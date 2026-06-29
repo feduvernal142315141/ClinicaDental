@@ -10,6 +10,7 @@ import {
   serviceUpdateCampaign,
 } from "@/lib/services/campaigns/campaigns";
 import { RequestCreateCampaign } from "@/lib/entity/campaigns/campaigns";
+import { notify } from "@/lib/utils/notify";
 import moment from "moment";
 
 type CampaignFormData = Omit<RequestCreateCampaign, "clinicId">;
@@ -88,6 +89,17 @@ const useCampaignForm = () => {
         }
 
         if (response?.status === 201) {
+          if (id) {
+            notify.success("Campaña actualizada", {
+              description:
+                "Los cambios de la campaña se guardaron y ya están disponibles en el listado.",
+            });
+          } else {
+            notify.success("Campaña creada", {
+              description:
+                "La campaña ya aparece en el listado y puedes activarla o editarla cuando quieras.",
+            });
+          }
           router.push("/campaigns");
         }
       } catch (error) {

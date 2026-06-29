@@ -192,7 +192,10 @@ export function PatientOdontogramPanel({
               if (!readOnly && !isHistoricMode) {
                 useAutosaveStatus.getState().markError();
               }
-              notify.error("No se pudo sincronizar el odontograma del paciente");
+              notify.error("No se pudo sincronizar el odontograma", {
+                description:
+                  "Tus últimos cambios podrían no haberse guardado. Revisa tu conexión y vuelve a intentarlo; si continúa, contacta a soporte.",
+              });
             }}
             finalizeOpen={finalizeOpen}
             onFinalizeClose={onFinalizeClose}

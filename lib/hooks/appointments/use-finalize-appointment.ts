@@ -96,13 +96,19 @@ export function useFinalizeAppointment({
       if (!visitId || !UUID_V4.test(visitId)) {
         const msg = "No hay una cita válida para finalizar.";
         setError(msg);
-        notify.error(msg);
+        notify.error(msg, {
+          description:
+            "Vuelve a abrir la cita desde la agenda e inténtalo de nuevo; si el problema sigue, contacta a soporte.",
+        });
         throw new Error(msg);
       }
       if (!patientId) {
         const msg = "Falta el identificador de paciente.";
         setError(msg);
-        notify.error(msg);
+        notify.error(msg, {
+          description:
+            "Vuelve a entrar al expediente del paciente y reintenta finalizar la cita; si persiste, contacta a soporte.",
+        });
         throw new Error(msg);
       }
 
@@ -121,7 +127,10 @@ export function useFinalizeAppointment({
               ? err.message
               : "Error al guardar el odontograma antes de finalizar.";
           setError(msg);
-          notify.error(msg);
+          notify.error(msg, {
+            description:
+              "No se finalizó la cita para no perder cambios del odontograma. Revisa tu conexión e inténtalo de nuevo.",
+          });
           throw err;
         }
 
@@ -167,7 +176,10 @@ export function useFinalizeAppointment({
               ? err.message
               : "Error al marcar la cita como realizada.";
           setError(msg);
-          notify.error(msg);
+          notify.error(msg, {
+            description:
+              "El odontograma sí se guardó, pero la cita sigue abierta. Revisa tu conexión e inténtalo de nuevo.",
+          });
           throw err;
         }
 
@@ -200,23 +212,31 @@ export function useFinalizeAppointment({
 
             try {
               followUpId = await appointmentsService.createAppointment(payload);
-              notify.success(
-                "Cita marcada como realizada y seguimiento programado.",
-              );
+              notify.success("Cita finalizada y seguimiento agendado", {
+                description:
+                  "La cita quedó como realizada y la de seguimiento ya aparece en la agenda con los servicios pendientes.",
+              });
             } catch (err) {
               console.warn(
                 "[useFinalizeAppointment] Cita completada pero falló el seguimiento",
                 err,
               );
-              notify.warning(
-                "Cita marcada como realizada, pero no se pudo crear el seguimiento. Créalo manualmente.",
-              );
+              notify.warning("Cita finalizada, falta el seguimiento", {
+                description:
+                  "La cita quedó como realizada, pero no se pudo agendar el seguimiento. Créalo manualmente desde la agenda.",
+              });
             }
           } else {
-            notify.success("Cita marcada como realizada.");
+            notify.success("Cita finalizada", {
+              description:
+                "La cita quedó registrada como realizada y los planes completados se cerraron automáticamente.",
+            });
           }
         } else {
-          notify.success("Cita marcada como realizada.");
+          notify.success("Cita finalizada", {
+            description:
+              "La cita quedó registrada como realizada y los planes completados se cerraron automáticamente.",
+          });
         }
 
         return { followUpId };

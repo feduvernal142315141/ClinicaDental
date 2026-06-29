@@ -58,6 +58,10 @@ export function ResetPasswordForm() {
     } catch (err) {
       notify.error(
         err instanceof Error ? err.message : "Error al restablecer contraseña",
+        {
+          description:
+            "No pudimos cambiar tu contraseña. Verifica que el código sea correcto y no haya caducado; vuelve a solicitarlo si es necesario.",
+        },
       );
     }
   });

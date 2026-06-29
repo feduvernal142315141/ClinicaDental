@@ -78,7 +78,10 @@ export function useServiceForm({
         });
       })
       .catch((err) => {
-        notify.error(err?.message || "Error al cargar servicio");
+        notify.error(err?.message || "No se pudo cargar el servicio", {
+          description:
+            "No pudimos obtener los datos de este servicio. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        });
       });
   }, [isEdit, serviceId, getServiceById, reset]);
 

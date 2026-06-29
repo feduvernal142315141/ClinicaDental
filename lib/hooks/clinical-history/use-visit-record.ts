@@ -30,7 +30,10 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
         // No visit record yet — graceful empty state
         setRecord(null);
       } else {
-        notify.error(e?.message || "Error al cargar registro de visita");
+        notify.error(e?.message || "No se pudo cargar el registro de visita", {
+          description:
+            "No pudimos recuperar los datos de esta consulta. Revisa tu conexión y vuelve a intentarlo; si persiste, contacta a soporte.",
+        });
       }
     } finally {
       setLoading(false);
@@ -73,12 +76,18 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
         });
         useAutosaveStatus.getState().markSaved();
         if (!options?.silent) {
-          notify.success("Registro de visita guardado");
+          notify.success("Registro de visita guardado", {
+            description:
+              "Los datos de esta consulta quedaron guardados en la historia clínica del paciente.",
+          });
         }
       } catch (err: unknown) {
         const e = err as { message?: string };
         useAutosaveStatus.getState().markError();
-        notify.error(e?.message || "Error al guardar registro de visita");
+        notify.error(e?.message || "No se pudo guardar el registro de visita", {
+          description:
+            "Los cambios de esta consulta no quedaron guardados. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        });
         throw err;
       } finally {
         setSaving(false);
@@ -115,11 +124,18 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
               },
         );
         useAutosaveStatus.getState().markSaved();
+        notify.success("Notas de visita guardadas", {
+          description:
+            "Las notas clínicas de esta consulta quedaron registradas en la historia del paciente.",
+        });
         return result;
       } catch (err: unknown) {
         const e = err as { message?: string };
         useAutosaveStatus.getState().markError();
-        notify.error(e?.message || "Error al guardar notas de visita");
+        notify.error(e?.message || "No se pudieron guardar las notas clínicas", {
+          description:
+            "Las notas de esta consulta no quedaron guardadas. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        });
         throw err;
       } finally {
         setSaving(false);

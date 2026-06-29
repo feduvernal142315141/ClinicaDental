@@ -32,7 +32,10 @@ export function useOdontogram() {
       } catch (error: unknown) {
         const msg =
           error instanceof Error ? error.message : "Error al cargar el odontograma";
-        notify.error(msg);
+        notify.error(msg, {
+          description:
+            "No pudimos cargar el odontograma del paciente. Revisa tu conexión e inténtalo de nuevo; si el problema persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -55,7 +58,10 @@ export function useOdontogram() {
           error instanceof Error
             ? error.message
             : "Error al guardar el odontograma";
-        notify.error(msg);
+        notify.error(msg, {
+          description:
+            "Los cambios del odontograma no se guardaron. Revisa tu conexión e inténtalo de nuevo; si continúa, contacta a soporte para no perder el registro.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -80,7 +86,10 @@ export function useOdontogram() {
           error instanceof Error
             ? error.message
             : "Error al cargar el historial del odontograma";
-        notify.error(msg);
+        notify.error(msg, {
+          description:
+            "No pudimos cargar el historial de cambios del odontograma. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);

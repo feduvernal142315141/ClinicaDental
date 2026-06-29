@@ -46,7 +46,10 @@ export function usePatients() {
 
         return response;
       } catch (error: unknown) {
-        notify.error(error.message || "Error al cargar pacientes");
+        notify.error(error.message || "No se pudo cargar el listado de pacientes", {
+          description:
+            "Revisa tu conexión e inténtalo de nuevo; si el problema continúa, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -65,7 +68,10 @@ export function usePatients() {
         const patient = await patientsService.getPatientById(id);
         return patient;
       } catch (error: unknown) {
-        notify.error(error.message || "Error al cargar paciente");
+        notify.error(error.message || "No se pudo cargar el paciente", {
+          description:
+            "Vuelve a intentarlo en unos segundos; si persiste, revisa tu conexión o contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -83,10 +89,16 @@ export function usePatients() {
       setLoading(true);
       try {
         const patientId = await patientsService.createPatient(data);
-        notify.success("Paciente creado exitosamente");
+        notify.success("Paciente creado", {
+          description:
+            "Ya aparece en el listado y puedes agendarle citas o abrir su historia clínica.",
+        });
         return patientId;
       } catch (error: unknown) {
-        notify.error(error.message || "Error al crear paciente");
+        notify.error(error.message || "No se pudo crear el paciente", {
+          description:
+            "Revisa que los datos estén completos e inténtalo otra vez; si continúa, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -103,10 +115,15 @@ export function usePatients() {
       setLoading(true);
       try {
         await patientsService.updatePatient(data);
-        notify.success("Paciente actualizado exitosamente");
+        notify.success("Paciente actualizado", {
+          description: "Los cambios se guardaron y ya están visibles en su ficha.",
+        });
         return true;
       } catch (error: unknown) {
-        notify.error(error.message || "Error al actualizar paciente");
+        notify.error(error.message || "No se pudo actualizar el paciente", {
+          description:
+            "Tus cambios no se guardaron. Inténtalo de nuevo y, si persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -123,10 +140,15 @@ export function usePatients() {
       setLoading(true);
       try {
         await patientsService.deletePatient(id);
-        notify.success("Paciente eliminado exitosamente");
+        notify.success("Paciente eliminado", {
+          description: "Se quitó del listado activo; puedes restaurarlo más adelante si lo necesitas.",
+        });
         return true;
       } catch (error: unknown) {
-        notify.error(error.message || "Error al eliminar paciente");
+        notify.error(error.message || "No se pudo eliminar el paciente", {
+          description:
+            "El paciente sigue en el listado. Inténtalo de nuevo; si continúa, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -143,11 +165,17 @@ export function usePatients() {
       setLoading(true);
       try {
         await patientsService.activatePatient(id);
-        notify.success("Paciente activado exitosamente");
+        notify.success("Paciente activado", {
+          description: "Vuelve a estar activo y disponible para agendar citas y gestionar su atención.",
+        });
         return true;
       } catch (error: unknown) {
         notify.error(
-          (error as Error).message || "Error al activar paciente",
+          (error as Error).message || "No se pudo activar el paciente",
+          {
+            description:
+              "El estado no cambió. Inténtalo de nuevo y, si persiste, contacta a soporte.",
+          },
         );
         throw error;
       } finally {
@@ -165,10 +193,15 @@ export function usePatients() {
       setLoading(true);
       try {
         await patientsService.restorePatient(id);
-        notify.success("Paciente restaurado exitosamente");
+        notify.success("Paciente restaurado", {
+          description: "Volvió al listado activo con su información y puedes seguir atendiéndolo.",
+        });
         return true;
       } catch (error: unknown) {
-        notify.error(error.message || "Error al restaurar paciente");
+        notify.error(error.message || "No se pudo restaurar el paciente", {
+          description:
+            "El paciente sigue eliminado. Inténtalo de nuevo; si continúa, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -186,11 +219,19 @@ export function usePatients() {
       try {
         await patientsService.updatePatient({ id, active });
         notify.success(
-          `Paciente ${active ? "activado" : "desactivado"} exitosamente`,
+          `Paciente ${active ? "activado" : "desactivado"}`,
+          {
+            description: active
+              ? "Ya está activo y disponible para agendar citas y gestionar su atención."
+              : "Quedó inactivo y no aparecerá para agendar; puedes reactivarlo cuando quieras.",
+          },
         );
         return true;
       } catch (error: unknown) {
-        notify.error(error.message || "Error al cambiar estado");
+        notify.error(error.message || "No se pudo cambiar el estado del paciente", {
+          description:
+            "El estado no se actualizó. Inténtalo de nuevo y, si persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);

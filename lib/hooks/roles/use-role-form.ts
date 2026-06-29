@@ -56,7 +56,10 @@ export function useRoleForm({
         });
       })
       .catch((err) => {
-        notify.error(err?.message || "Error al cargar rol");
+        notify.error(err?.message || "No se pudo cargar el rol", {
+          description:
+            "No pudimos obtener los datos de este rol. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        });
       });
   }, [isEdit, roleId, getRoleById, reset]);
 

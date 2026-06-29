@@ -23,12 +23,18 @@ export function useCancelAppointment(
       setError(null);
       try {
         await appointmentsService.cancelAppointment(appointmentId, data);
-        notify.success("Cita cancelada");
+        notify.success("Cita cancelada", {
+          description:
+            "La cita quedó marcada como cancelada y ya no aparece como agendada. Puedes crear una nueva cuando lo necesites.",
+        });
         options?.onSuccess?.();
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Error al cancelar la cita";
         setError(msg);
-        notify.error(msg);
+        notify.error(msg, {
+          description:
+            "No pudimos cancelar la cita. Revisa tu conexión e inténtalo de nuevo; si el problema continúa, contacta a soporte.",
+        });
         throw err;
       } finally {
         setLoading(false);

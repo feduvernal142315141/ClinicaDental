@@ -42,7 +42,10 @@ export function useRoles() {
 
         return response;
       } catch (error: unknown) {
-        notify.error(error.message || "Error al cargar roles");
+        notify.error(error.message || "No se pudieron cargar los roles", {
+          description:
+            "No pudimos obtener la lista de roles. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -61,7 +64,10 @@ export function useRoles() {
         const role = await rolesService.getRoleById(id);
         return role;
       } catch (error: unknown) {
-        notify.error(error.message || "Error al cargar rol");
+        notify.error(error.message || "No se pudo cargar el rol", {
+          description:
+            "No pudimos obtener los datos y permisos de este rol. Inténtalo de nuevo; si el problema continúa, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -79,13 +85,19 @@ export function useRoles() {
       try {
         const success = await rolesService.createRole(data);
         if (success) {
-          notify.success("Rol creado exitosamente");
+          notify.success("Rol creado", {
+            description:
+              "El rol ya aparece en el listado y puedes asignarlo a los usuarios de la clínica.",
+          });
           // Refresh list
           await fetchRoles();
         }
         return success;
       } catch (error: unknown) {
-        notify.error(error.message || "Error al crear rol");
+        notify.error(error.message || "No se pudo crear el rol", {
+          description:
+            "Revisa que el nombre y los permisos sean válidos e inténtalo de nuevo; si persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);
@@ -103,12 +115,18 @@ export function useRoles() {
       try {
         const success = await rolesService.updateRole(id, data);
         if (success) {
-          notify.success("Rol actualizado exitosamente");
+          notify.success("Rol actualizado", {
+            description:
+              "Los cambios se guardaron y los permisos se aplicarán a los usuarios que tengan este rol.",
+          });
           await fetchRoles();
         }
         return success;
       } catch (error: unknown) {
-        notify.error(error.message || "Error al actualizar rol");
+        notify.error(error.message || "No se pudo actualizar el rol", {
+          description:
+            "No pudimos guardar los cambios. Revisa los datos y tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        });
         throw error;
       } finally {
         setLoading(false);

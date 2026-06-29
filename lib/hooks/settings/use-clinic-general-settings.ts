@@ -61,7 +61,10 @@ export function useClinicGeneralSettings() {
       setError(errorMessage);
       // Si la sesión expiró, el modal global ya lo informa: no duplicar toast.
       if (!isSessionExpired()) {
-        notify.error(errorMessage);
+        notify.error(errorMessage, {
+          description:
+            "No pudimos cargar la configuración de la clínica. Revisa tu conexión y vuelve a intentarlo; si el problema sigue, contacta a soporte.",
+        });
       }
     } finally {
       setLoading(false);
@@ -82,7 +85,10 @@ export function useClinicGeneralSettings() {
         setSettings((current) =>
           current ? normalizeSettings({ ...current, ...payload }) : current,
         );
-        notify.success("Configuración general guardada correctamente");
+        notify.success("Configuración guardada", {
+          description:
+            "Los datos generales de la clínica se actualizaron y ya están vigentes en todo el sistema.",
+        });
         return true;
       } catch (err) {
         const errorMessage =
@@ -90,7 +96,10 @@ export function useClinicGeneralSettings() {
             ? err.message
             : "Error al guardar la configuración general";
         setError(errorMessage);
-        notify.error(errorMessage);
+        notify.error(errorMessage, {
+          description:
+            "No se guardaron los cambios de la configuración. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        });
         return false;
       } finally {
         setSaving(false);

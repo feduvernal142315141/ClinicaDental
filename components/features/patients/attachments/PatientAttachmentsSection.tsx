@@ -23,18 +23,26 @@ export function PatientAttachmentsSection({ patientId, canUpload, canDelete, act
   const handleUpload = async (file: File, category: AttachmentCategory, notes?: string) => {
     try {
       await upload(file, category, notes, activeAppointmentId);
-      void notify.success("Archivo subido correctamente");
+      void notify.success("Archivo subido", {
+        description: "El adjunto ya está disponible en la ficha del paciente.",
+      });
     } catch {
-      void notify.error("Error al subir el archivo");
+      void notify.error("No se pudo subir el archivo", {
+        description: "Revisa tu conexión y el tamaño del archivo, e inténtalo de nuevo; si persiste, contacta a soporte.",
+      });
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await remove(id);
-      void notify.success("Archivo eliminado");
+      void notify.success("Archivo eliminado", {
+        description: "El adjunto ya no aparece en la ficha del paciente.",
+      });
     } catch {
-      void notify.error("Error al eliminar el archivo");
+      void notify.error("No se pudo eliminar el archivo", {
+        description: "Revisa tu conexión e inténtalo de nuevo; si el problema persiste, contacta a soporte.",
+      });
     }
   };
 

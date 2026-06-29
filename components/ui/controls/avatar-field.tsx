@@ -97,11 +97,15 @@ export function AvatarField({
 
   const handleFile = async (file: File) => {
     if (!allowedFormats.includes(file.type)) {
-      notify.error("Formato no permitido. Usa JPG o PNG.");
+      notify.error("Formato de imagen no permitido", {
+        description: "Solo se aceptan archivos JPG o PNG. Elige una foto en alguno de esos formatos.",
+      });
       return;
     }
     if (file.size > maxSizeMB * 1024 * 1024) {
-      notify.error(`La imagen supera ${maxSizeMB} MB.`);
+      notify.error("La imagen es demasiado pesada", {
+        description: `El archivo supera el límite de ${maxSizeMB} MB. Reduce su tamaño o elige una foto más liviana.`,
+      });
       return;
     }
     setLoading(true);
@@ -109,7 +113,9 @@ export function AvatarField({
       const dataUrl = await downscaleToDataUrl(file, maxDimension);
       if (mountedRef.current) onChange(dataUrl);
     } catch {
-      notify.error("No se pudo procesar la imagen.");
+      notify.error("No se pudo procesar la imagen", {
+        description: "Hubo un problema al preparar la foto. Inténtalo de nuevo o prueba con otra imagen.",
+      });
     } finally {
       if (mountedRef.current) setLoading(false);
     }
