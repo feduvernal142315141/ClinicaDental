@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { getAccessToken } from "@/lib/auth/token-client";
+import { normalizeError } from "@/lib/errors/normalize-error";
 
 // Tipos para los handlers que se pueden inyectar desde Redux u otros estados
 type InterceptorHandlers = {
@@ -122,10 +123,11 @@ apiInstance.interceptors.response.use(
     // Desactivar indicador de carga
     interceptorHandlers.onLoadingEnd?.();
 
-    // Manejo global de errores
+    // Normalizar a AppError (mensaje seguro, sin fugas técnicas de Java).
+    const appError = normalizeError(error);
+
     if (error.response) {
       const status = error.response.status;
-      const data = error.response.data as unknown;
 
       // ============================================
       // MANEJO DE 401 (idempotente, refresh compartido)
@@ -144,7 +146,7 @@ apiInstance.interceptors.response.use(
           url.includes("/api/auth/");
 
         if (isAuthEndpoint) {
-          console.error("Error 401 - Unauthorized:", data);
+          console.error("[401] Auth endpoint — propagado al servicio:", appError.technical);
           return Promise.reject(error);
         }
 
@@ -165,99 +167,43 @@ apiInstance.interceptors.response.use(
           sessionExpiryHandled = true;
           interceptorHandlers.onUnauthorized?.();
         }
-        console.error("Error 401 - Unauthorized:", data);
+        console.error("[401] Sesión expirada:", appError.technical);
         return Promise.reject(error);
       }
 
-      switch (status) {
-        case 400:
-          // Bad Request - Error en los datos enviados
-          const message400 =
-            data?.message ||
-            "Solicitud incorrecta. Verifica los datos enviados.";
-          interceptorHandlers.onNotification?.(message400, "error");
-          console.error("Error 400 - Bad Request:", data);
-          break;
-
-        case 403:
-          // Forbidden - Usuario no tiene permisos
-          const message403 =
-            data?.message || "No tienes permisos para realizar esta acción.";
-          interceptorHandlers.onNotification?.(message403, "error");
-          interceptorHandlers.onForbidden?.();
-          console.error("Error 403 - Forbidden:", data);
-          break;
-
-        case 404:
-          // Not Found
-          const message404 =
-            data?.message || "El recurso solicitado no fue encontrado.";
-          interceptorHandlers.onNotification?.(message404, "warning");
-          console.error("Error 404 - Not Found:", data);
-          break;
-
-        case 422:
-          // Unprocessable Entity - Errores de validación
-          const message422 =
-            data?.message ||
-            "Error de validación. Verifica los datos enviados.";
-          interceptorHandlers.onNotification?.(message422, "error");
-          console.error("Error 422 - Validation Error:", data);
-          break;
-
-        case 500:
-          // Internal Server Error
-          const message500 =
-            data?.message ||
-            "Error interno del servidor. Por favor, intenta más tarde.";
-          interceptorHandlers.onNotification?.(message500, "error");
-          console.error("Error 500 - Internal Server Error:", data);
-          break;
-
-        case 502:
-          // Bad Gateway
-          interceptorHandlers.onNotification?.(
-            "Servicio no disponible temporalmente.",
-            "error",
-          );
-          console.error("Error 502 - Bad Gateway:", data);
-          break;
-
-        case 503:
-          // Service Unavailable
-          interceptorHandlers.onNotification?.(
-            "Servicio en mantenimiento. Intenta más tarde.",
-            "error",
-          );
-          console.error("Error 503 - Service Unavailable:", data);
-          break;
-
-        default:
-          // Otros errores HTTP
-          const messageDefault =
-            data?.message || `Error ${status}: ${error.message}`;
-          interceptorHandlers.onNotification?.(messageDefault, "error");
-          console.error(`Error ${status}:`, data);
+      // ============================================
+      // RESTO DE CÓDIGOS HTTP (403 / 404 / 4xx / 5xx)
+      // El toast lo emite la capa que INVOCA (hook/servicio) con un mensaje
+      // CONTEXTUAL; el interceptor solo normaliza, ejecuta side-effects globales
+      // y registra — así NO se duplica el toast. `GlobalErrorListeners` es la red
+      // de seguridad para errores que nadie atrapa.
+      // ============================================
+      if (status === 403) {
+        interceptorHandlers.onForbidden?.();
       }
-    } else if (error.request) {
-      // La petición se realizó pero no se recibió respuesta
-      interceptorHandlers.onNotification?.(
-        "No se pudo conectar con el servidor. Verifica tu conexión a internet.",
-        "error",
-      );
+
       console.error(
-        "Error de red - Sin respuesta del servidor:",
-        error.request,
+        `[HTTP ${status}] ${appError.code}:`,
+        { technical: appError.technical, correlationId: appError.correlationId },
       );
+
+    } else if (appError.isTimeout) {
+      console.error("[TIMEOUT]:", appError.technical);
+
+    } else if (appError.isNetwork) {
+      console.error("[NETWORK]:", appError.technical);
+
     } else {
-      // Error al configurar la petición
-      interceptorHandlers.onNotification?.(
-        "Error al procesar la solicitud.",
-        "error",
-      );
-      console.error("Error al configurar la petición:", error.message);
+      console.error("[CLIENT_ERROR]:", appError.technical);
     }
 
+    // Marcar el AxiosError original como manejado por el interceptor.
+    // GlobalErrorListeners usa este flag para no mostrar un segundo toast
+    // si la promesa sube sin ser atrapada por baseService.
+    (error as { _interceptorHandled?: boolean })._interceptorHandled = true;
+
+    // Propagar el AxiosError original (no el AppError) para mantener
+    // compatibilidad con baseService.ts que hace err.response.
     return Promise.reject(error);
   },
 );

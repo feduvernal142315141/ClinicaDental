@@ -14,6 +14,7 @@ import { SileoToaster } from "@/components/ui/atomic/feedback/sileo-toaster";
 import { AntdCompatProvider } from "@/components/layout/antd-compat-provider";
 import { AppChrome } from "@/components/layout/app-chrome";
 import { CommandPalette } from "@/components/ui/navigation/command-palette";
+import { GlobalErrorListeners } from "@/components/layout/global-error-listeners";
 
 interface RootClientProps {
   children: React.ReactNode;
@@ -36,6 +37,7 @@ export function RootClient({ children }: RootClientProps) {
               <InterceptorProvider>
                 <AuthProvider>
                   <AlertProvider>
+                    <GlobalErrorListeners />
                     <InterceptorsInitializer />
                     <GlobalLoadingBar />
                     <GlobalAlertDialog />
