@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { LazyLoadingFallback } from "@/components/ui/atomic/feedback/lazy-loading-fallback";
 import { useDashboardSummary } from "@/lib/hooks/dashboard/use-dashboard-summary";
 import { isSessionExpired } from "@/lib/services/apiConfig";
 import { cn } from "@/lib/utils/utils";
@@ -22,7 +21,9 @@ const OverviewSection = dynamic(
     import("@/components/dashboard/overview-section").then(
       (mod) => mod.OverviewSection,
     ),
-  { loading: () => <LazyLoadingFallback /> },
+  // Loader unificado: los datos ya están cargados por el loader general del
+  // dashboard antes de montar las secciones, así que no hay spinner por sección.
+  { loading: () => null },
 );
 
 const ProductivitySection = dynamic(
@@ -30,7 +31,9 @@ const ProductivitySection = dynamic(
     import("@/components/dashboard/productivity-section").then(
       (mod) => mod.ProductivitySection,
     ),
-  { loading: () => <LazyLoadingFallback /> },
+  // Loader unificado: los datos ya están cargados por el loader general del
+  // dashboard antes de montar las secciones, así que no hay spinner por sección.
+  { loading: () => null },
 );
 
 const PatientsSection = dynamic(
@@ -38,7 +41,9 @@ const PatientsSection = dynamic(
     import("@/components/dashboard/patients-section").then(
       (mod) => mod.PatientsSection,
     ),
-  { loading: () => <LazyLoadingFallback /> },
+  // Loader unificado: los datos ya están cargados por el loader general del
+  // dashboard antes de montar las secciones, así que no hay spinner por sección.
+  { loading: () => null },
 );
 
 export default function DashboardPage() {
@@ -65,7 +70,10 @@ export default function DashboardPage() {
     updatePeriod({ from: toIsoDate(from), to: toIsoDate(now) });
   };
 
-  if (loading && !data) {
+  // Loader general unificado: mientras los datos del dashboard o la
+  // configuración regional (settings) aún no están listos, se muestra un único
+  // estado de carga a pantalla de dashboard (sin spinners por sección).
+  if ((loading && !data) || (loadingSettings && !settings)) {
     return (
       <div className="flex items-center justify-center min-h-64">
         <LoadingSpinner message="Cargando dashboard..." />
@@ -196,11 +204,6 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
-        {loadingSettings && (
-          <p className="mt-2 text-xs text-subtle">
-            Sincronizando configuración regional…
-          </p>
-        )}
       </div>
 
       <OverviewSection data={data} currency={currency} />

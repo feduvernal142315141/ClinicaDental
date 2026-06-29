@@ -111,9 +111,9 @@ export function ProgressListItem({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="flex justify-between text-sm">
-        <span className="font-medium">{label}</span>
+        <span className="font-medium text-ink">{label}</span>
         {displayValue && (
-          <span className="text-muted-foreground">{displayValue}</span>
+          <span className="tabular-nums text-subtle">{displayValue}</span>
         )}
       </div>
       <Progress

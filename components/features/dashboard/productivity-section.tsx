@@ -18,7 +18,7 @@ import {
 } from "recharts";
 import { Target, Users } from "lucide-react";
 import { DashboardSummary } from "@/lib/entity/dashboard";
-import { useChartTheme } from "@/lib/hooks/use-chart-theme";
+import { useChartPalette } from "@/lib/hooks/dashboard/use-chart-palette";
 
 interface ProductivitySectionProps {
   data: DashboardSummary;
@@ -95,7 +95,17 @@ function buildFullMonthSeries(
 
 export function ProductivitySection({ data }: ProductivitySectionProps) {
   const { kpis, doctorProductivity, monthlyAppointments } = data;
-  const chart = useChartTheme();
+  const c = useChartPalette();
+
+  const axisTick = { fill: c.axis, fontSize: 12 } as const;
+  const tooltipContentStyle = {
+    background: c.tooltipBg,
+    border: `1px solid ${c.tooltipBorder}`,
+    color: c.tooltipText,
+    borderRadius: 12,
+  } as const;
+  const tooltipLabelStyle = { color: c.tooltipText } as const;
+  const tooltipItemStyle = { color: c.tooltipText } as const;
 
   const chartData = buildFullMonthSeries(monthlyAppointments);
   const hasMonthlyData = monthlyAppointments.some((month) => month.total > 0);
@@ -157,8 +167,8 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="colorCumplidas" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  <stop offset="5%" stopColor={c.success} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={c.success} stopOpacity={0} />
                 </linearGradient>
                 <linearGradient
                   id="colorProgramadas"
@@ -167,8 +177,8 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
                   x2="0"
                   y2="1"
                 >
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  <stop offset="5%" stopColor={c.brand} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={c.brand} stopOpacity={0} />
                 </linearGradient>
                 <linearGradient
                   id="colorCanceladas"
@@ -177,18 +187,18 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
                   x2="0"
                   y2="1"
                 >
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                  <stop offset="5%" stopColor={c.danger} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={c.danger} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke={chart.gridStroke}
+                stroke={c.grid}
                 vertical={false}
               />
               <XAxis
                 dataKey="name"
-                tick={chart.axisTick}
+                tick={axisTick}
                 tickLine={false}
                 axisLine={false}
                 angle={chartData.length > 8 ? -35 : 0}
@@ -198,34 +208,34 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
               />
               <YAxis
                 allowDecimals={false}
-                tick={chart.axisTick}
+                tick={axisTick}
                 tickLine={false}
                 axisLine={false}
               />
               <Tooltip
-                contentStyle={chart.tooltip.contentStyle}
-                labelStyle={chart.tooltip.labelStyle}
-                itemStyle={chart.tooltip.itemStyle}
+                contentStyle={tooltipContentStyle}
+                labelStyle={tooltipLabelStyle}
+                itemStyle={tooltipItemStyle}
               />
               <Legend />
               <Area
                 type="monotone"
                 dataKey="Cumplidas"
-                stroke="#10b981"
+                stroke={c.success}
                 fill="url(#colorCumplidas)"
                 strokeWidth={2}
               />
               <Area
                 type="monotone"
                 dataKey="Programadas"
-                stroke="#3b82f6"
+                stroke={c.brand}
                 fill="url(#colorProgramadas)"
                 strokeWidth={2}
               />
               <Area
                 type="monotone"
                 dataKey="Canceladas"
-                stroke="#ef4444"
+                stroke={c.danger}
                 fill="url(#colorCanceladas)"
                 strokeWidth={2}
               />
@@ -253,29 +263,29 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
           >
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke={chart.gridStroke}
+              stroke={c.grid}
               vertical={false}
             />
             <XAxis
               dataKey="name"
-              tick={chart.axisTick}
+              tick={axisTick}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
               allowDecimals={false}
-              tick={chart.axisTick}
+              tick={axisTick}
               tickLine={false}
               axisLine={false}
             />
             <Tooltip
-              contentStyle={chart.tooltip.contentStyle}
-              labelStyle={chart.tooltip.labelStyle}
-              itemStyle={chart.tooltip.itemStyle}
+              contentStyle={tooltipContentStyle}
+              labelStyle={tooltipLabelStyle}
+              itemStyle={tooltipItemStyle}
               cursor={{ fill: "var(--hover)" }}
             />
-            <Bar dataKey="Completadas" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="Canceladas" fill="#f97316" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Completadas" fill={c.brand} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Canceladas" fill={c.accent} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </DataCard>

@@ -23,7 +23,7 @@ import {
 } from "recharts";
 import { Users, UserPlus, Briefcase, AlertTriangle } from "lucide-react";
 import { DashboardSummary, ServiceDemandItem } from "@/lib/entity/dashboard";
-import { useChartTheme } from "@/lib/hooks/use-chart-theme";
+import { useChartPalette } from "@/lib/hooks/dashboard/use-chart-palette";
 import {
   formatClinicCurrency,
   formatClinicCurrencyShort,
@@ -38,17 +38,27 @@ interface PatientsSectionProps {
 
 export function PatientsSection({ data, currency }: PatientsSectionProps) {
   const { patientSignals, serviceDemand } = data;
-  const chart = useChartTheme();
+  const c = useChartPalette();
   const [topSource, setTopSource] = useState<DemandSource>("consolidated");
   const [bottomSource, setBottomSource] =
     useState<DemandSource>("appointments");
 
+  const tooltipContentStyle = {
+    background: c.tooltipBg,
+    border: `1px solid ${c.tooltipBorder}`,
+    color: c.tooltipText,
+    borderRadius: 12,
+  };
+  const tooltipLabelStyle = { color: c.tooltipText };
+  const tooltipItemStyle = { color: c.tooltipText };
+  const axisTick = { fill: c.axis };
+
   const newVsRecurringData = [
-    { name: "Nuevos", value: patientSignals.newPatients, color: "#3b82f6" },
+    { name: "Nuevos", value: patientSignals.newPatients, color: c.brand },
     {
       name: "Recurrentes",
       value: patientSignals.recurringPatients,
-      color: "#10b981",
+      color: c.success,
     },
   ];
 
@@ -87,7 +97,7 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
     Realizados: c.performedCount,
   }));
 
-  const CATEGORY_COLORS = ["#3b82f6", "#10b981", "#f59e0b"];
+  const CATEGORY_COLORS = c.series.slice(0, 3);
 
   const truncateLabel = (value: string, max = 14): string => {
     if (!value) return "";
@@ -184,9 +194,9 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={chart.tooltip.contentStyle}
-                  labelStyle={chart.tooltip.labelStyle}
-                  itemStyle={chart.tooltip.itemStyle}
+                  contentStyle={tooltipContentStyle}
+                  labelStyle={tooltipLabelStyle}
+                  itemStyle={tooltipItemStyle}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -218,18 +228,18 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
           {categoryData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={categoryData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke={chart.gridStroke} />
-                <XAxis type="number" allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
+                <XAxis type="number" allowDecimals={false} tick={axisTick} />
                 <YAxis
                   type="category"
                   dataKey="name"
-                  tick={chart.axisTick}
+                  tick={axisTick}
                   width={90}
                 />
                 <Tooltip
-                  contentStyle={chart.tooltip.contentStyle}
-                  labelStyle={chart.tooltip.labelStyle}
-                  itemStyle={chart.tooltip.itemStyle}
+                  contentStyle={tooltipContentStyle}
+                  labelStyle={tooltipLabelStyle}
+                  itemStyle={tooltipItemStyle}
                 />
                 <Legend />
                 {CATEGORY_COLORS.map((color, idx) => {
@@ -281,14 +291,14 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                     x2="0"
                     y2="1"
                   >
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.6} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
+                    <stop offset="5%" stopColor={c.brand} stopOpacity={0.6} />
+                    <stop offset="95%" stopColor={c.brand} stopOpacity={0.1} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={chart.gridStroke} />
+                <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                 <XAxis
                   dataKey="name"
-                  tick={chart.axisTick}
+                  tick={axisTick}
                   angle={topDemandData.length > 4 ? -35 : 0}
                   textAnchor={topDemandData.length > 4 ? "end" : "middle"}
                   height={topDemandData.length > 4 ? 80 : 32}
@@ -299,12 +309,12 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                 <YAxis
                   yAxisId="left"
                   allowDecimals={false}
-                  tick={chart.axisTick}
+                  tick={axisTick}
                 />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
-                  tick={chart.axisTick}
+                  tick={axisTick}
                   tickFormatter={(v) =>
                     formatClinicCurrencyShort(Number(v), currency)
                   }
@@ -317,9 +327,9 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                       currency,
                     )
                   }
-                  contentStyle={chart.tooltip.contentStyle}
-                  labelStyle={chart.tooltip.labelStyle}
-                  itemStyle={chart.tooltip.itemStyle}
+                  contentStyle={tooltipContentStyle}
+                  labelStyle={tooltipLabelStyle}
+                  itemStyle={tooltipItemStyle}
                 />
                 <Legend
                   verticalAlign="bottom"
@@ -331,13 +341,13 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                   type="monotone"
                   dataKey="Citas"
                   fill="url(#colorTopCitas)"
-                  stroke="#3b82f6"
+                  stroke={c.brand}
                   strokeWidth={0}
                 />
                 <Bar
                   yAxisId="left"
                   dataKey="Citas"
-                  fill="#3b82f6"
+                  fill={c.brand}
                   barSize={28}
                   radius={[4, 4, 0, 0]}
                 />
@@ -345,7 +355,7 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                   yAxisId="right"
                   type="monotone"
                   dataKey="Estimado"
-                  stroke="#10b981"
+                  stroke={c.success}
                   strokeWidth={2}
                   dot={{ r: 4 }}
                   activeDot={{ r: 6 }}
@@ -387,14 +397,14 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                     x2="0"
                     y2="1"
                   >
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.6} />
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1} />
+                    <stop offset="5%" stopColor={c.warning} stopOpacity={0.6} />
+                    <stop offset="95%" stopColor={c.warning} stopOpacity={0.1} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={chart.gridStroke} />
+                <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                 <XAxis
                   dataKey="name"
-                  tick={chart.axisTick}
+                  tick={axisTick}
                   angle={bottomDemandData.length > 4 ? -35 : 0}
                   textAnchor={bottomDemandData.length > 4 ? "end" : "middle"}
                   height={bottomDemandData.length > 4 ? 80 : 32}
@@ -405,12 +415,12 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                 <YAxis
                   yAxisId="left"
                   allowDecimals={false}
-                  tick={chart.axisTick}
+                  tick={axisTick}
                 />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
-                  tick={chart.axisTick}
+                  tick={axisTick}
                   tickFormatter={(v) =>
                     formatClinicCurrencyShort(Number(v), currency)
                   }
@@ -423,9 +433,9 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                       currency,
                     )
                   }
-                  contentStyle={chart.tooltip.contentStyle}
-                  labelStyle={chart.tooltip.labelStyle}
-                  itemStyle={chart.tooltip.itemStyle}
+                  contentStyle={tooltipContentStyle}
+                  labelStyle={tooltipLabelStyle}
+                  itemStyle={tooltipItemStyle}
                 />
                 <Legend
                   verticalAlign="bottom"
@@ -437,13 +447,13 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                   type="monotone"
                   dataKey="Citas"
                   fill="url(#colorBottomCitas)"
-                  stroke="#f59e0b"
+                  stroke={c.warning}
                   strokeWidth={0}
                 />
                 <Bar
                   yAxisId="left"
                   dataKey="Citas"
-                  fill="#f59e0b"
+                  fill={c.warning}
                   barSize={28}
                   radius={[4, 4, 0, 0]}
                 />
@@ -451,7 +461,7 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                   yAxisId="right"
                   type="monotone"
                   dataKey="Estimado"
-                  stroke="#ef4444"
+                  stroke={c.danger}
                   strokeWidth={2}
                   dot={{ r: 4 }}
                   activeDot={{ r: 6 }}

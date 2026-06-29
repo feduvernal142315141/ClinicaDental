@@ -149,24 +149,29 @@ export function KpiCard({
     ? "text-emerald-600 dark:text-emerald-300"
     : "text-rose-600 dark:text-rose-300";
 
-  // ── Featured variant (tarjeta con fondo azul) ──────────────────────────────
+  // ── Featured variant (superficie Bento con tinte de marca sutil) ───────────
   if (variant === "featured") {
     return (
       <div
         className={cn(
-          "relative overflow-hidden rounded-bento bg-brand p-5 text-white shadow-sm flex flex-col justify-between min-h-32",
+          "relative overflow-hidden rounded-bento border border-brand/20 bg-brand/10 p-5 text-ink shadow-sm flex flex-col justify-between min-h-32",
           className,
         )}
       >
-        <p className="text-xs font-semibold uppercase tracking-widest text-white/70">
-          {title}
-        </p>
-        <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-subtle">
+            {title}
+          </p>
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand/15 text-brand ring-1 ring-brand/25">
+            <Icon className="h-5 w-5" />
+          </span>
+        </div>
+        <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums text-ink">
           {value}
         </p>
         <div className="mt-3 flex items-center justify-between">
           {trend && (
-            <span className="flex items-center gap-1 text-xs text-white/80">
+            <span className={cn("flex items-center gap-1 text-xs", trendColorClass)}>
               <TrendIcon className="h-3 w-3" />
               {Math.abs(trendValue)}% {trendLabel}
             </span>
@@ -174,7 +179,7 @@ export function KpiCard({
           {onDetails && (
             <button
               onClick={onDetails}
-              className="ml-auto rounded-md bg-white/15 px-3 py-1 text-xs font-medium text-white backdrop-blur hover:bg-white/25 transition-colors"
+              className="ml-auto rounded-md bg-brand/15 px-3 py-1 text-xs font-medium text-brand transition-colors hover:bg-brand/25"
             >
               Detalles
             </button>
@@ -214,7 +219,7 @@ export function KpiCard({
 
         {/* Mini sparkline */}
         {sparkline && sparkline.length > 1 && (
-          <div className="mt-2 h-10 w-full">
+          <div className="mt-2 h-10 w-full text-emerald-500 dark:text-emerald-400">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={sparkline}
@@ -222,14 +227,14 @@ export function KpiCard({
               >
                 <defs>
                   <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    <stop offset="5%" stopColor="currentColor" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="currentColor" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke="#10b981"
+                  stroke="currentColor"
                   fill="url(#sparkGrad)"
                   strokeWidth={1.5}
                   dot={false}

@@ -106,11 +106,13 @@ export function MetricCard({
   return (
     <Card className={cn(className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className={cn("h-4 w-4", iconColor)} />
+        <CardTitle className="text-sm font-medium text-subtle">{title}</CardTitle>
+        <span className="grid h-9 w-9 place-items-center rounded-xl bg-hover ring-1 ring-hairline">
+          <Icon className={cn("h-4 w-4", iconColor)} />
+        </span>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-2xl font-bold text-ink">{value}</div>
 
         {/* Progress bar (si está definido) */}
         {progressValue !== undefined && (

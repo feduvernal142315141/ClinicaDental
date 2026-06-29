@@ -101,11 +101,11 @@ export function OverviewSection({ data, currency }: OverviewSectionProps) {
         />
 
         <KpiCard
-          variant="featured"
+          variant="trend"
           title="Producción Estimada"
           value={formatClinicCurrency(kpis.estimatedProductionCompleted, currency)}
           icon={DollarSign}
-          iconColor="text-white"
+          accent="brand"
           description="Servicios completados, no cobrado"
           trend={{
             value: 0,

@@ -12,6 +12,14 @@
 import * as React from "react";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { cn } from "@/lib/utils/utils";
+import type { LucideIcon } from "lucide-react";
+import {
+  Info,
+  CheckCircle2,
+  AlertTriangle,
+  AlertCircle,
+  Bell,
+} from "lucide-react";
 
 // ============================================
 // TYPES
@@ -76,33 +84,55 @@ export interface AlertCardGridProps {
 const variantConfig: Record<
   AlertCardVariant,
   {
+    /** Tinte tonal MUY sutil del contenedor (8-12% alpha). */
     bg: string;
+    /** Borde tonal sutil. */
+    border: string;
+    /** Chip del icono de estado. */
+    chip: string;
+    /** Icono de estado. */
+    icon: LucideIcon;
     titleColor: string;
     descColor: string;
   }
 > = {
   info: {
-    bg: "bg-sky-500/15",
-    titleColor: "text-sky-800 dark:text-sky-200",
-    descColor: "text-sky-600 dark:text-sky-300",
+    bg: "bg-sky-500/10",
+    border: "border-sky-500/20",
+    chip: "bg-sky-500/15 text-sky-600 dark:text-sky-300",
+    icon: Info,
+    titleColor: "text-ink",
+    descColor: "text-subtle",
   },
   success: {
-    bg: "bg-emerald-500/15",
-    titleColor: "text-emerald-800 dark:text-emerald-200",
-    descColor: "text-emerald-600 dark:text-emerald-300",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
+    chip: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300",
+    icon: CheckCircle2,
+    titleColor: "text-ink",
+    descColor: "text-subtle",
   },
   warning: {
-    bg: "bg-amber-500/15",
-    titleColor: "text-amber-800 dark:text-amber-200",
-    descColor: "text-amber-600 dark:text-amber-300",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
+    chip: "bg-amber-500/15 text-amber-600 dark:text-amber-300",
+    icon: AlertTriangle,
+    titleColor: "text-ink",
+    descColor: "text-subtle",
   },
   error: {
-    bg: "bg-rose-500/15",
-    titleColor: "text-rose-800 dark:text-rose-200",
-    descColor: "text-rose-600 dark:text-rose-300",
+    bg: "bg-rose-500/10",
+    border: "border-rose-500/20",
+    chip: "bg-rose-500/15 text-rose-600 dark:text-rose-300",
+    icon: AlertCircle,
+    titleColor: "text-ink",
+    descColor: "text-subtle",
   },
   default: {
     bg: "bg-hover",
+    border: "border-hairline",
+    chip: "bg-elevated text-subtle ring-1 ring-hairline",
+    icon: Bell,
     titleColor: "text-ink",
     descColor: "text-subtle",
   },
@@ -135,22 +165,38 @@ export function AlertCard({
   className,
 }: AlertCardProps) {
   const config = variantConfig[variant];
+  const StatusIcon = config.icon;
 
   return (
     <div
       className={cn(
-        "flex items-center justify-between p-3 rounded-lg transition-colors",
+        "flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors",
         config.bg,
+        config.border,
         onClick && "cursor-pointer hover:opacity-90",
         className
       )}
       onClick={onClick}
     >
-      <div>
-        <p className={cn("text-sm font-medium", config.titleColor)}>{title}</p>
-        {description && (
-          <p className={cn("text-xs", config.descColor)}>{description}</p>
-        )}
+      <div className="flex min-w-0 items-center gap-3">
+        <span
+          className={cn(
+            "grid h-8 w-8 shrink-0 place-items-center rounded-lg",
+            config.chip
+          )}
+        >
+          <StatusIcon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <p className={cn("truncate text-sm font-medium", config.titleColor)}>
+            {title}
+          </p>
+          {description && (
+            <p className={cn("truncate text-xs", config.descColor)}>
+              {description}
+            </p>
+          )}
+        </div>
       </div>
       <Badge variant={badgeVariant} className={badgeClassName}>
         {badgeValue}

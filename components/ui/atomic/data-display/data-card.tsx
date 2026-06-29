@@ -78,8 +78,12 @@ export function DataCard({
   return (
     <Card className={cn(className)}>
       <CardHeader>
-        <CardTitle className={cn(Icon && "flex items-center gap-2")}>
-          {Icon && <Icon className={cn("h-5 w-5", iconColor)} />}
+        <CardTitle className={cn(Icon && "flex items-center gap-2.5")}>
+          {Icon && (
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-hover ring-1 ring-hairline">
+              <Icon className={cn("h-4 w-4", iconColor)} />
+            </span>
+          )}
           {title}
         </CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
