@@ -32,8 +32,8 @@ export function AppShell({ children }: AppShellProps) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Cargando...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto"></div>
+          <p className="mt-2 text-subtle">Cargando...</p>
         </div>
       </div>
     );
@@ -45,7 +45,7 @@ export function AppShell({ children }: AppShellProps) {
     <div className="flex h-screen overflow-hidden bg-canvas">
       {/* Sidebar - ancho dinámico según estado colapsado */}
       <aside
-        className={`hidden lg:flex flex-col border-r border-hairline bg-surface transition-all duration-300 ${
+        className={`hidden lg:flex flex-col border-r border-hairline bg-surface transition-[width] duration-300 ease-emphasized will-change-[width] motion-reduce:transition-none ${
           isSidebarCollapsed ? "w-20" : "w-64"
         }`}
       >
