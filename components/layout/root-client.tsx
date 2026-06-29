@@ -10,7 +10,7 @@ import { GlobalAlertDialog } from "@/components/global-alert-dialog";
 import { InterceptorProvider } from "@/lib/contexts/interceptor-context";
 import { GlobalLoadingBar } from "@/components/global-loading-spinner";
 import { InterceptorsInitializer } from "@/components/interceptors-initializer";
-import { Toaster } from "@/components/ui/atomic/feedback/sonner";
+import { SileoToaster } from "@/components/ui/atomic/feedback/sileo-toaster";
 import { AntdCompatProvider } from "@/components/layout/antd-compat-provider";
 import { AppChrome } from "@/components/layout/app-chrome";
 import { CommandPalette } from "@/components/ui/navigation/command-palette";
@@ -48,7 +48,7 @@ export function RootClient({ children }: RootClientProps) {
             <Analytics />
           </Theme>
         </AntdCompatProvider>
-        <Toaster richColors closeButton position="top-right" />
+        <SileoToaster />
       </ThemeProvider>
     </AntdRegistry>
   );
