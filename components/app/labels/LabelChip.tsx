@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { Tooltip } from "antd";
 import type { LabelSummary } from "@/lib/entity/label";
 import { DynamicIcon } from "./DynamicIcon";
 
@@ -23,11 +22,6 @@ const SIZE_STYLES: Record<NonNullable<LabelChipProps["size"]>, React.CSSProperti
   sm: { fontSize: 12, padding: "3px 10px", borderRadius: 20, gap: 5 },
   md: { fontSize: 14, padding: "5px 12px", borderRadius: 20, gap: 6 },
 };
-
-// Blend the label color with blue (#3B82F6) for a consistent cool tint
-function blueBlend(hex: string, opacity = 0.15): string {
-  return hex + Math.round(opacity * 255).toString(16).padStart(2, "0");
-}
 
 export function LabelChip({ label, size = "sm", removable = false, onRemove }: LabelChipProps) {
   const [hovered, setHovered] = useState(false);
@@ -61,18 +55,17 @@ export function LabelChip({ label, size = "sm", removable = false, onRemove }: L
       }}
     >
       {label.icon && (
-        <Tooltip title={label.icon.replace(/-/g, " ")} mouseEnterDelay={0.5}>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              marginRight: sizeStyle.gap,
-              opacity: 0.85,
-            }}
-          >
-            <DynamicIcon name={label.icon} size={ICON_SIZE[size]} />
-          </span>
-        </Tooltip>
+        <span
+          title={label.icon.replace(/-/g, " ")}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            marginRight: sizeStyle.gap,
+            opacity: 0.85,
+          }}
+        >
+          <DynamicIcon name={label.icon} size={ICON_SIZE[size]} />
+        </span>
       )}
       {label.name}
       {removable && onRemove && (

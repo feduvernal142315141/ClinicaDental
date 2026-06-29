@@ -1,12 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Tag } from "lucide-react";
-// Sin equivalente Bento: ColorPicker y Tooltip (este último lo usa IconPicker) se conservan de antd.
-import { Tooltip, ColorPicker } from "antd";
+import { Tag, Check, Ban } from "lucide-react";
 import { Modal } from "@/components/ui/primitives/custom";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import {
@@ -19,10 +17,10 @@ import {
   Input,
 } from "@/components/ui/atomic/forms";
 import TextArea from "@/components/ui/atomic/forms/textarea";
+import { cn } from "@/lib/utils/utils";
 import { DynamicIcon } from "./DynamicIcon";
 import { LabelChip } from "./LabelChip";
-import { useCreateLabel } from "@/lib/hooks/labels";
-import { labelsService } from "@/lib/services/labels";
+import { useCreateLabel, useUpdateLabel } from "@/lib/hooks/labels";
 import type { Label, CreateLabelDto, UpdateLabelDto } from "@/lib/entity/label";
 
 interface LabelFormModalProps {
@@ -83,58 +81,45 @@ interface IconPickerProps {
 }
 
 function IconPicker({ value, onChange }: IconPickerProps) {
+  const isNone = !value;
+  const tileBase =
+    "grid h-9 w-9 place-items-center rounded-lg border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand/45";
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-      <Tooltip title="Sin ícono">
-        <div
-          onClick={() => onChange?.("")}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 6,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            border:
-              value === "" || !value
-                ? "2px solid var(--color-brand)"
-                : "1px solid var(--color-hairline)",
-            background:
-              value === "" || !value
-                ? "rgb(var(--brand) / 0.15)"
-                : "var(--color-hover)",
-            color: "var(--color-subtle)",
-            fontSize: 12,
-          }}
-        >
-          –
-        </div>
-      </Tooltip>
+    <div className="flex flex-wrap gap-1.5">
+      <button
+        type="button"
+        onClick={() => onChange?.("")}
+        title="Sin ícono"
+        aria-label="Sin ícono"
+        aria-pressed={isNone}
+        className={cn(
+          tileBase,
+          isNone
+            ? "border-brand bg-brand/10 text-brand"
+            : "border-hairline bg-hover text-subtle hover:border-brand/40 hover:text-ink",
+        )}
+      >
+        <Ban className="h-4 w-4" />
+      </button>
       {AVAILABLE_ICONS.map((iconName) => {
-        const isSelected = value === iconName;
+        const selected = value === iconName;
         return (
-          <Tooltip key={iconName} title={iconName}>
-            <div
-              onClick={() => onChange?.(iconName)}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 6,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: isSelected
-                  ? "2px solid var(--color-brand)"
-                  : "1px solid var(--color-hairline)",
-                background: isSelected ? "rgb(var(--brand) / 0.15)" : "var(--color-hover)",
-                fontSize: 18,
-              }}
-            >
-              <DynamicIcon name={iconName} size={22} />
-            </div>
-          </Tooltip>
+          <button
+            key={iconName}
+            type="button"
+            onClick={() => onChange?.(iconName)}
+            title={iconName.replace(/-/g, " ")}
+            aria-label={iconName.replace(/-/g, " ")}
+            aria-pressed={selected}
+            className={cn(
+              tileBase,
+              selected
+                ? "border-brand bg-brand/10 text-brand"
+                : "border-hairline bg-hover text-ink hover:border-brand/40",
+            )}
+          >
+            <DynamicIcon name={iconName} size={18} />
+          </button>
         );
       })}
     </div>
@@ -154,12 +139,14 @@ const PRESET_COLORS = [
   "#795548",
 ];
 
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
 const labelSchema = z.object({
   name: z
     .string()
     .min(1, "El nombre es requerido")
     .max(50, "Máximo 50 caracteres"),
-  color: z.string().min(1, "El color es requerido"),
+  color: z.string().regex(HEX_RE, "Usa un color válido (#RRGGBB)"),
   description: z.string().optional(),
   icon: z.string().optional(),
 });
@@ -174,7 +161,7 @@ export function LabelFormModal({
 }: LabelFormModalProps) {
   const isEdit = !!label;
   const { createLabel, loading: createLoading } = useCreateLabel();
-  const [updateLoading, setUpdateLoading] = useState(false);
+  const { updateLabel, loading: updateLoading } = useUpdateLabel(label?.id ?? "");
 
   const form = useForm<LabelFormValues>({
     resolver: zodResolver(labelSchema),
@@ -204,22 +191,15 @@ export function LabelFormModal({
   }, [isOpen, label, form]);
 
   const handleSubmit = async (values: LabelFormValues) => {
+    const payload = { ...values, icon: values.icon || undefined };
     if (isEdit && label) {
-      setUpdateLoading(true);
-      try {
-        const updated = await labelsService.updateLabel(
-          label.id,
-          values as UpdateLabelDto,
-        );
+      const updated = await updateLabel(payload as UpdateLabelDto);
+      if (updated) {
         onSuccess(updated);
         onClose();
-      } catch {
-        // error handled in service
-      } finally {
-        setUpdateLoading(false);
       }
     } else {
-      const created = await createLabel(values as CreateLabelDto);
+      const created = await createLabel(payload as CreateLabelDto);
       if (created) {
         onSuccess(created);
         onClose();
@@ -252,11 +232,7 @@ export function LabelFormModal({
                     Nombre <span className="text-rose-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="Ej. Urgencia"
-                      maxLength={50}
-                      {...field}
-                    />
+                    <Input placeholder="Ej. Urgencia" maxLength={50} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -266,53 +242,77 @@ export function LabelFormModal({
             <FormField
               control={form.control}
               name="color"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Color <span className="text-rose-500">*</span>
-                  </FormLabel>
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-wrap gap-1.5">
-                      {PRESET_COLORS.map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => field.onChange(c)}
-                          style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: "50%",
-                            backgroundColor: c,
-                            border:
-                              previewColor === c
-                                ? "2px solid var(--color-ink)"
-                                : "2px solid transparent",
-                            cursor: "pointer",
-                            padding: 0,
-                          }}
-                          aria-label={c}
+              render={({ field }) => {
+                const safeHex = HEX_RE.test(field.value ?? "")
+                  ? (field.value as string)
+                  : "#3498DB";
+                return (
+                  <FormItem>
+                    <FormLabel>
+                      Color <span className="text-rose-500">*</span>
+                    </FormLabel>
+                    <div className="space-y-3">
+                      {/* Swatches preestablecidos */}
+                      <div className="flex flex-wrap gap-2">
+                        {PRESET_COLORS.map((c) => {
+                          const active =
+                            (field.value ?? "").toUpperCase() === c.toUpperCase();
+                          return (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => field.onChange(c)}
+                              aria-label={c}
+                              aria-pressed={active}
+                              className={cn(
+                                "grid h-7 w-7 place-items-center rounded-full outline-none transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-brand/45",
+                                active &&
+                                  "ring-2 ring-ink ring-offset-2 ring-offset-surface",
+                              )}
+                              style={{ backgroundColor: c }}
+                            >
+                              {active && (
+                                <Check className="h-3.5 w-3.5 text-white [filter:drop-shadow(0_1px_1px_rgba(0,0,0,0.5))]" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {/* Color personalizado (input nativo) + hex */}
+                      <div className="flex items-center gap-2">
+                        <label
+                          className="relative grid h-9 w-9 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-lg border border-hairline"
+                          title="Color personalizado"
+                        >
+                          <span
+                            className="h-5 w-5 rounded"
+                            style={{ backgroundColor: safeHex }}
+                          />
+                          <input
+                            type="color"
+                            value={safeHex}
+                            onChange={(e) =>
+                              field.onChange(e.target.value.toUpperCase())
+                            }
+                            className="absolute inset-0 cursor-pointer opacity-0"
+                            aria-label="Selector de color personalizado"
+                          />
+                        </label>
+                        <Input
+                          value={field.value ?? ""}
+                          onChange={(e) =>
+                            field.onChange(e.target.value.toUpperCase())
+                          }
+                          placeholder="#3498DB"
+                          maxLength={7}
+                          className="w-32 font-mono uppercase"
                         />
-                      ))}
+                      </div>
                     </div>
-                    <div>
-                      {/* Sin equivalente Bento: se conserva el ColorPicker de antd. */}
-                      <ColorPicker
-                        value={
-                          field.value?.split(",")[0]?.substring(0, 7) ||
-                          "#3498DB"
-                        }
-                        format="hex"
-                        disabledAlpha
-                        onChange={(color) => {
-                          field.onChange(color.toHexString());
-                        }}
-                        showText
-                      />
-                    </div>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
@@ -340,7 +340,6 @@ export function LabelFormModal({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Ícono (opcional)</FormLabel>
-                  {/* Sin equivalente Bento: se conserva el IconPicker local. */}
                   <IconPicker value={field.value} onChange={field.onChange} />
                   <FormMessage />
                 </FormItem>
@@ -349,16 +348,18 @@ export function LabelFormModal({
 
             {/* Live preview */}
             <div className="space-y-2">
-              <p className="text-sm font-medium text-ink">Preview</p>
-              <LabelChip
-                label={{
-                  id: "preview",
-                  name: previewName || "Etiqueta",
-                  color: previewColor || "#3498DB",
-                  icon: previewIcon || undefined,
-                }}
-                size="md"
-              />
+              <p className="text-sm font-medium text-ink">Vista previa</p>
+              <div className="flex items-center justify-center rounded-xl border border-hairline bg-canvas px-4 py-5">
+                <LabelChip
+                  label={{
+                    id: "preview",
+                    name: previewName || "Etiqueta",
+                    color: previewColor || "#3498DB",
+                    icon: previewIcon || undefined,
+                  }}
+                  size="md"
+                />
+              </div>
             </div>
           </div>
 
