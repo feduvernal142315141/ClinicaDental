@@ -120,6 +120,87 @@ export function useArchiveLabel(id: string) {
   return { archiveLabel, loading };
 }
 
+// ── useUnarchiveLabel ─────────────────────────────────────────────────────────
+
+export function useUnarchiveLabel() {
+  const [loading, setLoading] = useState(false);
+
+  const unarchiveLabel = useCallback(
+    async (id: string, name: string, onSuccess?: () => void): Promise<void> => {
+      setLoading(true);
+      try {
+        await labelsService.unarchiveLabel(id);
+        notify.success("Etiqueta restaurada", {
+          description: `"${name}" ya está disponible para asignarla a nuevas citas.`,
+        });
+        onSuccess?.();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Error al restaurar etiqueta";
+        notify.error(msg, {
+          description: "No pudimos restaurar la etiqueta. Inténtalo de nuevo; si persiste, contacta a soporte.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  return { unarchiveLabel, loading };
+}
+
+// ── useArchiveLabelWithUndo ───────────────────────────────────────────────────
+// Versión "fire-and-forget" con toast de Deshacer para el índice de etiquetas.
+// Recibe refetch a nivel de hook para que el Deshacer siga funcionando aunque la
+// tarjeta que disparó la acción ya no esté montada.
+
+export function useArchiveLabelWithUndo(refetch: () => void) {
+  const [loading, setLoading] = useState(false);
+
+  const archiveWithUndo = useCallback(
+    async (id: string, name: string): Promise<void> => {
+      setLoading(true);
+      try {
+        await labelsService.archiveLabel(id);
+        refetch();
+        notify.action(
+          `"${name}" archivada`,
+          {
+            title: "Deshacer",
+            onClick: async () => {
+              try {
+                await labelsService.unarchiveLabel(id);
+                refetch();
+                notify.success("Acción deshecha", {
+                  description: `"${name}" vuelve a estar disponible para nuevas citas.`,
+                });
+              } catch {
+                notify.error("No se pudo deshacer", {
+                  description: `Puedes restaurar "${name}" desde el filtro de archivadas.`,
+                });
+              }
+            },
+          },
+          {
+            description:
+              "Se ocultará para nuevas citas; las existentes conservan la etiqueta. Podrás restaurarla cuando quieras.",
+          },
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Error al archivar etiqueta";
+        notify.error(msg, {
+          description: "No pudimos archivar la etiqueta. Inténtalo de nuevo.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [refetch],
+  );
+
+  return { archiveWithUndo, loading };
+}
+
 // ── useAssignLabels ───────────────────────────────────────────────────────────
 
 export function useAssignLabels(appointmentId: string) {

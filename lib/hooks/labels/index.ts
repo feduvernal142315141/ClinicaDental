@@ -6,6 +6,8 @@ export {
   useCreateLabel,
   useUpdateLabel,
   useArchiveLabel,
+  useUnarchiveLabel,
+  useArchiveLabelWithUndo,
   useAssignLabels,
   useRemoveLabel,
 } from "./useLabels";

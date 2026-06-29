@@ -11,7 +11,21 @@ async function getLabels(includeArchived = false): Promise<Label[]> {
   const url = includeArchived ? `${endpoint}?includeArchived=true` : endpoint;
   const response = await serviceGet<Label[]>(url);
   if (response?.status === 200) {
-    return (response.data as unknown as { data?: Label[] })?.data ?? (response.data as unknown as Label[]) ?? [];
+    const raw =
+      (response.data as unknown as { data?: Label[] })?.data ??
+      (response.data as unknown as Label[]) ??
+      [];
+    // El backend serializa el booleano como `archived` (campo Java `isArchived`
+    // con getter Lombok `isArchived()` → Jackson quita el prefijo "is"). El resto
+    // del frontend usa `isArchived`; normalizamos aceptando ambas claves para que
+    // el estado archivado se refleje (sin esto, archivar "no se ve").
+    return raw.map((l) => ({
+      ...l,
+      isArchived:
+        (l as { isArchived?: boolean }).isArchived ??
+        (l as { archived?: boolean }).archived ??
+        false,
+    }));
   }
   handleServiceError(response, "Error al obtener etiquetas");
   return [];
@@ -41,6 +55,12 @@ async function archiveLabel(id: string): Promise<void> {
   handleServiceError(response, "Error al archivar etiqueta");
 }
 
+async function unarchiveLabel(id: string): Promise<void> {
+  const response = await servicePatch(`${endpoint}/${id}/unarchive`);
+  if (response?.status === 200 || response?.status === 204) return;
+  handleServiceError(response, "Error al restaurar etiqueta");
+}
+
 async function assignLabels(appointmentId: string, labelIds: string[]): Promise<void> {
   const response = await servicePost<{ labelIds: string[] }, unknown>(
     `/appointments/${appointmentId}/labels`,
@@ -61,6 +81,7 @@ export const labelsService = {
   createLabel,
   updateLabel,
   archiveLabel,
+  unarchiveLabel,
   assignLabels,
   removeLabel,
 };
