@@ -244,11 +244,12 @@ function classifyView(zones, viewBounds, fdi, viewCategory) {
   const q = parseInt(fdi[0], 10);
   const maxillary = q === 1 || q === 2;
   const mesialOnRight = q === 1 || q === 4; // hacia la línea media del lienzo
+  const position = parseInt(fdi[1], 10);
+  const anterior = position >= 1 && position <= 3;
   const w = viewBounds.maxX - viewBounds.minX || 1;
   const h = viewBounds.maxY - viewBounds.minY || 1;
   const proximalLeft = mesialOnRight ? "distal" : "mesial";
   const proximalRight = mesialOnRight ? "mesial" : "distal";
-  const bodySurface = viewCategory === "vestibular" ? "facial" : "lingual";
 
   const entries = Object.entries(zones).map(([z, paths]) => {
     const b = combineBounds(paths.map(pathBounds));
@@ -256,6 +257,9 @@ function classifyView(zones, viewBounds, fdi, viewCategory) {
       z,
       cx: b ? ((b.minX + b.maxX) / 2 - viewBounds.minX) / w : 0.5,
       cy: b ? ((b.minY + b.maxY) / 2 - viewBounds.minY) / h : 0.5,
+      // Área del bbox: discrimina cervical (grande) vs filo/cuerpo (pequeño) en
+      // la vista lateral, donde el arte invertido hace poco fiable el cy.
+      area: b ? (b.maxX - b.minX) * (b.maxY - b.minY) : 0,
     };
   });
 
@@ -269,23 +273,63 @@ function classifyView(zones, viewBounds, fdi, viewCategory) {
 
   if (viewCategory === "occlusal") {
     // Vista oclusal (top-down): banda superior/inferior = bucal/lingual según
-    // arcada; la central (mesa oclusal, rect) = oclusal.
+    // arcada; la central (mesa oclusal, rect) = oclusal. NUNCA emite 'cervical':
+    // el tercio cervical queda ocluido mirando por el eje largo (G.V. Black V).
     for (const e of centers) {
       if (e.cy < 0.35) result[e.z] = maxillary ? "facial" : "lingual";
       else if (e.cy > 0.65) result[e.z] = maxillary ? "lingual" : "facial";
       else result[e.z] = "oclusal";
     }
-  } else {
-    // Vestibular/lateral: la zona central en el EXTREMO (maxilar=abajo,
-    // mandibular=arriba) es el filo incisal/oclusal; el resto es el cuerpo
-    // facial/lingual. Relativo (no umbral fijo) para no confundir cuerpo y filo.
+  } else if (viewCategory === "vestibular") {
+    // Vestibular (arte en orientación real): la zona central en el EXTREMO
+    // (maxilar=abajo/máx cy, mandibular=arriba/mín cy) es el filo incisal/oclusal.
+    // El resto es cuerpo; si hay ≥2 zonas de cuerpo (anteriores), la del extremo
+    // CERVICAL (maxilar=mín cy, mandibular=máx cy) es 'cervical' (tercio cervical,
+    // Clase V), el resto 'facial'. Con 1 sola zona de cuerpo (posteriores) el
+    // cervical va plegado en la cara facial → no es separable sin arte nuevo.
     let edge = null;
     for (const e of centers) {
       if (!edge || (maxillary ? e.cy > edge.cy : e.cy < edge.cy)) edge = e;
     }
     const edgeIsReal = edge && (maxillary ? edge.cy > 0.6 : edge.cy < 0.4);
+    const body = centers.filter((e) => !(edgeIsReal && e === edge));
+    let cervical = null;
+    if (body.length >= 2) {
+      for (const e of body) {
+        if (!cervical || (maxillary ? e.cy < cervical.cy : e.cy > cervical.cy)) {
+          cervical = e;
+        }
+      }
+    }
     for (const e of centers) {
-      result[e.z] = edgeIsReal && e === edge ? "oclusal" : bodySurface;
+      if (edgeIsReal && e === edge) result[e.z] = "oclusal";
+      // Cervical de la cara BUCAL (Clase V vestibular) — independiente de la
+      // cervical lingual/palatina de la vista lateral.
+      else if (e === cervical) result[e.z] = "cervicalVestibular";
+      // Anteriores: el cuerpo restante es la cara facial/labial. Posteriores: el
+      // arte tiene UNA sola zona de cuerpo bucal (cervical plegado con el cuerpo);
+      // por decisión del dueño se marca como cervical bucal.
+      else result[e.z] = anterior ? "facial" : "cervicalVestibular";
+    }
+  } else {
+    // Lateral (Palatino/Lingual): el arte se dibuja invertido respecto a su
+    // vestibular (por eso el adapter aplica un volteo vertical al render), así
+    // que el heurístico de cy no es fiable. Distinguimos las dos zonas centrales
+    // por ÁREA: la GRANDE es el tercio 'cervical' (todos los dientes); la PEQUEÑA
+    // es el filo incisal ('oclusal') en anteriores o el cuerpo palatino/lingual
+    // ('lingual') en posteriores. Con una sola central se conserva 'lingual'
+    // (nunca inventar un cervical donde el arte es degenerado).
+    if (centers.length >= 2) {
+      let big = centers[0];
+      for (const e of centers) if (e.area > big.area) big = e;
+      for (const e of centers) {
+        // La GRANDE = cervical de la cara LINGUAL/PALATINA (Clase V lingual),
+        // independiente de la cervical bucal de la vista vestibular.
+        result[e.z] =
+          e === big ? "cervicalLingual" : anterior ? "oclusal" : "lingual";
+      }
+    } else {
+      for (const e of centers) result[e.z] = "lingual";
     }
   }
 

@@ -18,7 +18,14 @@ import {
 } from "./teeth-svg-data";
 import type { ToothViewPaths, SurfacePath } from "./tooth-square-paths";
 
-type DentalSurface = "oclusal" | "facial" | "lingual" | "mesial" | "distal";
+type DentalSurface =
+  | "oclusal"
+  | "facial"
+  | "lingual"
+  | "mesial"
+  | "distal"
+  | "cervicalVestibular"
+  | "cervicalLingual";
 
 /**
  * La asignación zona→superficie ya NO es una tabla fija por número de zona: el
@@ -86,6 +93,8 @@ function adaptToothView(
     "lingual",
     "mesial",
     "distal",
+    "cervicalVestibular",
+    "cervicalLingual",
   ];
   for (const s of allSurfaces) {
     if (!usedSurfaces.has(s)) {
@@ -169,6 +178,21 @@ export function getDesignedToothPaths(
   if (!viewData) return null;
 
   const result = adaptToothView(viewData, mirrored);
+
+  // Volteo vertical de la vista LATERAL (Palatino/Lingual). El arte del diseñador
+  // dibuja el lateral invertido respecto a su propia vestibular (corona y raíz al
+  // revés). La vestibular ya es correcta por arcada, así que UN mismo espejo
+  // vertical corrige ambas arcadas a la vez (13.P → corona-abajo, 43.L →
+  // corona-arriba) SIN condicionar por cuadrante. Se calcula desde el viewBox
+  // ("minX minY width height") y solo se aplica al lateral; frontal/oclusal
+  // quedan sin transform. La geometría se envuelve en <g transform> en ambos
+  // renderers, así rejilla y panel de detalle quedan idénticos.
+  if (internalView === "lateral") {
+    const [, minY, , height] = result.viewBox.split(" ").map(Number);
+    if (Number.isFinite(minY) && Number.isFinite(height)) {
+      result.transform = `translate(0, ${2 * minY + height}) scale(1,-1)`;
+    }
+  }
 
   // Fallback for missing roots: if the vestibular view exists but has no root,
   // borrow the root data from the contralateral tooth (e.g., 13V has no ROOT

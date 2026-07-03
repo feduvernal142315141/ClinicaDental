@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Popover } from "antd";
 import { SurfaceSelector } from "./surface-selector";
+import { getDesignedToothPaths } from "./teeth-svg-adapter";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
 import {
   X,
@@ -74,6 +75,20 @@ export function SurfacesTab({
     readOnly ||
     tooth.globalStatus === "absent" ||
     tooth.globalStatus === "implant";
+
+  // Caras que este diente REALMENTE tiene geometría para marcar (unión de las 3
+  // vistas). Evita crear estados "fantasma" que nunca se pintan — p.ej. 'lingual'
+  // no existe en la vista palatina de anteriores (allí es cervical + incisal).
+  const availableSurfaces = useMemo(() => {
+    const set = new Set<ToothSurface>();
+    (["frontal", "oclusal", "lateral"] as const).forEach((view) => {
+      const paths = getDesignedToothPaths(tooth.number, view);
+      paths?.surfaces.forEach((sp) => {
+        if (sp.d) set.add(sp.surface as ToothSurface);
+      });
+    });
+    return set;
+  }, [tooth.number]);
 
   useEffect(() => {
     // Only initialize once per tooth or when tooth changes
@@ -189,13 +204,20 @@ export function SurfacesTab({
   };
 
   const handleSelectAll = () => {
-    const allSurfaces: ToothSurface[] = [
-      "mesial",
-      "distal",
-      "facial",
-      "lingual",
-      "oclusal",
-    ];
+    // Cervical (Clase V): existe en toda vista lateral y en la vestibular de
+    // anteriores. Solo se marcan las caras con geometría real en este diente
+    // (availableSurfaces) para evitar estados "fantasma" que nunca se pintan.
+    const allSurfaces = (
+      [
+        "mesial",
+        "distal",
+        "facial",
+        "lingual",
+        "oclusal",
+        "cervicalVestibular",
+        "cervicalLingual",
+      ] as ToothSurface[]
+    ).filter((surface) => availableSurfaces.has(surface));
     const newStates: SurfaceState[] = allSurfaces.map((surface) => {
       const existing = selectedSurfaces.find((s) => s.surface === surface);
       return (
@@ -515,15 +537,53 @@ export function SurfacesTab({
               >
                 {ToothTypeService.getSurfaceLabel(tooth.number, "facial").full}
               </Button>
-              <Button
-                variant={isZoneSelected(["lingual"]) ? "default" : "outline"}
-                size="sm"
-                className="w-full text-xs h-8 bg-transparent"
-                onClick={() => handleToggleZone(["lingual"])}
-                disabled={isDisabled}
-              >
-                {ToothTypeService.getSurfaceLabel(tooth.number, "lingual").full}
-              </Button>
+              {availableSurfaces.has("lingual") && (
+                <Button
+                  variant={isZoneSelected(["lingual"]) ? "default" : "outline"}
+                  size="sm"
+                  className="w-full text-xs h-8 bg-transparent"
+                  onClick={() => handleToggleZone(["lingual"])}
+                  disabled={isDisabled}
+                >
+                  {ToothTypeService.getSurfaceLabel(tooth.number, "lingual").full}
+                </Button>
+              )}
+              {availableSurfaces.has("cervicalVestibular") && (
+                <Button
+                  variant={
+                    isZoneSelected(["cervicalVestibular"]) ? "default" : "outline"
+                  }
+                  size="sm"
+                  className="w-full text-xs h-8 bg-transparent"
+                  onClick={() => handleToggleZone(["cervicalVestibular"])}
+                  disabled={isDisabled}
+                >
+                  {
+                    ToothTypeService.getSurfaceLabel(
+                      tooth.number,
+                      "cervicalVestibular",
+                    ).full
+                  }
+                </Button>
+              )}
+              {availableSurfaces.has("cervicalLingual") && (
+                <Button
+                  variant={
+                    isZoneSelected(["cervicalLingual"]) ? "default" : "outline"
+                  }
+                  size="sm"
+                  className="w-full text-xs h-8 bg-transparent"
+                  onClick={() => handleToggleZone(["cervicalLingual"])}
+                  disabled={isDisabled}
+                >
+                  {
+                    ToothTypeService.getSurfaceLabel(
+                      tooth.number,
+                      "cervicalLingual",
+                    ).full
+                  }
+                </Button>
+              )}
             </div>
           </Card>
 

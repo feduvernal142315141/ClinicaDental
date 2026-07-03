@@ -25,6 +25,18 @@ const THEME = {
 
 type SelectorView = "frontal" | "oclusal" | "lateral";
 
+/* Orden canónico MODBL para la fila de abreviaturas (mesial, oclusal/incisal,
+   distal, vestibular, palatino/lingual). Rige el orden de lectura, no la geometría. */
+const SURFACE_RANK: Record<string, number> = {
+  mesial: 1,
+  oclusal: 2,
+  distal: 3,
+  facial: 4,
+  lingual: 5,
+  cervicalVestibular: 6,
+  cervicalLingual: 6,
+};
+
 export function SurfaceSelector({
   toothNumber,
   surfaces,
@@ -66,19 +78,19 @@ export function SurfaceSelector({
   }> = [
     {
       key: "frontal",
-      label: "Frontal",
-      helper: anterior ? "Labial visible" : "Vestibular visible",
+      label: ToothTypeService.getViewTitle(toothNumber, "frontal"),
+      helper: anterior ? "Cara labial" : "Cara bucal",
     },
     {
       key: "oclusal",
-      label: anterior ? "Incisal" : "Oclusal",
-      helper: "Superficie central",
+      label: ToothTypeService.getViewTitle(toothNumber, "oclusal"),
+      helper: anterior ? "Borde incisal" : "Tabla oclusal",
     },
     {
       key: "lateral",
-      label: "Lateral",
+      label: ToothTypeService.getViewTitle(toothNumber, "lateral"),
       // Palatino/Lingual depende de la ARCADA, no de anterior/posterior.
-      helper: maxillary ? "Palatino visible" : "Lingual visible",
+      helper: maxillary ? "Cara palatina" : "Cara lingual",
     },
   ];
 
@@ -110,8 +122,12 @@ export function SurfaceSelector({
       );
     }
 
-    const visibleSurfaceLabels = viewPaths.surfaces
+    const visibleSurfaceLabels = [...viewPaths.surfaces]
       .filter((surfacePath) => Boolean(surfacePath.d))
+      .sort(
+        (a, b) =>
+          (SURFACE_RANK[a.surface] ?? 99) - (SURFACE_RANK[b.surface] ?? 99),
+      )
       .map(
         (surfacePath) => surfaceLabel(surfacePath.surface as ToothSurface).short,
       )
@@ -151,6 +167,11 @@ export function SurfaceSelector({
               )}
               xmlns="http://www.w3.org/2000/svg"
             >
+              {/* Grupo de geometría: en la vista lateral se voltea verticalmente
+                  (viewPaths.transform). Pintura y zonas clicables se voltean
+                  juntas, así el hit-testing sigue alineado. En frontal/oclusal
+                  transform === undefined → sin cambios. */}
+              <g transform={viewPaths.transform}>
               {viewPaths.roots.map((rootD, index) => (
                 <path
                   key={`${view}-root-${index}`}
@@ -219,6 +240,7 @@ export function SurfaceSelector({
                   pointerEvents="none"
                 />
               ))}
+              </g>
             </svg>
           </div>
         </div>

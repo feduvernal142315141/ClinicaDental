@@ -3,7 +3,13 @@ export type ToothSurface =
   | "distal"
   | "facial"
   | "lingual"
-  | "oclusal";
+  | "oclusal"
+  // Tercio cervical (G.V. Black Clase V). INDEPENDIENTE por cara: la cervical
+  // vestibular (bucal) y la cervical lingual/palatina son lesiones distintas
+  // (Clase V bucal vs Clase V palatina) — marcar una NO marca la otra. Cada una
+  // solo existe/se marca en su propia vista; nunca en la oclusal/incisal.
+  | "cervicalVestibular"
+  | "cervicalLingual";
 
 export type LegacyToothSurface = ToothSurface;
 
@@ -91,6 +97,15 @@ export function createSurfaceRef(
       region: "root",
       legacyCode: surface,
       displayLabel: "Radicular",
+    };
+  }
+
+  if (surface === "cervicalVestibular" || surface === "cervicalLingual") {
+    return {
+      code: "cervical",
+      region: "crown",
+      legacyCode: surface,
+      displayLabel: "Cervical",
     };
   }
 

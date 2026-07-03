@@ -91,6 +91,34 @@ export class ToothTypeService {
         return anterior
           ? { short: "I", full: "Incisal" }
           : { short: "O", full: "Oclusal" }
+      case "cervicalVestibular":
+        // Tercio cervical de la cara bucal (Clase V vestibular).
+        return { short: "Cerv", full: "Cervical vestibular" }
+      case "cervicalLingual":
+        // Tercio cervical de la cara interna (Clase V), por arcada.
+        return maxillary
+          ? { short: "Cerv", full: "Cervical palatino" }
+          : { short: "Cerv", full: "Cervical lingual" }
+    }
+  }
+
+  /**
+   * Título de la vista anatómica de un diente, decidido por ARCADA y SECTOR
+   * (FDI/ISO 3950): frontal = vestibular; oclusal = incisal en anteriores u
+   * oclusal en posteriores; lateral = palatino en maxilar o lingual en
+   * mandibular. Reutiliza los helpers isAnterior/isMaxillary como fuente de verdad.
+   */
+  static getViewTitle(
+    toothNumber: number,
+    view: "frontal" | "oclusal" | "lateral",
+  ): string {
+    switch (view) {
+      case "frontal":
+        return "Vestibular"
+      case "oclusal":
+        return this.isAnterior(toothNumber) ? "Incisal" : "Oclusal"
+      case "lateral":
+        return this.isMaxillary(toothNumber) ? "Palatino" : "Lingual"
     }
   }
 }

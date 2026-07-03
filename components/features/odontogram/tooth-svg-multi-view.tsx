@@ -56,6 +56,8 @@ function _ToothSVGMultiView({
       "lingual",
       "mesial",
       "distal",
+      "cervicalVestibular",
+      "cervicalLingual",
     ];
     return surfaces.reduce(
       (acc, surface) => {
@@ -103,7 +105,6 @@ function _ToothSVGMultiView({
       symbol={toothSymbol}
       symbolImage={toothSymbolImage}
       onSurfaceClick={onSurfaceClick}
-      view={view}
     />
   );
 }
@@ -116,7 +117,6 @@ function DesignedToothView({
   symbol,
   symbolImage,
   onSurfaceClick,
-  view,
 }: {
   viewPaths: ToothViewPaths;
   surfaceColors: Record<ToothSurface, string>;
@@ -124,9 +124,8 @@ function DesignedToothView({
   symbol: string | null;
   symbolImage?: string | null;
   onSurfaceClick: (surface: ToothSurface) => void;
-  view: "frontal" | "oclusal" | "lateral";
 }) {
-  const { viewBox, outline, surfaces, roots, highlights, symbolAnchor } =
+  const { viewBox, outline, surfaces, roots, highlights, symbolAnchor, transform } =
     viewPaths;
 
   // Posición del símbolo: centro de la CORONA (symbolAnchor), no del viewBox
@@ -134,6 +133,11 @@ function DesignedToothView({
   const vbParts = viewBox.split(" ").map(Number);
   const cx = symbolAnchor?.x ?? vbParts[0] + vbParts[2] / 2;
   const cy = symbolAnchor?.y ?? vbParts[1] + vbParts[3] / 2;
+  // Y del símbolo: en la vista lateral la geometría se voltea verticalmente
+  // (transform). El símbolo se dibuja FUERA del grupo volteado para no espejar
+  // el glifo, así que su ancla se refleja a mano sobre el eje del viewBox para
+  // que caiga en la corona ya volteada. En frontal/oclusal (sin transform) usa cy.
+  const symbolY = transform ? 2 * vbParts[1] + vbParts[3] - cy : cy;
   // Scale font size relative to viewBox width
   const fontSize = Math.round(vbParts[2] * 0.22);
 
@@ -148,6 +152,11 @@ function DesignedToothView({
       className="w-full h-full"
       xmlns="http://www.w3.org/2000/svg"
     >
+      {/* Grupo de geometría: en la vista lateral se voltea verticalmente
+          (transform). Pintura y zonas clicables (onClick) se voltean juntas, así
+          el hit-testing queda alineado. El símbolo NO va aquí — se dibuja fuera
+          y upright. En frontal/oclusal transform === undefined → sin cambios. */}
+      <g transform={transform ?? undefined}>
       {/* Raíces (debajo de la corona, siempre visibles en vestibular) */}
       {roots.map((rootD, i) => (
         <path
@@ -220,6 +229,7 @@ function DesignedToothView({
           pointerEvents="none"
         />
       ))}
+      </g>
 
       {/* Símbolo del servicio en modo imagen (precede al texto). Se dibuja en
           las 3 vistas para que estados de pieza y tratamientos realizados sean
@@ -228,7 +238,7 @@ function DesignedToothView({
         <image
           href={symbolImage as string}
           x={cx - fontSize * 0.8}
-          y={cy - fontSize * 0.8}
+          y={symbolY - fontSize * 0.8}
           width={fontSize * 1.6}
           height={fontSize * 1.6}
           preserveAspectRatio="xMidYMid meet"
@@ -242,7 +252,7 @@ function DesignedToothView({
       {!showImage && symbol && (
         <text
           x={cx}
-          y={cy + fontSize * 0.35}
+          y={symbolY + fontSize * 0.35}
           fontSize={fontSize}
           fontWeight="700"
           textAnchor="middle"
