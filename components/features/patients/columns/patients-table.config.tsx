@@ -1,20 +1,23 @@
 import { DataTableColumn } from "@/components/ui/data-display/data-table";
+import { Eye, Pencil, Ban, CheckCircle2, MoreHorizontal } from "lucide-react";
 import {
-  EyeOutlined,
-  EditOutlined,
-  StopOutlined,
-  CheckCircleOutlined,
-  MoreOutlined,
-} from "@ant-design/icons";
-import { Dropdown } from "antd";
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/primitives/shadcn/dropdown-menu";
 import type { Patient } from "@/lib/entity/patients";
 import { calculateAge } from "@/lib/entity/patients";
 
 interface GetPatientsColumnsParams {
   onView: (id: string) => void;
   onEdit: (id: string) => void;
+  /** Called when the user requests to deactivate an active patient */
   onDelete: (patient: Patient) => void;
+  /** Called when the user requests to activate an inactive patient */
   onToggleStatus: (patient: Patient) => void;
+  /** When false, the edit action button is hidden */
+  canEdit?: boolean;
 }
 
 /** Derive initials from a full name */
@@ -30,7 +33,7 @@ function getInitials(name: string): string {
 /**
  * Get patients table columns configuration
  *
- * @param params - Column action handlers
+ * @param params - Column action handlers and permission flags
  * @returns Array of DataTableColumn for patients table
  */
 export function getPatientsColumns({
@@ -38,6 +41,7 @@ export function getPatientsColumns({
   onEdit,
   onDelete,
   onToggleStatus,
+  canEdit = true,
 }: GetPatientsColumnsParams): DataTableColumn<Patient>[] {
   return [
     {
@@ -45,14 +49,17 @@ export function getPatientsColumns({
       title: "Paciente",
       dataIndex: "name",
       sorter: true,
-      render: (_, record) => (
+      render: (_value: unknown, record) => (
         <div className="flex items-center gap-3">
-          {/* Avatar with initials */}
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-hairline bg-hover text-sm font-bold text-subtle">
+          {/* Avatar con iniciales */}
+          <div
+            aria-hidden="true"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-hairline bg-hover text-sm font-bold text-subtle"
+          >
             {getInitials(record.name)}
           </div>
-          <div>
-            <div className="text-sm font-bold text-ink">
+          <div className="min-w-0">
+            <div className="text-sm font-bold text-ink truncate">
               {record.name}
             </div>
             <div className="font-mono text-[11px] text-subtle truncate max-w-[140px]">
@@ -66,9 +73,9 @@ export function getPatientsColumns({
       key: "age",
       title: "Edad",
       dataIndex: "dateOfBirth",
-      render: (value) => {
+      render: (value: unknown) => {
         if (!value) return <span className="text-sm text-ink">-</span>;
-        const age = calculateAge(value);
+        const age = calculateAge(value as string);
         return (
           <span className="text-sm text-ink">
             {age.years} años y {age.months} meses
@@ -79,7 +86,7 @@ export function getPatientsColumns({
     {
       key: "contact",
       title: "Contacto",
-      render: (_, record) => (
+      render: (_value: unknown, record) => (
         <div>
           <div className="text-[13px] font-medium text-ink">
             {record.email || "-"}
@@ -103,9 +110,9 @@ export function getPatientsColumns({
       key: "address",
       title: "Dirección",
       dataIndex: "address",
-      render: (value) => (
+      render: (value: unknown) => (
         <span className="block max-w-[200px] truncate text-[13px] text-subtle">
-          {value || "-"}
+          {(value as string) || "-"}
         </span>
       ),
     },
@@ -113,69 +120,77 @@ export function getPatientsColumns({
       key: "active",
       title: "Estado",
       dataIndex: "active",
-      render: (value: boolean) =>
+      render: (value: unknown) =>
         value ? (
-          <span className="rounded-full border border-green-100 bg-green-50 px-2.5 py-0.5 text-[11px] font-bold text-green-700">
+          <span className="inline-flex items-center rounded-full border border-green-100 bg-green-50 px-2.5 py-0.5 text-[11px] font-bold text-green-700">
             Activo
           </span>
         ) : (
-          <span className="rounded-full border border-hairline bg-hover px-2.5 py-0.5 text-[11px] font-bold text-ink">
+          <span className="inline-flex items-center rounded-full border border-hairline bg-hover px-2.5 py-0.5 text-[11px] font-bold text-ink">
             Inactivo
           </span>
         ),
     },
     {
       key: "actions",
-      title: "ACCIONES",
+      title: "Acciones",
       align: "center",
       fixed: "right",
       width: 120,
-      render: (_, record) => (
-        <div className="flex items-center justify-center gap-2">
+      render: (_value: unknown, record) => (
+        <div className="flex items-center justify-center gap-1">
           <button
+            type="button"
             onClick={() => onView(record.id)}
-            title="Ver Historial"
-            className="btn-action-view"
+            aria-label={`Ver historial de ${record.name}`}
+            title="Ver historial"
+            className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-brand"
           >
-            <EyeOutlined className="text-sm" />
+            <Eye className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => onEdit(record.id)}
-            title="Editar Paciente"
-            className="btn-action-edit"
-          >
-            <EditOutlined className="text-sm" />
-          </button>
-          <Dropdown
-            menu={{
-              items: [
-                record.active
-                  ? {
-                      key: "deactivate",
-                      label: "Desactivar",
-                      icon: <StopOutlined />,
-                      danger: true,
-                      onClick: () => onDelete(record),
-                    }
-                  : {
-                      key: "activate",
-                      label: "Activar",
-                      icon: <CheckCircleOutlined />,
-                      className: "menu-item-success",
-                      onClick: () => onToggleStatus(record),
-                    },
-              ],
-            }}
-            trigger={["click"]}
-            placement="bottomRight"
-          >
+
+          {canEdit && (
             <button
-              title="Más acciones"
-              className="btn-action-more"
+              type="button"
+              onClick={() => onEdit(record.id)}
+              aria-label={`Editar paciente ${record.name}`}
+              title="Editar paciente"
+              className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink"
             >
-              <MoreOutlined className="text-sm" />
+              <Pencil className="h-4 w-4" />
             </button>
-          </Dropdown>
+          )}
+
+          {canEdit && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Más acciones para ${record.name}`}
+                  title="Más acciones"
+                  className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {record.active ? (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => onDelete(record)}
+                  >
+                    <Ban className="h-4 w-4" />
+                    Desactivar
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => onToggleStatus(record)}>
+                    <CheckCircle2 className="h-4 w-4" />
+                    Activar
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       ),
     },

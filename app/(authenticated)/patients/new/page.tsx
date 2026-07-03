@@ -1,24 +1,21 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { PatientForm } from "@/components/patients";
-import { SectionTitle } from "@/components/ui/antd";
-import { usePatientsPage } from "@/lib/hooks/patients/use-patients-page";
+import { PageHeader } from "@/components/ui/layout/page-header";
 
 export default function NewPatientPage() {
-  const { handleBackToList } = usePatientsPage({
-    basePath: "/patients",
-  });
+  const router = useRouter();
 
   return (
     <>
-      <SectionTitle
+      <PageHeader
         title="Nuevo Paciente"
         subtitle="Registre un nuevo paciente en el sistema"
         actionButton={{
           label: "Atrás",
-          onClick: handleBackToList,
+          onClick: () => router.back(),
           variant: "back",
-          type: "default",
         }}
       />
       <PatientForm basePath="/patients" />

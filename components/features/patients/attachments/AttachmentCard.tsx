@@ -1,7 +1,21 @@
 "use client";
 
-import { Modal, Tag, Button } from "antd";
-import { Image, FileText, File, Download, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ImageIcon, FileText, File, Download, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/atomic/data-display/badge";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/primitives/shadcn/alert-dialog";
+import { notify } from "@/lib/utils/notify";
+import { cn } from "@/lib/utils/utils";
 import apiInstance from "@/lib/services/apiConfig";
 import { patientAttachmentsService } from "@/lib/services/patientAttachments/patientAttachments.service";
 import {
@@ -35,15 +49,17 @@ function truncate(str: string, max: number): string {
 }
 
 function FileIcon({ mimeType }: { mimeType: string }) {
-  if (mimeType.startsWith("image/")) return <Image className="h-5 w-5 text-brand" />;
+  if (mimeType.startsWith("image/")) return <ImageIcon className="h-5 w-5 text-brand" />;
   if (mimeType === "application/pdf") return <FileText className="h-5 w-5 text-destructive" />;
   return <File className="h-5 w-5 text-subtle" />;
 }
 
 export function AttachmentCard({ attachment, patientId, onDelete, canDelete }: AttachmentCardProps) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   const categoryLabel =
     ATTACHMENT_CATEGORIES.find((c) => c.value === attachment.category)?.label ?? attachment.category;
-  const categoryColor = ATTACHMENT_CATEGORY_COLORS[attachment.category];
+  const categoryClassName = ATTACHMENT_CATEGORY_COLORS[attachment.category];
 
   const handleDownload = async () => {
     try {
@@ -56,55 +72,78 @@ export function AttachmentCard({ attachment, patientId, onDelete, canDelete }: A
       anchor.click();
       URL.revokeObjectURL(blobUrl);
     } catch {
-      Modal.error({ title: "Error", content: "No se pudo descargar el archivo." });
+      void notify.error("No se pudo descargar el archivo", {
+        description: "Verifica tu conexión e inténtalo de nuevo; si el problema persiste, contacta a soporte.",
+      });
     }
   };
 
-  const handleDelete = () => {
-    Modal.confirm({
-      title: "Eliminar archivo",
-      content: `¿Estás seguro de que deseas eliminar "${attachment.fileName}"?`,
-      okText: "Eliminar",
-      okType: "danger",
-      cancelText: "Cancelar",
-      onOk: () => onDelete(attachment.id),
-    });
-  };
-
   return (
-    <div className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
-      <FileIcon mimeType={attachment.mimeType} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium leading-tight" title={attachment.fileName}>
-          {truncate(attachment.fileName, 24)}
-        </p>
-        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-          <Tag color={categoryColor} className="m-0 text-xs leading-tight">
-            {categoryLabel}
-          </Tag>
-          <span className="text-xs text-muted-foreground">{formatDate(attachment.uploadedAt)}</span>
-          <span className="text-xs text-muted-foreground">· {formatSize(attachment.sizeBytes)}</span>
+    <>
+      <div className="flex items-center gap-2 rounded-md border border-hairline bg-surface p-2 text-sm">
+        <FileIcon mimeType={attachment.mimeType} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium leading-tight" title={attachment.fileName}>
+            {truncate(attachment.fileName, 24)}
+          </p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1">
+            <Badge
+              variant="outline"
+              className={cn("text-xs leading-tight", categoryClassName)}
+            >
+              {categoryLabel}
+            </Badge>
+            <span className="text-xs text-subtle">{formatDate(attachment.uploadedAt)}</span>
+            <span className="text-xs text-subtle">· {formatSize(attachment.sizeBytes)}</span>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            type="button"
+            className="h-7 w-7 text-subtle hover:text-ink"
+            onClick={handleDownload}
+            aria-label={`Descargar ${attachment.fileName}`}
+          >
+            <Download className="h-3.5 w-3.5" />
+          </Button>
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              className="h-7 w-7 text-subtle hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => setConfirmDelete(true)}
+              aria-label={`Eliminar ${attachment.fileName}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <Button
-          type="text"
-          size="small"
-          icon={<Download className="h-3.5 w-3.5" />}
-          onClick={handleDownload}
-          title="Descargar"
-        />
-        {canDelete && (
-          <Button
-            type="text"
-            size="small"
-            danger
-            icon={<Trash2 className="h-3.5 w-3.5" />}
-            onClick={handleDelete}
-            title="Eliminar"
-          />
-        )}
-      </div>
-    </div>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent className="rounded-2xl border-hairline bg-surface shadow-bento">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-ink">Eliminar archivo</AlertDialogTitle>
+            <AlertDialogDescription className="text-subtle">
+              ¿Estás seguro de que deseas eliminar{" "}
+              <span className="font-medium text-ink">&ldquo;{attachment.fileName}&rdquo;</span>?{" "}
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => onDelete(attachment.id)}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

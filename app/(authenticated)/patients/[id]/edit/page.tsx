@@ -1,9 +1,9 @@
 "use client";
 
 import { use } from "react";
+import { useRouter } from "next/navigation";
 import { PatientForm } from "@/components/patients";
-import { SectionTitle } from "@/components/ui/antd";
-import { usePatientsPage } from "@/lib/hooks/patients/use-patients-page";
+import { PageHeader } from "@/components/ui/layout/page-header";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -11,20 +11,17 @@ interface PageProps {
 
 export default function EditPatientPage({ params }: PageProps) {
   const { id } = use(params);
-  const { handleBackToList } = usePatientsPage({
-    basePath: "/patients",
-  });
+  const router = useRouter();
 
   return (
     <>
-      <SectionTitle
+      <PageHeader
         title="Editar Paciente"
         subtitle="Actualice la información del paciente en el sistema"
         actionButton={{
           label: "Atrás",
-          onClick: handleBackToList,
+          onClick: () => router.back(),
           variant: "back",
-          type: "default",
         }}
       />
       <PatientForm patientId={id} basePath="/patients" />

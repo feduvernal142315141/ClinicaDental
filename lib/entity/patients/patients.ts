@@ -1,24 +1,10 @@
-/** @deprecated Use Patient from @/lib/entity/patients instead */
-export interface PatientLegacy {
-  id: string;
-  clinic_id?: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  dateOfBirth?: string;
-  address?: string;
-  created_at?: string;
-  updated_at?: string;
-  gender?: string;
-  agreement?: boolean;
-}
+import type { PatientFormValues } from "./patient.schema";
 
-export interface PatientFormData {
-  name: string;
-  email: string;
-  phone: string;
-  dateOfBirth: string;
-}
+/**
+ * @deprecated Usar `PatientFormValues` de `@/lib/entity/patients`.
+ * Este alias se mantiene temporalmente para no romper importaciones existentes.
+ */
+export type PatientFormData = PatientFormValues;
 
 export const genderOptions = [
   { value: "M", label: "Masculino" },

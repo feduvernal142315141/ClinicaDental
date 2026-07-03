@@ -1,50 +1,65 @@
 "use client";
 
 import { forwardRef, useImperativeHandle } from "react";
-import { Form, Flex } from "antd";
-import { usePatientForm } from "@/lib/hooks/patients";
-import { Card } from "@/components/ui/antd";
+import { Form } from "@/components/ui/atomic/forms";
 import { FormActions } from "@/components/features/doctors/form/components/FormActions";
+import { usePatientForm } from "@/lib/hooks/patients";
 import { PatientFormFields } from "./PatientFormFields";
 import type { Patient } from "@/lib/entity/patients";
 
 interface PatientFormProps {
-  /** Patient ID for editing (undefined for new patient) */
+  /** ID del paciente para edición (undefined en alta). */
   patientId?: string;
-  /** Base path for navigation */
+  /** Ruta base para navegación (default: "/patients"). */
   basePath?: string;
-  /** Initial data (for editing) */
+  /** Datos iniciales del paciente (modo edición). */
   initialData?: Patient;
-  /** Read-only mode (for detail view) */
+  /** Modo solo lectura: muestra valores, oculta acciones. */
   readOnly?: boolean;
-  /** Callback on successful submit (overrides router navigation) */
+  /** Callback al guardar con éxito (reemplaza la navegación por router). */
   onSuccess?: () => void;
-  /** Callback on cancel (overrides router navigation) */
+  /** Callback al cancelar (reemplaza la navegación por router). */
   onCancel?: () => void;
-  /** Compact mode: disables maxHeight on Card body */
+  /** Modo compacto: sin altura máxima en el contenedor. */
   compact?: boolean;
-  /** Hide internal action buttons (used when parent provides its own actions) */
+  /**
+   * Oculta los botones de acción internos.
+   * Úsalo cuando el padre (ej. EditPatientDrawer) provee sus propios botones
+   * y llama a `ref.submit()` externamente.
+   */
   hideActions?: boolean;
-  /** Callback when loading state changes */
+  /** Notifica cambios en el estado de carga (útil para EditPatientDrawer). */
   onLoadingChange?: (loading: boolean) => void;
 }
 
+/** Contrato público del ref expuesto por PatientForm. */
 export interface PatientFormRef {
+  /** Dispara la validación y el submit del formulario. */
   submit: () => void;
 }
 
 /**
- * Patient Form Component
+ * PatientForm — Formulario de alta/edición de paciente.
  *
- * Handles creation, editing, and viewing of patients.
- * Uses Ant Design Form with validation.
+ * Migrado a react-hook-form + zod + Bento (sin Ant Design).
+ * Expone `PatientFormRef.submit()` para su uso desde drawers externos.
  *
- * @example
- * // New patient
+ * @example Alta
+ * ```tsx
  * <PatientForm basePath="/patients" />
+ * ```
  *
- * // Edit patient
- * <PatientForm patientId="123" basePath="/patients" />
+ * @example Edición dentro de un Drawer
+ * ```tsx
+ * <PatientForm
+ *   ref={formRef}
+ *   patientId={patient.id}
+ *   initialData={patient}
+ *   hideActions
+ *   onLoadingChange={setSaving}
+ *   onSuccess={handleClose}
+ * />
+ * ```
  */
 export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
   function PatientForm(
@@ -59,7 +74,7 @@ export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
       hideActions = false,
       onLoadingChange,
     },
-    ref
+    ref,
   ) {
     const { form, isEdit, loading, handleSubmit, handleCancel } =
       usePatientForm({
@@ -71,61 +86,54 @@ export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
         onLoadingChange,
       });
 
+    const formDisabled = loading || readOnly;
+
+    // Expone submit() para padres que controlan el envío externamente (EditPatientDrawer).
     useImperativeHandle(ref, () => ({
-      submit: () => form.submit(),
+      submit: () => form.handleSubmit(handleSubmit)(),
     }));
 
-    // When used inside a Drawer (hideActions=true), render plain form without Card wrapper
+    const fields = <PatientFormFields disabled={formDisabled} />;
+
+    const actions = !hideActions && !readOnly && (
+      <div className="flex justify-end pt-2">
+        <FormActions
+          loading={loading}
+          onCancel={handleCancel}
+          submitText={isEdit ? "Actualizar" : "Guardar"}
+        />
+      </div>
+    );
+
     if (hideActions) {
+      // Sin wrapper de card: el drawer padre provee el chrome visual.
       return (
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          initialValues={{ agreement: true }}
-          disabled={loading || readOnly}
-        >
-          <PatientFormFields singleColumn />
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-5"
+          >
+            {fields}
+          </form>
         </Form>
       );
     }
 
     return (
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-        initialValues={{
-          agreement: true,
-        }}
-        disabled={loading || readOnly}
-      >
-        <Card
-          title="Información del Paciente"
-          styles={{
-            body: {
-              ...(compact ? {} : { maxHeight: "calc(100vh - 320px)" }),
-              overflowY: "auto",
-              overflowX: "hidden",
-            },
-          }}
-          actions={
-            readOnly
-              ? undefined
-              : [
-                  <Flex key="actions" justify="end" style={{ padding: "0 16px" }}>
-                    <FormActions
-                      loading={loading}
-                      onCancel={handleCancel}
-                      submitText={isEdit ? "Actualizar" : "Guardar"}
-                    />
-                  </Flex>,
-                ]
-          }
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(handleSubmit)}
+          className={compact ? "space-y-4" : "space-y-5"}
         >
-          <PatientFormFields />
-        </Card>
+          <section className="bento space-y-5 p-6">
+            <h3 className="text-sm font-semibold text-ink">
+              Información del paciente
+            </h3>
+            {fields}
+            {actions}
+          </section>
+        </form>
       </Form>
     );
-  }
+  },
 );

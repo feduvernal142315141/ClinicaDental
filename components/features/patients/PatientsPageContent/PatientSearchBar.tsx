@@ -1,6 +1,7 @@
 "use client";
 
-import { TableSearchBar } from "@/components/ui/antd";
+import { Loader2 } from "lucide-react";
+import { SearchInput } from "@/components/ui/atomic/forms/search-input";
 
 interface PatientSearchBarProps {
   value: string;
@@ -12,7 +13,7 @@ interface PatientSearchBarProps {
  * PatientSearchBar
  *
  * Barra de búsqueda para la tabla de pacientes.
- * Thin wrapper de TableSearchBar con placeholder específico.
+ * Muestra un indicador de carga mientras el debounce está activo.
  */
 export function PatientSearchBar({
   value,
@@ -20,11 +21,20 @@ export function PatientSearchBar({
   loading,
 }: PatientSearchBarProps) {
   return (
-    <TableSearchBar
-      value={value}
-      onChange={onChange}
-      placeholder="Buscar paciente por nombre..."
-      loading={loading}
-    />
+    <div className="relative max-w-sm">
+      <SearchInput
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Buscar paciente por nombre..."
+        aria-label="Buscar paciente"
+        containerClassName="w-full"
+      />
+      {loading && (
+        <Loader2
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-subtle"
+          aria-hidden="true"
+        />
+      )}
+    </div>
   );
 }

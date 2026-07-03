@@ -1,12 +1,16 @@
+"use client";
+
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Form } from "antd";
-import { usePatients } from "@/lib/hooks/patients";
-import type {
-  CreatePatientRequest,
-  UpdatePatientRequest,
-  Patient,
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+// Direct import to avoid circular dependency through the barrel index.ts
+import { usePatients } from "@/lib/hooks/patients/usePatients";
+import {
+  patientFormSchema,
+  type PatientFormValues,
 } from "@/lib/entity/patients";
+import type { Patient } from "@/lib/entity/patients";
 
 interface UsePatientFormParams {
   patientId?: string;
@@ -18,9 +22,10 @@ interface UsePatientFormParams {
 }
 
 /**
- * usePatientForm Hook
+ * usePatientForm — lógica de negocio del formulario de paciente (crear / editar).
  *
- * Manages all business logic for patient form (create/edit)
+ * Migrado a react-hook-form + zod. El formulario (UseFormReturn) se crea
+ * internamente y se expone al componente junto con los handlers.
  */
 export function usePatientForm({
   patientId,
@@ -31,53 +36,69 @@ export function usePatientForm({
   onLoadingChange,
 }: UsePatientFormParams) {
   const router = useRouter();
-  const [form] = Form.useForm();
-
   const isEdit = !!patientId;
 
   const { createPatient, updatePatient, getPatientById, loading } =
     usePatients();
 
-  // Load patient data if editing
+  const form = useForm<PatientFormValues>({
+    resolver: zodResolver(patientFormSchema),
+    mode: "onBlur",
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      dateOfBirth: "",
+      gender: undefined,
+      address: "",
+      agreement: true,
+    },
+  });
+
+  // Prefill sincrónico cuando se pasa initialData (ej: EditPatientDrawer)
+  useEffect(() => {
+    if (initialData) {
+      form.reset({
+        name: initialData.name ?? "",
+        email: initialData.email ?? "",
+        phone: initialData.phone ?? "",
+        dateOfBirth: initialData.dateOfBirth ?? "",
+        address: initialData.address ?? "",
+        gender: initialData.gender,
+        agreement: initialData.agreement ?? true,
+      });
+    }
+  }, [initialData, form]);
+
+  // Carga desde la API cuando se edita sin initialData
   useEffect(() => {
     if (isEdit && patientId && !initialData) {
       getPatientById(patientId).then((patient) => {
         if (patient) {
-          form.setFieldsValue({
-            name: patient.name,
-            email: patient.email,
-            phone: patient.phone,
-            dateOfBirth: patient.dateOfBirth,
-            address: patient.address,
+          form.reset({
+            name: patient.name ?? "",
+            email: patient.email ?? "",
+            phone: patient.phone ?? "",
+            dateOfBirth: patient.dateOfBirth ?? "",
+            address: patient.address ?? "",
             gender: patient.gender,
-            agreement: patient.agreement,
+            agreement: patient.agreement ?? true,
           });
         }
-      });
-    } else if (initialData) {
-      form.setFieldsValue({
-        name: initialData.name,
-        email: initialData.email,
-        phone: initialData.phone,
-        dateOfBirth: initialData.dateOfBirth,
-        address: initialData.address,
-        gender: initialData.gender,
-        agreement: initialData.agreement,
       });
     }
   }, [isEdit, patientId, initialData, getPatientById, form]);
 
-  // Notify loading changes
+  // Propaga el estado loading al padre (p. ej. EditPatientDrawer)
   useEffect(() => {
     onLoadingChange?.(loading);
   }, [loading, onLoadingChange]);
 
-  // Handle form submission
   const handleSubmit = useCallback(
-    async (values: unknown) => {
+    async (values: PatientFormValues) => {
       try {
         if (isEdit && patientId) {
-          const updateData: UpdatePatientRequest = {
+          const success = await updatePatient({
             id: patientId,
             name: values.name,
             email: values.email,
@@ -86,15 +107,13 @@ export function usePatientForm({
             address: values.address,
             gender: values.gender,
             agreement: values.agreement,
-          };
-
-          const success = await updatePatient(updateData);
+          });
           if (success) {
             if (onSuccess) onSuccess();
             else router.push(`${basePath}/${patientId}`);
           }
         } else {
-          const createData: CreatePatientRequest = {
+          const newPatientId = await createPatient({
             name: values.name,
             email: values.email,
             phone: values.phone,
@@ -102,22 +121,20 @@ export function usePatientForm({
             address: values.address,
             gender: values.gender,
             agreement: values.agreement ?? true,
-          };
-
-          const newPatientId = await createPatient(createData);
+          });
           if (newPatientId) {
             if (onSuccess) onSuccess();
             else router.push(basePath);
           }
         }
-      } catch (error: unknown) {
-        console.error("Error in handleSubmit:", error);
+      } catch {
+        // El toast de error ya fue mostrado por usePatients (createPatient / updatePatient).
+        // Solo prevenimos que el rechazo no manejado rompa el componente.
       }
     },
     [isEdit, patientId, createPatient, updatePatient, router, basePath, onSuccess],
   );
 
-  // Handle cancel
   const handleCancel = useCallback(() => {
     if (onCancel) {
       onCancel();
@@ -128,7 +145,6 @@ export function usePatientForm({
     }
   }, [router, basePath, isEdit, patientId, onCancel]);
 
-  // Handle back
   const handleBack = useCallback(() => {
     router.back();
   }, [router]);

@@ -1,155 +1,199 @@
 "use client";
 
-import { Form, Input, Row, Col, Select, DatePicker, Switch } from "antd";
-import { genderOptions } from "@/lib/entity/patients";
-import dayjs from "dayjs";
+import { useFormContext } from "react-hook-form";
+import { localTodayInput } from "@/lib/datetime";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  Switch,
+} from "@/components/ui/atomic/forms";
+import { Select } from "@/components/ui/controls/select";
+import { DateTimePicker } from "@/components/ui/controls/date-time-picker";
+import type { PatientFormValues } from "@/lib/entity/patients";
+
+const GENDER_OPTIONS = [
+  { value: "M", label: "Masculino" },
+  { value: "F", label: "Femenino" },
+];
 
 interface PatientFormFieldsProps {
-  /** Column gutter spacing — allows the parent to control layout density */
-  gutter?: [number, number];
-  /**
-   * Force all fields to a single column (span=24).
-   * Use inside Drawers or any narrow container.
-   */
-  singleColumn?: boolean;
-  /**
-   * Container for Select/DatePicker popups.
-   * Useful inside modals to prevent click-through issues.
-   * Defaults to the parent node of the trigger element.
-   */
-  popupContainer?: "parent" | "body";
+  /** Deshabilita todos los campos (cargando o modo readOnly). */
+  disabled?: boolean;
 }
 
 /**
- * PatientFormFields — Reusable field set for patient data.
+ * PatientFormFields — Campos reutilizables del formulario de paciente.
  *
- * Renders only the form items (name, email, phone, dateOfBirth, gender,
- * address, agreement). It must be placed inside an Ant Design `<Form>`.
- *
- * This component owns **no** form instance, submit logic, or layout chrome
- * (Card, actions, etc.), following the Single Responsibility Principle.
- *
- * @example
- * // Inside a standalone page form
- * <Form form={form} layout="vertical" onFinish={handleSubmit}>
- *   <PatientFormFields />
- * </Form>
- *
- * @example
- * // Inside a modal for quick creation
- * <Modal open={open}>
- *   <Form form={modalForm} layout="vertical">
- *     <PatientFormFields gutter={[16, 12]} />
- *   </Form>
- * </Modal>
+ * Usa `useFormContext<PatientFormValues>()` y debe renderizarse dentro
+ * de un `<Form {...form}>` que proporcione el contexto de react-hook-form.
+ * No tiene lógica de submit ni chrome (Card, acciones). Bento puro.
  */
-export function PatientFormFields({
-  gutter = [24, 16],
-  singleColumn = false,
-  popupContainer = "parent",
-}: PatientFormFieldsProps) {
-  const colProps = singleColumn
-    ? { span: 24 }
-    : { xs: 24, md: 12, lg: 8 };
-  const getPopupContainer =
-    popupContainer === "parent"
-      ? (trigger: HTMLElement) => trigger.parentElement ?? document.body
-      : undefined;
+export function PatientFormFields({ disabled = false }: PatientFormFieldsProps) {
+  const form = useFormContext<PatientFormValues>();
+  const { errors } = form.formState;
+
   return (
-    <Row gutter={gutter}>
-      <Col {...colProps}>
-        <Form.Item
+    <div className="space-y-5">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Nombre */}
+        <FormField
+          control={form.control}
           name="name"
-          label="Nombre Completo"
-          rules={[
-            { required: true, message: "El nombre es obligatorio" },
-            {
-              min: 2,
-              message: "El nombre debe tener al menos 2 caracteres",
-            },
-          ]}
-        >
-          <Input placeholder="Ej: María González López" size="large" />
-        </Form.Item>
-      </Col>
+          render={({ field }) => (
+            <FormItem className="lg:col-span-1 sm:col-span-2">
+              <FormLabel>
+                Nombre completo <span className="text-rose-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="Ej: María González López"
+                  disabled={disabled}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <Col {...colProps}>
-        <Form.Item
+        {/* Correo */}
+        <FormField
+          control={form.control}
           name="email"
-          label="Correo Electrónico"
-          rules={[
-            { required: true, message: "El correo es obligatorio" },
-            { type: "email", message: "Ingrese un correo válido" },
-          ]}
-        >
-          <Input placeholder="Ej: maria@email.com" size="large" />
-        </Form.Item>
-      </Col>
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Correo electrónico <span className="text-rose-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Input
+                  type="email"
+                  placeholder="Ej: maria@email.com"
+                  disabled={disabled}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <Col {...colProps}>
-        <Form.Item
+        {/* Teléfono */}
+        <FormField
+          control={form.control}
           name="phone"
-          label="Teléfono"
-          rules={[{ required: true, message: "El teléfono es obligatorio" }]}
-        >
-          <Input placeholder="Ej: +505 8275-8275" size="large" />
-        </Form.Item>
-      </Col>
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Teléfono <span className="text-rose-500">*</span>
+              </FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="Ej: +505 8275-8275"
+                  disabled={disabled}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <Col {...colProps}>
-        <Form.Item
+        {/* Fecha de nacimiento */}
+        <FormField
+          control={form.control}
           name="dateOfBirth"
-          label="Fecha de Nacimiento"
-          rules={[
-            {
-              required: true,
-              message: "La fecha de nacimiento es obligatoria",
-            },
-          ]}
-          getValueProps={(value) => ({
-            value: value ? dayjs(value) : undefined,
-          })}
-          getValueFromEvent={(date) => date?.format("YYYY-MM-DD")}
-        >
-          <DatePicker
-            placeholder="Seleccione fecha"
-            size="large"
-            style={{ width: "100%" }}
-            format="DD/MM/YYYY"
-            getPopupContainer={getPopupContainer}
-          />
-        </Form.Item>
-      </Col>
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Fecha de nacimiento <span className="text-rose-500">*</span>
+              </FormLabel>
+              <DateTimePicker
+                value={field.value}
+                onChange={field.onChange}
+                showTime={false}
+                max={localTodayInput()}
+                toYear={new Date().getFullYear()}
+                disabled={disabled}
+                aria-label="Fecha de nacimiento"
+                aria-invalid={!!errors.dateOfBirth}
+              />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <Col {...colProps}>
-        <Form.Item
+        {/* Género */}
+        <FormField
+          control={form.control}
           name="gender"
-          label="Género"
-          rules={[{ required: true, message: "El género es obligatorio" }]}
-        >
-          <Select
-            placeholder="Seleccione género"
-            size="large"
-            getPopupContainer={getPopupContainer}
-            options={genderOptions.map((opt) => ({
-              value: opt.value,
-              label: opt.label,
-            }))}
-          />
-        </Form.Item>
-      </Col>
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Género <span className="text-rose-500">*</span>
+              </FormLabel>
+              <Select
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                options={GENDER_OPTIONS}
+                placeholder="Seleccione género"
+                disabled={disabled}
+                aria-label="Género"
+                aria-invalid={!!errors.gender}
+              />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <Col {...colProps}>
-        <Form.Item name="address" label="Dirección">
-          <Input placeholder="Ej: Calle Mayor 123, Madrid" size="large" />
-        </Form.Item>
-      </Col>
+        {/* Dirección */}
+        <FormField
+          control={form.control}
+          name="address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Dirección</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="Ej: Calle Mayor 123, ..."
+                  disabled={disabled}
+                  {...field}
+                  value={field.value ?? ""}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
 
-      <Col {...colProps}>
-        <Form.Item name="agreement" label="Convenio" valuePropName="checked">
-          <Switch checkedChildren="Sí" unCheckedChildren="No" />
-        </Form.Item>
-      </Col>
-    </Row>
+      {/* Convenio */}
+      <FormField
+        control={form.control}
+        name="agreement"
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-center justify-between rounded-xl border border-hairline bg-elevated px-4 py-3">
+            <div className="space-y-0.5">
+              <FormLabel>Convenio</FormLabel>
+              <p className="text-xs text-subtle">
+                ¿El paciente cuenta con convenio?
+              </p>
+            </div>
+            <FormControl>
+              <Switch
+                checked={!!field.value}
+                onCheckedChange={field.onChange}
+                disabled={disabled}
+              />
+            </FormControl>
+          </FormItem>
+        )}
+      />
+    </div>
   );
 }

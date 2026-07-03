@@ -4,12 +4,15 @@
  * Type definitions for patient-related entities based on backend API
  */
 
+// Schema canónico de formulario (fuente de verdad)
+export { patientFormSchema, type PatientFormValues } from "./patient.schema";
+
 // Re-export existing types and utilities
 export {
   genderOptions,
   agreementOptions,
+  /** @deprecated Usar PatientFormValues */
   type PatientFormData,
-  type PatientLegacy,
 } from "./patients";
 export { calculateAge, formatDate } from "./patients-utils";
 
@@ -47,16 +50,18 @@ export interface PatientListItem {
 }
 
 /**
- * Create patient request payload
+ * Create patient request payload.
+ * Los campos name, email, phone, dateOfBirth y gender son requeridos
+ * por validación de formulario; address y agreement son opcionales.
  */
 export interface CreatePatientRequest {
   name: string;
-  email?: string;
-  phone?: string;
-  dateOfBirth?: string; // ISO 8601
+  email: string;
+  phone: string;
+  dateOfBirth: string; // ISO 8601 YYYY-MM-DD
+  gender: "M" | "F";
   address?: string;
   agreement?: boolean;
-  gender?: "M" | "F";
 }
 
 /**
@@ -133,11 +138,11 @@ export function buildFilter(
 }
 
 /**
- * Helper to build order string
- * @example buildOrder("name", "asc") => "name:asc"
+ * Helper to build order string (canonical backend format)
+ * @example buildOrder("name", "asc") => "name__ASC"
  */
 export function buildOrder(field: string, direction: "asc" | "desc"): string {
-  return `${field}:${direction}`;
+  return `${field}__${direction.toUpperCase()}`;
 }
 
 /**

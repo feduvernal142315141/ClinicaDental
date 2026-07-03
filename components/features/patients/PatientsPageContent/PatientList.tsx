@@ -1,17 +1,27 @@
 "use client";
 
-import { useMemo, useEffect, useCallback, useRef } from "react";
-import { App } from "antd";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import {
+  Users,
+  SearchX,
+  AlertTriangle,
+  RefreshCw,
+  Plus,
+} from "lucide-react";
 import { DataTable } from "@/components/ui/data-display/data-table";
+import { AlertDialog } from "@/components/ui/atomic/feedback/alert-dialog/alert-dialog";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import {
   usePatients,
   usePatientsPage,
   usePatientFilters,
 } from "@/lib/hooks/patients";
+import { usePermission } from "@/lib/hooks/use-permission";
+import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { getPatientsColumns } from "../columns/patients-table.config";
 import { PatientSearchBar } from "./PatientSearchBar";
+import { buildOrder } from "@/lib/entity/patients";
 import type { Patient } from "@/lib/entity/patients";
-import { notify } from "@/lib/utils/notify";
 
 interface PatientListProps {
   /** Base path for navigation */
@@ -21,118 +31,215 @@ interface PatientListProps {
 /**
  * Patients List Component
  *
- * Displays a paginated table of patients with search, filters, and actions.
+ * Displays a paginated table of patients with search, filters, sort, and
+ * permission-gated actions. Replaces antd modal.confirm with a Bento AlertDialog.
  *
  * @example
  * <PatientList basePath="/patients" />
  */
 export function PatientList({ basePath = "/patients" }: PatientListProps) {
-  const { modal } = App.useApp();
-  const { handleViewPatient, handleEditPatient } = usePatientsPage({
-    basePath,
-  });
+  const { isAdmin, can } = usePermission();
+  const canCreate = isAdmin || can("patients", PermissionAction.CREATE);
+  const canEdit = isAdmin || can("patients", PermissionAction.EDIT);
 
-  const { patients, loading, pagination, fetchPatients, deletePatient, activatePatient } =
-    usePatients();
+  const { handleNewPatient, handleViewPatient, handleEditPatient } =
+    usePatientsPage({ basePath });
 
-  // Persist active filters and current pageSize across re-renders
+  const {
+    patients,
+    loading,
+    fetchError,
+    pagination,
+    fetchPatients,
+    deletePatient,
+    activatePatient,
+  } = usePatients();
+
+  // ── Confirm dialog state ─────────────────────────────────────────────────
+  const [confirmDialog, setConfirmDialog] = useState<{
+    type: "deactivate" | "activate";
+    patient: Patient;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+
+  // ── Persistent refs (survive re-renders without causing them) ────────────
   const activeFiltersRef = useRef<string[]>([]);
+  const activeOrdersRef = useRef<string[]>([]);
   const pageSizeRef = useRef(10);
   pageSizeRef.current = pagination.pageSize;
 
+  // ── Filters / search ─────────────────────────────────────────────────────
   const handleFiltersChange = useCallback(
     (filters: string[]) => {
       activeFiltersRef.current = filters;
-      fetchPatients({ page: 0, pageSize: pageSizeRef.current, filters });
+      fetchPatients({
+        page: 0,
+        pageSize: pageSizeRef.current,
+        filters,
+        orders: activeOrdersRef.current,
+      }).catch(() => {
+        /* toast already shown by hook */
+      });
     },
     [fetchPatients],
   );
 
-  const { search, setSearch } = usePatientFilters(handleFiltersChange);
+  const { search, setSearch, hasActiveFilters } =
+    usePatientFilters(handleFiltersChange);
 
-  // Load patients on component mount
+  // ── Initial load ─────────────────────────────────────────────────────────
   useEffect(() => {
-    fetchPatients({ page: 0, pageSize: 10 });
+    fetchPatients({ page: 0, pageSize: 10 }).catch(() => {
+      /* toast already shown by hook */
+    });
   }, [fetchPatients]);
 
-  const handleDelete = (patient: Patient) => {
-    modal.confirm({
-      title: "¿Desactivar paciente?",
-      content: (
-        <>
-          El paciente <strong>{patient.name}</strong> ya no aparecerá en las
-          búsquedas activas, pero su historial clínico y de pagos se mantendrá
-          intacto.
-        </>
-      ),
-      okText: "Desactivar",
-      okType: "danger",
-      cancelText: "Cancelar",
-      onOk: async () => {
-        try {
-          await deletePatient(patient.id);
-          fetchPatients({
-            page: pagination.page,
-            pageSize: pagination.pageSize,
-            filters: activeFiltersRef.current,
-          });
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (_e) {
-          notify.error("No se pudo desactivar el paciente", {
-            description:
-              "El paciente sigue activo en el listado. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
-          });
-        }
-      },
-    });
-  };
+  // ── Sort ─────────────────────────────────────────────────────────────────
+  // buildOrder emits the canonical backend format "field__ASC" / "field__DESC".
+  const handleSortChange = useCallback(
+    (field: string, order: "asc" | "desc" | null) => {
+      const orders = order ? [buildOrder(field, order)] : [];
+      activeOrdersRef.current = orders;
+      fetchPatients({
+        page: 0,
+        pageSize: pageSizeRef.current,
+        filters: activeFiltersRef.current,
+        orders,
+      }).catch(() => {
+        /* toast already shown by hook */
+      });
+    },
+    [fetchPatients],
+  );
 
-  const handleToggleStatus = (patient: Patient) => {
-    modal.confirm({
-      title: "¿Activar paciente?",
-      content: (
-        <>
-          El paciente <strong>{patient.name}</strong> volverá a aparecer en las
-          búsquedas activas.
-        </>
-      ),
-      okText: "Activar",
-      cancelText: "Cancelar",
-      cancelButtonProps: { danger: true, type: "default" },
-      onOk: async () => {
-        try {
-          await activatePatient(patient.id);
-          fetchPatients({
-            page: pagination.page,
-            pageSize: pagination.pageSize,
-            filters: activeFiltersRef.current,
-          });
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (_e) {
-          notify.error("No se pudo activar el paciente", {
-            description:
-              "El paciente continúa inactivo. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
-          });
-        }
-      },
-    });
-  };
+  // ── Action requests (open dialogs) ───────────────────────────────────────
+  const handleDeactivateRequest = useCallback((patient: Patient) => {
+    setConfirmDialog({ type: "deactivate", patient });
+  }, []);
 
+  const handleActivateRequest = useCallback((patient: Patient) => {
+    setConfirmDialog({ type: "activate", patient });
+  }, []);
+
+  // ── Confirm action ───────────────────────────────────────────────────────
+  const handleConfirm = useCallback(async () => {
+    if (!confirmDialog) return;
+    setConfirmLoading(true);
+    try {
+      if (confirmDialog.type === "deactivate") {
+        await deletePatient(confirmDialog.patient.id);
+      } else {
+        await activatePatient(confirmDialog.patient.id);
+      }
+      setConfirmDialog(null);
+      await fetchPatients({
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        filters: activeFiltersRef.current,
+        orders: activeOrdersRef.current,
+      });
+    } catch {
+      /* toasts already shown by hook */
+    } finally {
+      setConfirmLoading(false);
+    }
+  }, [
+    confirmDialog,
+    deletePatient,
+    activatePatient,
+    fetchPatients,
+    pagination.page,
+    pagination.pageSize,
+  ]);
+
+  // ── Columns ──────────────────────────────────────────────────────────────
   const columns = useMemo(
     () =>
       getPatientsColumns({
         onView: handleViewPatient,
         onEdit: handleEditPatient,
-        onDelete: handleDelete,
-        onToggleStatus: handleToggleStatus,
+        onDelete: handleDeactivateRequest,
+        onToggleStatus: handleActivateRequest,
+        canEdit,
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [handleViewPatient, handleEditPatient],
+    [
+      handleViewPatient,
+      handleEditPatient,
+      handleDeactivateRequest,
+      handleActivateRequest,
+      canEdit,
+    ],
   );
+
+  // ── Differentiated empty states ──────────────────────────────────────────
+  const emptyContent = fetchError ? (
+    <div className="flex flex-col items-center gap-3 py-12 text-center">
+      <div className="rounded-full bg-rose-50 p-3">
+        <AlertTriangle className="h-6 w-6 text-rose-500" />
+      </div>
+      <p className="text-sm font-semibold text-ink">
+        No se pudo cargar el listado
+      </p>
+      <p className="max-w-xs text-xs text-subtle">
+        Revisa tu conexión e inténtalo de nuevo. Si el error persiste, contacta
+        a soporte.
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() =>
+          fetchPatients({
+            page: 0,
+            pageSize: pageSizeRef.current,
+            filters: activeFiltersRef.current,
+            orders: activeOrdersRef.current,
+          }).catch(() => {})
+        }
+        className="mt-1 gap-2"
+      >
+        <RefreshCw className="h-4 w-4" />
+        Reintentar
+      </Button>
+    </div>
+  ) : hasActiveFilters ? (
+    <div className="flex flex-col items-center gap-2 py-12 text-center">
+      <div className="rounded-full bg-hover p-3">
+        <SearchX className="h-6 w-6 text-subtle" />
+      </div>
+      <p className="text-sm font-semibold text-ink">Sin resultados</p>
+      <p className="max-w-xs text-xs text-subtle">
+        Ningún paciente coincide con &ldquo;{search}&rdquo;. Prueba con otro
+        término.
+      </p>
+    </div>
+  ) : (
+    <div className="flex flex-col items-center gap-2 py-12 text-center">
+      <div className="rounded-full bg-hover p-3">
+        <Users className="h-6 w-6 text-subtle" />
+      </div>
+      <p className="text-sm font-semibold text-ink">
+        Todavía no hay pacientes
+      </p>
+      <p className="max-w-xs text-xs text-subtle">
+        Agrega el primero para comenzar a gestionar la atención de tu clínica.
+      </p>
+      {canCreate && (
+        <Button size="sm" onClick={handleNewPatient} className="mt-2 gap-2">
+          <Plus className="h-4 w-4" />
+          Nuevo Paciente
+        </Button>
+      )}
+    </div>
+  );
+
+  // ── Confirm dialog content ───────────────────────────────────────────────
+  const isDeactivate = confirmDialog?.type === "deactivate";
+  const patientName = confirmDialog?.patient.name ?? "";
 
   return (
     <section className="bento space-y-4 p-4 lg:p-5">
       <PatientSearchBar value={search} onChange={setSearch} loading={loading} />
+
       <DataTable
         columns={columns}
         data={patients}
@@ -141,14 +248,50 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
         page={Math.max(pagination.page + 1, 1)}
         pageSize={pagination.pageSize}
         total={pagination.total}
-        showSizeChanger={true}
+        showSizeChanger
         onPageChange={(page, pageSize) => {
           fetchPatients({
             page: page - 1,
             pageSize,
             filters: activeFiltersRef.current,
-          });
+            orders: activeOrdersRef.current,
+          }).catch(() => {});
         }}
+        onSortChange={handleSortChange}
+        emptyText={emptyContent}
+      />
+
+      {/* Confirmation dialog for deactivate / activate */}
+      <AlertDialog
+        open={!!confirmDialog}
+        onOpenChange={(open) => {
+          if (!open && !confirmLoading) setConfirmDialog(null);
+        }}
+        variant={isDeactivate ? "error" : "warning"}
+        title={isDeactivate ? "¿Desactivar paciente?" : "¿Activar paciente?"}
+        description={
+          isDeactivate
+            ? `El paciente ${patientName} ya no aparecerá en búsquedas activas, pero su historial clínico y de pagos se mantendrá intacto.`
+            : `El paciente ${patientName} volverá a aparecer en las búsquedas activas y estará disponible para agendar citas.`
+        }
+        actions={[
+          {
+            label: "Cancelar",
+            onClick: () => setConfirmDialog(null),
+            variant: "outline",
+            disabled: confirmLoading,
+          },
+          {
+            label: isDeactivate ? "Desactivar" : "Activar",
+            onClick: () => {
+              void handleConfirm();
+            },
+            variant: isDeactivate ? "destructive" : "default",
+            disabled: confirmLoading,
+            // Keep dialog open while the async operation runs
+            autoClose: false,
+          },
+        ]}
       />
     </section>
   );
