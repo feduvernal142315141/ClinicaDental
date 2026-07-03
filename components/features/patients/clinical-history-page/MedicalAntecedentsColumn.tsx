@@ -1,7 +1,7 @@
 "use client";
 
-import { Badge } from "antd";
 import { AlertTriangle, Edit } from "lucide-react";
+import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { ClinicalNotesEditor } from "@/components/features/clinical-history/notes/ClinicalNotesEditor";
 import { TreatmentPlansPendingSection } from "./TreatmentPlansPendingSection";
 import type {
@@ -9,6 +9,10 @@ import type {
   ClinicalHistoryPatientHeader,
 } from "@/lib/entity/clinical-history";
 import { useMedicalAntecedentsColumn } from "@/lib/hooks/patients/clinical-history-page/use-medical-antecedents-column";
+import {
+  useTreatmentPlansPendingSection,
+  type TreatmentStatusCounts,
+} from "@/lib/hooks/patients/clinical-history-page/use-treatment-plans-pending-section";
 
 interface MedicalAntecedentsColumnProps {
   medicalHistory: ClinicalHistoryMedicalHistory | null;
@@ -17,6 +21,71 @@ interface MedicalAntecedentsColumnProps {
   activeAppointmentId?: string;
   onEditClick?: () => void;
   canEdit?: boolean;
+  /** Lleva a la pestaña Odontograma desde un plan de tratamiento. */
+  onViewOdontogram?: () => void;
+}
+
+/** Resumen compacto de planes de tratamiento por estado de avance. */
+function TreatmentStatusOverview({
+  counts,
+}: {
+  counts: TreatmentStatusCounts;
+}) {
+  const items: { label: string; value: number; className: string }[] = [
+    {
+      label: "Pendientes",
+      value: counts.pendiente,
+      className:
+        "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-700/60 dark:bg-amber-900/25 dark:text-amber-300",
+    },
+    {
+      label: "En curso",
+      value: counts.enCurso,
+      className:
+        "border-sky-300 bg-sky-100 text-sky-700 dark:border-sky-700/60 dark:bg-sky-900/25 dark:text-sky-300",
+    },
+    {
+      label: "Completados",
+      value: counts.completado,
+      className:
+        "border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-900/25 dark:text-emerald-300",
+    },
+  ];
+
+  if (counts.total === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 px-5 pt-4">
+      {items.map((item) => (
+        <Badge
+          key={item.label}
+          variant="outline"
+          className={`gap-1 ${item.className}`}
+        >
+          <span className="font-bold tabular-nums">{item.value}</span>
+          {item.label}
+        </Badge>
+      ))}
+      {counts.cancelado > 0 && (
+        <Badge
+          variant="outline"
+          className="gap-1 border-slate-300 bg-slate-100 text-slate-600 dark:border-slate-700/60 dark:bg-slate-900/25 dark:text-slate-300"
+        >
+          <span className="font-bold tabular-nums">{counts.cancelado}</span>
+          Cancelados
+        </Badge>
+      )}
+    </div>
+  );
+}
+
+/** Mapea el color semántico de una alerta clínica a clases Tailwind con contraste WCAG AA. */
+function alertBadgeClass(color: string): string {
+  if (color === "red")
+    return "border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-700/60 dark:bg-rose-900/25 dark:text-rose-300";
+  if (color === "orange")
+    return "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-700/60 dark:bg-amber-900/25 dark:text-amber-300";
+  return "border-sky-300 bg-sky-100 text-sky-700 dark:border-sky-700/60 dark:bg-sky-900/25 dark:text-sky-300";
 }
 
 function AntecedentItem({
@@ -44,9 +113,9 @@ export function MedicalAntecedentsColumn({
   medicalHistory,
   patientHeader,
   patientId,
-  activeAppointmentId: _activeAppointmentId,
   onEditClick,
   canEdit = false,
+  onViewOdontogram,
 }: MedicalAntecedentsColumnProps) {
   const { saving, alertBadges, antecedentItems, handleSaveNotes } =
     useMedicalAntecedentsColumn({
@@ -54,6 +123,13 @@ export function MedicalAntecedentsColumn({
       medicalHistory,
       patientHeader,
     });
+
+  // Planes de tratamiento: una sola carga alimenta el resumen y la lista.
+  const {
+    loading: plansLoading,
+    pendingPlans,
+    counts: planCounts,
+  } = useTreatmentPlansPendingSection(patientId);
 
   return (
     <div className="flex flex-col h-full overflow-y-auto px-4 gap-4">
@@ -70,10 +146,10 @@ export function MedicalAntecedentsColumn({
             {alertBadges.map((alert) => (
               <Badge
                 key={alert.id}
-                status={alert.status}
-                color={alert.color}
-                text={alert.message}
-              />
+                className={alertBadgeClass(alert.color)}
+              >
+                {alert.message}
+              </Badge>
             ))}
           </div>
         </div>
@@ -113,15 +189,21 @@ export function MedicalAntecedentsColumn({
         </div>
       </section>
 
-      {/* Planes pendientes */}
+      {/* Planes de tratamiento */}
       <section className="bento overflow-hidden">
         <div className="px-5 py-4 border-b border-hairline">
           <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-            Planes Pendientes
+            Planes de Tratamiento
           </h3>
         </div>
+        {/* Resumen de estados (conteos por estado de avance) */}
+        <TreatmentStatusOverview counts={planCounts} />
         <div className="p-5">
-          <TreatmentPlansPendingSection patientId={patientId} />
+          <TreatmentPlansPendingSection
+            plans={pendingPlans}
+            loading={plansLoading}
+            onViewOdontogram={onViewOdontogram}
+          />
         </div>
       </section>
 

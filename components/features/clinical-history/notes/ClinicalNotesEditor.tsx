@@ -5,7 +5,6 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import UnderlineExtension from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Button as AntButton } from "antd";
 import {
   Bold,
   Italic,
@@ -13,9 +12,18 @@ import {
   List,
   ListOrdered,
   Heading2,
+  Mic,
+  Sparkles,
+  Info,
 } from "lucide-react";
 import { MicButton } from "@/components/ui/atomic/MicButton";
 import { useGroqDictation } from "@/lib/hooks/speech/use-groq-dictation";
+import { Switch } from "@/components/ui/atomic/forms/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/primitives/shadcn/tooltip";
 
 interface ClinicalNotesEditorProps {
   patientId: string;
@@ -54,6 +62,12 @@ export function ClinicalNotesEditor({
   saving,
 }: ClinicalNotesEditorProps) {
   const [content, setContent] = useState(initialContent ?? "");
+  /**
+   * Cuando está activo el dictado pedirá al backend que estructure el audio
+   * en formato SOAP (Subjetivo/Objetivo/Análisis/Plan) usando IA.
+   * Desactivado por defecto — la transcripción cruda es la opción segura.
+   */
+  const [useSoapStructuring, setUseSoapStructuring] = useState(false);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -82,7 +96,15 @@ export function ClinicalNotesEditor({
     }
   }, [initialContent, editor]);
 
-  const { isRecording, isProcessing, interimText, startRecording, stopRecording } = useGroqDictation({
+  const {
+    isRecording,
+    isProcessing,
+    interimText,
+    lastTranscriptSource,
+    startRecording,
+    stopRecording,
+  } = useGroqDictation({
+    useSoapStructuring,
     onResult: (transcript) => {
       editor?.commands.insertContent(transcript + " ");
       editor?.commands.focus();
@@ -172,6 +194,43 @@ export function ClinicalNotesEditor({
             isSupported={true}
             onToggle={handleMicToggle}
           />
+          <span className="mx-1 text-border">|</span>
+          {/* Opt-in: estructuración SOAP por IA — OFF por defecto */}
+          <div className="flex items-center gap-1.5">
+            <Switch
+              id="soap-toggle"
+              checked={useSoapStructuring}
+              onCheckedChange={setUseSoapStructuring}
+              disabled={isRecording || isProcessing}
+              aria-label="Formatear con IA (SOAP)"
+              className="h-4 w-7 [&>span]:h-3.5 [&>span]:w-3.5"
+            />
+            <label
+              htmlFor="soap-toggle"
+              className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap"
+            >
+              Formatear con IA (SOAP)
+            </label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Más información sobre el formateo SOAP"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Info className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                className="max-w-[240px] text-center text-xs"
+              >
+                Envía el audio a IA (Gemini) para estructurarlo en formato
+                SOAP: Subjetivo, Objetivo, Análisis, Plan. Si la IA falla, se
+                inserta la transcripción cruda sin error.
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </div>
       )}
 
@@ -201,29 +260,56 @@ export function ClinicalNotesEditor({
       {!isRecording && isProcessing && (
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-50/50 border border-blue-200 border-dashed text-sm text-blue-600 italic">
           <span className="inline-block h-3 w-3 rounded-full border-2 border-blue-600 border-t-transparent animate-spin flex-shrink-0" />
-          Refinando con IA médica...
+          {useSoapStructuring
+            ? "Estructurando con IA (SOAP)..."
+            : "Procesando dictado..."}
         </div>
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {updatedBy && (
             <p className="text-xs text-muted-foreground">
               Guardado por {updatedBy}
               {updatedAt ? ` · ${formatRelativeDate(updatedAt)}` : ""}
             </p>
           )}
+          {/* Indicador de origen del último dictado */}
+          {lastTranscriptSource && (
+            <span
+              className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md font-medium ${
+                lastTranscriptSource === "ai"
+                  ? "bg-brand/10 text-brand"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {lastTranscriptSource === "ai" ? (
+                <>
+                  <Sparkles className="h-2.5 w-2.5" />
+                  formateado por IA
+                </>
+              ) : (
+                <>
+                  <Mic className="h-2.5 w-2.5" />
+                  transcripción cruda
+                </>
+              )}
+            </span>
+          )}
         </div>
         {!readOnly && (
-          <AntButton
-            type="primary"
-            size="small"
+          <button
+            type="button"
             onClick={handleSave}
-            loading={saving}
+            disabled={saving}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-brand text-white hover:bg-brand/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
+            {saving && (
+              <span className="inline-block h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+            )}
             Guardar notas
-          </AntButton>
+          </button>
         )}
       </div>
     </div>

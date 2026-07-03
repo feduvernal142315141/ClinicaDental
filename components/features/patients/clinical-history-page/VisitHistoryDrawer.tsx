@@ -9,6 +9,7 @@ import {
   SheetDescription,
 } from "@/components/ui/primitives/shadcn/sheet";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
+import { OdontogramVisitComparison } from "@/components/features/patients/detail/OdontogramVisitComparison";
 import { useVisitHistoryDrawer } from "@/lib/hooks/patients/clinical-history-page/use-visit-history-drawer";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
 
@@ -16,6 +17,7 @@ interface VisitHistoryDrawerProps {
   open: boolean;
   patientId: string;
   appointment: Appointment | null;
+  clinicId?: string;
   onClose: () => void;
   onViewOdontogram?: (appointmentId: string) => void;
 }
@@ -32,6 +34,7 @@ export function VisitHistoryDrawer({
   open,
   patientId,
   appointment,
+  clinicId,
   onClose,
   onViewOdontogram,
 }: VisitHistoryDrawerProps) {
@@ -42,6 +45,7 @@ export function VisitHistoryDrawer({
     pain,
     hasPain,
     formattedVisitDate,
+    odontogramSnapshots,
     hasOdontogram,
     handleViewOdontogram,
   } = useVisitHistoryDrawer({
@@ -120,7 +124,7 @@ export function VisitHistoryDrawer({
               {/* Dolor reportado */}
               <section>
                 <SectionTitle>Dolor reportado</SectionTitle>
-                {hasPain ? (
+                {hasPain && pain ? (
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     {pain.location && (
                       <div>
@@ -246,22 +250,16 @@ export function VisitHistoryDrawer({
                 )}
               </section>
 
-              {/* Odontograma */}
+              {/* Odontograma — comparativo antes/después de la visita */}
               <section>
-                <SectionTitle>
-                  <span className="flex items-center gap-2">
-                    <Stethoscope className="h-3 w-3" />
-                    Odontograma
-                  </span>
-                </SectionTitle>
-                {hasOdontogram ? (
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant="outline"
-                      className="bg-emerald-500/15 text-emerald-600 border-emerald-400/25 dark:text-emerald-300"
-                    >
-                      Odontograma guardado en esta visita
-                    </Badge>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <SectionTitle>
+                    <span className="flex items-center gap-2">
+                      <Stethoscope className="h-3 w-3" />
+                      Odontograma · antes / después
+                    </span>
+                  </SectionTitle>
+                  {hasOdontogram && (
                     <button
                       type="button"
                       onClick={handleViewOdontogram}
@@ -269,12 +267,13 @@ export function VisitHistoryDrawer({
                     >
                       Ver en pestaña Odontograma
                     </button>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">
-                    Sin odontograma registrado para esta visita
-                  </p>
-                )}
+                  )}
+                </div>
+                <OdontogramVisitComparison
+                  patientId={patientId}
+                  clinicId={clinicId}
+                  snapshots={odontogramSnapshots}
+                />
               </section>
 
               {/* Archivos adjuntos */}

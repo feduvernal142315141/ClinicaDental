@@ -5,10 +5,66 @@ import type {
   UpdateMedicalHistoryRequest,
   PatientVisitRecord,
   UpsertVisitRecordRequest,
+  VisitDiagnosis,
+  ExamFindings,
+  ToothRef,
 } from "@/lib/entity/clinical-history";
 import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 
 const endpoint = "/clinical-history/patients";
+
+// ---------------------------------------------------------------------------
+// Defensive parsing helpers (JSONB columns may arrive as raw JSON or null)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parsea defensivamente el campo `diagnoses` recibido del backend.
+ * Si el valor no es un array válido devuelve undefined para no romper la UI.
+ */
+function parseDiagnoses(raw: unknown): VisitDiagnosis[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  return raw.filter(
+    (d): d is VisitDiagnosis =>
+      typeof d === "object" &&
+      d !== null &&
+      typeof (d as Record<string, unknown>).code === "string" &&
+      typeof (d as Record<string, unknown>).label === "string",
+  );
+}
+
+/**
+ * Parsea defensivamente el campo `examFindings` recibido del backend.
+ * Si el valor no es un objeto válido devuelve undefined.
+ */
+function parseExamFindings(raw: unknown): ExamFindings | undefined {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw))
+    return undefined;
+  return raw as ExamFindings;
+}
+
+/**
+ * Normaliza un PatientVisitRecord crudo del backend asegurando que los campos
+ * JSONB nuevos (diagnoses, examFindings, currentPain.toothRef) sean seguros de leer.
+ */
+function normalizeVisitRecord(raw: PatientVisitRecord): PatientVisitRecord {
+  const rawRec = raw as unknown as Record<string, unknown>;
+  // Contrato backend: painAnatomy es TOP-LEVEL (columna painAnatomyJson). El
+  // dominio del front lo expone como currentPain.toothRef → remapear al leer.
+  const painAnatomy = rawRec.painAnatomy as ToothRef | null | undefined;
+  const toothRef =
+    (raw.currentPain?.toothRef?.fdi ? raw.currentPain.toothRef : undefined) ??
+    (painAnatomy?.fdi ? painAnatomy : undefined);
+  return {
+    ...raw,
+    diagnoses: parseDiagnoses(rawRec.diagnoses),
+    examFindings: parseExamFindings(rawRec.examFindings),
+    currentPain: raw.currentPain
+      ? { ...raw.currentPain, toothRef }
+      : toothRef
+        ? { toothRef }
+        : undefined,
+  };
+}
 
 /**
  * Get full clinical history snapshot for a patient
@@ -94,6 +150,9 @@ async function saveClinicalNotes(
 /**
  * Get visit record for a specific appointment
  * GET /clinical-history/patients/{patientId}/visits/{appointmentId}
+ *
+ * Los campos JSONB (diagnoses, examFindings, currentPain.toothRef) se parsean
+ * defensivamente para evitar que datos malformados rompan la UI.
  */
 async function getVisitRecord(
   patientId: string,
@@ -103,7 +162,7 @@ async function getVisitRecord(
     `${endpoint}/${patientId}/visits/${appointmentId}`,
   );
   if (response?.status >= 200 && response?.status < 300 && response?.data) {
-    return response.data;
+    return normalizeVisitRecord(response.data);
   }
   if (response?.status === 404) {
     throw Object.assign(new Error("Sin registro de visita"), { status: 404 });
@@ -115,14 +174,35 @@ async function getVisitRecord(
  * Upsert visit record (chief complaint + current pain)
  * PUT /clinical-history/patients/{patientId}/visits/{appointmentId}
  */
+/**
+ * Adapta el payload del dominio (currentPain.toothRef anidado) al contrato del
+ * backend, que espera `painAnatomy` como campo TOP-LEVEL (columna painAnatomyJson).
+ * Los autosaves parciales sólo incluyen los campos provistos; el resto queda
+ * ausente (null en el backend → merge null-aware conserva lo existente).
+ */
+function toUpsertWirePayload(
+  data: UpsertVisitRecordRequest,
+): Record<string, unknown> {
+  const { currentPain, ...rest } = data;
+  const payload: Record<string, unknown> = { ...rest };
+  if (currentPain) {
+    const { toothRef, ...painRest } = currentPain;
+    payload.currentPain = painRest;
+    if (toothRef?.fdi) {
+      payload.painAnatomy = toothRef;
+    }
+  }
+  return payload;
+}
+
 async function upsertVisitRecord(
   patientId: string,
   appointmentId: string,
   data: UpsertVisitRecordRequest,
 ): Promise<boolean> {
-  const response = await servicePut<UpsertVisitRecordRequest, boolean>(
+  const response = await servicePut<Record<string, unknown>, boolean>(
     `${endpoint}/${patientId}/visits/${appointmentId}`,
-    data,
+    toUpsertWirePayload(data),
   );
   if (response?.status >= 200 && response?.status < 300) {
     return true;

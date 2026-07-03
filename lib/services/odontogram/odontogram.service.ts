@@ -4,6 +4,7 @@ import type {
   SaveOdontogramRequest,
   OdontogramResponse,
   OdontogramVisitSnapshot,
+  OdontogramVisitSnapshots,
   PaginatedOdontogramHistoryResponse,
   PaginatedQueryParams,
 } from "@/lib/entity/odontogram";
@@ -130,9 +131,42 @@ async function getOdontogramByVisit(
   handleServiceError(response, "Error al cargar el odontograma de la visita");
 }
 
+/**
+ * Get the start + final odontogram snapshots for a specific visit.
+ * GET /odontograms/visit/{visitId}/snapshots
+ *
+ * Used to render the before/after comparison in the clinical history.
+ * Either side may be null. Returns an all-null pair on transient failure so the
+ * caller can degrade gracefully (the comparison is non-critical).
+ */
+async function getOdontogramVisitSnapshots(
+  visitId: string,
+): Promise<OdontogramVisitSnapshots> {
+  const response = await serviceGet<OdontogramVisitSnapshots>(
+    `${endpoint}/visit/${visitId}/snapshots`,
+  );
+
+  if (response?.status === 200 && response?.data) {
+    return {
+      start: response.data.start ?? null,
+      finalSnapshot: response.data.finalSnapshot ?? null,
+    };
+  }
+
+  if (response?.status === 404) {
+    return { start: null, finalSnapshot: null };
+  }
+
+  handleServiceError(
+    response,
+    "Error al cargar el comparativo del odontograma",
+  );
+}
+
 export const odontogramService = {
   saveOdontogram,
   getOdontogram,
   getOdontogramHistory,
   getOdontogramByVisit,
+  getOdontogramVisitSnapshots,
 };

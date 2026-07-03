@@ -1,7 +1,7 @@
 /**
  * Clinical History Entity Types
  *
- * Type definitions for clinical history module (Phase 1)
+ * Type definitions for clinical history module (Phase 1 + Fase A odontogram enrichment)
  */
 
 // ---------------------------------------------------------------------------
@@ -40,6 +40,74 @@ export interface ClinicalHistoryPatientHeader {
   lastVisit?: string;
   nextAppointment?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Odontogram-integration types (Fase A — cross-cutting contract)
+// ---------------------------------------------------------------------------
+
+/**
+ * Referencia anatómica a un diente (notación FDI/ISO 3950) con cara opcional.
+ * Usada tanto en diagnósticos como en el dolor actual.
+ */
+export interface ToothRef {
+  /** Número FDI del diente, p.ej. "16", "46". */
+  fdi: string;
+  /** Nombre de superficie, p.ej. "mesial", "oclusal". Opcional. */
+  surface?: string;
+}
+
+/** Estado de un diagnóstico clínico. */
+export type DiagnosisStatus = "provisional" | "confirmed";
+
+/** Origen del diagnóstico (entrada manual vs. sugerencia del odontograma). */
+export type DiagnosisSource = "manual" | "odontogram";
+
+/**
+ * Diagnóstico estructurado CIE-10 asociado a una visita.
+ * Compatible con el contrato cross-cutting del backend (PatientVisitRecord.diagnoses).
+ */
+export interface VisitDiagnosis {
+  /** Código CIE-10, p.ej. "K02.1". */
+  code: string;
+  /** Etiqueta en español del diagnóstico. */
+  label: string;
+  status: DiagnosisStatus;
+  /** Diente y cara asociados (procedente del odontograma o selección manual). */
+  toothRef?: ToothRef;
+  source?: DiagnosisSource;
+}
+
+/** Hallazgos extraorales estructurados (flexible JSON). */
+export interface ExamFindingsExtraoral {
+  facialAsymmetry?: string;
+  tmjNotes?: string;
+  lymphNodes?: string;
+  lips?: string;
+  other?: string;
+}
+
+/** Hallazgos intraorales estructurados (flexible JSON). */
+export interface ExamFindingsIntraoral {
+  softTissue?: string;
+  hardTissue?: string;
+  periodontium?: string;
+  occlusion?: string;
+  hygiene?: string;
+  other?: string;
+}
+
+/**
+ * Hallazgos del examen clínico de la visita.
+ * Compatible con el contrato cross-cutting del backend (PatientVisitRecord.examFindings).
+ */
+export interface ExamFindings {
+  extraoral?: ExamFindingsExtraoral;
+  intraoral?: ExamFindingsIntraoral;
+}
+
+// ---------------------------------------------------------------------------
+// Pre-existing types (keep intact)
+// ---------------------------------------------------------------------------
 
 export interface CurrentPain {
   location?: string;
@@ -139,12 +207,18 @@ export interface PatientVisitRecord {
     intensity?: number;
     type?: string;
     duration?: string;
+    /** Referencia anatómica del dolor (procedente del odontograma). */
+    toothRef?: ToothRef;
   };
   /** Snapshot inmutable de la anamnesis al momento de la visita. */
   medicalSnapshot?: VisitMedicalSnapshot | null;
   clinicalNotes?: string;
   clinicalNotesUpdatedAt?: string;
   clinicalNotesUpdatedBy?: string;
+  /** Diagnósticos CIE-10 estructurados de la visita (Fase A). */
+  diagnoses?: VisitDiagnosis[];
+  /** Hallazgos del examen clínico de la visita (Fase A). */
+  examFindings?: ExamFindings;
 }
 
 export interface UpsertVisitRecordRequest {
@@ -154,7 +228,13 @@ export interface UpsertVisitRecordRequest {
     intensity?: number | null;
     type?: string;
     duration?: string;
+    /** Referencia anatómica del dolor (procedente del odontograma). */
+    toothRef?: ToothRef;
   };
+  /** Diagnósticos CIE-10 estructurados de la visita (Fase A). */
+  diagnoses?: VisitDiagnosis[];
+  /** Hallazgos del examen clínico de la visita (Fase A). */
+  examFindings?: ExamFindings;
 }
 
 // ---------------------------------------------------------------------------

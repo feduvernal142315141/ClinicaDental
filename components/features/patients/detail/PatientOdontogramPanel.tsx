@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useEffect, useState, useCallback } from "react";
-import { Spin } from "antd";
+import { Loader2 } from "lucide-react";
 import { OdontogramModule, createApiOdontogramAdapter, createHistoricOdontogramAdapter } from "@/lib/odontogram";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
@@ -164,11 +164,11 @@ export function PatientOdontogramPanel({
 
       {/* Odontogram + conditional overlays — always mounted to avoid flash */}
       <div className="flex-1 min-h-0 relative">
-        <Spin
-          spinning={showSpinner}
-          delay={100}
-          size="large"
-        >
+        {showSpinner && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-canvas/60 backdrop-blur-sm">
+            <Loader2 className="h-8 w-8 animate-spin text-brand" />
+          </div>
+        )}
           <OdontogramModule
             patientId={patient.id}
             clinicId={clinicId}
@@ -201,7 +201,6 @@ export function PatientOdontogramPanel({
             onFinalizeClose={onFinalizeClose}
             onFinalizeSuccess={onFinalizeSuccess}
           />
-        </Spin>
         {/* Read-only overlay — coherente para todos los motivos (no histórico) */}
         {readOnly && !isHistoricMode && readOnlyReason && (
           <OdontogramReadOnlyOverlay

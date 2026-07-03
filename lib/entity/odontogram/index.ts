@@ -123,6 +123,20 @@ export interface TreatmentPlanResponse {
   createdAt: string;
   updatedAt: string;
   active: boolean;
+  /**
+   * Referencia opcional al diagnóstico (CIE-10 dental) que originó el plan.
+   * Forward-compatible: el backend puede no poblarla todavía; cuando está
+   * presente, la historia clínica la muestra junto al plan.
+   */
+  linkedDiagnosis?: TreatmentPlanDiagnosisRef;
+}
+
+/** Referencia de diagnóstico vinculada a un plan de tratamiento. */
+export interface TreatmentPlanDiagnosisRef {
+  code: string;
+  label: string;
+  /** Diente FDI (11-48) asociado al diagnóstico, si aplica. */
+  toothFdi?: string;
 }
 
 /** Paginated response for treatment plans. */
@@ -199,6 +213,19 @@ export interface OdontogramVisitSnapshot {
   state: string; // JSON string of the odontogram snapshot
   createdAt: string; // ISO-8601
   authorId?: string;
+  /** Tipo de snapshot dentro de la visita: 'start' | 'final'. */
+  snapshotType?: "start" | "final";
+}
+
+/**
+ * Comparativo antes/después del odontograma de una visita.
+ * GET /odontograms/visit/{visitId}/snapshots
+ * Cualquiera de los dos puede ser `null` (consultas previas a la captura 'start',
+ * o visitas sin odontograma guardado).
+ */
+export interface OdontogramVisitSnapshots {
+  start: OdontogramVisitSnapshot | null;
+  finalSnapshot: OdontogramVisitSnapshot | null;
 }
 
 /** Detailed response from GET /service-templates/{id}. */

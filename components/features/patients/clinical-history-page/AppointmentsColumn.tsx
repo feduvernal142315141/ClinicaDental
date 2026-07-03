@@ -1,7 +1,7 @@
 "use client";
 
-import { Spin } from "antd";
 import { Plus, Stethoscope, ClipboardList } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { CancelModal } from "@/components/features/appointments/scheduler/CancelModal";
 import { RescheduleModal } from "@/components/features/appointments/scheduler/RescheduleModal";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
@@ -163,7 +163,7 @@ export function AppointmentsColumn({
     <div className="flex flex-col h-full overflow-y-auto pl-3">
       {loading ? (
         <div className="flex justify-center py-8">
-          <Spin />
+          <LoadingSpinner size="md" message="Cargando citas..." />
         </div>
       ) : (
         <>

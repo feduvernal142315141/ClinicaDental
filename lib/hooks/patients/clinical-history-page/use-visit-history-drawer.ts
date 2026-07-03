@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useVisitRecord } from "@/lib/hooks/clinical-history";
-import { useOdontogramByVisit } from "@/lib/hooks/odontogram/useOdontogramByVisit";
+import { useOdontogramVisitSnapshots } from "@/lib/hooks/odontogram/useOdontogramVisitSnapshots";
 import { clinicalHistoryService } from "@/lib/services/clinical-history";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
 import type { PatientAttachment } from "@/lib/entity/patientAttachment";
@@ -40,19 +40,31 @@ export function useVisitHistoryDrawer({
 }: UseVisitHistoryDrawerParams) {
   const appointmentId = appointment?.id;
   const { record, loading } = useVisitRecord(patientId, appointmentId);
-  const { snapshot: odontogramSnapshot, load: loadOdontogram } =
-    useOdontogramByVisit(appointmentId);
+  const {
+    snapshots: odontogramSnapshots,
+    load: loadOdontogramSnapshots,
+    reset: resetOdontogramSnapshots,
+  } = useOdontogramVisitSnapshots();
   const [attachments, setAttachments] = useState<PatientAttachment[]>([]);
 
   useEffect(() => {
-    if (!open || !appointmentId) return;
+    if (!open || !appointmentId) {
+      resetOdontogramSnapshots();
+      return;
+    }
 
-    loadOdontogram(appointmentId);
+    loadOdontogramSnapshots(appointmentId);
     clinicalHistoryService
       .getVisitAttachments(patientId, appointmentId)
       .then(setAttachments)
       .catch(() => setAttachments([]));
-  }, [open, appointmentId, patientId, loadOdontogram]);
+  }, [
+    open,
+    appointmentId,
+    patientId,
+    loadOdontogramSnapshots,
+    resetOdontogramSnapshots,
+  ]);
 
   const pain = record?.currentPain;
   const hasPain =
@@ -76,6 +88,9 @@ export function useVisitHistoryDrawer({
     }
   }, [appointmentId, onClose, onViewOdontogram]);
 
+  const hasOdontogram =
+    !!odontogramSnapshots.start || !!odontogramSnapshots.finalSnapshot;
+
   return {
     appointmentId,
     record,
@@ -84,7 +99,8 @@ export function useVisitHistoryDrawer({
     pain,
     hasPain,
     formattedVisitDate,
-    hasOdontogram: !!odontogramSnapshot,
+    odontogramSnapshots,
+    hasOdontogram,
     handleViewOdontogram,
   };
 }

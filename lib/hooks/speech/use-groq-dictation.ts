@@ -2,10 +2,19 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { speechService } from "@/lib/services/speech/speech.service";
 import { notify } from "@/lib/utils/notify";
 
+/** Origen de la última transcripción insertada. */
+export type TranscriptSource = "raw" | "ai";
+
 export interface UseGroqDictationOptions {
-  /** Called with the final accurate transcription from Groq Whisper. */
+  /** Llamado con el texto final a insertar (crudo o formateado por IA). */
   onResult?: (text: string) => void;
   onError?: (error: Error) => void;
+  /**
+   * Cuando `true`, pide al backend que estructure la transcripción en formato
+   * SOAP usando IA. Por defecto `false` — solo transcripción cruda (rawTranscript).
+   * Si la IA falla, el fallback es siempre la transcripción cruda.
+   */
+  useSoapStructuring?: boolean;
 }
 
 /**
@@ -23,6 +32,12 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [interimText, setInterimText] = useState("");
+  /**
+   * Origen de la última transcripción completada con éxito.
+   * `null` mientras no se haya realizado ningún dictado en esta sesión.
+   */
+  const [lastTranscriptSource, setLastTranscriptSource] =
+    useState<TranscriptSource | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -152,9 +167,31 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
       try {
         const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
         if (audioBlob.size > 100) {
-          const text = await speechService.transcribeAudio(audioBlob);
-          if (text.trim() && optionsRef.current.onResult) {
-            optionsRef.current.onResult(text);
+          const soapMode = optionsRef.current.useSoapStructuring ?? false;
+          const result = await speechService.transcribeAudio(audioBlob, soapMode);
+
+          let textToInsert: string;
+          let source: TranscriptSource;
+
+          if (soapMode && result.formattedTranscript) {
+            textToInsert = result.formattedTranscript;
+            source = "ai";
+          } else {
+            textToInsert = result.rawTranscript;
+            source = "raw";
+            // Si se pidió IA pero Gemini falló, el backend retorna null en
+            // formattedTranscript. Avisamos sin bloquear el guardado.
+            if (soapMode && !result.formattedTranscript) {
+              notify.warning("Formateo IA no disponible", {
+                description:
+                  "Se insertó la transcripción cruda. El servicio de IA no respondió; puedes intentarlo de nuevo o estructurarlo manualmente.",
+              });
+            }
+          }
+
+          setLastTranscriptSource(source);
+          if (textToInsert.trim() && optionsRef.current.onResult) {
+            optionsRef.current.onResult(textToInsert);
           }
         }
       } catch (error) {
@@ -201,8 +238,15 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
   return {
     isRecording,
     isProcessing,
-    /** Live interim text from browser SpeechRecognition (streaming preview). */
+    /** Texto provisional en vivo desde el SpeechRecognition del navegador (preview). */
     interimText,
+    /**
+     * Origen de la última transcripción insertada con éxito.
+     * - `"raw"` — transcripción literal (Groq Whisper).
+     * - `"ai"`  — estructurada en SOAP por IA.
+     * - `null`  — todavía no se ha realizado ningún dictado.
+     */
+    lastTranscriptSource,
     startRecording,
     stopRecording,
     cancelRecording,
