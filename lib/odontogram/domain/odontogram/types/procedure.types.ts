@@ -63,6 +63,8 @@ export interface ProcedurePlan {
   notes?: string
   suggestedByDiagnosisId?: string
   appointmentAt?: string
+  /** Id de la cita creada en backend al programar el plan (vínculo plan↔cita). */
+  appointmentId?: string
   blockedReason?: string
   isHomologousSuggestion?: boolean
   /** Símbolo personalizado del servicio para el odontograma (modo TEXT). */

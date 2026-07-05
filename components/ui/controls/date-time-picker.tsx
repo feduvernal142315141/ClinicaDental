@@ -312,8 +312,11 @@ export function DateTimePicker({
             )}
             <button
               type="button"
+              disabled={dayDisabled(new Date())}
               onClick={() => {
                 const now = new Date();
+                // Respeta min/max: si hoy está fuera de rango, el atajo no aplica.
+                if (dayDisabled(now)) return;
                 onChange(
                   showTime
                     ? `${dateToLocalDate(now)}T${pad(now.getHours())}:${pad(now.getMinutes())}`
@@ -321,7 +324,11 @@ export function DateTimePicker({
                 );
                 close();
               }}
-              className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-strong"
+              className={cn(
+                "rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-strong",
+                dayDisabled(new Date()) &&
+                  "opacity-50 cursor-not-allowed hover:bg-brand",
+              )}
             >
               {showTime ? "Ahora" : "Hoy"}
             </button>

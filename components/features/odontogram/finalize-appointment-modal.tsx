@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Checkbox } from "antd";
 import {
+  OdontogramButton,
+  OdontogramCheckbox,
   OdontogramModal,
   OdontogramSelect,
 } from "@/components/features/odontogram/ui";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DateTimePicker } from "@/components/ui/controls/date-time-picker";
-import { localTodayInput } from "@/lib/datetime";
+import { dateToLocalDate } from "@/lib/datetime";
 import {
   Calendar,
   CheckCircle2,
@@ -154,14 +155,26 @@ export function FinalizarCitaModal({
     adapter,
   });
 
-  // Duración estimada del follow-up = suma durationMin de pending (fallback 30)
+  // Planes pendientes REALMENTE agendables en el follow-up: excluye los que ya
+  // tienen una cita futura vinculada (programados desde la pestaña Plan), para
+  // no re-agendarlos ni contar su duración dos veces.
+  const schedulablePendingEvents = useMemo(
+    () =>
+      pendingPlanEvents.filter(
+        (ev) => ev.status !== "scheduled" && !ev.appointmentId,
+      ),
+    [pendingPlanEvents],
+  );
+
+  // Duración estimada del follow-up = suma durationMin de lo que se agenda
+  // (fallback 30), coherente con pendingServices.
   const followUpDuration = useMemo(() => {
-    const sum = pendingPlanEvents.reduce(
+    const sum = schedulablePendingEvents.reduce(
       (acc, ev) => acc + (ev.durationMin ?? 30),
       0,
     );
     return sum > 0 ? sum : 30;
-  }, [pendingPlanEvents]);
+  }, [schedulablePendingEvents]);
 
   // Servicios pendientes para el follow-up. El evento del plan guarda el
   // `procedureId` (que es el id del servicio del catálogo); usamos serviceId si
@@ -169,7 +182,7 @@ export function FinalizarCitaModal({
   // aparece aunque el evento no haya persistido serviceId explícitamente.
   const pendingServices: AppointmentServiceSnapshot[] = useMemo(
     () =>
-      pendingPlanEvents
+      schedulablePendingEvents
         .filter((ev) => !!(ev.serviceId || ev.procedureId))
         .map((ev) => ({
           serviceId: (ev.serviceId ?? ev.procedureId)!,
@@ -177,7 +190,7 @@ export function FinalizarCitaModal({
           serviceCode: ev.serviceCode,
           serviceCost: ev.serviceCost ?? ev.cost ?? 0,
         })),
-    [pendingPlanEvents],
+    [schedulablePendingEvents],
   );
 
   const followUpValid =
@@ -226,7 +239,13 @@ export function FinalizarCitaModal({
 
   const doctorOptions = doctors.map((d) => ({ value: d.id, label: d.label }));
   const timeOptions = availableTimes.map((t) => ({ value: t, label: t }));
-  const today = localTodayInput();
+  // Fecha mínima del seguimiento: MAÑANA (local). Finalizar cierra la visita del
+  // día; el seguimiento es para "más adelante", coherente con SchedulePlanModal.
+  const minFollowUpDate = (() => {
+    const t = new Date();
+    t.setDate(t.getDate() + 1);
+    return dateToLocalDate(t);
+  })();
   const combinedError = localError ?? error;
 
   return (
@@ -287,9 +306,19 @@ export function FinalizarCitaModal({
                     Diente {ev.toothNumber} —{" "}
                     {ev.serviceName ?? ev.procedureName ?? "Procedimiento"}
                   </span>
-                  <Badge variant="outline" className="text-xs">
-                    {ev.durationMin ?? 30} min
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    {(ev.status === "scheduled" || ev.appointmentId) && (
+                      <Badge
+                        variant="outline"
+                        className="text-xs border-sky-400/30 bg-sky-500/15 text-sky-500"
+                      >
+                        Ya agendado
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="text-xs">
+                      {ev.durationMin ?? 30} min
+                    </Badge>
+                  </div>
                 </div>
               ))}
             </div>
@@ -299,12 +328,12 @@ export function FinalizarCitaModal({
         {/* Follow-up toggle */}
         {pendingPlanEvents.length > 0 && pendingServices.length > 0 && (
           <div className="space-y-3">
-            <Checkbox
+            <OdontogramCheckbox
               checked={scheduleFollowUp}
-              onChange={(e) => setScheduleFollowUp(e.target.checked)}
+              onChange={setScheduleFollowUp}
             >
               Programar cita de seguimiento con los servicios pendientes
-            </Checkbox>
+            </OdontogramCheckbox>
 
             {scheduleFollowUp && (
               <div className="space-y-3 pl-6">
@@ -328,7 +357,7 @@ export function FinalizarCitaModal({
                   </label>
                   <DateTimePicker
                     showTime={false}
-                    min={today}
+                    min={minFollowUpDate}
                     value={date}
                     onChange={setDate}
                     aria-label="Fecha"
@@ -377,29 +406,24 @@ export function FinalizarCitaModal({
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          <Button
-            type="default"
-            style={{ flex: 1 }}
+          <OdontogramButton
+            variant="outline"
+            className="flex-1"
             onClick={onClose}
             disabled={loading}
           >
             Cancelar
-          </Button>
-          <Button
-            type="primary"
-            style={{ flex: 1, background: "#22c55e", borderColor: "#22c55e" }}
+          </OdontogramButton>
+          <OdontogramButton
+            variant="success"
+            className="flex-1"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            icon={
-              loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4" />
-              )
-            }
+            loading={loading}
+            icon={<CheckCircle2 className="w-4 h-4" />}
           >
             {loading ? "Finalizando..." : "Finalizar cita"}
-          </Button>
+          </OdontogramButton>
         </div>
       </div>
     </OdontogramModal>

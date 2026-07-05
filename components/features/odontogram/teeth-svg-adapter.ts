@@ -11,12 +11,8 @@
  * 4. Include roots in vestibular view (always visible per user decision)
  */
 
-import {
-  TOOTH_SVG_REGISTRY,
-  getToothView,
-  type ToothViewData,
-} from "./teeth-svg-data";
-import type { ToothViewPaths, SurfacePath } from "./tooth-square-paths";
+import { getToothView, type ToothViewData } from "./teeth-svg-data";
+import type { ToothViewPaths, SurfacePath } from "./teeth-svg-types";
 
 type DentalSurface =
   | "oclusal"
@@ -206,18 +202,4 @@ export function getDesignedToothPaths(
   }
 
   return result;
-}
-
-/**
- * Check if a specific tooth has designed SVG data available.
- */
-export function hasDesignedTooth(toothNumber: number): boolean {
-  return String(toothNumber) in TOOTH_SVG_REGISTRY;
-}
-
-/**
- * Get all available tooth numbers.
- */
-export function getAvailableTeeth(): number[] {
-  return Object.keys(TOOTH_SVG_REGISTRY).map(Number);
 }

@@ -3,10 +3,13 @@
 import { useState, useMemo, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Button as AntdButton } from "antd";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { OdontogramInput, OdontogramSelect } from "@/components/odontogram/ui";
+import {
+  OdontogramButton,
+  OdontogramInput,
+  OdontogramSelect,
+} from "@/components/odontogram/ui";
 import {
   Search,
   Plus,
@@ -62,15 +65,6 @@ interface PlanTabProps {
   onNavigateToTab?: (tab: string) => void;
   onPlansChange?: (plans: ProcedurePlan[]) => void;
   onSchedulePlans?: (plans: ProcedurePlan[]) => void;
-}
-
-function getToothTypeName(toothNumber: number): string {
-  const lastDigit = toothNumber % 10;
-  if (lastDigit === 1 || lastDigit === 2) return "Incisivo";
-  if (lastDigit === 3) return "Canino";
-  if (lastDigit === 4 || lastDigit === 5) return "Premolar";
-  if (lastDigit === 6 || lastDigit === 7 || lastDigit === 8) return "Molar";
-  return "Diente";
 }
 
 function generateId(): string {
@@ -685,7 +679,7 @@ export function PlanTab({
           {/* Sticky totals bar */}
           {plans.length > 0 && (
             <div className="sticky bottom-0 z-10">
-              <Card className="p-3 shadow-lg bg-surface/95 backdrop-blur-sm border-t-2 border-primary/20">
+              <Card className="p-3 shadow-lg bg-surface/95 backdrop-blur-sm border-t-2 border-brand/20">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <span className="flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
@@ -722,17 +716,17 @@ export function PlanTab({
                   </span>
                 </div>
                 <div className="flex gap-2 mt-2">
-                  <AntdButton
-                    type="default"
-                    style={{ flex: 1 }}
+                  <OdontogramButton
+                    variant="outline"
+                    className="flex-1"
                     onClick={() => onSchedulePlans?.(plans)}
                     icon={<Calendar className="w-4 h-4" />}
                   >
                     Programar
-                  </AntdButton>
-                  <AntdButton
-                    type="primary"
-                    style={{ flex: 1 }}
+                  </OdontogramButton>
+                  <OdontogramButton
+                    variant="primary"
+                    className="flex-1"
                     onClick={() => {
                       const now = new Date().toISOString();
                       const updatedPlans = plans.map((p) =>
@@ -750,7 +744,7 @@ export function PlanTab({
                     icon={<Play className="w-4 h-4" />}
                   >
                     Realizar ahora
-                  </AntdButton>
+                  </OdontogramButton>
                 </div>
               </Card>
             </div>

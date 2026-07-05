@@ -1,18 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "antd";
+import { RotateCcw } from "lucide-react";
 import { OdontogramGrid } from "./odontogram-grid";
 import { ToothModal } from "./tooth-modal";
 import {
+  OdontogramButton,
+  OdontogramConfirmProvider,
   OdontogramTabs,
   useOdontogramConfirm,
   OdontogramTabLabel,
   OdontogramEventCard,
   OdontogramEmptyState,
 } from "@/components/odontogram/ui";
-import type { OdontogramTabItem } from "@/components/odontogram/ui";
-import { RedoOutlined } from "@ant-design/icons";
+import type {
+  OdontogramTabItem,
+  OdontogramEventCardProps,
+} from "@/components/odontogram/ui";
 import {
   useOdontogramModule,
   useEventFormatting,
@@ -30,12 +34,28 @@ interface OdontogramModuleProps {
   showHeader?: boolean;
 }
 
-export function OdontogramModule({
+export function OdontogramModule(props: OdontogramModuleProps) {
+  // El provider debe envolver al componente que llama a useOdontogramConfirm
+  // (este mismo módulo y ToothModal), por eso se monta en un wrapper externo.
+  return (
+    <OdontogramConfirmProvider>
+      <OdontogramModuleContent {...props} />
+    </OdontogramConfirmProvider>
+  );
+}
+
+function OdontogramModuleContent({
   initialTab = "odontogram",
   showHeader = true,
 }: OdontogramModuleProps) {
-  const { teeth, isModalOpen, currentTooth, eventsByType, handlers } =
-    useOdontogramModule();
+  const {
+    teeth,
+    isModalOpen,
+    currentTooth,
+    selectedSurface,
+    eventsByType,
+    handlers,
+  } = useOdontogramModule();
   const readOnly = useOdontogramStore((state) => state.readOnly);
   const [activeTab, setActiveTab] = useState(initialTab);
 
@@ -78,7 +98,9 @@ export function OdontogramModule({
         surfaces={event.surfaces}
         displayName={getEventDisplayName(event)}
         typeLabel={getEventTypeLabel(event.type)}
-        tagColor={getEventTagColor(event.type)}
+        tagColor={
+          getEventTagColor(event.type) as OdontogramEventCardProps["tagColor"]
+        }
         notes={event.notes}
         date={formatEventDate(event.createdAt)}
         onClick={() => handlers.handleEventClick(event)}
@@ -159,13 +181,14 @@ export function OdontogramModule({
             </p>
           </div>
           {activeTab === "odontogram" && (
-            <Button
-              icon={<RedoOutlined />}
+            <OdontogramButton
+              variant="outline"
+              icon={<RotateCcw className="h-4 w-4" />}
               disabled={readOnly}
               onClick={handleClearAll}
             >
               Limpiar Todo
-            </Button>
+            </OdontogramButton>
           )}
         </div>
       )}
@@ -179,13 +202,9 @@ export function OdontogramModule({
       <ToothModal
         tooth={currentTooth}
         isOpen={isModalOpen}
+        initialSurface={selectedSurface}
         onClose={handlers.handleCloseModal}
         onUpdateGlobalStatus={handlers.updateToothGlobalStatus}
-        onAddSurfaceTreatment={handlers.addSurfaceTreatment}
-        onAddSurfaceCondition={handlers.addSurfaceCondition}
-        onDeleteCondition={handlers.deleteSurfaceCondition}
-        onCompleteTreatment={handlers.completeTreatment}
-        onDeleteTreatment={handlers.deleteTreatment}
       />
     </div>
   );

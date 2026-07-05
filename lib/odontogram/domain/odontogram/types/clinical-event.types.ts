@@ -66,6 +66,9 @@ export interface ClinicalEvent {
   id: string;
   schemaVersion?: number;
   visitId?: string;
+  /** visitId = visita en curso; appointmentId/appointmentAt = cita futura agendada para el plan. */
+  appointmentId?: string;
+  appointmentAt?: string;
   toothNumber: number;
   surfaces: ToothSurface[];
   surfacesV2?: SurfaceRef[];

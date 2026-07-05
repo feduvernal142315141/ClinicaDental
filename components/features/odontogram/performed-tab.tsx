@@ -23,6 +23,7 @@ import type {
   PatientRiskLevel,
 } from "./types";
 import { GLOBAL_STATUS_LABELS, PLAN_STATUS_LABELS } from "./types";
+import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services";
 
 interface PerformedTabProps {
   tooth: Tooth;
@@ -49,15 +50,6 @@ interface TimelineItem {
 }
 
 const PERFORMED_ID_PREFIX = "performed:";
-
-function getToothTypeName(toothNumber: number): string {
-  const lastDigit = toothNumber % 10;
-  if (lastDigit === 1 || lastDigit === 2) return "Incisivo";
-  if (lastDigit === 3) return "Canino";
-  if (lastDigit === 4 || lastDigit === 5) return "Premolar";
-  if (lastDigit === 6 || lastDigit === 7 || lastDigit === 8) return "Molar";
-  return "Diente";
-}
 
 function getRiskColor(risk: PatientRiskLevel) {
   if (risk === "bajo")
@@ -182,11 +174,20 @@ function PlanGroup({
           const isSelected = selectedPlanIds.has(plan.id);
 
           return (
-            <button
+            <div
               key={plan.id}
-              type="button"
-              disabled={readOnly}
-              onClick={() => onToggle(plan.id)}
+              role="button"
+              tabIndex={readOnly ? -1 : 0}
+              aria-pressed={isSelected}
+              aria-disabled={readOnly || undefined}
+              onClick={() => !readOnly && onToggle(plan.id)}
+              onKeyDown={(e) => {
+                if (readOnly) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onToggle(plan.id);
+                }
+              }}
               className={`w-full rounded-xl border p-3 text-left transition ${
                 isSelected
                   ? "border-emerald-400/25 bg-emerald-500/15 shadow-sm"
@@ -194,7 +195,14 @@ function PlanGroup({
               } ${readOnly ? "cursor-default opacity-70" : "cursor-pointer"}`}
             >
               <div className="flex items-start gap-3">
-                <div className="pt-0.5">
+                {/* El checkbox (Radix = <button>) va aislado: stopPropagation
+                    evita que su clic burbujee al contenedor y dispare un doble
+                    toggle; el contenedor es <div role="button"> para no anidar
+                    <button> dentro de <button>. */}
+                <div
+                  className="pt-0.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <OdontogramCheckbox
                     checked={isSelected}
                     disabled={readOnly}
@@ -249,7 +257,7 @@ function PlanGroup({
                   </div>
                 </div>
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
@@ -534,7 +542,8 @@ export function PerformedTab({
             Cierre clínico del diente {tooth.number}
           </h3>
           <p className="text-sm text-muted-foreground">
-            {getToothTypeName(tooth.number)} · {selectedSurfaces.length}{" "}
+            {ToothTypeService.getToothTypeName(tooth.number)} ·{" "}
+            {selectedSurfaces.length}{" "}
             superficie
             {selectedSurfaces.length !== 1 ? "s" : ""} activas
           </p>

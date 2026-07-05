@@ -1,14 +1,15 @@
 "use client";
 
-import { Input as AntdInput } from "antd";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, FocusEvent } from "react";
 
-const { TextArea: AntdTextArea } = AntdInput;
+import { Input, Textarea } from "@/components/ui";
 
 export interface OdontogramInputProps {
   value?: string;
   defaultValue?: string;
   onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+  /** Acepta también handlers sin argumento (p. ej. guardar al salir del campo). */
+  onBlur?: ((e: FocusEvent<HTMLInputElement>) => void) | (() => void);
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -18,12 +19,15 @@ export interface OdontogramInputProps {
 }
 
 /**
- * Wrapper de Input AntD para el módulo odontograma.
+ * Wrapper de Input para el módulo odontograma sobre el Input Bento
+ * de `@/components/ui`. Mantiene la API pública original
+ * (onChange con ChangeEvent para leer e.target.value).
  */
 export function OdontogramInput({
   value,
   defaultValue,
   onChange,
+  onBlur,
   placeholder,
   disabled,
   className,
@@ -32,10 +36,11 @@ export function OdontogramInput({
   style,
 }: OdontogramInputProps) {
   return (
-    <AntdInput
+    <Input
       value={value}
       defaultValue={defaultValue}
       onChange={onChange}
+      onBlur={onBlur}
       placeholder={placeholder}
       disabled={disabled}
       className={className}
@@ -58,7 +63,8 @@ export interface OdontogramTextAreaProps {
 }
 
 /**
- * Wrapper de TextArea AntD para el módulo odontograma.
+ * Wrapper de TextArea para el módulo odontograma sobre el Textarea Bento
+ * de `@/components/ui`.
  */
 export function OdontogramTextArea({
   value,
@@ -71,7 +77,7 @@ export function OdontogramTextArea({
   id,
 }: OdontogramTextAreaProps) {
   return (
-    <AntdTextArea
+    <Textarea
       value={value}
       defaultValue={defaultValue}
       onChange={onChange}

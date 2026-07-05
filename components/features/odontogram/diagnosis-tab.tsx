@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import {
   OdontogramCheckbox,
   OdontogramInput,
-  OdontogramSelect,
 } from "@/components/odontogram/ui";
 import {
   AlertCircle,
@@ -48,6 +47,7 @@ import {
   GLOBAL_STATUS_LABELS,
 } from "./types";
 import { ODONTOGRAM_STATE_COLORS } from "@/lib/odontogram/domain/odontogram/constants/odontogram-colors.constants";
+import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
 
 interface DiagnosisTabProps {
   tooth: Tooth;
@@ -59,15 +59,6 @@ interface DiagnosisTabProps {
   onNavigateToTab?: (tab: string) => void;
   onDiagnosesChange?: (diagnoses: Map<ToothSurface, SurfaceDiagnosis>) => void;
   onToothDiagnosisChange?: (diagnosis: ToothDiagnosis) => void;
-}
-
-function getToothTypeName(toothNumber: number): string {
-  const lastDigit = toothNumber % 10;
-  if (lastDigit === 1 || lastDigit === 2) return "Incisivo";
-  if (lastDigit === 3) return "Canino";
-  if (lastDigit === 4 || lastDigit === 5) return "Premolar";
-  if (lastDigit === 6 || lastDigit === 7 || lastDigit === 8) return "Molar";
-  return "Diente";
 }
 
 function getICDASColor(score: ICDASScore): string {
@@ -383,7 +374,7 @@ export function DiagnosisTab({
             Diagnóstico · Diente {tooth.number}
           </h3>
           <p className="text-sm text-muted-foreground">
-            {getToothTypeName(tooth.number)} · {selectedSurfaces.length}{" "}
+            {ToothTypeService.getToothTypeName(tooth.number)} · {selectedSurfaces.length}{" "}
             superficie
             {selectedSurfaces.length !== 1 ? "s" : ""}
           </p>
@@ -671,7 +662,7 @@ export function DiagnosisTab({
           {/* 2.4 Estado pulpar/periapical — Segmented controls */}
           <Card className="p-4 shadow-sm">
             <Label className="text-sm font-semibold mb-3 flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">3</span>
+              <span className="w-5 h-5 rounded-full bg-brand/10 text-brand flex items-center justify-center text-xs font-bold">3</span>
               Estado pulpar / periapical{" "}
               <Badge variant="outline" className="text-[10px]">Nivel pieza</Badge>
             </Label>
@@ -694,7 +685,7 @@ export function DiagnosisTab({
                         onClick={() => handlePulpalStatusChange(status)}
                         className={`px-2.5 py-1 text-xs rounded-md border transition-all font-medium ${
                           isActive
-                            ? "bg-primary text-white border-primary shadow-sm"
+                            ? "bg-brand text-white border-brand shadow-sm"
                             : "bg-elevated text-subtle border-hairline hover:bg-hover"
                         }`}
                       >
@@ -728,7 +719,7 @@ export function DiagnosisTab({
                         }}
                         className={`px-2.5 py-1 text-xs rounded-md border transition-all font-medium ${
                           isActive
-                            ? "bg-primary text-white border-primary shadow-sm"
+                            ? "bg-brand text-white border-brand shadow-sm"
                             : "bg-elevated text-subtle border-hairline hover:bg-hover"
                         }`}
                       >
@@ -744,7 +735,7 @@ export function DiagnosisTab({
           {/* 2.5 Vitalidad y pruebas — Compact table */}
           <Card className="p-4 shadow-sm">
             <Label className="text-sm font-semibold mb-3 flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">4</span>
+              <span className="w-5 h-5 rounded-full bg-brand/10 text-brand flex items-center justify-center text-xs font-bold">4</span>
               Vitalidad y pruebas
             </Label>
             <div className="space-y-3">
@@ -766,10 +757,25 @@ export function DiagnosisTab({
                         <td className="px-2 py-1.5">
                           <div className="flex justify-center gap-0.5">
                             {([
-                              { value: "positivo", label: "+", color: "#10B981" },
-                              { value: "negativo", label: "−", color: "#EF4444" },
-                              { value: "no-realizado", label: "NR", color: "#9CA3AF" },
-                            ] as const).map(({ value, label, color }) => {
+                              {
+                                value: "positivo",
+                                label: "+",
+                                activeClass:
+                                  "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
+                              },
+                              {
+                                value: "negativo",
+                                label: "−",
+                                activeClass:
+                                  "bg-rose-500/15 text-rose-400 border-rose-500/30",
+                              },
+                              {
+                                value: "no-realizado",
+                                label: "NR",
+                                activeClass:
+                                  "bg-hover text-subtle border-hairline",
+                              },
+                            ] as const).map(({ value, label, activeClass }) => {
                               const isActive = test.result === value;
                               return (
                                 <button
@@ -781,16 +787,11 @@ export function DiagnosisTab({
                                       value as VitalityTestResult,
                                     )
                                   }
-                                  className={`w-8 h-6 rounded text-xs font-bold transition-all ${
+                                  className={`w-8 h-6 rounded border text-xs font-bold transition-all ${
                                     isActive
-                                      ? "text-white shadow-sm"
-                                      : "bg-elevated text-subtle hover:bg-hover"
+                                      ? `${activeClass} shadow-sm`
+                                      : "border-transparent bg-elevated text-subtle hover:bg-hover"
                                   }`}
-                                  style={
-                                    isActive
-                                      ? { backgroundColor: color }
-                                      : undefined
-                                  }
                                 >
                                   {label}
                                 </button>
@@ -874,7 +875,7 @@ export function DiagnosisTab({
                     }}
                     placeholder="Ej: dolor punzante al morder, irradiado al oído derecho…"
                     rows={2}
-                    className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                    className="w-full resize-none rounded-lg border border-hairline bg-elevated px-3 py-2 text-xs text-ink placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30"
                   />
                 </div>
               </div>
@@ -894,7 +895,7 @@ export function DiagnosisTab({
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               )}
               <Label className="text-sm font-semibold cursor-pointer flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">5</span>
+                <span className="w-5 h-5 rounded-full bg-brand/10 text-brand flex items-center justify-center text-xs font-bold">5</span>
                 Evidencia
               </Label>
               <span className="text-xs text-muted-foreground ml-auto">
@@ -902,7 +903,7 @@ export function DiagnosisTab({
               </span>
             </button>
             {evidenceExpanded && (
-              <div className="mt-3 border-2 border-dashed rounded-lg p-6 text-center text-muted-foreground hover:border-primary/50 transition-colors cursor-pointer">
+              <div className="mt-3 border-2 border-dashed rounded-lg p-6 text-center text-muted-foreground hover:border-brand/50 transition-colors cursor-pointer">
                 <Upload className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">
                   Arrastra archivos aquí o haz clic para seleccionar
@@ -925,20 +926,28 @@ export function DiagnosisTab({
             <div className="space-y-2">
               {selectedSurfaces.map((surface) => {
                 const diagnosis = surfaceDiagnoses.get(surface);
+                // Color CLÍNICO (rampa ICDAS) solo cuando hay diagnóstico;
+                // sin diagnóstico el chip usa tokens de chrome UI.
                 const color = diagnosis
                   ? getICDASColor(diagnosis.icdasScore)
-                  : "#9ca3af";
+                  : undefined;
                 return (
                   <div
                     key={surface}
-                    className="flex items-center justify-between p-2.5 rounded-lg border transition-all"
-                    style={{
-                      borderColor: color,
-                      backgroundColor: `${color}15`,
-                    }}
+                    className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${
+                      color ? "" : "border-hairline bg-hover"
+                    }`}
+                    style={
+                      color
+                        ? { borderColor: color, backgroundColor: `${color}15` }
+                        : undefined
+                    }
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold" style={{ color }}>
+                      <span
+                        className={`text-sm font-bold ${color ? "" : "text-subtle"}`}
+                        style={color ? { color } : undefined}
+                      >
                         {surface.charAt(0).toUpperCase()}
                       </span>
                       <ArrowRight className="w-3 h-3 text-muted-foreground" />

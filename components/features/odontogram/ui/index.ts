@@ -4,8 +4,21 @@ export type { OdontogramModalProps } from "./OdontogramModal";
 export { OdontogramTabs } from "./OdontogramTabs";
 export type { OdontogramTabsProps, OdontogramTabItem } from "./OdontogramTabs";
 
-export { odontogramConfirm, useOdontogramConfirm } from "./OdontogramConfirm";
-export type { OdontogramConfirmOptions } from "./OdontogramConfirm";
+export {
+  OdontogramConfirmProvider,
+  useOdontogramConfirm,
+} from "./OdontogramConfirm";
+export type {
+  OdontogramConfirmOptions,
+  OdontogramConfirmProviderProps,
+} from "./OdontogramConfirm";
+
+export { OdontogramButton } from "./OdontogramButton";
+export type {
+  OdontogramButtonProps,
+  OdontogramButtonVariant,
+  OdontogramButtonSize,
+} from "./OdontogramButton";
 
 export { OdontogramSelect } from "./OdontogramSelect";
 export type {

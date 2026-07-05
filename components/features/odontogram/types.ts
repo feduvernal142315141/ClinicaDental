@@ -30,9 +30,3 @@ export {
   ClinicalConsistencyService,
   ClinicalEventStateMachine,
 }
-
-export const getEventColor = ColorService.getEventColor
-export const getICDASColorIntensity = ColorService.getICDASColor
-export const getToothTypeName = ToothTypeService.getToothTypeName
-export const getICDASColor = ICDASService.getColor
-export const getLesionIcon = LesionService.getIcon

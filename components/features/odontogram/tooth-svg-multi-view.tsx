@@ -6,7 +6,7 @@ import type { ToothSurface } from "./types";
 import { useEffect, useMemo, useState } from "react";
 import { ToothSymbolService } from "@/lib/odontogram/domain/odontogram/services/ToothSymbolService";
 import { OdontogramColorService } from "@/lib/odontogram/domain/odontogram/services/OdontogramColorService";
-import type { ToothViewPaths, SurfacePath } from "./tooth-square-paths";
+import type { ToothViewPaths, SurfacePath } from "./teeth-svg-types";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
 
 interface ToothSVGMultiViewProps {

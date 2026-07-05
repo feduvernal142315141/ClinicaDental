@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "antd";
 import type { ReactNode } from "react";
 
 export interface OdontogramTabLabelProps {
@@ -13,8 +12,8 @@ export interface OdontogramTabLabelProps {
 }
 
 /**
- * Label de tab con contador numérico AntD Badge.
- * El badge se oculta automáticamente cuando count es 0 o undefined.
+ * Label de tab con contador numérico en pill Bento.
+ * El contador se oculta automáticamente cuando count es 0 o undefined.
  */
 export function OdontogramTabLabel({
   label,
@@ -26,12 +25,9 @@ export function OdontogramTabLabel({
       {icon}
       {label}
       {count > 0 && (
-        <Badge
-          count={count}
-          size="small"
-          style={{ marginLeft: 6 }}
-          color="default"
-        />
+        <span className="ml-1 rounded-full bg-hover px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-subtle">
+          {count}
+        </span>
       )}
     </span>
   );

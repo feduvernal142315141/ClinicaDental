@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ToothSurface, SurfaceState } from "./types";
-import type { SurfacePath } from "./tooth-square-paths";
+import type { SurfacePath } from "./teeth-svg-types";
 import { cn } from "@/lib/odontogram/utils";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";

@@ -4,7 +4,11 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Popover } from "antd";
+import {
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardContent,
+} from "@/components/ui";
 import { SurfaceSelector } from "./surface-selector";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
@@ -93,22 +97,8 @@ export function SurfacesTab({
   useEffect(() => {
     // Only initialize once per tooth or when tooth changes
     if (isInitialized.current === tooth.number) {
-      console.log(
-        `[SurfacesTab] ⏭️ Skip init diente ${tooth.number} (ya inicializado)`,
-      );
       return;
     }
-
-    console.group(`[SurfacesTab] 🔄 INIT diente ${tooth.number}`);
-    console.log("initialSurfaces recibidas:", initialSurfaces);
-    console.log(
-      "tooth.surfaceTreatments:",
-      JSON.parse(JSON.stringify(tooth.surfaceTreatments)),
-    );
-    console.log(
-      "tooth.surfaceConditions:",
-      JSON.parse(JSON.stringify(tooth.surfaceConditions)),
-    );
 
     // Usar initialSurfaceStates del padre (computadas desde clinicalEvents) si están disponibles
     let initialStates: SurfaceState[];
@@ -124,12 +114,6 @@ export function SurfacesTab({
         lastUpdate: new Date().toISOString(),
       }));
     }
-
-    console.log(
-      "initialStates calculados:",
-      JSON.parse(JSON.stringify(initialStates)),
-    );
-    console.groupEnd();
 
     setSelectedSurfaces(initialStates);
     isInitialized.current = tooth.number;
@@ -156,16 +140,6 @@ export function SurfacesTab({
     }
     if (onSurfacesChange) {
       const surfaceNames = selectedSurfaces.map((s) => s.surface);
-      console.log(
-        `[SurfacesTab] 📤 Propagando superficies al padre:`,
-        surfaceNames,
-        "con estados:",
-        selectedSurfaces.map((s) => ({
-          surface: s.surface,
-          status: s.status,
-          color: s.color,
-        })),
-      );
       onSurfacesChange(surfaceNames);
     }
     if (onSurfaceStatesChange) {
@@ -175,13 +149,8 @@ export function SurfacesTab({
   }, [selectedSurfaces, onSurfacesChange]);
 
   const handleSurfaceToggle = (surface: ToothSurface) => {
-    console.log(`[SurfacesTab] 🖱️ Toggle superficie: ${surface}`);
     setSelectedSurfaces((prev) => {
       const exists = prev.find((s) => s.surface === surface);
-      console.log(
-        `[SurfacesTab]   existe=${!!exists}, prev=`,
-        prev.map((s) => s.surface),
-      );
       if (exists) {
         return prev.filter((s) => s.surface !== surface);
       } else {
@@ -271,22 +240,6 @@ export function SurfacesTab({
     zoneSurfaces.every((s) => selectedSurfaces.some((ss) => ss.surface === s));
 
   const handleApplyTemplate = (template: ToothTemplate) => {
-    console.group(`[SurfacesTab] 🎨 Aplicando plantilla: ${template.name}`);
-    console.log("template:", {
-      id: template.id,
-      status: template.status,
-      color: template.color,
-      applicableSurfaces: template.applicableSurfaces,
-    });
-    console.log(
-      "selectedSurfaces ANTES:",
-      selectedSurfaces.map((s) => ({
-        surface: s.surface,
-        status: s.status,
-        color: s.color,
-      })),
-    );
-
     // Flash animation
     setFlashedSurfaces(new Set(template.applicableSurfaces));
     setTimeout(() => setFlashedSurfaces(new Set()), 600);
@@ -305,15 +258,6 @@ export function SurfacesTab({
         }
         return surface;
       });
-      console.log(
-        "selectedSurfaces DESPUÉS:",
-        next.map((s) => ({
-          surface: s.surface,
-          status: s.status,
-          color: s.color,
-        })),
-      );
-      console.groupEnd();
       return next;
     });
     setLastUsedTemplate(template.id);
@@ -375,20 +319,23 @@ export function SurfacesTab({
         </div>
         <div className="flex items-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-elevated px-3 py-1.5 shadow-sm">
-            <Popover
-              content={legendContent}
-              title="Escala de colores"
-              placement="bottomRight"
-              trigger="hover"
-            >
-              <button
-                type="button"
-                aria-label="Ver escala de colores"
-                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-hover hover:text-foreground"
-              >
-                <HelpCircle className="h-4 w-4" />
-              </button>
-            </Popover>
+            <HoverCard openDelay={150}>
+              <HoverCardTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Ver escala de colores"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-hover hover:text-foreground"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+              </HoverCardTrigger>
+              <HoverCardContent align="end" className="w-auto p-3">
+                <h4 className="mb-2 text-xs font-semibold text-ink">
+                  Escala de colores
+                </h4>
+                {legendContent}
+              </HoverCardContent>
+            </HoverCard>
             <span className="text-xs font-medium text-muted-foreground">
               Superficies
             </span>

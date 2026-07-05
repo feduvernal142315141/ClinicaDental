@@ -1,25 +1,28 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { OdontogramModal } from "@/components/features/odontogram/ui";
-import { OdontogramSelect } from "@/components/features/odontogram/ui";
-import { Button } from "antd";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, User, AlertCircle, Loader2 } from "lucide-react";
-import { DateTimePicker } from "@/components/ui/controls/date-time-picker";
-import { localTodayInput } from "@/lib/datetime";
+import { useCallback, useMemo, useState } from "react";
+import dayjs, { type Dayjs } from "dayjs";
+import {
+  OdontogramModal,
+  OdontogramButton,
+} from "@/components/features/odontogram/ui";
+import { Select } from "@/components/ui/controls/select";
+import { AvailabilityCalendar } from "@/components/features/appointments/form/AvailabilityCalendar";
+import { AvailabilitySlotPicker } from "@/components/features/appointments/form/AvailabilitySlotPicker";
+import { DoctorScheduleSummary } from "@/components/features/appointments/form/DoctorScheduleSummary";
+import { useDoctorAvailability } from "@/lib/hooks/appointments/use-doctor-availability";
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
-import { doctorsService } from "@/lib/services/doctors/doctors.service";
 import { useOdontogramStore } from "@/lib/odontogram/store";
 import { notify } from "@/lib/utils/notify";
+import { dateToLocalDate } from "@/lib/datetime";
+import {
+  Calendar,
+  CalendarPlus,
+  Clock,
+  User,
+  AlertCircle,
+} from "lucide-react";
 import type { ProcedurePlan } from "./types";
-import type { AppointmentType } from "@/lib/entity/appointment/appointments";
-
-interface DoctorOption {
-  id: string;
-  label: string;
-}
 
 interface SchedulePlanModalProps {
   open: boolean;
@@ -34,60 +37,92 @@ export function SchedulePlanModal({
   plans,
   onScheduled,
 }: SchedulePlanModalProps) {
-  const metadata = useOdontogramStore((state) => state.metadata);
-  const patientId = metadata.patientId;
+  const patientId = useOdontogramStore((state) => state.metadata.patientId);
 
-  const [doctors, setDoctors] = useState<DoctorOption[]>([]);
   const [doctorId, setDoctorId] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingTimes, setLoadingTimes] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load doctors on mount
-  useEffect(() => {
-    if (!open) return;
-    doctorsService
-      .getDoctors({ page: 0, pageSize: 100 })
-      .then((res) => {
-        const items = (res.entities ?? []).map((d) => ({
-          id: d.id,
-          label: `${d.name}${d.specialty ? ` - ${d.specialty}` : ""}`,
-        }));
-        setDoctors(items);
-      })
-      .catch(() => setDoctors([]));
-  }, [open]);
+  // Solo planes AÚN NO agendados: excluye done/canceled y los que ya tienen cita
+  // vinculada (status 'scheduled' o appointmentId), para no duplicar citas.
+  const isSchedulable = (p: ProcedurePlan) =>
+    p.status !== "done" &&
+    p.status !== "canceled" &&
+    p.status !== "scheduled" &&
+    !p.appointmentId;
 
-  // Load available times when doctor + date change
-  useEffect(() => {
-    if (!doctorId || !date) {
-      setAvailableTimes([]);
-      return;
-    }
-    setLoadingTimes(true);
-    setTime("");
-    appointmentsService
-      .getDoctorAvailability(doctorId, date)
-      .then((times) => setAvailableTimes(times))
-      .catch(() => setAvailableTimes([]))
-      .finally(() => setLoadingTimes(false));
-  }, [doctorId, date]);
+  const pendingPlans = useMemo(() => plans.filter(isSchedulable), [plans]);
 
-  const totalDuration = plans.reduce(
-    (sum, p) => sum + (p.durationMin ?? 30),
-    0,
+  // Duración reservada = SOLO lo que realmente se agenda.
+  const totalDuration = useMemo(
+    () => pendingPlans.reduce((sum, p) => sum + (p.durationMin ?? 30), 0),
+    [pendingPlans],
   );
 
-  const pendingPlans = plans.filter((p) => p.status !== "done" && p.status !== "canceled");
+  // Fecha mínima: MAÑANA (hora LOCAL). Una cita de seguimiento es para "más
+  // adelante"; para tratar en la sesión actual está "Realizar ahora".
+  const minScheduleDate = useMemo(() => {
+    const t = new Date();
+    t.setDate(t.getDate() + 1);
+    return dateToLocalDate(t);
+  }, []);
 
-  const canSubmit =
-    doctorId && date && time && patientId && pendingPlans.length > 0;
+  const {
+    doctorOptions,
+    doctorsLoading,
+    doctorSchedule,
+    disabledDate,
+    isWorkingDay,
+    selectedDayWorked,
+    availableTimes,
+    availabilityLoading,
+  } = useDoctorAvailability({
+    enabled: open,
+    doctorId,
+    date,
+    duration: totalDuration,
+  });
+
+  // El calendario deshabilita días no laborables/pasados del doctor y, además,
+  // hoy (mínimo = mañana).
+  const combinedDisabledDate = useCallback(
+    (d: Dayjs) => disabledDate(d) || d.isBefore(dayjs(minScheduleDate), "day"),
+    [disabledDate, minScheduleDate],
+  );
+
+  const doctorSelectOptions = useMemo(
+    () =>
+      doctorOptions.map((d) => ({
+        value: d.id,
+        label: d.specialty ? `${d.name} · ${d.specialty}` : d.name,
+      })),
+    [doctorOptions],
+  );
+
+  const handleDoctorChange = (value: string) => {
+    setDoctorId(value);
+    setTime("");
+    setError(null);
+  };
+
+  const handleDateChange = (value: string) => {
+    setDate(value);
+    setTime("");
+  };
+
+  const canSubmit = Boolean(
+    doctorId &&
+      date &&
+      time &&
+      patientId &&
+      pendingPlans.length > 0 &&
+      date >= minScheduleDate,
+  );
 
   const handleSubmit = useCallback(async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || !patientId) return;
     setLoading(true);
     setError(null);
 
@@ -98,7 +133,8 @@ export function SchedulePlanModal({
         date,
         time,
         duration: totalDuration,
-        type: "routine" as AppointmentType,
+        // Cita generada desde el plan de tratamiento del odontograma → seguimiento.
+        type: "follow_up",
         status: "scheduled",
         notes: pendingPlans
           .map((p) => `Diente ${p.toothNumber}: ${p.displayName}`)
@@ -107,11 +143,12 @@ export function SchedulePlanModal({
 
       const now = new Date().toISOString();
       const updatedPlans = plans.map((p) =>
-        p.status !== "done" && p.status !== "canceled"
+        isSchedulable(p)
           ? {
               ...p,
               status: "scheduled" as ProcedurePlan["status"],
               appointmentAt: `${date}T${time}:00`,
+              appointmentId,
               updatedAt: now,
             }
           : p,
@@ -126,7 +163,7 @@ export function SchedulePlanModal({
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Error al programar la cita",
+        err instanceof Error ? err.message : "No se pudo programar la cita.",
       );
     } finally {
       setLoading(false);
@@ -144,136 +181,133 @@ export function SchedulePlanModal({
     onClose,
   ]);
 
-  const doctorOptions = doctors.map((d) => ({
-    value: d.id,
-    label: d.label,
-  }));
-
-  const timeOptions = availableTimes.map((t) => ({
-    value: t,
-    label: t,
-  }));
-
-  // Minimum date: today (hora LOCAL — la regla de oro, no UTC).
-  const today = localTodayInput();
-
   return (
     <OdontogramModal
       open={open}
       onClose={onClose}
       title="Programar tratamiento"
-      description={`${pendingPlans.length} procedimiento(s) pendiente(s) · ${totalDuration} min estimados`}
-      width={480}
+      description={`${pendingPlans.length} procedimiento(s) pendiente(s) · seguimiento del plan`}
+      width={780}
     >
-      <div className="space-y-4 p-2">
-        {/* Plan summary */}
-        <Card className="p-3 bg-muted/50">
-          <p className="text-xs font-medium text-muted-foreground mb-2">
+      <div className="space-y-5">
+        {/* Resumen de procedimientos a programar */}
+        <div className="rounded-2xl border border-hairline bg-elevated p-4">
+          <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-subtle">
             Procedimientos a programar
           </p>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {pendingPlans.map((plan) => (
               <div
                 key={plan.id}
-                className="flex items-center justify-between text-sm"
+                className="flex items-center justify-between gap-3 text-sm text-ink"
               >
-                <span>
+                <span className="truncate">
                   Diente {plan.toothNumber} — {plan.displayName}
                 </span>
-                <Badge variant="outline" className="text-xs">
+                <span className="shrink-0 rounded-full border border-hairline bg-surface px-2 py-0.5 text-xs tabular-nums text-subtle">
                   {plan.durationMin ?? 30} min
-                </Badge>
+                </span>
               </div>
             ))}
           </div>
-        </Card>
+          <div className="mt-3 flex items-center justify-between border-t border-hairline pt-3 text-sm">
+            <span className="text-subtle">Duración total estimada</span>
+            <span className="font-semibold tabular-nums text-ink">
+              {totalDuration} min
+            </span>
+          </div>
+        </div>
 
-        {/* Doctor selector */}
+        {/* Doctor */}
         <div className="space-y-1.5">
-          <label className="text-sm font-medium flex items-center gap-1.5">
-            <User className="w-3.5 h-3.5" />
-            Doctor
+          <label
+            htmlFor="schedule-doctor"
+            className="flex items-center gap-1.5 text-sm font-medium text-ink"
+          >
+            <User className="h-3.5 w-3.5 text-subtle" />
+            Doctor <span className="text-rose-500">*</span>
           </label>
-          <OdontogramSelect
+          <Select
+            id="schedule-doctor"
             value={doctorId}
-            onChange={setDoctorId}
-            options={doctorOptions}
-            placeholder="Seleccionar doctor"
+            onChange={handleDoctorChange}
+            options={doctorSelectOptions}
+            placeholder={
+              doctorsLoading ? "Cargando doctores…" : "Seleccionar doctor"
+            }
+            disabled={doctorsLoading}
+            searchable
           />
-        </div>
-
-        {/* Date picker */}
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5" />
-            Fecha
-          </label>
-          <DateTimePicker
-            showTime={false}
-            min={today}
-            value={date}
-            onChange={setDate}
-            aria-label="Fecha"
-          />
-        </div>
-
-        {/* Time selector */}
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5" />
-            Hora disponible
-          </label>
-          {loadingTimes ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Consultando disponibilidad...
-            </div>
-          ) : availableTimes.length > 0 ? (
-            <OdontogramSelect
-              value={time}
-              onChange={setTime}
-              options={timeOptions}
-              placeholder="Seleccionar hora"
-            />
-          ) : doctorId && date ? (
-            <p className="text-sm text-amber-600 flex items-center gap-1.5 py-2">
-              <AlertCircle className="w-4 h-4" />
-              No hay horarios disponibles para esta fecha
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground py-2">
-              Seleccione doctor y fecha para ver horarios
+          {!doctorsLoading && doctorOptions.length === 0 && (
+            <p className="text-xs text-subtle">
+              No hay doctores disponibles para agendar.
             </p>
           )}
         </div>
 
-        {/* Error */}
-        {error && (
-          <p className="text-sm text-destructive flex items-center gap-1.5">
-            <AlertCircle className="w-4 h-4" />
-            {error}
-          </p>
+        {/* Horario del doctor seleccionado */}
+        {doctorId && (
+          <DoctorScheduleSummary schedule={doctorSchedule} ready={!!doctorId} />
         )}
 
-        {/* Actions */}
-        <div className="flex gap-2 pt-2">
-          <Button
-            type="default"
-            style={{ flex: 1 }}
+        {/* Fecha + Hora */}
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1.5 text-sm font-medium text-ink">
+              <Calendar className="h-3.5 w-3.5 text-subtle" />
+              Fecha <span className="text-rose-500">*</span>
+            </label>
+            <AvailabilityCalendar
+              value={date}
+              onChange={handleDateChange}
+              disabledDate={combinedDisabledDate}
+              isWorkingDay={isWorkingDay}
+              disabled={!doctorId}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1.5 text-sm font-medium text-ink">
+              <Clock className="h-3.5 w-3.5 text-subtle" />
+              Hora <span className="text-rose-500">*</span>
+            </label>
+            <AvailabilitySlotPicker
+              value={time}
+              onChange={setTime}
+              availableTimes={availableTimes}
+              loading={availabilityLoading}
+              ready={Boolean(doctorId && date)}
+              dayWorked={selectedDayWorked}
+            />
+          </div>
+        </div>
+
+        {/* Error de programación */}
+        {error && (
+          <div className="flex items-center gap-2 rounded-lg border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-sm text-rose-600 dark:text-rose-300">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {error}
+          </div>
+        )}
+
+        {/* Acciones */}
+        <div className="flex justify-end gap-2 border-t border-hairline pt-4">
+          <OdontogramButton
+            variant="outline"
             onClick={onClose}
             disabled={loading}
           >
             Cancelar
-          </Button>
-          <Button
-            type="primary"
-            style={{ flex: 1 }}
+          </OdontogramButton>
+          <OdontogramButton
+            variant="primary"
             onClick={handleSubmit}
             disabled={!canSubmit || loading}
-            icon={loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
+            loading={loading}
+            icon={<CalendarPlus className="h-4 w-4" />}
           >
-            {loading ? "Programando..." : "Programar cita"}
-          </Button>
+            {loading ? "Programando…" : "Programar cita"}
+          </OdontogramButton>
         </div>
       </div>
     </OdontogramModal>

@@ -1,8 +1,8 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
+  OdontogramButton,
   OdontogramModal,
   OdontogramTabs,
   useOdontogramConfirm,
@@ -16,8 +16,6 @@ import type {
   ProcedurePlan,
   PerformedProcedure,
   SurfaceDiagnosis,
-  SurfaceTreatment,
-  SurfaceCondition,
   ICDASScore,
   SurfaceState,
   VitalityTest,
@@ -57,27 +55,18 @@ import {
   Crown,
   Wrench,
 } from "lucide-react";
-import { App } from "antd";
+import { notify } from "@/lib/utils/notify";
 
 interface ToothModalProps {
   tooth: Tooth | null;
   isOpen: boolean;
+  /** Cara clicada en la grilla, para preseleccionarla al abrir el modal. */
+  initialSurface?: ToothSurface | null;
   onClose: () => void;
   onUpdateGlobalStatus: (
     toothNumber: number,
     status: ToothGlobalStatus,
   ) => void;
-  onAddSurfaceTreatment?: (
-    toothNumber: number,
-    treatment: Omit<SurfaceTreatment, "id" | "date">,
-  ) => void;
-  onAddSurfaceCondition?: (
-    toothNumber: number,
-    condition: Omit<SurfaceCondition, "id" | "diagnosedDate">,
-  ) => void;
-  onDeleteCondition?: (toothNumber: number, conditionId: string) => void;
-  onCompleteTreatment?: (toothNumber: number, treatmentId: string) => void;
-  onDeleteTreatment?: (toothNumber: number, treatmentId: string) => void;
 }
 
 function getToothDescription(toothNumber: number): string {
@@ -192,6 +181,7 @@ function hasMeaningfulToothDiagnosis(diagnosis?: ToothDiagnosis): boolean {
 export function ToothModal({
   tooth,
   isOpen,
+  initialSurface,
   onClose,
   onUpdateGlobalStatus,
 }: ToothModalProps) {
@@ -205,8 +195,6 @@ export function ToothModal({
     clinicalEvents,
     readOnly,
   } = useOdontogramStore();
-  const { message: antdMessage } = App.useApp();
-  const visitId = useOdontogramStore((state) => state.metadata.visitId);
   const odontogramConfirm = useOdontogramConfirm();
 
   // Riesgo de caries a nivel PACIENTE (CAMBRA/ICCMS lite), calculado desde la
@@ -345,22 +333,6 @@ export function ToothModal({
       // Obtener eventos clínicos del diente desde el store
       const events = getToothEvents(tooth.number);
 
-      console.group(`[ToothModal] 📂 CARGA diente ${tooth.number}`);
-      console.log(
-        "Eventos clínicos del store:",
-        JSON.parse(JSON.stringify(events)),
-      );
-      console.log("Total clinicalEvents en store:", clinicalEvents.length);
-      console.log(
-        "tooth.surfaceTreatments:",
-        JSON.parse(JSON.stringify(tooth.surfaceTreatments)),
-      );
-      console.log(
-        "tooth.surfaceConditions:",
-        JSON.parse(JSON.stringify(tooth.surfaceConditions)),
-      );
-      console.log("tooth.globalStatus:", tooth.globalStatus);
-
       // Extraer superficies con eventos
       const surfacesWithEvents = new Set<ToothSurface>();
       events.forEach((event) => {
@@ -370,7 +342,18 @@ export function ToothModal({
         surfacesWithEvents.add(diagnosis.surface);
       });
       const loadedSurfaces = Array.from(surfacesWithEvents);
-      console.log("Superficies extraídas de eventos:", loadedSurfaces);
+
+      // Preselección de la cara clicada en la grilla: solo en la primera
+      // inicialización del diente y sin marcar cambios sin guardar (es
+      // preselección, no edición). Entra al map de abajo con el mismo shape
+      // "healthy" que produce el click manual en SurfaceSelector.
+      if (
+        isFirstInitForTooth &&
+        initialSurface &&
+        !surfacesWithEvents.has(initialSurface)
+      ) {
+        loadedSurfaces.push(initialSurface);
+      }
 
       // Computar SurfaceState[] desde eventos clínicos
       const computedStates: SurfaceState[] = loadedSurfaces.map((surface) => {
@@ -425,12 +408,6 @@ export function ToothModal({
           lastUpdate: new Date().toISOString(),
         };
       });
-
-      console.log(
-        "SurfaceStates computados:",
-        JSON.parse(JSON.stringify(computedStates)),
-      );
-      console.groupEnd();
 
       // En re-sync (mismo diente, cambiaron eventos) preserva las caras que el
       // usuario seleccionó pero aún no tienen evento (p.ej. caras sanas).
@@ -506,6 +483,10 @@ export function ToothModal({
           durationMin: event.durationMin ?? 0,
           cost: event.cost || 0,
           notes: event.notes,
+          // Vínculo plan↔cita: conservar al reabrir para no perder la cita
+          // agendada (performed-tab la usa para "citas de hoy").
+          appointmentAt: event.appointmentAt,
+          appointmentId: event.appointmentId,
           // Conservar el símbolo del servicio al reabrir (si no, el re-guardado
           // lo sobrescribiría con undefined y se perdería).
           serviceSymbolText: event.serviceSymbolText,
@@ -517,7 +498,7 @@ export function ToothModal({
 
       setPlans(loadedPlans);
     }
-  }, [isOpen, tooth, getToothEvents, clinicalEvents.length]);
+  }, [isOpen, tooth, getToothEvents, clinicalEvents.length, initialSurface]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -666,24 +647,37 @@ export function ToothModal({
     return errors;
   };
 
-  const handleSave = (): boolean => {
+  // Reúne los errores de validación clínica del estado actual (mismas reglas
+  // que el guardado). Se usa como gate ANTES de programar una cita: si el
+  // diagnóstico está incompleto no se abre el modal de programación, evitando
+  // crear una cita en backend que luego no podría vincularse (cita huérfana).
+  const collectValidationErrors = (): string[] => {
+    if (!tooth) return [];
+    const currentDiagnoses = filterDiagnosesForSelectedSurfaces(
+      selectedSurfaces,
+      diagnoses,
+    );
+    const currentToothDiagnosis = toothDiagnosis
+      ? {
+          ...toothDiagnosis,
+          toothNumber: tooth.number,
+          surfaceDiagnoses: Array.from(currentDiagnoses.values()),
+          vitalityTests:
+            toothDiagnosis.vitalityTests?.length > 0
+              ? toothDiagnosis.vitalityTests
+              : getDefaultVitalityTests(),
+          updatedAt: new Date().toISOString(),
+        }
+      : undefined;
+    return validateBeforeSave(currentDiagnoses, currentToothDiagnosis);
+  };
+
+  // `plansOverride` permite persistir planes recién actualizados (p.ej. tras
+  // programar una cita) sin esperar a que el setState de `plans` se aplique.
+  const handleSave = (plansOverride?: ProcedurePlan[]): boolean => {
     if (!tooth) return false;
 
-    console.group(`[ToothModal] 💾 GUARDADO diente ${tooth.number}`);
-    console.log("hasUnsavedChanges:", hasUnsavedChanges);
-    console.log(
-      "tempGlobalStatus:",
-      tempGlobalStatus,
-      "vs original:",
-      tooth.globalStatus,
-    );
-    console.log("selectedSurfaces (state):", selectedSurfaces);
-    console.log(
-      "diagnoses (state):",
-      diagnoses instanceof Map ? Object.fromEntries(diagnoses) : diagnoses,
-    );
-    console.log("plans (state):", JSON.parse(JSON.stringify(plans)));
-    console.log("toothDiagnosis (state):", toothDiagnosis);
+    const plansSource = plansOverride ?? plans;
 
     onUpdateGlobalStatus(tooth.number, tempGlobalStatus);
 
@@ -691,13 +685,16 @@ export function ToothModal({
       selectedSurfaces,
       diagnoses,
     );
-    const currentPlans = prunePlansForSelectedSurfaces(selectedSurfaces, plans);
+    const currentPlans = prunePlansForSelectedSurfaces(
+      selectedSurfaces,
+      plansSource,
+    );
 
     if (currentDiagnoses.size !== diagnoses.size) {
       setDiagnoses(currentDiagnoses);
     }
 
-    if (currentPlans.length !== plans.length) {
+    if (currentPlans.length !== plansSource.length) {
       setPlans(currentPlans);
     }
 
@@ -722,17 +719,10 @@ export function ToothModal({
     if (validationErrors.length > 0) {
       setSaveErrors(validationErrors);
       setActiveTab("diagnostico");
-      console.groupEnd();
       return false;
     }
 
     setSaveErrors([]);
-    console.log(
-      "currentDiagnoses (state):",
-      currentDiagnoses instanceof Map
-        ? Object.fromEntries(currentDiagnoses)
-        : currentDiagnoses,
-    );
 
     // Guardar diagnósticos del DiagnosisTab o cargados del store
     const existingSurfaceDiagnosisEvents = getToothEvents(tooth.number).filter(
@@ -1013,6 +1003,8 @@ export function ToothModal({
             cost: plan.cost,
             notes: eventNotes,
             visualState,
+            appointmentAt: plan.appointmentAt,
+            appointmentId: plan.appointmentId,
             serviceSymbolText: plan.serviceSymbolText,
             serviceSymbolUrl: plan.serviceSymbolUrl,
           });
@@ -1032,6 +1024,8 @@ export function ToothModal({
             cost: plan.cost,
             notes: eventNotes,
             visualState,
+            appointmentAt: plan.appointmentAt,
+            appointmentId: plan.appointmentId,
             serviceSymbolText: plan.serviceSymbolText,
             serviceSymbolUrl: plan.serviceSymbolUrl,
           });
@@ -1122,17 +1116,6 @@ export function ToothModal({
         });
       }
     });
-
-    // Verificación post-guardado
-    const postSaveEvents = getToothEvents(tooth.number);
-    console.log(
-      "[POST-SAVE] Eventos en store para diente",
-      tooth.number,
-      ":",
-      JSON.parse(JSON.stringify(postSaveEvents)),
-    );
-    console.log("[POST-SAVE] Total clinicalEvents:", clinicalEvents.length);
-    console.groupEnd();
 
     setHasUnsavedChanges(false);
     return true;
@@ -1287,10 +1270,37 @@ export function ToothModal({
           onNavigateToTab={handleNavigateToTab}
           onPlansChange={handlePlansChange}
           onSchedulePlans={(p) => {
-            if (visitId) {
-              antdMessage.warning(
-                "Hay una cita activa. Finaliza la cita actual para programar nuevos planes.",
-              );
+            // Programar una cita de seguimiento es válido DURANTE la consulta
+            // activa (es cuando el clínico planifica el tratamiento futuro).
+            // El odontograma solo es editable con una visita activa, así que
+            // bloquear aquí por `visitId` dejaba el botón inalcanzable. La cita
+            // futura se crea con su propio id, independiente del visitId actual.
+            // Solo hay algo que agendar si queda algún plan sin cita vinculada.
+            const anySchedulable = p.some(
+              (pl) =>
+                pl.status !== "done" &&
+                pl.status !== "canceled" &&
+                pl.status !== "scheduled" &&
+                !pl.appointmentId,
+            );
+            if (!anySchedulable) {
+              notify.info("Sin planes por agendar", {
+                description:
+                  "Todos los procedimientos de este diente ya están agendados o realizados.",
+              });
+              return;
+            }
+            // Gate: programar crea la cita en backend. Si el diagnóstico está
+            // incompleto, el guardado posterior fallaría y la cita quedaría
+            // huérfana; validamos antes de abrir el modal de programación.
+            const validationErrors = collectValidationErrors();
+            if (validationErrors.length > 0) {
+              setSaveErrors(validationErrors);
+              setActiveTab("diagnostico");
+              notify.warning("Completa el diagnóstico", {
+                description:
+                  "Corrige los datos pendientes antes de programar la cita.",
+              });
               return;
             }
             setSchedulePlans(p);
@@ -1363,17 +1373,17 @@ export function ToothModal({
           <div className="flex items-center gap-3">
             {/* SVG thumbnail */}
             {headerSvgPaths && (
-              <div className="shrink-0 w-10 h-14 flex items-center justify-center">
+              <div className="shrink-0 w-10 h-14 flex items-center justify-center text-subtle">
                 <svg
                   viewBox={headerSvgPaths.viewBox}
-                  className="w-full h-full"
-                  style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))" }}
+                  className="w-full h-full drop-shadow-sm"
+                  aria-hidden="true"
                 >
                   {/* Outline */}
                   <path
                     d={headerSvgPaths.outline}
                     fill="none"
-                    stroke="#64748b"
+                    stroke="currentColor"
                     strokeWidth={0.8}
                   />
                   {/* Surfaces */}
@@ -1381,8 +1391,8 @@ export function ToothModal({
                     <path
                       key={i}
                       d={sp.d}
-                      fill="#e5e7eb"
-                      stroke="#94a3b8"
+                      className="fill-slate-200 dark:fill-slate-700"
+                      stroke="currentColor"
                       strokeWidth={0.3}
                     />
                   ))}
@@ -1392,7 +1402,7 @@ export function ToothModal({
                       key={`r-${i}`}
                       d={r}
                       fill="none"
-                      stroke="#94a3b8"
+                      stroke="currentColor"
                       strokeWidth={0.5}
                     />
                   ))}
@@ -1413,38 +1423,38 @@ export function ToothModal({
         footer={
           readOnly ? (
             <div className="flex justify-end pt-3 border-t">
-              <Button
+              <OdontogramButton
                 variant="outline"
                 onClick={onClose}
-                className="px-6 py-2 text-sm"
+                className="px-6"
               >
                 Cerrar
-              </Button>
+              </OdontogramButton>
             </div>
           ) : (
             <div className="flex justify-between items-center gap-4 pt-3 border-t">
-              <Button
+              <OdontogramButton
                 variant="outline"
                 onClick={handleClose}
-                className="px-6 py-2 text-sm bg-transparent"
+                className="px-6"
               >
                 Cancelar
-              </Button>
+              </OdontogramButton>
               <div className="flex gap-3">
-                <Button
-                  variant="default"
+                <OdontogramButton
+                  variant="primary"
                   onClick={handleSaveAndClose}
-                  className="px-6 py-2 text-sm"
+                  className="px-6"
                 >
                   Guardar
-                </Button>
-                <Button
-                  variant="default"
+                </OdontogramButton>
+                <OdontogramButton
+                  variant="primary"
                   onClick={handleSaveAndContinue}
-                  className="px-6 py-2 text-sm"
+                  className="px-6"
                 >
                   {getContinueLabel()}
-                </Button>
+                </OdontogramButton>
               </div>
             </div>
           )
@@ -1507,7 +1517,21 @@ export function ToothModal({
         onClose={() => setScheduleModalOpen(false)}
         plans={schedulePlans}
         onScheduled={(updatedPlans) => {
-          handlePlansChange(updatedPlans);
+          // La cita ya existe en backend: persistir el vínculo de inmediato
+          // para que no quede huérfana si el usuario cierra sin guardar.
+          // updatedPlans ya trae appointmentId/appointmentAt por plan.
+          setPlans(updatedPlans);
+          const saved = handleSave(updatedPlans);
+          if (!saved) {
+            // Red de seguridad: el gate previo ya validó, pero si el guardado
+            // falla aquí no descartamos el vínculo en silencio — marcamos
+            // cambios sin guardar para que el cierre pida confirmación y avisamos.
+            setHasUnsavedChanges(true);
+            notify.warning("Cita creada sin vincular", {
+              description:
+                "Completa el diagnóstico y guarda para vincular la cita a los planes.",
+            });
+          }
           setScheduleModalOpen(false);
         }}
       />
