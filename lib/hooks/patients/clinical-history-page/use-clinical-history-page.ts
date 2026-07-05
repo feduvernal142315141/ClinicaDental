@@ -70,6 +70,21 @@ export function useClinicalHistoryPage({
   const effectiveActiveAppointmentId =
     activeAppointmentId ?? restoredAppointmentId;
 
+  // Estado REAL de la cita "activa" según la lista del backend ya cargada
+  // (getPatientAppointments) — la MISMA fuente que gatea la editabilidad del
+  // odontograma en PatientOdontogramPanel. Se usa para reconciliar el store
+  // local persistido (useActiveConsultation), que no conoce el status ni caduca,
+  // y así evitar el desfase que dejaba un Workspace "activo" (timer eterno) con
+  // el odontograma silenciosamente en solo-lectura. `undefined` mientras la lista
+  // carga o si la cita no está en ella → se trata como NO terminal (fail-open).
+  const activeAppointmentFromList = appointments.find(
+    (a) => a.id === effectiveActiveAppointmentId,
+  );
+  const activeAppointmentIsTerminal =
+    !!activeAppointmentFromList &&
+    activeAppointmentFromList.status !== "in_progress" &&
+    activeAppointmentFromList.status !== "scheduled";
+
   useEffect(() => {
     const persistedMatchesCurrentPatient = persistedPatientId === patientId;
     const candidateAppointmentId =
@@ -151,7 +166,13 @@ export function useClinicalHistoryPage({
   ]);
 
   useEffect(() => {
-    if (effectiveActiveAppointmentId && patient) {
+    // No re-armar el store para una cita ya terminal (finalizada/cancelada):
+    // eso perpetuaba la sesión stale que compite con la reconciliación de abajo.
+    if (
+      effectiveActiveAppointmentId &&
+      patient &&
+      !activeAppointmentIsTerminal
+    ) {
       startConsultation({
         appointmentId: effectiveActiveAppointmentId,
         patientId,
@@ -165,10 +186,52 @@ export function useClinicalHistoryPage({
     patient?.name,
     patient,
     startConsultation,
+    activeAppointmentIsTerminal,
+  ]);
+
+  // Reconciliación con el backend: si la cita "activa" ya aparece finalizada/
+  // cancelada en la lista, purgar la sesión local stale (endConsultation) para
+  // que NO se muestre un Workspace activo con el odontograma bloqueado en
+  // silencio. Guardado por `!appointmentsLoading` para no purgar durante la carga
+  // y solo dispara con un status terminal EXPLÍCITO de la lista (fail-open).
+  useEffect(() => {
+    if (appointmentsLoading || !activeAppointmentIsTerminal) return;
+    // Solo purgar el store si REALMENTE apunta a esta cita (ownership guard):
+    // no pisar una consulta activa distinta si se abre por URL una cita ya
+    // finalizada. La navegación/reset de tab sí es incondicional.
+    if (
+      effectiveActiveAppointmentId &&
+      isActiveFor(patientId, effectiveActiveAppointmentId)
+    ) {
+      endConsultation();
+    }
+    setRestoredAppointmentId(undefined);
+    setActiveTab("historia-clinica");
+    if (activeAppointmentId) {
+      router.replace(`/patients/${patientId}`);
+    }
+  }, [
+    appointmentsLoading,
+    activeAppointmentIsTerminal,
+    activeAppointmentId,
+    effectiveActiveAppointmentId,
+    isActiveFor,
+    endConsultation,
+    router,
+    patientId,
   ]);
 
   useEffect(() => {
-    if (!effectiveActiveAppointmentId || !snapshot || !patient) return;
+    // Mismo guard que el efecto de re-arranque: NO re-armar el store (ni con
+    // alertas de alergia) para una cita ya terminal, o se deshace el purge y
+    // queda un estado fantasma de "consulta activa" en el shell global.
+    if (
+      !effectiveActiveAppointmentId ||
+      !snapshot ||
+      !patient ||
+      activeAppointmentIsTerminal
+    )
+      return;
 
     const allergies = snapshot.medicalHistory?.allergies ?? [];
     if (allergies.length === 0) return;
@@ -185,11 +248,13 @@ export function useClinicalHistoryPage({
     patient,
     snapshot,
     startConsultation,
+    activeAppointmentIsTerminal,
   ]);
 
   const isCurrentlyActiveConsultation =
     !!effectiveActiveAppointmentId &&
-    isActiveFor(patientId, effectiveActiveAppointmentId);
+    isActiveFor(patientId, effectiveActiveAppointmentId) &&
+    !activeAppointmentIsTerminal;
 
   useEffect(() => {
     if (!openFinalizeOnLoad || !isCurrentlyActiveConsultation) return;

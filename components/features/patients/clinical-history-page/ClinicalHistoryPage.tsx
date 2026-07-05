@@ -141,7 +141,7 @@ export function ClinicalHistoryPage({
             value="workspace"
             className="flex-1 min-h-0 mt-2 overflow-hidden"
           >
-            <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-6 h-full min-h-0">
+            <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] lg:grid-rows-1 gap-6 h-full min-h-0">
               <ActiveConsultationNotes
                 patientId={patientId}
                 activeAppointmentId={effectiveActiveAppointmentId!}
@@ -153,6 +153,7 @@ export function ClinicalHistoryPage({
                 historicAppointmentId={historicAppointmentId}
                 onClearHistoric={handleBackToCurrentOdontogram}
                 appointments={appointments}
+                appointmentsLoading={appointmentsLoading}
                 onSelectHistoricVisit={handleSelectHistoricVisit}
                 finalizeOpen={isFinalizeModalOpen}
                 onFinalizeClose={closeFinalizeModal}
@@ -246,6 +247,7 @@ export function ClinicalHistoryPage({
               historicAppointmentId={historicAppointmentId}
               onClearHistoric={handleBackToCurrentOdontogram}
               appointments={appointments}
+              appointmentsLoading={appointmentsLoading}
               onSelectHistoricVisit={handleSelectHistoricVisit}
               onStartConsultation={openStartNow}
             />

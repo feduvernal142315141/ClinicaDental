@@ -135,10 +135,10 @@ export function ClinicalNotesEditor({
     <button
       type="button"
       onClick={onClick}
-      className={`p-1.5 rounded text-sm transition-colors ${
+      className={`rounded-md p-1.5 text-sm transition-colors ${
         active
-          ? "bg-primary text-primary-foreground"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          ? "bg-brand text-white"
+          : "text-subtle hover:bg-hover hover:text-ink"
       }`}
     >
       {children}
@@ -149,7 +149,7 @@ export function ClinicalNotesEditor({
     <div className="flex flex-col gap-2">
       {/* Toolbar */}
       {!readOnly && editor && (
-        <div className="flex items-center gap-0.5 flex-wrap border rounded-md px-2 py-1 bg-muted/30">
+        <div className="flex flex-wrap items-center gap-0.5 rounded-lg border border-hairline bg-elevated px-2 py-1.5">
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBold().run()}
             active={editor.isActive("bold")}
@@ -168,7 +168,7 @@ export function ClinicalNotesEditor({
           >
             <Underline className="h-3.5 w-3.5" />
           </ToolbarButton>
-          <span className="mx-1 text-border">|</span>
+          <span className="mx-1 h-4 w-px shrink-0 bg-hairline" />
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             active={editor.isActive("bulletList")}
@@ -181,20 +181,20 @@ export function ClinicalNotesEditor({
           >
             <ListOrdered className="h-3.5 w-3.5" />
           </ToolbarButton>
-          <span className="mx-1 text-border">|</span>
+          <span className="mx-1 h-4 w-px shrink-0 bg-hairline" />
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
             active={editor.isActive("heading", { level: 2 })}
           >
             <Heading2 className="h-3.5 w-3.5" />
           </ToolbarButton>
-          <span className="mx-1 text-border">|</span>
+          <span className="mx-1 h-4 w-px shrink-0 bg-hairline" />
           <MicButton
             isListening={isRecording}
             isSupported={true}
             onToggle={handleMicToggle}
           />
-          <span className="mx-1 text-border">|</span>
+          <span className="mx-1 h-4 w-px shrink-0 bg-hairline" />
           {/* Opt-in: estructuración SOAP por IA — OFF por defecto */}
           <div className="flex items-center gap-1.5">
             <Switch
@@ -207,7 +207,7 @@ export function ClinicalNotesEditor({
             />
             <label
               htmlFor="soap-toggle"
-              className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap"
+              className="cursor-pointer select-none whitespace-nowrap text-xs text-subtle"
             >
               Formatear con IA (SOAP)
             </label>
@@ -216,7 +216,7 @@ export function ClinicalNotesEditor({
                 <button
                   type="button"
                   aria-label="Más información sobre el formateo SOAP"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-subtle transition-colors hover:text-ink"
                 >
                   <Info className="h-3 w-3" />
                 </button>
@@ -235,31 +235,31 @@ export function ClinicalNotesEditor({
       )}
 
       {/* Editor area */}
-      <div className="border rounded-md min-h-[160px] px-3 py-2 text-sm [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[140px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-4 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-4 [&_.ProseMirror_h2]:text-base [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:mt-2">
+      <div className="min-h-[160px] rounded-xl border border-hairline bg-elevated px-3 py-2.5 text-sm text-ink transition-colors focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/30 [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[140px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-subtle [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-4 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-4 [&_.ProseMirror_h2]:text-base [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:mt-2">
         <EditorContent editor={editor} />
       </div>
 
       {/* Status preview — shown while dictating or processing */}
       {isRecording && (
         <div className="space-y-1.5">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-50/50 border border-red-200 border-dashed text-sm text-red-600 italic">
-            <span className="inline-block h-2 w-2 rounded-full bg-red-500 animate-ping flex-shrink-0" />
-            Dictando... presiona de nuevo para finalizar
+          <div className="flex items-center gap-1.5 rounded-lg border border-dashed border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-sm italic text-rose-600 dark:text-rose-400">
+            <span className="inline-block h-2 w-2 shrink-0 animate-ping rounded-full bg-rose-500" />
+            Dictando… presiona de nuevo para finalizar
           </div>
           {interimText && (
-            <div className="px-3 py-2 rounded-md bg-muted/40 border border-dashed text-sm text-muted-foreground">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 block mb-0.5">
+            <div className="rounded-lg border border-dashed border-hairline bg-hover px-3 py-2 text-sm text-subtle">
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-subtle">
                 Preview en vivo
               </span>
               {interimText}
-              <span className="inline-block w-0.5 h-3.5 bg-foreground/40 animate-pulse ml-0.5 align-text-bottom" />
+              <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-ink/40 align-text-bottom" />
             </div>
           )}
         </div>
       )}
       {!isRecording && isProcessing && (
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-50/50 border border-blue-200 border-dashed text-sm text-blue-600 italic">
-          <span className="inline-block h-3 w-3 rounded-full border-2 border-blue-600 border-t-transparent animate-spin flex-shrink-0" />
+        <div className="flex items-center gap-2 rounded-lg border border-dashed border-sky-400/30 bg-sky-500/10 px-3 py-1.5 text-sm italic text-sky-600 dark:text-sky-400">
+          <span className="inline-block h-3 w-3 rounded-full border-2 border-sky-500 border-t-transparent animate-spin flex-shrink-0" />
           {useSoapStructuring
             ? "Estructurando con IA (SOAP)..."
             : "Procesando dictado..."}
@@ -270,7 +270,7 @@ export function ClinicalNotesEditor({
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           {updatedBy && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-subtle">
               Guardado por {updatedBy}
               {updatedAt ? ` · ${formatRelativeDate(updatedAt)}` : ""}
             </p>
@@ -281,7 +281,7 @@ export function ClinicalNotesEditor({
               className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md font-medium ${
                 lastTranscriptSource === "ai"
                   ? "bg-brand/10 text-brand"
-                  : "bg-muted text-muted-foreground"
+                  : "bg-hover text-subtle"
               }`}
             >
               {lastTranscriptSource === "ai" ? (

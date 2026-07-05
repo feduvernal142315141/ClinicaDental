@@ -7,7 +7,7 @@
  * Es SOLO informativo; no bloquea ninguna acción ni modifica el modal de finalizar.
  */
 
-import { CircleCheck, Circle, Info } from "lucide-react";
+import { CircleCheck, Circle, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import type { VisitDiagnosis, ExamFindings } from "@/lib/entity/clinical-history";
 
@@ -65,31 +65,62 @@ export function ReadinessChecklist({
   const doneCount = items.filter((i) => i.done).length;
   const allDone = doneCount === items.length;
 
+  const pct = Math.round((doneCount / items.length) * 100);
+
   return (
     <div
       className={cn(
-        "rounded-xl border p-3 space-y-2 transition-colors",
+        "rounded-2xl border p-4 shadow-sm transition-colors",
         allDone
-          ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800"
-          : "border-hairline bg-elevated",
+          ? "border-emerald-400/25 bg-emerald-500/10"
+          : "border-hairline bg-surface",
       )}
     >
-      <div className="flex items-center gap-2">
-        <Info className="h-3.5 w-3.5 shrink-0 text-subtle" />
-        <span className="text-[10px] font-bold uppercase tracking-wider text-subtle">
-          Lista para finalizar
-        </span>
+      {/* Header — mismo lenguaje que las demás secciones */}
+      <div className="mb-3 flex items-center gap-2.5">
         <span
           className={cn(
-            "ml-auto text-[10px] font-semibold",
-            allDone ? "text-emerald-600 dark:text-emerald-400" : "text-subtle",
+            "grid h-7 w-7 shrink-0 place-items-center rounded-lg",
+            allDone
+              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+              : "bg-brand/10 text-brand",
+          )}
+        >
+          {allDone ? (
+            <CircleCheck className="h-4 w-4" />
+          ) : (
+            <ClipboardCheck className="h-4 w-4" />
+          )}
+        </span>
+        <h3 className="text-sm font-semibold text-ink">Lista para finalizar</h3>
+        <span
+          className={cn(
+            "ml-auto rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums",
+            allDone
+              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+              : "bg-hover text-subtle",
           )}
         >
           {doneCount}/{items.length}
         </span>
       </div>
 
-      <ul className="space-y-1" role="list" aria-label="Estado de completitud de la consulta">
+      {/* Barra de progreso */}
+      <div className="mb-3.5 h-1.5 w-full overflow-hidden rounded-full bg-hover">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all duration-300",
+            allDone ? "bg-emerald-500" : "bg-brand",
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      <ul
+        className="space-y-1.5"
+        role="list"
+        aria-label="Estado de completitud de la consulta"
+      >
         {items.map((item) => (
           <li
             key={item.label}
@@ -97,15 +128,12 @@ export function ReadinessChecklist({
             aria-label={`${item.label}: ${item.done ? "completo" : "pendiente"}`}
           >
             {item.done ? (
-              <CircleCheck className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+              <CircleCheck className="h-4 w-4 shrink-0 text-emerald-500" />
             ) : (
-              <Circle className="h-3.5 w-3.5 shrink-0 text-subtle" />
+              <Circle className="h-4 w-4 shrink-0 text-subtle" />
             )}
             <span
-              className={cn(
-                "text-xs",
-                item.done ? "text-ink" : "text-subtle",
-              )}
+              className={cn("text-sm", item.done ? "text-ink" : "text-subtle")}
             >
               {item.label}
             </span>
@@ -114,8 +142,9 @@ export function ReadinessChecklist({
       </ul>
 
       {!allDone && (
-        <p className="text-[10px] text-subtle">
-          Estos elementos son recomendados. Puedes finalizar la consulta en cualquier momento.
+        <p className="mt-3 text-xs leading-relaxed text-subtle">
+          Estos elementos son recomendados. Puedes finalizar la consulta en
+          cualquier momento.
         </p>
       )}
     </div>

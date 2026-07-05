@@ -156,20 +156,22 @@ export function ExamFindingsSection({
   const hasAny = hasExtraoral || hasIntraoral;
 
   return (
-    <div className="rounded-xl border border-hairline overflow-hidden">
+    <div className="overflow-hidden rounded-2xl border border-hairline bg-surface shadow-sm">
       {/* Collapsible header */}
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left bg-elevated hover:bg-hover transition-colors"
+        className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left transition-colors hover:bg-hover"
         aria-expanded={open}
       >
-        <Activity className="h-4 w-4 shrink-0 text-subtle" />
-        <span className="flex-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand">
+          <Activity className="h-4 w-4" />
+        </span>
+        <span className="flex-1 text-sm font-semibold text-ink">
           Hallazgos del examen
         </span>
         {hasAny && (
-          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
             Con datos
           </span>
         )}
@@ -187,7 +189,7 @@ export function ExamFindingsSection({
           <SubSection title="Examen extraoral" defaultOpen={hasExtraoral}>
             {EXTRAORAL_FIELDS.map((f) => (
               <div key={f.key}>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-subtle block mb-1">
+                <label className="mb-1 block text-xs font-medium text-subtle">
                   {f.label}
                 </label>
                 <TextArea
@@ -206,7 +208,7 @@ export function ExamFindingsSection({
           <SubSection title="Examen intraoral" defaultOpen={hasIntraoral}>
             {INTRAORAL_FIELDS.map((f) => (
               <div key={f.key}>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-subtle block mb-1">
+                <label className="mb-1 block text-xs font-medium text-subtle">
                   {f.label}
                 </label>
                 <TextArea

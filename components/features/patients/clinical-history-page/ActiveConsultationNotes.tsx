@@ -1,5 +1,12 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
+import {
+  ClipboardList,
+  Activity,
+  Stethoscope,
+  NotebookPen,
+} from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import TextArea from "@/components/ui/atomic/forms/textarea";
 import { Input } from "@/components/ui/atomic/forms";
@@ -17,6 +24,59 @@ interface ActiveConsultationNotesProps {
   patientId: string;
   activeAppointmentId: string;
   canEdit?: boolean;
+}
+
+/** Tarjeta de sección con header iconográfico consistente (lenguaje único). */
+function Section({
+  icon: Icon,
+  title,
+  meta,
+  children,
+  className,
+  bodyClassName,
+}: {
+  icon: LucideIcon;
+  title: string;
+  meta?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        "rounded-2xl border border-hairline bg-surface p-4 shadow-sm",
+        className,
+      )}
+    >
+      <div className="mb-3.5 flex items-center gap-2.5">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand">
+          <Icon className="h-4 w-4" />
+        </span>
+        <h3 className="text-sm font-semibold text-ink">{title}</h3>
+        {meta && <div className="ml-auto flex items-center gap-2">{meta}</div>}
+      </div>
+      <div className={bodyClassName}>{children}</div>
+    </section>
+  );
+}
+
+/** Etiqueta de campo legible y consistente. */
+function FieldLabel({
+  children,
+  htmlFor,
+}: {
+  children: React.ReactNode;
+  htmlFor?: string;
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="mb-1.5 block text-xs font-medium text-subtle"
+    >
+      {children}
+    </label>
+  );
 }
 
 export function ActiveConsultationNotes({
@@ -52,9 +112,9 @@ export function ActiveConsultationNotes({
 
   const autosaveLabel =
     autosaveStatus === "saving"
-      ? "Guardando..."
+      ? "Guardando…"
       : autosaveStatus === "saved"
-        ? "Guardado ✓"
+        ? "Guardado"
         : autosaveStatus === "error"
           ? "Error al guardar"
           : null;
@@ -68,52 +128,46 @@ export function ActiveConsultationNotes({
   const hasNotes = Boolean(visitRecord?.clinicalNotes?.trim());
 
   return (
-    <div className="flex flex-col gap-4 overflow-y-auto pr-2">
-
-      {/* ── Sección: Datos de esta consulta ──────────────────────────────── */}
-      <section className="bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900 shadow-sm p-5">
-        <div className="flex items-center justify-between gap-2 mb-4">
-          <div className="flex items-center gap-2">
-            <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              Datos de esta consulta
-            </h3>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 text-[10px] font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
+    <div className="h-full min-h-0 space-y-4 overflow-y-auto pr-2 pb-4">
+      {/* ── Datos de esta consulta ─────────────────────────────────────── */}
+      <Section
+        icon={ClipboardList}
+        title="Datos de esta consulta"
+        meta={
+          <>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
               En curso
             </span>
-          </div>
-
-          {/* Indicador de autoguardado — aria-live para lectores de pantalla */}
-          <div
-            aria-live="polite"
-            aria-atomic="true"
-            className="min-h-[14px] flex items-center"
-          >
-            {autosaveLabel && (
-              <span
-                className={cn(
-                  "text-[10px] transition-colors",
-                  autosaveStatus === "saving" &&
-                    "text-muted-foreground animate-pulse",
-                  autosaveStatus === "saved" &&
-                    "text-emerald-600 dark:text-emerald-400",
-                  autosaveStatus === "error" && "text-destructive",
-                )}
-              >
-                {autosaveLabel}
-              </span>
-            )}
-          </div>
-        </div>
-
+            <span
+              aria-live="polite"
+              aria-atomic="true"
+              className="flex min-h-[16px] items-center"
+            >
+              {autosaveLabel && (
+                <span
+                  className={cn(
+                    "text-[11px] tabular-nums transition-colors",
+                    autosaveStatus === "saving" && "animate-pulse text-subtle",
+                    autosaveStatus === "saved" &&
+                      "text-emerald-600 dark:text-emerald-400",
+                    autosaveStatus === "error" && "text-rose-500",
+                  )}
+                >
+                  {autosaveStatus === "saved" ? "Guardado ✓" : autosaveLabel}
+                </span>
+              )}
+            </span>
+          </>
+        }
+      >
         {/* Motivo de consulta */}
         <div className="mb-4">
-          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
-            Motivo de consulta
-          </label>
+          <FieldLabel htmlFor="chief-complaint">Motivo de consulta</FieldLabel>
           <TextArea
+            id="chief-complaint"
             rows={2}
-            placeholder="Describe el motivo de la consulta..."
+            placeholder="Describe el motivo de la consulta…"
             value={chiefComplaint}
             onChange={(e) => handleChiefComplaintChange(e.target.value)}
             onBlur={handleChiefComplaintBlur}
@@ -122,17 +176,16 @@ export function ActiveConsultationNotes({
         </div>
 
         {/* Dolor actual */}
-        <div>
-          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-2">
-            Dolor actual
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            {/* Ubicación textual */}
+        <div className="rounded-xl border border-hairline bg-elevated p-3">
+          <div className="mb-2.5 flex items-center gap-1.5">
+            <Activity className="h-3.5 w-3.5 text-subtle" />
+            <span className="text-xs font-semibold text-ink">Dolor actual</span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-3">
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">
-                Ubicación
-              </label>
+              <FieldLabel htmlFor="pain-location">Ubicación</FieldLabel>
               <Input
+                id="pain-location"
                 placeholder="Ej. molar inferior derecho"
                 value={pain.location}
                 onChange={(e) => handlePainLocationChange(e.target.value)}
@@ -140,12 +193,10 @@ export function ActiveConsultationNotes({
               />
             </div>
 
-            {/* Duración */}
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">
-                Duración
-              </label>
+              <FieldLabel htmlFor="pain-duration">Duración</FieldLabel>
               <Input
+                id="pain-duration"
                 placeholder="Ej. 2 días"
                 value={pain.duration}
                 onChange={(e) => handlePainDurationChange(e.target.value)}
@@ -153,41 +204,35 @@ export function ActiveConsultationNotes({
               />
             </div>
 
-            {/* Intensidad */}
             <div>
-              <label
-                htmlFor="pain-intensity"
-                className="text-xs text-muted-foreground mb-1 block"
-              >
-                Intensidad ({pain.intensity}/10)
-              </label>
-              <Slider
-                id="pain-intensity"
-                min={0}
-                max={10}
-                step={1}
-                value={[pain.intensity]}
-                onValueChange={(vals) =>
-                  handlePainIntensityChange(vals[0] ?? 0)
-                }
-                disabled={!canEdit}
-                aria-label={`Intensidad del dolor: ${pain.intensity} de 10`}
-                aria-valuemin={0}
-                aria-valuemax={10}
-                aria-valuenow={pain.intensity}
-              />
+              <FieldLabel htmlFor="pain-intensity">
+                Intensidad{" "}
+                <span className="font-semibold text-ink tabular-nums">
+                  {pain.intensity}/10
+                </span>
+              </FieldLabel>
+              <div className="flex h-9 items-center">
+                <Slider
+                  id="pain-intensity"
+                  min={0}
+                  max={10}
+                  step={1}
+                  value={[pain.intensity]}
+                  onValueChange={(vals) => handlePainIntensityChange(vals[0] ?? 0)}
+                  disabled={!canEdit}
+                  aria-label={`Intensidad del dolor: ${pain.intensity} de 10`}
+                  aria-valuemin={0}
+                  aria-valuemax={10}
+                  aria-valuenow={pain.intensity}
+                />
+              </div>
             </div>
 
-            {/* Tipo */}
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">
-                Tipo
-              </label>
+              <FieldLabel>Tipo</FieldLabel>
               <Select
                 value={pain.type ?? ""}
-                onChange={(v) =>
-                  handlePainTypeChange(v === "" ? undefined : v)
-                }
+                onChange={(v) => handlePainTypeChange(v === "" ? undefined : v)}
                 options={painTypeSelectOptions}
                 placeholder="Tipo de dolor"
                 disabled={!canEdit}
@@ -195,11 +240,8 @@ export function ActiveConsultationNotes({
               />
             </div>
 
-            {/* Diente / cara anatómica (Fase D: dolor → diente FDI) */}
             <div className="col-span-2">
-              <label className="text-xs text-muted-foreground mb-1 block">
-                Diente afectado (referencia FDI)
-              </label>
+              <FieldLabel>Diente afectado (referencia FDI)</FieldLabel>
               <FdiToothPicker
                 value={pain.toothRef}
                 onChange={handlePainToothRefChange}
@@ -207,7 +249,7 @@ export function ActiveConsultationNotes({
                 placeholder="Seleccionar diente / cara…"
               />
               {pain.toothRef && (
-                <p className="mt-1 text-[10px] text-subtle">
+                <p className="mt-1.5 text-[11px] text-subtle">
                   Diente {pain.toothRef.fdi}
                   {pain.toothRef.surface ? ` — ${pain.toothRef.surface}` : ""}
                 </p>
@@ -215,13 +257,10 @@ export function ActiveConsultationNotes({
             </div>
           </div>
         </div>
-      </section>
+      </Section>
 
-      {/* ── Sección: Diagnóstico ──────────────────────────────────────────── */}
-      <section className="rounded-xl border border-hairline bg-surface shadow-sm p-4">
-        <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">
-          Diagnóstico CIE-10
-        </h3>
+      {/* ── Diagnóstico CIE-10 ─────────────────────────────────────────── */}
+      <Section icon={Stethoscope} title="Diagnóstico CIE-10">
         <Cie10DiagnosisPicker
           diagnoses={diagnoses}
           icdasSuggestions={icdasSuggestions}
@@ -230,9 +269,9 @@ export function ActiveConsultationNotes({
           onToggleStatus={handleToggleDiagnosisStatus}
           disabled={!canEdit}
         />
-      </section>
+      </Section>
 
-      {/* ── Sección: Hallazgos del examen ────────────────────────────────── */}
+      {/* ── Hallazgos del examen ───────────────────────────────────────── */}
       <ExamFindingsSection
         findings={localExamFindings}
         onUpdateExtraoral={handleUpdateExtraoral}
@@ -240,27 +279,20 @@ export function ActiveConsultationNotes({
         disabled={!canEdit}
       />
 
-      {/* ── Sección: Notas clínicas ──────────────────────────────────────── */}
-      <section className="bg-white dark:bg-surface rounded-xl border border-green-200 dark:border-green-900 shadow-sm p-6 flex-1 flex flex-col min-h-75">
-        <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-            Notas de esta consulta
-          </h3>
-        </div>
-        <div className="flex-1">
-          <ClinicalNotesEditor
-            patientId={patientId}
-            initialContent={visitRecord?.clinicalNotes}
-            updatedAt={visitRecord?.clinicalNotesUpdatedAt}
-            updatedBy={visitRecord?.clinicalNotesUpdatedBy}
-            readOnly={!canEdit}
-            onSave={handleSaveNotes}
-            saving={visitSaving}
-          />
-        </div>
-      </section>
+      {/* ── Notas de esta consulta ─────────────────────────────────────── */}
+      <Section icon={NotebookPen} title="Notas de esta consulta">
+        <ClinicalNotesEditor
+          patientId={patientId}
+          initialContent={visitRecord?.clinicalNotes}
+          updatedAt={visitRecord?.clinicalNotesUpdatedAt}
+          updatedBy={visitRecord?.clinicalNotesUpdatedBy}
+          readOnly={!canEdit}
+          onSave={handleSaveNotes}
+          saving={visitSaving}
+        />
+      </Section>
 
-      {/* ── Lista para finalizar (visual hint, no bloqueante) ──────────── */}
+      {/* ── Lista para finalizar (informativa, no bloqueante) ──────────── */}
       <ReadinessChecklist
         diagnoses={diagnoses}
         examFindings={localExamFindings}

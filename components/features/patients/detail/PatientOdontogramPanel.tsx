@@ -24,6 +24,8 @@ interface PatientOdontogramPanelProps {
   onClearHistoric?: () => void;
   /** All patient appointments — used to build the history timeline */
   appointments?: Appointment[];
+  /** True mientras la lista de citas aún carga (evita fail-closed prematuro). */
+  appointmentsLoading?: boolean;
   /** Called when user selects a historic visit from the timeline */
   onSelectHistoricVisit?: (appointmentId: string) => void;
   /** CTA del overlay solo-lectura cuando no hay consulta activa. */
@@ -39,6 +41,7 @@ export function PatientOdontogramPanel({
   historicAppointmentId,
   onClearHistoric,
   appointments,
+  appointmentsLoading,
   onSelectHistoricVisit,
   onStartConsultation,
   finalizeOpen,
@@ -104,13 +107,25 @@ export function PatientOdontogramPanel({
 
   const isHistoricMode = !!historicAppointmentId;
 
-  // Una cita finalizada (completed) NO debe ser editable: red de seguridad
-  // determinista frente a la redirección asíncrona de la página.
+  // El odontograma es editable durante una visita ACTIVA (in_progress/scheduled)
+  // y solo-lectura si la visita EXISTE en la lista con status terminal
+  // (completed/cancelled/no-show). Whitelist (no blacklist "=== completed") para
+  // alinear la editabilidad con la MISMA regla que decide si la consulta está
+  // activa. Fail-open mientras la lista aún carga (activeAppointment undefined):
+  // no bloquear la edición de una consulta recién abierta.
   const activeAppointment = useMemo(
     () => appointments?.find((a) => a.id === activeAppointmentId),
     [appointments, activeAppointmentId],
   );
-  const isCompleted = activeAppointment?.status === "completed";
+  const isActiveVisitStatus =
+    activeAppointment?.status === "in_progress" ||
+    activeAppointment?.status === "scheduled";
+  // Fail-CLOSED una vez cargada la lista: editable SOLO con la cita confirmada
+  // activa. Si tras cargar no está en la lista (el backend excluye canceladas, o
+  // falló la carga) NO se habilita edición — una visita no-activa queda bloqueada
+  // (integridad clínico-legal). Durante la carga (activeAppointment aún indefinido
+  // y appointmentsLoading) NO se bloquea, para no flashear "solo lectura".
+  const isNonEditableVisit = !appointmentsLoading && !isActiveVisitStatus;
 
   // El odontograma es documentación clínica: su edición se gatea con permiso
   // clínico (clinical_history), no con patients:EDIT.
@@ -122,7 +137,10 @@ export function PatientOdontogramPanel({
   // US-03: odontogram is read-only when no active consultation, historic mode,
   // a finalized visit, or insufficient clinical permission.
   const readOnly =
-    isHistoricMode || !activeAppointmentId || isCompleted || !canEditClinical;
+    isHistoricMode ||
+    !activeAppointmentId ||
+    isNonEditableVisit ||
+    !canEditClinical;
 
   // Motivo del modo solo-lectura → feedback coherente en el overlay.
   // Precedencia: sin permiso (no accionable) > finalizada > sin consulta.
@@ -131,7 +149,7 @@ export function PatientOdontogramPanel({
       ? null
       : !canEditClinical
         ? "no-permission"
-        : isCompleted
+        : isNonEditableVisit
           ? "completed"
           : !activeAppointmentId
             ? "no-consultation"
