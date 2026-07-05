@@ -281,52 +281,46 @@ function classifyView(zones, viewBounds, fdi, viewCategory) {
       else result[e.z] = "oclusal";
     }
   } else if (viewCategory === "vestibular") {
-    // Vestibular (arte en orientación real): la zona central en el EXTREMO
-    // (maxilar=abajo/máx cy, mandibular=arriba/mín cy) es el filo incisal/oclusal.
-    // El resto es cuerpo; si hay ≥2 zonas de cuerpo (anteriores), la del extremo
-    // CERVICAL (maxilar=mín cy, mandibular=máx cy) es 'cervical' (tercio cervical,
-    // Clase V), el resto 'facial'. Con 1 sola zona de cuerpo (posteriores) el
-    // cervical va plegado en la cara facial → no es separable sin arte nuevo.
+    // Vestibular: SOLO en ANTERIORES la zona del EXTREMO (maxilar=abajo/máx cy,
+    // mandibular=arriba/mín cy) es el filo incisal ('oclusal'); en posteriores no
+    // hay filo (la mesa oclusal va en la vista O).
+    //
+    // NORMA DE ETIQUETADO (confirmada por el dueño sobre el arte real del 28,
+    // mirando cada zona coloreada): la BANDA de cuerpo MÁS GRANDE es el tercio
+    // 'cervicalVestibular' (Clase V bucal — la zona dominante hacia el margen
+    // gingival en este arte); la zona de cuerpo MENOR es la cara bucal marcable
+    // ('facial' = Vestibular). Con un solo cuerpo (26/27) esa zona es 'facial'
+    // (sin cervical separable).
     let edge = null;
     for (const e of centers) {
       if (!edge || (maxillary ? e.cy > edge.cy : e.cy < edge.cy)) edge = e;
     }
-    const edgeIsReal = edge && (maxillary ? edge.cy > 0.6 : edge.cy < 0.4);
+    const edgeIsReal =
+      anterior && edge && (maxillary ? edge.cy > 0.6 : edge.cy < 0.4);
     const body = centers.filter((e) => !(edgeIsReal && e === edge));
     let cervical = null;
     if (body.length >= 2) {
       for (const e of body) {
-        if (!cervical || (maxillary ? e.cy < cervical.cy : e.cy > cervical.cy)) {
-          cervical = e;
-        }
+        if (!cervical || e.area > cervical.area) cervical = e;
       }
     }
     for (const e of centers) {
       if (edgeIsReal && e === edge) result[e.z] = "oclusal";
-      // Cervical de la cara BUCAL (Clase V vestibular) — independiente de la
-      // cervical lingual/palatina de la vista lateral.
       else if (e === cervical) result[e.z] = "cervicalVestibular";
-      // Anteriores: el cuerpo restante es la cara facial/labial. Posteriores: el
-      // arte tiene UNA sola zona de cuerpo bucal (cervical plegado con el cuerpo);
-      // por decisión del dueño se marca como cervical bucal.
-      else result[e.z] = anterior ? "facial" : "cervicalVestibular";
+      else result[e.z] = "facial";
     }
   } else {
     // Lateral (Palatino/Lingual): el arte se dibuja invertido respecto a su
-    // vestibular (por eso el adapter aplica un volteo vertical al render), así
-    // que el heurístico de cy no es fiable. Distinguimos las dos zonas centrales
-    // por ÁREA: la GRANDE es el tercio 'cervical' (todos los dientes); la PEQUEÑA
-    // es el filo incisal ('oclusal') en anteriores o el cuerpo palatino/lingual
-    // ('lingual') en posteriores. Con una sola central se conserva 'lingual'
-    // (nunca inventar un cervical donde el arte es degenerado).
+    // vestibular (el adapter aplica un volteo vertical al render). Misma norma:
+    // la BANDA central MÁS GRANDE es el tercio 'cervicalLingual'; la otra central
+    // es la cara palatina/lingual ('lingual') en posteriores o el filo incisal
+    // ('oclusal') en anteriores. Con una sola central se conserva 'lingual'.
     if (centers.length >= 2) {
-      let big = centers[0];
-      for (const e of centers) if (e.area > big.area) big = e;
+      let cervical = centers[0];
+      for (const e of centers) if (e.area > cervical.area) cervical = e;
       for (const e of centers) {
-        // La GRANDE = cervical de la cara LINGUAL/PALATINA (Clase V lingual),
-        // independiente de la cervical bucal de la vista vestibular.
         result[e.z] =
-          e === big ? "cervicalLingual" : anterior ? "oclusal" : "lingual";
+          e === cervical ? "cervicalLingual" : anterior ? "oclusal" : "lingual";
       }
     } else {
       for (const e of centers) result[e.z] = "lingual";
