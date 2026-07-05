@@ -321,7 +321,9 @@ export function PlanTab({
   };
 
   const hasCoherenceIssue =
-    (tooth.globalStatus === "absent" || tooth.globalStatus === "implant") &&
+    (tooth.globalStatus === "absent_pending" ||
+      tooth.globalStatus === "absent_done" ||
+      tooth.globalStatus === "implant") &&
     plans.some((p) => p.category === "restaurador");
 
   // Avisos de coherencia diagnóstico↔plan según ICCMS/ICDAS (no bloqueantes).

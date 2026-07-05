@@ -77,7 +77,8 @@ export function SurfacesTab({
   const anterior = isAnterior(tooth.number);
   const isDisabled =
     readOnly ||
-    tooth.globalStatus === "absent" ||
+    tooth.globalStatus === "absent_pending" ||
+    tooth.globalStatus === "absent_done" ||
     tooth.globalStatus === "implant";
 
   // Caras que este diente REALMENTE tiene geometría para marcar (unión de las 3
@@ -351,7 +352,7 @@ export function SurfacesTab({
           <p className="text-sm text-amber-600 dark:text-amber-300">
             ⚠️ Las superficies están deshabilitadas porque el diente está
             marcado como{" "}
-            {tooth.globalStatus === "absent" ? "Ausente" : "Implante"}.
+            {tooth.globalStatus === "implant" ? "Implante" : "Ausente"}.
           </p>
         </Card>
       )}

@@ -70,9 +70,9 @@ function _ToothSVGMultiView({
   }, [toothNumber, getSurfaceColor, clinicalEvents]);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-  const toothSymbol = useMemo(() => {
+  const toothSymbolInfo = useMemo(() => {
     if (!isClient) return null;
-    return ToothSymbolService.getToothSymbol(toothNumber, clinicalEvents);
+    return ToothSymbolService.getToothSymbolInfo(toothNumber, clinicalEvents);
   }, [toothNumber, clinicalEvents, isClient]);
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -102,12 +102,17 @@ function _ToothSVGMultiView({
       viewPaths={viewPaths}
       surfaceColors={surfaceColors}
       toothLevelColor={toothLevelColor}
-      symbol={toothSymbol}
+      symbol={toothSymbolInfo?.text ?? null}
+      symbolKey={toothSymbolInfo?.symbolKey ?? null}
+      symbolColor={toothSymbolInfo?.symbolColor ?? null}
       symbolImage={toothSymbolImage}
       onSurfaceClick={onSurfaceClick}
     />
   );
 }
+
+/** Neutro por defecto para símbolos sin symbolColor declarado (ink). */
+const DEFAULT_SYMBOL_COLOR = "#1F2937";
 
 /* ---------- Componente de renderizado para las piezas diseñadas ---------- */
 function DesignedToothView({
@@ -115,6 +120,8 @@ function DesignedToothView({
   surfaceColors,
   toothLevelColor,
   symbol,
+  symbolKey,
+  symbolColor,
   symbolImage,
   onSurfaceClick,
 }: {
@@ -122,11 +129,20 @@ function DesignedToothView({
   surfaceColors: Record<ToothSurface, string>;
   toothLevelColor?: string | null;
   symbol: string | null;
+  symbolKey?: string | null;
+  symbolColor?: string | null;
   symbolImage?: string | null;
   onSurfaceClick: (surface: ToothSurface) => void;
 }) {
-  const { viewBox, outline, surfaces, roots, highlights, symbolAnchor, transform } =
-    viewPaths;
+  const {
+    viewBox,
+    outline,
+    surfaces,
+    roots,
+    highlights,
+    symbolAnchor,
+    transform,
+  } = viewPaths;
 
   // Posición del símbolo: centro de la CORONA (symbolAnchor), no del viewBox
   // completo — así no cae sobre la raíz en la vista vestibular.
@@ -137,9 +153,13 @@ function DesignedToothView({
   // (transform). El símbolo se dibuja FUERA del grupo volteado para no espejar
   // el glifo, así que su ancla se refleja a mano sobre el eje del viewBox para
   // que caiga en la corona ya volteada. En frontal/oclusal (sin transform) usa cy.
-  const symbolY = transform ? 2 * vbParts[1] + vbParts[3] - cy : cy;
+  const reflectY = (y: number) =>
+    transform ? 2 * vbParts[1] + vbParts[3] - y : y;
+  const symbolY = reflectY(cy);
   // Scale font size relative to viewBox width
   const fontSize = Math.round(vbParts[2] * 0.22);
+  // Color del símbolo (canal independiente del relleno). Neutro por defecto.
+  const symColor = symbolColor || DEFAULT_SYMBOL_COLOR;
 
   // Si la imagen del símbolo falla (URL rota/404), se cae al texto/heurística.
   const [imgError, setImgError] = useState(false);
@@ -247,25 +267,108 @@ function DesignedToothView({
         />
       )}
 
-      {/* Símbolo profesional (texto: letra de tratamiento o texto del servicio).
-          Halo blanco para legibilidad sobre cualquier vista/relleno. */}
-      {!showImage && symbol && (
-        <text
-          x={cx}
-          y={symbolY + fontSize * 0.35}
-          fontSize={fontSize}
-          fontWeight="700"
-          textAnchor="middle"
-          fill="#1F2937"
-          stroke="#FFFFFF"
-          strokeWidth="0.9"
-          paintOrder="stroke"
-          pointerEvents="none"
-          style={{ userSelect: "none" }}
-        >
-          {symbol}
-        </text>
+      {/* CRUZ de ausencia (symbolKey 'cross'): aspa vectorial centrada en la
+          corona, color symbolColor (azul pendiente / rojo hecho). Doble trazo:
+          halo blanco debajo + aspa de color encima, para legibilidad sobre
+          cualquier relleno. NO texto. */}
+      {!showImage && symbolKey === "cross" && (
+        (() => {
+          const arm = fontSize * 0.55;
+          const sw = Math.max(1.2, fontSize * 0.16);
+          const x1 = cx - arm;
+          const x2 = cx + arm;
+          const y1 = symbolY - arm;
+          const y2 = symbolY + arm;
+          return (
+            <g pointerEvents="none">
+              <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#FFFFFF" strokeWidth={sw + 1.4} strokeLinecap="round" />
+              <line x1={x1} y1={y2} x2={x2} y2={y1} stroke="#FFFFFF" strokeWidth={sw + 1.4} strokeLinecap="round" />
+              <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={symColor} strokeWidth={sw} strokeLinecap="round" />
+              <line x1={x1} y1={y2} x2={x2} y2={y1} stroke={symColor} strokeWidth={sw} strokeLinecap="round" />
+            </g>
+          );
+        })()
       )}
+
+      {/* ANILLO de corona (symbolKey 'crown_ring'): círculo/óvalo que RODEA la
+          pieza (convención odontológica), sin relleno. NO traza la silueta del
+          diente: es un aro centrado en la corona, color del símbolo (rojo = por
+          hacer / azul = realizada) con halo blanco debajo. La elipse es simétrica
+          en Y → no necesita el volteo del grupo lateral (symbolY ya está
+          reflejado). */}
+      {!showImage && symbolKey === "crown_ring" && (
+        (() => {
+          // Radios en unidades de ANCHO de viewBox (no alto: en vestibular el
+          // alto incluye la raíz y estiraría el aro). Ligeramente ovalado y con
+          // margen para no recortarse contra los bordes en la vista oclusal
+          // (viewBox casi cuadrado).
+          const rx = vbParts[2] * 0.4;
+          const ry = vbParts[2] * 0.47;
+          const sw = Math.max(1.6, fontSize * 0.16);
+          return (
+            <g pointerEvents="none">
+              <ellipse
+                cx={cx}
+                cy={symbolY}
+                rx={rx}
+                ry={ry}
+                fill="none"
+                stroke="#FFFFFF"
+                strokeWidth={sw + 1.4}
+              />
+              <ellipse
+                cx={cx}
+                cy={symbolY}
+                rx={rx}
+                ry={ry}
+                fill="none"
+                stroke={symColor}
+                strokeWidth={sw}
+              />
+            </g>
+          );
+        })()
+      )}
+
+      {/* Símbolo profesional (texto: "ENDO", letra de tratamiento o texto del
+          servicio). Halo blanco para legibilidad. Multi-carácter (p.ej. "ENDO"):
+          se mantiene el tipo GRANDE y se CONDENSA horizontalmente con textLength
+          para que quepa en la corona — encoger el fontSize lo dejaba diminuto y
+          borroso. El halo escala con el tamaño del texto para no emborronarlo. */}
+      {!showImage &&
+        symbolKey !== "cross" &&
+        symbolKey !== "crown_ring" &&
+        symbol && (
+          (() => {
+            const isMulti = symbol.length > 1;
+            const textFont = isMulti ? fontSize * 0.64 : fontSize;
+            const haloSw = Math.max(0.6, textFont * 0.12);
+            const multiProps = isMulti
+              ? {
+                  textLength: fontSize * 2.5,
+                  lengthAdjust: "spacingAndGlyphs" as const,
+                }
+              : {};
+            return (
+              <text
+                x={cx}
+                y={symbolY + textFont * 0.35}
+                fontSize={textFont}
+                fontWeight="700"
+                textAnchor="middle"
+                fill={symColor}
+                stroke="#FFFFFF"
+                strokeWidth={haloSw}
+                paintOrder="stroke"
+                {...multiProps}
+                pointerEvents="none"
+                style={{ userSelect: "none" }}
+              >
+                {symbol}
+              </text>
+            );
+          })()
+        )}
     </svg>
   );
 }

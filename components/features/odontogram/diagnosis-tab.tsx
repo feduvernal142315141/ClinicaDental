@@ -342,11 +342,14 @@ export function DiagnosisTab({
   };
 
   const hasCoherenceIssue =
-    (tooth.globalStatus === "absent" || tooth.globalStatus === "implant") &&
+    (tooth.globalStatus === "absent_pending" ||
+      tooth.globalStatus === "absent_done" ||
+      tooth.globalStatus === "implant") &&
     Array.from(surfaceDiagnoses.values()).some((d) => d.icdasScore > 0);
 
   const hasMixedState =
-    tooth.globalStatus === "crown" &&
+    (tooth.globalStatus === "crown_pending" ||
+      tooth.globalStatus === "crown_done") &&
     Array.from(surfaceDiagnoses.values()).some((d) => d.icdasScore >= 3);
 
   if (selectedSurfaces.length === 0) {

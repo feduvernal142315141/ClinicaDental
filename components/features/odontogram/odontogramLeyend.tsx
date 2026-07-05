@@ -28,6 +28,19 @@ export function OdontogramLegend() {
                   style={{ backgroundColor: item.gradient[1] }}
                 />
               </div>
+            ) : 'symbol' in item ? (
+              // Mostrar símbolo (cruz de ausencia, ENDO, círculo de corona)
+              <div className="w-4 h-4 rounded border border-hairline shadow-sm flex items-center justify-center bg-surface">
+                <span
+                  className="font-bold leading-none"
+                  style={{
+                    color: item.symbolColor,
+                    fontSize: item.symbol.length > 1 ? "6px" : "11px",
+                  }}
+                >
+                  {item.symbol}
+                </span>
+              </div>
             ) : (
               // Mostrar color sólido
               <div

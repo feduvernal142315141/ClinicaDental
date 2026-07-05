@@ -6,10 +6,121 @@ import {
 } from "../constants/visual-priority.constants";
 
 /**
+ * Información de símbolo a nivel diente que el render necesita para decidir QUÉ
+ * dibujar y de qué color:
+ * - text: string a pintar como <text> ("ENDO", letra de tratamiento o texto del
+ *   servicio). Vacío/null cuando el símbolo es una FORMA vectorial (cruz/círculo).
+ * - symbolKey: clave declarativa del visualState ('cross' | 'crown_ring' | 'endo'
+ *   | 'extraction' | 'implant' | ...). El render conmuta sobre ella para elegir
+ *   entre forma vectorial y texto. null cuando el símbolo viene de la heurística.
+ * - symbolColor: color del símbolo (canal independiente del relleno). null → el
+ *   render usa su neutro por defecto.
+ */
+export interface ToothSymbolInfo {
+  text: string | null;
+  symbolKey: string | null;
+  symbolColor: string | null;
+}
+
+/**
+ * Texto asociado a cada symbolKey declarativo. Para 'cross'/'crown_ring' el
+ * render dibuja una FORMA (no texto) → cadena vacía. 'endo' se rotula "ENDO".
+ * El resto cae al mapa legacy de caracteres (X/I/E/C…).
+ */
+const SYMBOL_KEY_TO_TEXT: Record<string, string> = {
+  cross: "",
+  crown_ring: "",
+  endo: "ENDO",
+};
+
+/**
  * ToothSymbolService
  * Determina qué símbolos/letras mostrar en un diente para indicar tipo de tratamiento
  */
 export class ToothSymbolService {
+  /**
+   * Variante rica de getToothSymbol: además del texto expone el symbolKey y el
+   * symbolColor del visualState ganador, para que el render sepa si debe dibujar
+   * una forma vectorial (cruz de ausencia, círculo de corona) o un texto, y con
+   * qué color. Respeta la MISMA precedencia que getToothSymbol:
+   * serviceSymbolText → visualState.symbolKey → heurística por categoría.
+   */
+  static getToothSymbolInfo(
+    toothNumber: number,
+    allEvents: ClinicalEvent[],
+  ): ToothSymbolInfo {
+    const empty: ToothSymbolInfo = {
+      text: null,
+      symbolKey: null,
+      symbolColor: null,
+    };
+    const toothEvents = allEvents.filter((e) => e.toothNumber === toothNumber);
+    if (toothEvents.length === 0) return empty;
+
+    // 1. Texto personalizado por servicio (misma regla que getToothSymbol): no
+    //    tapa estados críticos y solo para procedimientos realizados.
+    const hasCriticalState = toothEvents.some(
+      (e) => e.type === "ausente" || e.type === "implante",
+    );
+    if (!hasCriticalState) {
+      const serviceText = ToothSymbolService.pickByPriority(
+        toothEvents.filter(
+          (e) =>
+            !!e.serviceSymbolText?.trim() &&
+            e.status !== "canceled" &&
+            (e.type === "performed" || e.status === "done"),
+        ),
+      )?.serviceSymbolText?.trim();
+      if (serviceText) {
+        return { text: serviceText, symbolKey: null, symbolColor: null };
+      }
+    }
+
+    // 2. Símbolo declarativo del visualState (fuente del nuevo modelo a nivel
+    //    diente: cross/crown_ring/endo/extraction/implant…). No se filtra por
+    //    tener carácter: 'cross'/'crown_ring' son formas sin texto.
+    const declarative = toothEvents
+      .filter((event) => event.visualState?.symbolKey)
+      .map((event) => ({
+        symbolKey: event.visualState!.symbolKey as string,
+        symbolColor: event.visualState?.symbolColor ?? null,
+        priority:
+          VISUAL_SYMBOL_PRIORITY[event.visualState?.priorityKey || "healthy"] ??
+          50,
+      }))
+      .sort((a, b) => a.priority - b.priority);
+
+    if (declarative.length > 0) {
+      const winner = declarative[0];
+      // Alias legacy→nuevo: datos viejos sin migrar (symbolKey 'endodontics'/
+      // 'crown'/'extraction') se resuelven al render nuevo (ENDO/círculo/cruz)
+      // en vez de las letras E/C/X del modelo anterior.
+      const LEGACY_SYMBOL_ALIAS: Record<string, string> = {
+        endodontics: "endo",
+        crown: "crown_ring",
+        extraction: "cross",
+      };
+      const symbolKey =
+        LEGACY_SYMBOL_ALIAS[winner.symbolKey] ?? winner.symbolKey;
+      const text =
+        SYMBOL_KEY_TO_TEXT[symbolKey] ??
+        VISUAL_SYMBOL_KEY_MAP[symbolKey] ??
+        null;
+      return {
+        text: text === "" ? null : text,
+        symbolKey,
+        symbolColor: winner.symbolColor,
+      };
+    }
+
+    // 3. Heurística por categoría (sin symbolKey): reutiliza getToothSymbol.
+    return {
+      text: ToothSymbolService.getToothSymbol(toothNumber, allEvents),
+      symbolKey: null,
+      symbolColor: null,
+    };
+  }
+
   /**
    * Obtiene el símbolo principal a mostrar en un diente
    * Retorna null si no hay símbolo que mostrar

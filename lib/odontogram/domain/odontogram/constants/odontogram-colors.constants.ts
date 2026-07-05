@@ -38,6 +38,7 @@ export const ODONTOGRAM_STATE_COLORS = {
   IMPLANT: "#9C27B0",        // Morado - Implante
   CROWN: "#7E57C2",          // Morado claro - Corona
   ENDODONTIC: "#D32F2F",     // Rojo oscuro - Tratamiento de conducto
+  EXTRACTION: "#D32F2F",     // Rojo - Extracción indicada (pieza rellena de rojo)
   
   // OBSERVACIÓN Y PREVENTIVO
   OBSERVATION: "#FFB74D",    // Amarillo - Bajo observación
@@ -48,6 +49,20 @@ export const ODONTOGRAM_STATE_COLORS = {
   
   // TRANSPARENTE (sin diagnóstico)
   NONE: "transparent",
+} as const
+
+/**
+ * COLORES DE SÍMBOLO (canal independiente del relleno de pieza).
+ * Los usa el render para pintar la cruz de ausencia, el texto "ENDO" y el
+ * círculo de corona. Solo 'extraction'/'implant' rellenan la pieza; el resto
+ * marca con símbolo usando estos colores.
+ */
+export const SYMBOL_COLORS = {
+  INK: "#1F2937",            // Neutro (ENDO)
+  ABSENT_PENDING: "#2563EB", // Azul (cruz ausencia pendiente)
+  ABSENT_DONE: "#D32F2F",    // Rojo (cruz ausencia hecha)
+  CROWN_PENDING: "#D32F2F",  // Rojo (anillo corona por hacer)
+  CROWN_DONE: "#2563EB",     // Azul (anillo corona realizada)
 } as const
 
 /**
@@ -187,34 +202,68 @@ export const ODONTOGRAM_LEGEND_ITEMS = [
     order: 4,
   },
   {
-    label: "Ausente",
-    color: ODONTOGRAM_STATE_COLORS.ABSENT,
+    label: "Extracción (pieza roja)",
+    color: ODONTOGRAM_STATE_COLORS.EXTRACTION,
     type: "state" as const,
     order: 5,
   },
   {
-    label: "Endodoncia",
-    color: ODONTOGRAM_STATE_COLORS.ENDODONTIC,
-    type: "state" as const,
+    label: "Ausente pend. (cruz)",
+    color: ODONTOGRAM_STATE_COLORS.NONE,
+    symbol: "✕",
+    symbolColor: SYMBOL_COLORS.ABSENT_PENDING,
+    type: "symbol" as const,
     order: 6,
+  },
+  {
+    label: "Ausente hecha (cruz)",
+    color: ODONTOGRAM_STATE_COLORS.NONE,
+    symbol: "✕",
+    symbolColor: SYMBOL_COLORS.ABSENT_DONE,
+    type: "symbol" as const,
+    order: 7,
+  },
+  {
+    label: "Endodoncia (ENDO)",
+    color: ODONTOGRAM_STATE_COLORS.NONE,
+    symbol: "ENDO",
+    symbolColor: SYMBOL_COLORS.INK,
+    type: "symbol" as const,
+    order: 8,
+  },
+  {
+    label: "Corona por hacer (anillo)",
+    color: ODONTOGRAM_STATE_COLORS.NONE,
+    symbol: "◯",
+    symbolColor: SYMBOL_COLORS.CROWN_PENDING,
+    type: "symbol" as const,
+    order: 9,
+  },
+  {
+    label: "Corona hecha (anillo)",
+    color: ODONTOGRAM_STATE_COLORS.NONE,
+    symbol: "◯",
+    symbolColor: SYMBOL_COLORS.CROWN_DONE,
+    type: "symbol" as const,
+    order: 10,
   },
   {
     label: "Implante",
     color: ODONTOGRAM_STATE_COLORS.IMPLANT,
     type: "state" as const,
-    order: 7,
+    order: 11,
   },
   {
     label: "Observación",
     color: ODONTOGRAM_STATE_COLORS.OBSERVATION,
     type: "state" as const,
-    order: 8,
+    order: 12,
   },
   {
     label: "Preventivo",
     color: ODONTOGRAM_STATE_COLORS.PREVENTIVE,
     type: "state" as const,
-    order: 9,
+    order: 13,
   },
 ] as const
 

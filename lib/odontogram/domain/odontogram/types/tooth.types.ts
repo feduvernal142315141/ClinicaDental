@@ -7,10 +7,13 @@ import type {
 
 export type ToothGlobalStatus =
   | "healthy"
-  | "absent"
-  | "implant"
+  | "extraction"
+  | "absent_pending"
+  | "absent_done"
   | "endodontic"
-  | "crown";
+  | "crown_pending"
+  | "crown_done"
+  | "implant";
 
 export type ToothCondition =
   | "healthy"

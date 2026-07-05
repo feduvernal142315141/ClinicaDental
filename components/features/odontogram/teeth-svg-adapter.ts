@@ -111,6 +111,7 @@ function adaptToothView(
     roots,
     highlights: [], // The designer's SVG doesn't have separate highlight paths
     symbolAnchor: viewData.symbolAnchor,
+    rootAnchor: viewData.rootAnchor ?? undefined,
   };
 }
 
@@ -198,6 +199,11 @@ export function getDesignedToothPaths(
     const contralateralData = getToothView(contralateral, "vestibular");
     if (contralateralData?.root && contralateralData.root.length > 0) {
       result.roots = contralateralData.root;
+      // Propaga también el ancla de raíz del contralateral si la propia no tenía
+      // (root y rootAnchor viajan juntos: sin raíz no hay ancla que anclar).
+      if (!result.rootAnchor && contralateralData.rootAnchor) {
+        result.rootAnchor = contralateralData.rootAnchor;
+      }
     }
   }
 

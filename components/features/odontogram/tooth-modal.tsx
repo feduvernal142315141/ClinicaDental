@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/odontogram/utils";
 import {
   OdontogramButton,
   OdontogramModal,
@@ -23,7 +23,6 @@ import type {
 import { createSurfaceRef } from "./types";
 import {
   GLOBAL_STATUS_LABELS,
-  GLOBAL_STATUS_COLORS,
   SURFACE_STATUS_COLORS,
 } from "./types";
 import {
@@ -51,9 +50,11 @@ import {
   Lock,
   CheckCircle,
   XCircle,
-  Minus,
   Crown,
   Wrench,
+  Scissors,
+  X,
+  Activity,
 } from "lucide-react";
 import { notify } from "@/lib/utils/notify";
 
@@ -593,7 +594,9 @@ export function ToothModal({
       .map(([, diagnosis]) => diagnosis);
 
     if (
-      (effectiveStatus === "absent" || effectiveStatus === "implant") &&
+      (effectiveStatus === "absent_pending" ||
+        effectiveStatus === "absent_done" ||
+        effectiveStatus === "implant") &&
       diagnosesToValidate.some(
         (diagnosis) =>
           diagnosis.icdasScore > 0 || diagnosis.nonCariousLesions.length > 0,
@@ -1330,13 +1333,56 @@ export function ToothModal({
     },
   ];
 
+  // --- Chips de estado: clases theme-aware (legibles en claro y oscuro).
+  // Tinte suave de fondo + borde + texto con variante dark; seleccionado = relleno.
+  const STATUS_CHIP_STYLES: Record<
+    ToothGlobalStatus,
+    { idle: string; active: string }
+  > = {
+    healthy: {
+      idle: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+      active: "border-emerald-500 bg-emerald-500 text-white",
+    },
+    extraction: {
+      idle: "border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400",
+      active: "border-rose-500 bg-rose-500 text-white",
+    },
+    absent_pending: {
+      idle: "border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+      active: "border-sky-500 bg-sky-500 text-white",
+    },
+    absent_done: {
+      idle: "border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400",
+      active: "border-rose-500 bg-rose-500 text-white",
+    },
+    endodontic: {
+      idle: "border-slate-400/50 bg-slate-500/10 text-slate-600 dark:text-slate-300",
+      active: "border-slate-500 bg-slate-600 text-white dark:bg-slate-500",
+    },
+    crown_pending: {
+      idle: "border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400",
+      active: "border-rose-500 bg-rose-500 text-white",
+    },
+    crown_done: {
+      idle: "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+      active: "border-blue-500 bg-blue-500 text-white",
+    },
+    implant: {
+      idle: "border-fuchsia-400/45 bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-300",
+      active: "border-fuchsia-500 bg-fuchsia-500 text-white",
+    },
+  };
+
   // --- Icons for global status ---
   const STATUS_ICONS: Record<ToothGlobalStatus, ReactNode> = {
     healthy: <CheckCircle className="w-3 h-3" />,
-    absent: <XCircle className="w-3 h-3" />,
+    extraction: <Scissors className="w-3 h-3" />,
+    absent_pending: <X className="w-3 h-3" />,
+    absent_done: <XCircle className="w-3 h-3" />,
+    endodontic: <Activity className="w-3 h-3" />,
+    crown_pending: <Crown className="w-3 h-3" />,
+    crown_done: <Crown className="w-3 h-3" />,
     implant: <Wrench className="w-3 h-3" />,
-    endodontic: <Minus className="w-3 h-3" />,
-    crown: <Crown className="w-3 h-3" />,
   };
 
   // --- Top banner ---
@@ -1469,29 +1515,25 @@ export function ToothModal({
             {(Object.keys(GLOBAL_STATUS_LABELS) as ToothGlobalStatus[]).map(
               (status) => {
                 const isSelected = tempGlobalStatus === status;
+                const chip = STATUS_CHIP_STYLES[status];
                 return (
-                  <Badge
+                  <button
                     key={status}
-                    variant={isSelected ? "default" : "outline"}
-                    className="cursor-pointer px-2.5 py-0.5 text-xs font-medium transition-all hover:scale-105 inline-flex items-center gap-1"
+                    type="button"
+                    disabled={readOnly}
+                    aria-pressed={isSelected}
                     onClick={() => !readOnly && handleStatusClick(status)}
-                    style={{
-                      ...(isSelected
-                        ? {
-                            backgroundColor: GLOBAL_STATUS_COLORS[status],
-                            borderColor: GLOBAL_STATUS_COLORS[status],
-                            color: "white",
-                          }
-                        : {
-                            borderColor: GLOBAL_STATUS_COLORS[status],
-                            color: GLOBAL_STATUS_COLORS[status],
-                          }),
-                      ...(readOnly ? { cursor: "default", opacity: 0.7 } : {}),
-                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-all",
+                      isSelected ? chip.active : chip.idle,
+                      readOnly
+                        ? "cursor-default opacity-70"
+                        : "cursor-pointer hover:scale-105",
+                    )}
                   >
                     {STATUS_ICONS[status]}
                     {GLOBAL_STATUS_LABELS[status]}
-                  </Badge>
+                  </button>
                 );
               },
             )}

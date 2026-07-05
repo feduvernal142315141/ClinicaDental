@@ -2,28 +2,41 @@
  * Tooth Global Status Constants
  */
 
-export type ToothGlobalStatus = 'healthy' | 'absent' | 'implant' | 'endodontic' | 'crown'
+export type ToothGlobalStatus =
+  | 'healthy'
+  | 'extraction'
+  | 'absent_pending'
+  | 'absent_done'
+  | 'endodontic'
+  | 'crown'
+  | 'implant'
 
 export const GLOBAL_STATUS_LABELS: Record<ToothGlobalStatus, string> = {
   healthy: 'Sano',
-  absent: 'Ausente',
-  implant: 'Implante',
-  endodontic: 'Endo',
+  extraction: 'Extracción',
+  absent_pending: 'Ausente (pend.)',
+  absent_done: 'Ausente (hecha)',
+  endodontic: 'Endodoncia',
   crown: 'Corona',
+  implant: 'Implante',
 }
 
 export const GLOBAL_STATUS_COLORS: Record<ToothGlobalStatus, string> = {
-  healthy: '#10B981',   // Verde
-  absent: '#6B7280',    // Gris
-  implant: '#8B5CF6',   // Púrpura
-  endodontic: '#EF4444', // Rojo
-  crown: '#F59E0B',     // Ámbar
+  healthy: '#10B981',        // Verde
+  extraction: '#DC2626',     // Rojo (pieza rellena de rojo)
+  absent_pending: '#2563EB', // Azul (cruz pendiente)
+  absent_done: '#DC2626',    // Rojo (cruz hecha)
+  endodontic: '#1F2937',     // Neutro/ink (texto ENDO)
+  crown: '#6B7280',          // Neutro (círculo)
+  implant: '#8B5CF6',        // Morado
 }
 
 export const GLOBAL_STATUS_DESCRIPTIONS: Record<ToothGlobalStatus, string> = {
   healthy: 'Diente sano sin tratamientos mayores',
-  absent: 'Diente ausente o extraído',
+  extraction: 'Extracción indicada (pieza marcada en rojo)',
+  absent_pending: 'Ausencia pendiente (cruz azul)',
+  absent_done: 'Ausencia confirmada (cruz roja)',
+  endodontic: 'Tratamiento endodóntico (ENDO)',
+  crown: 'Corona o prótesis fija (círculo)',
   implant: 'Implante dental',
-  endodontic: 'Tratamiento endodóntico realizado',
-  crown: 'Corona o prótesis fija',
 }

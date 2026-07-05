@@ -6,6 +6,7 @@ import { useStore } from "zustand";
 import type {
   ClinicalEvent,
   ClinicalEventType,
+  ClinicalEventVisualState,
   PerformedProcedure,
   Tooth,
   ToothDiagnosis,
@@ -16,6 +17,142 @@ import type {
 } from "@/components/odontogram/types";
 import { OdontogramColorService } from "@/lib/odontogram/domain/odontogram/services/OdontogramColorService";
 import { ClinicalEventStateMachine } from "@/lib/odontogram/domain/odontogram/services/ClinicalEventStateMachine";
+import { SYMBOL_COLORS } from "@/lib/odontogram/domain/odontogram/constants/odontogram-colors.constants";
+
+/**
+ * Estado visual (relleno/símbolo) por estado global de diente — modelo de 3 ciclos.
+ * SOLO 'extraction' (rojo) e 'implant' (morado) rellenan la pieza; el resto marca
+ * con símbolo (cruz/ENDO/círculo) vía canal symbolColor, sin relleno.
+ */
+const globalStatusVisualState = (
+  status: ToothGlobalStatus,
+): ClinicalEventVisualState => {
+  switch (status) {
+    case "extraction":
+      // Pieza completa rellena de rojo, SIN símbolo.
+      return {
+        affectsOdontogram: true,
+        priorityKey: "absent",
+        colorKey: "extraction",
+      };
+    case "absent_pending":
+      // Cruz AZUL, sin relleno.
+      return {
+        affectsOdontogram: false,
+        priorityKey: "absent",
+        symbolKey: "cross",
+        symbolColor: SYMBOL_COLORS.ABSENT_PENDING,
+      };
+    case "absent_done":
+      // Cruz ROJA, sin relleno.
+      return {
+        affectsOdontogram: false,
+        priorityKey: "absent",
+        symbolKey: "cross",
+        symbolColor: SYMBOL_COLORS.ABSENT_DONE,
+      };
+    case "endodontic":
+      // Texto "ENDO" neutro, sin relleno.
+      return {
+        affectsOdontogram: false,
+        priorityKey: "endodontic",
+        symbolKey: "endo",
+        symbolColor: SYMBOL_COLORS.INK,
+      };
+    case "crown_pending":
+      // Anillo ROJO alrededor de toda la pieza (corona por hacer), sin relleno.
+      return {
+        affectsOdontogram: false,
+        priorityKey: "crown",
+        symbolKey: "crown_ring",
+        symbolColor: SYMBOL_COLORS.CROWN_PENDING,
+      };
+    case "crown_done":
+      // Anillo AZUL alrededor de toda la pieza (corona realizada), sin relleno.
+      return {
+        affectsOdontogram: false,
+        priorityKey: "crown",
+        symbolKey: "crown_ring",
+        symbolColor: SYMBOL_COLORS.CROWN_DONE,
+      };
+    case "implant":
+      // Sin cambios: letra 'I' + relleno morado.
+      return {
+        affectsOdontogram: true,
+        priorityKey: "implant",
+        colorKey: "implant",
+        symbolKey: "implant",
+      };
+    case "healthy":
+    default:
+      return {
+        affectsOdontogram: false,
+        priorityKey: "healthy",
+        colorKey: "healthy",
+      };
+  }
+};
+
+/** Mapea el status crudo de notas legacy ("Estado global: X") al nuevo modelo. */
+const legacyStatusToGlobalStatus = (raw: string): ToothGlobalStatus | null => {
+  switch (raw) {
+    case "healthy":
+    case "extraction":
+    case "absent_pending":
+    case "absent_done":
+    case "endodontic":
+    case "crown_pending":
+    case "crown_done":
+    case "implant":
+      return raw;
+    // Datos antiguos: 'absent' → ausencia hecha (cruz roja).
+    case "absent":
+      return "absent_done";
+    // Datos antiguos: 'crown' (estado único) → corona realizada (anillo azul).
+    case "crown":
+      return "crown_done";
+    default:
+      return null;
+  }
+};
+
+/**
+ * Mapea un visualState LEGACY de estado de diente (modelo viejo: relleno
+ * rojo/morado/gris + letras E/C) a un ToothGlobalStatus del nuevo modelo, usando
+ * sus colorKey/symbolKey. Sirve para migrar datos aún más antiguos que NO traen
+ * la nota "Estado global: X". Devuelve null para cualquier visualState que no sea
+ * de estado-de-diente (performed/completed, plan/support-only, caries de
+ * superficie, sano) → esos NO deben re-derivarse. Sin este mapeo, el símbolo se
+ * migraba (alias en ToothSymbolService) pero el RELLENO viejo persistía.
+ */
+const legacyVisualStateToGlobalStatus = (
+  visualState: ClinicalEvent["visualState"],
+): ToothGlobalStatus | null => {
+  if (!visualState) return null;
+  const { colorKey, symbolKey } = visualState;
+
+  // Símbolos del modelo viejo.
+  if (symbolKey === "endodontics") return "endodontic";
+  if (symbolKey === "crown" || symbolKey === "crown_ring") return "crown_done";
+  if (symbolKey === "extraction") return "absent_done";
+  if (symbolKey === "implant") return "implant";
+
+  // Rellenos del modelo viejo (sin símbolo migrable).
+  switch (colorKey) {
+    case "endodontic":
+      return "endodontic";
+    case "crown":
+      return "crown_done";
+    case "absent":
+      return "absent_done";
+    case "extraction":
+      return "extraction";
+    case "implant":
+      return "implant";
+    default:
+      return null;
+  }
+};
 
 export const ODONTOGRAM_SCHEMA_VERSION = 2;
 
@@ -351,77 +488,52 @@ const normalizeClinicalEvent = (event: ClinicalEvent): ClinicalEvent => {
     schemaVersion: event.schemaVersion ?? ODONTOGRAM_SCHEMA_VERSION,
   };
 
-  if (normalizedEvent.visualState) {
-    return normalizedEvent;
-  }
-
-  const statusFromNotes = normalizedEvent.notes
-    ?.replace("Estado global:", "")
-    .trim();
+  // Re-derivar SIEMPRE el visualState de los eventos de ESTADO DE DIENTE desde
+  // sus notas ("Estado global: X"). Es idempotente para datos nuevos y MIGRA los
+  // datos legacy que persistieron el visualState del modelo viejo (E/C + relleno
+  // rojo/morado, X gris) al nuevo modelo (ENDO / círculo / cruz azul-roja sin
+  // relleno). Corre ANTES del early-return de visualState existente, porque el
+  // dato legacy YA trae un visualState (obsoleto) que hay que reemplazar.
+  const statusFromNotes = normalizedEvent.notes?.startsWith("Estado global:")
+    ? normalizedEvent.notes.replace("Estado global:", "").trim()
+    : null;
 
   if (
-    normalizedEvent.type === "diagnosis" &&
     normalizedEvent.level === "tooth" &&
+    normalizedEvent.surfaces.length === 0 &&
     statusFromNotes
   ) {
-    if (statusFromNotes === "healthy") {
+    const mappedStatus = legacyStatusToGlobalStatus(statusFromNotes);
+    if (mappedStatus) {
       return {
         ...normalizedEvent,
-        visualState: {
-          affectsOdontogram: false,
-          priorityKey: "healthy",
-          colorKey: "healthy",
-        },
+        visualState: globalStatusVisualState(mappedStatus),
       };
     }
+  }
 
-    if (statusFromNotes === "crown") {
+  // Cinturón de seguridad SIMÉTRICO: datos aún más antiguos, sin la nota
+  // "Estado global: X", traen un visualState legacy (relleno rojo/morado/gris +
+  // símbolo E/C). Re-derivar el visualState COMPLETO desde sus colorKey/symbolKey
+  // viejos neutraliza tanto el relleno como el símbolo, no solo el símbolo.
+  if (
+    normalizedEvent.level === "tooth" &&
+    normalizedEvent.surfaces.length === 0 &&
+    normalizedEvent.visualState
+  ) {
+    const mappedStatus = legacyVisualStateToGlobalStatus(
+      normalizedEvent.visualState,
+    );
+    if (mappedStatus) {
       return {
         ...normalizedEvent,
-        visualState: {
-          affectsOdontogram: true,
-          priorityKey: "crown",
-          colorKey: "crown",
-          symbolKey: "crown",
-        },
+        visualState: globalStatusVisualState(mappedStatus),
       };
     }
+  }
 
-    if (statusFromNotes === "absent") {
-      return {
-        ...normalizedEvent,
-        visualState: {
-          affectsOdontogram: true,
-          priorityKey: "absent",
-          colorKey: "absent",
-          symbolKey: "extraction",
-        },
-      };
-    }
-
-    if (statusFromNotes === "implant") {
-      return {
-        ...normalizedEvent,
-        visualState: {
-          affectsOdontogram: true,
-          priorityKey: "implant",
-          colorKey: "implant",
-          symbolKey: "implant",
-        },
-      };
-    }
-
-    if (statusFromNotes === "endodontic") {
-      return {
-        ...normalizedEvent,
-        visualState: {
-          affectsOdontogram: true,
-          priorityKey: "endodontic",
-          colorKey: "endodontic",
-          symbolKey: "endodontics",
-        },
-      };
-    }
+  if (normalizedEvent.visualState) {
+    return normalizedEvent;
   }
 
   if (
@@ -439,28 +551,18 @@ const normalizeClinicalEvent = (event: ClinicalEvent): ClinicalEvent => {
   }
 
   // Datos legacy con type ausente/implante pero sin visualState: reconstruirlo
-  // para que reciban el relleno de pieza completa (getToothLevelColor) y símbolo.
+  // con el nuevo modelo (ausente → cruz roja; implante → relleno morado + 'I').
   if (normalizedEvent.type === "ausente") {
     return {
       ...normalizedEvent,
-      visualState: {
-        affectsOdontogram: true,
-        priorityKey: "absent",
-        colorKey: "absent",
-        symbolKey: "extraction",
-      },
+      visualState: globalStatusVisualState("absent_done"),
     };
   }
 
   if (normalizedEvent.type === "implante") {
     return {
       ...normalizedEvent,
-      visualState: {
-        affectsOdontogram: true,
-        priorityKey: "implant",
-        colorKey: "implant",
-        symbolKey: "implant",
-      },
+      visualState: globalStatusVisualState("implant"),
     };
   }
 
@@ -475,8 +577,17 @@ const normalizeTooth = (
     (event) => event.toothNumber === tooth.number,
   );
 
+  // Legacy: el antiguo globalStatus 'absent' ya no es un valor válido del enum
+  // → mapear a 'absent_done' para que el chip de Estado se resalte al reabrir un
+  // diente guardado con el modelo viejo.
+  const globalStatus =
+    (tooth.globalStatus as string) === "absent"
+      ? ("absent_done" as ToothGlobalStatus)
+      : tooth.globalStatus;
+
   return {
     ...tooth,
+    globalStatus,
     diagnosis: normalizeToothDiagnosis(
       tooth.number,
       tooth.diagnosis,
@@ -718,7 +829,7 @@ const createOdontogramStore = ({
       }
 
       const eventType: ClinicalEventType =
-        status === "absent"
+        status === "absent_pending" || status === "absent_done"
           ? "ausente"
           : status === "implant"
             ? "implante"
@@ -733,40 +844,7 @@ const createOdontogramStore = ({
         status: "observation",
         authorId: get().metadata.authorId,
         notes: `Estado global: ${status}`,
-        visualState:
-          status === "crown"
-            ? {
-                affectsOdontogram: true,
-                priorityKey: "crown",
-                colorKey: "crown",
-                symbolKey: "crown",
-              }
-            : status === "absent"
-              ? {
-                  affectsOdontogram: true,
-                  priorityKey: "absent",
-                  colorKey: "absent",
-                  symbolKey: "extraction",
-                }
-              : status === "implant"
-                ? {
-                    affectsOdontogram: true,
-                    priorityKey: "implant",
-                    colorKey: "implant",
-                    symbolKey: "implant",
-                  }
-                : status === "endodontic"
-                  ? {
-                      affectsOdontogram: true,
-                      priorityKey: "endodontic",
-                      colorKey: "endodontic",
-                      symbolKey: "endodontics",
-                    }
-                  : {
-                      affectsOdontogram: false,
-                      priorityKey: "healthy",
-                      colorKey: "healthy",
-                    },
+        visualState: globalStatusVisualState(status),
       });
     },
     addClinicalEvent: (event) => {

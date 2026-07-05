@@ -493,11 +493,25 @@ for (const fdi of FDI_NUMBERS) {
         y: Math.round(((crownBounds.minY + crownBounds.maxY) / 2) * 100) / 100,
       };
 
+      // Ancla de la RAÍZ = centroide del bbox de los paths de la raíz. Solo
+      // existe cuando hay root (vista vestibular/frontal). Lo usa el render para
+      // colocar símbolos "cerca de la raíz" (p.ej. el círculo de corona), que no
+      // deben caer sobre la corona como el symbolAnchor.
+      let rootAnchor = null;
+      if (root && root.length) {
+        const rootBounds = combineBounds(root.map(pathBounds));
+        rootAnchor = {
+          x: Math.round(((rootBounds.minX + rootBounds.maxX) / 2) * 100) / 100,
+          y: Math.round(((rootBounds.minY + rootBounds.maxY) / 2) * 100) / 100,
+        };
+      }
+
       registry[fdi][view] = {
         outline: outline || [],
         zones,
         zoneSurfaces,
         symbolAnchor,
+        rootAnchor,
         root: root || null,
         viewBox: `${vbX} ${vbY} ${vbW} ${vbH}`,
       };
@@ -540,6 +554,12 @@ export interface ToothViewData {
   zoneSurfaces: Record<string, string>;
   /** Center of the CROWN (zones bbox, excludes root) — anchor for the symbol. */
   symbolAnchor: { x: number; y: number };
+  /**
+   * Center of the ROOT (root paths bbox) — anchor for symbols drawn near the
+   * root (e.g. the crown circle). Only present when the view has a root
+   * (vestibular/frontal); null otherwise.
+   */
+  rootAnchor: { x: number; y: number } | null;
   /** SVG paths for the root (only in vestibular view) */
   root: string[] | null;
   /** Calculated viewBox for this tooth in this view */
@@ -583,6 +603,9 @@ for (const [fdi, views] of Object.entries(registry)) {
 
     // Symbol anchor (crown center)
     ts += `      symbolAnchor: ${JSON.stringify(data.symbolAnchor || { x: 0, y: 0 })},\n`;
+
+    // Root anchor (root center) — null when the view has no root
+    ts += `      rootAnchor: ${JSON.stringify(data.rootAnchor ?? null)},\n`;
 
     // Root
     if (data.root) {

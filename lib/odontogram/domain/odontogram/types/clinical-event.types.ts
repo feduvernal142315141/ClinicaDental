@@ -52,6 +52,13 @@ export interface ClinicalEventVisualState {
   affectsOdontogram: boolean;
   colorKey?: string;
   symbolKey?: string;
+  /**
+   * Color del SÍMBOLO (canal independiente del relleno de pieza). Lo usa el
+   * render para pintar la cruz de ausencia (azul pendiente / rojo hecho), el
+   * texto "ENDO" o el círculo de corona (neutro). Si no está definido, el
+   * render cae al color neutro por defecto (#1F2937).
+   */
+  symbolColor?: string;
   priorityKey?: string;
 }
 
