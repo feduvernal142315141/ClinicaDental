@@ -1,95 +1,187 @@
-# Clinic Flow 360
+<div align="center">
 
-![Clinic Flow 360](public/favicon.ico) <!-- Placeholder para un logo real -->
+# 🦷 Clinic Flow 360
 
-**Clinic Flow 360** es un moderno software SaaS de gestión clínica odontológica enfocado en la experiencia de usuario (UX) y el rendimiento. Provee un ecosistema completo que incluye agendamiento inteligente, historias clínicas, y un **odontograma interactivo en tiempo real**.
+### La plataforma SaaS que digitaliza la clínica dental — de la cita al odontograma, en tiempo real.
 
-Este repositorio contiene el código fuente tanto del Frontend (Next.js) como del Backend (Spring Boot).
+Agenda inteligente · Historia clínica · **Odontograma interactivo** · Campañas por WhatsApp · Roles y permisos.
 
----
+<br/>
 
-## 🛠️ Stack Tecnológico
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
-### Frontend (`/front-clinic`)
-- **Framework:** Next.js 15 (App Router)
-- **Librería UI:** React 18
-- **Estilos:** Tailwind CSS + Radix UI / Shadcn UI
-- **Componentes Complejos:** Ant Design (`@ant-design/nextjs-registry`)
-- **Estado Global:** Zustand
-- **Peticiones HTTP:** Axios
+![Turbopack](https://img.shields.io/badge/Turbopack-dev-EF4444?style=flat-square&logo=vercel&logoColor=white)
+![Radix UI](https://img.shields.io/badge/Radix_UI-shadcn-161618?style=flat-square&logo=radixui&logoColor=white)
+![Zustand](https://img.shields.io/badge/Zustand-5-443E38?style=flat-square)
+![Zod](https://img.shields.io/badge/Zod-3-3E67B1?style=flat-square&logo=zod&logoColor=white)
+![PRs](https://img.shields.io/badge/status-activo-22C55E?style=flat-square)
+![License](https://img.shields.io/badge/license-Propietario-6B7280?style=flat-square)
 
-### Backend (`/backend-clinic`)
-- **Lenguaje:** Java 21
-- **Framework:** Spring Boot 3.x
-- **Arquitectura:** CQRS / Mediator Pattern (Controladores delgados)
-- **Persistencia:** Spring Data JPA + PostgreSQL
-- **Seguridad:** Spring Security (JWT + OTP)
+</div>
 
 ---
 
-## 🚀 Guía de Instalación Local
+## 📖 Sobre el proyecto
 
-Sigue estos pasos para levantar el entorno completo de desarrollo en tu máquina local.
+**Clinic Flow 360** es el frontend web de un ecosistema SaaS para clínicas odontológicas, construido sobre **Next.js 15 (App Router)** y un sistema de diseño propio (**Bento** · Radix + shadcn + Tailwind). Su pieza estrella es un **odontograma clínico interactivo** que renderiza dientes anatómicos reales desde SVG y captura diagnósticos, planes y procedimientos con simbología estándar (FDI/ISO 3950).
 
-### 1. Prerrequisitos
-Asegúrate de tener instalado:
-- [Node.js](https://nodejs.org/) (v18 o superior)
-- [Yarn](https://yarnpkg.com/) (Gestor de paquetes del frontend)
-- [Java Development Kit (JDK) 21](https://adoptium.net/)
-- [Docker](https://www.docker.com/) y Docker Compose (Para la base de datos)
+> Este repositorio contiene **solo el frontend**. La API la sirve un servicio companion en **Spring Boot** (repo `backend-clinic`).
 
-### 2. Levantar la Base de Datos (PostgreSQL)
-El backend requiere una base de datos PostgreSQL. Utiliza Docker para levantar el contenedor preconfigurado:
+<br/>
+
+## ✨ Características
+
+| | Módulo | Descripción |
+|:--:|---|---|
+| 🗓️ | **Agenda** | Citas con disponibilidad por doctor, recordatorios y flujo de consulta en curso. |
+| 👤 | **Pacientes** | Ficha integral, antecedentes médicos y adjuntos. |
+| 🩺 | **Historia clínica** | Anamnesis, diagnósticos CIE-10, hallazgos de examen y evolución con autosave. |
+| 🦷 | **Odontograma** | Superficies coloreables, ICDAS, planes/realizados y simbología clínica en 3 vistas. |
+| 💬 | **Campañas WhatsApp** | Plantillas y envíos para comunicación con pacientes. |
+| 🔐 | **Roles y permisos** | Control de acceso granular por acción (`usePermission`). |
+
+<br/>
+
+## 🧱 Stack
+
+| Capa | Tecnología |
+|---|---|
+| **Framework** | Next.js 15 · App Router · React 18 · Turbopack |
+| **Lenguaje** | TypeScript 5 (`strict`) |
+| **UI (Bento)** | Tailwind CSS v4 · Radix UI / shadcn · `lucide-react` · tokens semánticos |
+| **Estado** | Zustand 5 (odontograma) · Context API (auth / alertas) |
+| **Formularios** | React Hook Form + Zod |
+| **HTTP** | Axios (`lib/services/*`, boundary único) |
+| **Auth** | JWT + OTP (refresh vía route handler) |
+| **Gestor** | Yarn 1 (`yarn@1.22.22`) |
+
+<br/>
+
+## 🚀 Puesta en marcha
+
+**Requisitos:** Node ≥ 18.18 · Yarn 1 · la API (`backend-clinic`) corriendo en `http://localhost:8080`.
+
 ```bash
-# Navega al directorio del backend o donde se encuentre el docker-compose.yml
-cd backend-clinic
-docker-compose up -d
-```
-*(Asegúrate de que el puerto 5432 esté libre).*
+# 1. Clonar
+git clone git@github.com:feduvernal142315141/ClinicaDental.git
+cd ClinicaDental
 
-### 3. Configurar e Iniciar el Backend
-El backend utiliza Maven Wrapper (`mvnw`), por lo que no necesitas tener Maven instalado globalmente.
-
-```bash
-# Desde la raíz del proyecto, entra al backend
-cd backend-clinic
-
-# Ejecuta el servidor con el perfil local
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local
-```
-El servidor backend estará disponible en: `http://localhost:8080`
-
-### 4. Configurar e Iniciar el Frontend
-El frontend se ejecuta con Yarn y requiere instalar las dependencias primero.
-
-```bash
-# Abre una nueva pestaña en tu terminal y entra al frontend
-cd front-clinic
-
-# Instala las dependencias
+# 2. Instalar dependencias
 yarn install
 
-# Inicia el servidor de desarrollo
+# 3. Variables de entorno
+#    Crea .env.local con la URL de la API, p.ej:
+#    NEXT_PUBLIC_API_URL=http://localhost:8080
+
+# 4. Levantar en modo desarrollo (Turbopack)
 yarn dev
 ```
-La aplicación web estará disponible en: `http://localhost:3000`
+
+La app queda disponible en **http://localhost:3000** 🎉
+
+<br/>
+
+## 📜 Scripts
+
+| Comando | Qué hace |
+|---|---|
+| `yarn dev` | Servidor de desarrollo con **Turbopack**. |
+| `yarn dev:webpack` | Dev con Webpack (fallback). |
+| `yarn build` | Build de producción (`NEXT_DIST_DIR=.next-build`). |
+| `yarn start` | Sirve el build de producción. |
+| `yarn lint` | ESLint (config legacy). |
+| `yarn typecheck` | `tsc --noEmit` (chequeo de tipos). |
+
+<br/>
+
+## 🏛️ Arquitectura
+
+El flujo de datos es unidireccional y por capas — la UI nunca habla con HTTP directamente:
+
+```mermaid
+flowchart LR
+    A["page.tsx"] --> B["component<br/>(features/*)"]
+    B --> C["hook<br/>(lib/hooks/*)"]
+    C --> D["service<br/>(lib/services/*)"]
+    D --> E["Axios · baseService"]
+    E --> F[("API<br/>Spring Boot")]
+    C -.->|tipos| G["entity<br/>(lib/entity/*)"]
+```
+
+**Reglas no negociables**
+
+- **HTTP solo en `lib/services/*`** (Axios `baseService`); los tipos viven en `lib/entity/*`.
+- **UI Bento**: componentes desde `@/components/ui`; toasts con `notify`; iconos `lucide-react`; copy en **español**.
+- **Formularios** con React Hook Form + Zod, validación `onBlur`, floating labels, WCAG 2.2.
+- **Tokens semánticos** (`canvas / surface / ink / brand / subtle / hairline`) para theming claro/oscuro.
+- Datos solo-cliente (storage) → leer en `useEffect`, **nunca en render** (hidratación SSR).
+
+<br/>
+
+## 🦷 Módulo Odontograma
+
+Un **módulo acotado** con frontera estricta — su API pública, store, dominio y adapters viven en `lib/odontogram/*`; la UI especializada en `components/features/odontogram/*`; y la integración con la pantalla del paciente en wrappers como `PatientOdontogramPanel`.
+
+- **Render SVG anatómico**: el arte del diseñador se procesa (`scripts/extract-teeth-svg.mjs`) a datos que colorean superficies por geometría, no por número de zona.
+- **Simbología clínica**: extracción (pieza roja), ausente (cruz azul/roja), endodoncia (`ENDO`), corona (anillo rojo/azul) e implante — con estados pendiente/realizado.
+- **Persistencia por adapter**: el estado se guarda como JSON opaco; nada de HTTP dentro del módulo.
+
+> Detalle técnico en la documentación interna del proyecto (odontograma clínico y pipeline de render SVG).
+
+<br/>
+
+## 🗂️ Estructura
+
+```
+front-clinic/
+├─ app/                      # App Router (rutas, layouts, route handlers)
+│  ├─ (authenticated)/       # rutas protegidas
+│  └─ api/auth/*             # handlers de auth (OTP + JWT)
+├─ components/
+│  ├─ ui/                    # sistema Bento (Radix/shadcn + atómicos)
+│  └─ features/              # UI por dominio (odontogram, patients, …)
+├─ lib/
+│  ├─ services/              # boundary HTTP (Axios)
+│  ├─ entity/                # contratos tipados
+│  ├─ hooks/                 # lógica de estado
+│  └─ odontogram/            # módulo acotado (store, dominio, adapters)
+└─ public/                   # estáticos (incl. SVG de dientes)
+```
+
+<br/>
+
+## ✅ Calidad
+
+Antes de abrir un PR:
+
+```bash
+yarn typecheck   # no subir el baseline de errores TS
+yarn lint        # sin nuevas violaciones en archivos tocados
+yarn build       # debe compilar y generar las páginas estáticas
+```
+
+> `next.config.mjs` ignora errores de TS/ESLint en el build, así que **`typecheck` y `lint` son los que mandan**. No hay runner de tests configurado — no asumas cobertura automática.
+
+<br/>
+
+## 🤝 Convenciones
+
+- **Rama de integración:** `develop`. Trabaja en `feature/*` y abre PR hacia `develop`.
+- **Commits:** [Conventional Commits](https://www.conventionalcommits.org/) (`feat`, `fix`, `refactor`, `chore`…).
+- **UI en español** salvo que la pantalla ya use otro idioma.
+- **Sin Ant Design en código nuevo** — el proyecto migra hacia Bento.
+
+<br/>
 
 ---
 
-## 🏗️ Arquitectura y Reglas del Proyecto (Workspace UX Core)
+<div align="center">
 
-Para mantener la calidad y consistencia del código, sigue estas reglas estrictas:
+**Clinic Flow 360** · Kodewave Solutions
+<br/>
+Hecho con 🦷 y Next.js
 
-1. **Obsidian Vault (SSOT):** Antes de tomar decisiones arquitectónicas, consulta siempre el *Obsidian Vault* local (Single Source of Truth).
-2. **Backend Thin Controllers:** NUNCA coloques lógica de negocio en los controladores de Spring Boot. Toda la lógica debe delegarse al mediador (`mediator.send()`).
-3. **Frontend Routing:** Utiliza estrictamente *Next.js 15 App Router*. No introduzcas librerías de enrutamiento de terceros.
-4. **Odontograma:** El estado del odontograma se maneja localmente de forma aislada mediante Zustand (`lib/odontogram/store.tsx`) y usa un patrón Adapter para la persistencia.
-
----
-
-## 🐞 Solución de Problemas Comunes
-
-- **Error de conexión a la BD:** Verifica que el contenedor de Docker `backend-clinic-postgres-1` esté corriendo (`docker ps`).
-- **Problemas de Caché en Next.js:** Si el frontend se comporta extraño tras un cambio grande, elimina la carpeta `.next/` y vuelve a correr `yarn dev`.
-
-> **Nota para Desarrolladores:** Ante cualquier duda sobre contratos de API o flujos de UI, consulta los archivos `API_CONTRACT.md` y `FRONTEND_FLOW.md` en la raíz del monorepo.
+</div>
