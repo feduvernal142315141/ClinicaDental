@@ -173,7 +173,7 @@ export function ChangePasswordModal({
       className="w-full sm:max-w-md"
     >
       <Form {...form}>
-        <form onSubmit={submit}>
+        <form onSubmit={submit} noValidate>
           <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 pb-5 pt-1">
             <FormField
               control={form.control}

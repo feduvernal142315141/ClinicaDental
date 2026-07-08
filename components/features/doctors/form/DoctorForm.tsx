@@ -208,6 +208,7 @@ export function DoctorForm({
       <form
         onSubmit={form.handleSubmit(handleSubmit, onInvalid)}
         className="space-y-6"
+        noValidate
       >
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>

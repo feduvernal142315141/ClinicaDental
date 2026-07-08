@@ -112,6 +112,7 @@ export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
             className="space-y-5"
+            noValidate
           >
             {fields}
           </form>
@@ -124,6 +125,7 @@ export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
         <form
           onSubmit={form.handleSubmit(handleSubmit)}
           className={compact ? "space-y-4" : "space-y-5"}
+          noValidate
         >
           <section className="bento space-y-5 p-6">
             <h3 className="text-sm font-semibold text-ink">

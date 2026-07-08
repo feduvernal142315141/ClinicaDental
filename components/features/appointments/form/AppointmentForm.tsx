@@ -155,6 +155,7 @@ export function AppointmentForm({
       <form
         onSubmit={form.handleSubmit(handleSubmit)}
         className="grid gap-6 lg:grid-cols-3"
+        noValidate
       >
         {/* ───────────────── Columna formulario ───────────────── */}
         <div className="space-y-6 lg:col-span-2">

@@ -38,6 +38,7 @@ export function TemplateForm() {
             onSubmit={(e) => {
               e.preventDefault();
             }}
+            noValidate
             className="grid grid-cols-4 gap-x-20 gap-y-8"
           >
             <div className={"col-span-1"}>

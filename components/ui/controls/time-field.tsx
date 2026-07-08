@@ -108,6 +108,7 @@ export const TimeField = React.forwardRef<HTMLButtonElement, TimeFieldProps>(
         <div
           className={cn(
             "flex w-full items-center gap-2 rounded-xl border bg-elevated px-3 py-2.5 text-sm transition-colors",
+            "focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/30",
             open ? "border-brand ring-2 ring-brand/30" : "border-hairline",
             ariaInvalid && "border-rose-500/60",
             disabled && "cursor-not-allowed opacity-50",

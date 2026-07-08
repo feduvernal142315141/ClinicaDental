@@ -33,7 +33,11 @@ export function RoleForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
+      <form
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="space-y-5"
+        noValidate
+      >
         {isEdit && isSystem && (
           <div className="flex items-start gap-3 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3">
             <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />

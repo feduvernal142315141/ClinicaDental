@@ -141,10 +141,14 @@ function FormMessage({ className, ...props }: React.ComponentProps<'p'>) {
 
   // Reserva siempre la altura de una línea para que mostrar/ocultar el error
   // NO desplace ni desalinee los campos (estándar de formularios del proyecto).
+  // aria-live="polite": la validación corre en onBlur, cuando el foco ya salió
+  // del campo — sin esto un lector de pantalla nunca anuncia el error (WCAG
+  // 4.1.3 Status Messages).
   return (
     <p
       data-slot="form-message"
       id={formMessageId}
+      aria-live="polite"
       className={cn(
         'min-h-[1.125rem] text-[0.8rem] leading-tight text-destructive',
         className,

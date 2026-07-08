@@ -56,7 +56,11 @@ export function CampaignForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            noValidate
+            className="space-y-6"
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-8">
               <TextField
                 name="name"

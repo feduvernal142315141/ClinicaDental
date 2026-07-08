@@ -96,7 +96,7 @@ export function QuickPatientModal({
       className="w-full sm:max-w-2xl"
     >
       <Form {...form}>
-        <form onSubmit={submit}>
+        <form onSubmit={submit} noValidate>
           <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 pb-5">
             <div className="grid gap-4 sm:grid-cols-3">
             <FormField

@@ -122,7 +122,11 @@ export function ServiceForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
+      <form
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="space-y-5"
+        noValidate
+      >
         {/* Información principal */}
         <section className="bento p-4 lg:p-6">
           <SectionHeader

@@ -9,15 +9,31 @@ import { AuthShell } from "../components/auth-shell";
 import { AuthCard } from "../components/auth-card";
 import { FloatingField } from "../components/floating-field";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function ForgotPasswordForm() {
   const router = useRouter();
   const { forgotPassword, loading } = useDoctorAuth();
   const [email, setEmail] = useState("");
+  const [emailTouched, setEmailTouched] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+
+  const emailValid = EMAIL_RE.test(email);
+  const emailError =
+    emailTouched && email.length > 0 && !emailValid
+      ? "Introduce un email válido (nombre@dominio.com)"
+      : emailTouched && email.length === 0
+        ? "El email es requerido"
+        : null;
+  const emailSuccess = emailTouched && emailValid;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
+    setEmailTouched(true);
+    if (!emailValid) {
+      return;
+    }
     try {
       await forgotPassword({ email });
       router.push("/login");
@@ -48,7 +64,7 @@ export function ForgotPasswordForm() {
           </Button>
         }
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <FloatingField
             id="email"
             label="Email"
@@ -56,6 +72,9 @@ export function ForgotPasswordForm() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => setEmailTouched(true)}
+            error={emailError}
+            success={emailSuccess}
             disabled={loading}
             required
           />

@@ -221,7 +221,7 @@ export function LabelFormModal({
       className="w-full sm:max-w-lg"
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} noValidate>
           <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 pb-5">
             <FormField
               control={form.control}
