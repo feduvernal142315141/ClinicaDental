@@ -4,6 +4,7 @@ import { Theme } from "@radix-ui/themes";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/lib/contexts/auth-context";
 import { AlertProvider } from "@/lib/contexts/alert-context";
+import { ClinicBrandingProvider } from "@/lib/contexts/clinic-branding-context";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { ThemeProvider } from "@/components/theme-provider";
 import { GlobalAlertDialog } from "@/components/global-alert-dialog";
@@ -35,16 +36,21 @@ export function RootClient({ children }: RootClientProps) {
           <Theme>
             <Suspense fallback={null}>
               <InterceptorProvider>
-                <AuthProvider>
-                  <AlertProvider>
-                    <GlobalErrorListeners />
-                    <InterceptorsInitializer />
-                    <GlobalLoadingBar />
-                    <GlobalAlertDialog />
-                    <CommandPalette />
-                    <AppChrome>{children}</AppChrome>
-                  </AlertProvider>
-                </AuthProvider>
+                {/* Marca de la clínica: fuera de AuthProvider a propósito, el
+                    endpoint es público y el login (sin sesión) también la
+                    consume (auth-shell, login-form). */}
+                <ClinicBrandingProvider>
+                  <AuthProvider>
+                    <AlertProvider>
+                      <GlobalErrorListeners />
+                      <InterceptorsInitializer />
+                      <GlobalLoadingBar />
+                      <GlobalAlertDialog />
+                      <CommandPalette />
+                      <AppChrome>{children}</AppChrome>
+                    </AlertProvider>
+                  </AuthProvider>
+                </ClinicBrandingProvider>
               </InterceptorProvider>
             </Suspense>
             <Analytics />

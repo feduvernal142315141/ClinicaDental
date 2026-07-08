@@ -1,464 +1,222 @@
 "use client";
 
-import { useEffect } from "react";
-import {
-  Alert,
-  Button,
-  Col,
-  Divider,
-  Flex,
-  Form,
-  InputNumber,
-  Row,
-  Skeleton,
-  Space,
-  Tag,
-  Typography,
-} from "antd";
-import { SaveOutlined, ReloadOutlined } from "@ant-design/icons";
-import {
-  FormInput,
-  FormSelect,
-  FormSwitch,
-  FormTimePicker,
-  PageCard,
-  SectionTitle,
-} from "@/components/ui/antd";
-import { useClinicGeneralSettings } from "@/lib/hooks/settings";
-import { usePermission } from "@/lib/hooks/use-permission";
-import { PermissionAction } from "@/lib/permissions/permission-actions";
-import type {
-  ClinicScheduleDayKey,
-  UpdateClinicGeneralSettingsRequest,
-} from "@/lib/entity/settings";
-import { CLINIC_SCHEDULE_DAYS } from "@/lib/entity/settings";
+import { AlertCircle, Check, Lock, RotateCw, Save } from "lucide-react";
 
-const { Text } = Typography;
+import { PageHeader } from "@/components/ui/layout/page-header";
+import { Form } from "@/components/ui/atomic/forms";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import { useGeneralSettingsForm } from "@/lib/hooks/settings";
+import { ClinicInfoFields } from "@/components/features/settings/clinic-info-fields";
+import { ScheduleEditor } from "@/components/features/settings/schedule-editor";
+import { PolicyFields } from "@/components/features/settings/policy-fields";
 
-const currencyOptions = [
-  { value: "USD", label: "USD - Dólar estadounidense" },
-  { value: "BOB", label: "BOB - Boliviano" },
-  { value: "COP", label: "COP - Peso colombiano" },
-  { value: "MXN", label: "MXN - Peso mexicano" },
-  { value: "EUR", label: "EUR - Euro" },
-];
-
-const timezoneOptions = [
-  { value: "America/La_Paz", label: "Bolivia (La Paz)" },
-  { value: "America/Bogota", label: "Colombia (Bogotá)" },
-  { value: "America/Mexico_City", label: "México (Ciudad de México)" },
-  { value: "America/New_York", label: "Este (New York)" },
-  { value: "America/Chicago", label: "Central (Chicago)" },
-  { value: "America/Los_Angeles", label: "Pacífico (Los Angeles)" },
-  { value: "America/Argentina/Buenos_Aires", label: "Argentina (Buenos Aires)" },
-];
-
-function normalizeScheduleForSave(values: UpdateClinicGeneralSettingsRequest) {
-  const schedule = { ...values.schedule };
-
-  for (const { key } of CLINIC_SCHEDULE_DAYS) {
-    const day = schedule[key];
-    if (!day?.enabled) {
-      schedule[key] = { enabled: false, startTime: null, endTime: null };
-    }
-  }
-
-  return schedule;
+/** Scrollea suavemente hacia el primer campo inválido tras un submit fallido. */
+function scrollToFirstInvalidField() {
+  requestAnimationFrame(() => {
+    const el = document.querySelector('[aria-invalid="true"]');
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
 }
 
-function findInvalidScheduleDay(values: UpdateClinicGeneralSettingsRequest): {
-  dayKey: ClinicScheduleDayKey;
-  message: string;
-} | null {
-  for (const { key, label } of CLINIC_SCHEDULE_DAYS) {
-    const day = values.schedule?.[key];
-    if (!day?.enabled) continue;
+function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="mb-5">
+      <h3 className="text-base font-semibold leading-tight text-ink">
+        {title}
+      </h3>
+      <p className="text-sm text-subtle">{subtitle}</p>
+    </div>
+  );
+}
 
-    if (!day.startTime || !day.endTime) {
-      return {
-        dayKey: key,
-        message: `${label}: debe indicar hora de apertura y cierre.`,
-      };
-    }
-
-    if (day.startTime >= day.endTime) {
-      return {
-        dayKey: key,
-        message: `${label}: la apertura debe ser menor que el cierre.`,
-      };
-    }
-  }
-
-  return null;
+function GeneralSettingsSkeleton() {
+  return (
+    <div className="space-y-6">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="bento space-y-4 p-6">
+          <div className="h-5 w-48 animate-pulse rounded-md bg-hover" />
+          <div className="h-4 w-72 animate-pulse rounded-md bg-hover" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="h-11 animate-pulse rounded-xl bg-hover" />
+            <div className="h-11 animate-pulse rounded-xl bg-hover" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function GeneralSettings() {
-  const [form] = Form.useForm<UpdateClinicGeneralSettingsRequest>();
-  const { settings, loading, saving, error, reload, saveSettings } =
-    useClinicGeneralSettings();
-  const { can, isAdmin } = usePermission();
+  const {
+    form,
+    settings,
+    loading,
+    saving,
+    error,
+    reload,
+    canEdit,
+    handleSubmit,
+  } = useGeneralSettingsForm();
 
-  const canEdit = isAdmin || can("general_option", PermissionAction.EDIT);
-
-  useEffect(() => {
-    if (!settings) return;
-
-    form.setFieldsValue({
-      name: settings.name,
-      address: settings.address ?? undefined,
-      phone: settings.phone ?? undefined,
-      timezone: settings.timezone,
-      currency: settings.currency,
-      schedule: settings.schedule,
-      minimumAdvanceNoticePeriod: settings.minimumAdvanceNoticePeriod ?? 120,
-      standardAppointmentDuration: settings.standardAppointmentDuration ?? 30,
-      cancellationLimitPerMonth: settings.cancellationLimitPerMonth ?? 3,
-      allowOnlineReservations: settings.allowOnlineReservations ?? true,
-      requireConfirmation: settings.requireConfirmation ?? false,
-      sendReminders: settings.sendReminders ?? false,
-      reminderTime: settings.reminderTime ?? 1440,
-    });
-  }, [form, settings]);
-
-  const handleFinish = async (values: UpdateClinicGeneralSettingsRequest) => {
-    const scheduleError = findInvalidScheduleDay(values);
-    if (scheduleError) {
-      form.setFields([
-        {
-          name: ["schedule", scheduleError.dayKey, "startTime"],
-          errors: [scheduleError.message],
-        },
-      ]);
-      form.scrollToField(["schedule", scheduleError.dayKey, "startTime"]);
-      return;
-    }
-
-    const payload: UpdateClinicGeneralSettingsRequest = {
-      ...values,
-      name: values.name.trim(),
-      address: values.address?.trim() || null,
-      phone: values.phone?.trim() || null,
-      schedule: normalizeScheduleForSave(values),
-    };
-
-    await saveSettings(payload);
-  };
+  const disabled = !canEdit || saving;
+  // Se lee en render para suscribir el proxy de formState (re-render al cambiar).
+  const { isDirty } = form.formState;
 
   if (loading && !settings) {
     return (
       <div className="space-y-6">
-        <SectionTitle
+        <PageHeader
           title="Opciones Generales"
           subtitle="Administra la configuración institucional y operativa de la clínica."
         />
-        <PageCard>
-          <Skeleton active paragraph={{ rows: 8 }} />
-        </PageCard>
+        <GeneralSettingsSkeleton />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <SectionTitle
+      <PageHeader
         title="Opciones Generales"
         subtitle="Administra datos de la clínica, horarios y políticas base para la operación diaria."
       />
 
       {error && (
-        <Alert
-          type="error"
-          showIcon
-          title="No se pudo sincronizar la configuración"
-          description={error}
-          action={
-            <Button size="small" icon={<ReloadOutlined />} onClick={reload}>
-              Reintentar
-            </Button>
-          }
-        />
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="flex flex-col gap-3 rounded-xl border border-rose-500/20 bg-rose-500/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex items-start gap-3">
+            <AlertCircle
+              aria-hidden="true"
+              className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400"
+            />
+            <div>
+              <p className="text-sm font-medium text-ink">
+                No se pudo sincronizar la configuración
+              </p>
+              <p className="text-sm text-subtle">{error}</p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2 self-start sm:self-auto"
+            onClick={reload}
+          >
+            <RotateCw aria-hidden="true" className="h-4 w-4" />
+            Reintentar
+          </Button>
+        </div>
       )}
 
       {!canEdit && (
-        <Alert
-          type="warning"
-          showIcon
-          title="Solo lectura"
-          description="No tienes permiso para editar las opciones generales. Puedes revisar la configuración actual."
-        />
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4"
+        >
+          <Lock
+            aria-hidden="true"
+            className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400"
+          />
+          <div>
+            <p className="text-sm font-medium text-ink">Solo lectura</p>
+            <p className="text-sm text-subtle">
+              No tienes permiso para editar las opciones generales. Puedes
+              revisar la configuración actual.
+            </p>
+          </div>
+        </div>
       )}
 
-      <Form<UpdateClinicGeneralSettingsRequest>
-        form={form}
-        layout="vertical"
-        disabled={!canEdit || saving}
-        onFinish={handleFinish}
-        onFinishFailed={(info) => {
-          const firstError = info.errorFields[0]?.errors[0];
-          if (firstError) {
-            // AntD already marks the field; reject only prevents silent submits.
-            return;
-          }
-        }}
-      >
-        <PageCard
-          title="Datos de la clínica"
-          subtitle="Información institucional visible en documentos internos y operación diaria."
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(handleSubmit, scrollToFirstInvalidField)}
+          noValidate
+          className="space-y-6"
         >
-          <Row gutter={[16, 0]}>
-            <Col xs={24} md={12}>
-              <FormInput
-                name="name"
-                label="Nombre de la clínica"
-                placeholder="Ej: Clínica Dental San José"
-                required
-                maxLength={120}
-                rules={[
-                  { min: 2, message: "El nombre debe tener al menos 2 caracteres" },
-                ]}
-              />
-            </Col>
-            <Col xs={24} md={12}>
-              <FormInput
-                name="phone"
-                label="Teléfono"
-                placeholder="Ej: +591 70000000"
-                type="tel"
-                maxLength={30}
-              />
-            </Col>
-            <Col xs={24}>
-              <FormInput
-                name="address"
-                label="Dirección"
-                placeholder="Dirección principal de la clínica"
-                maxLength={255}
-              />
-            </Col>
-          </Row>
-        </PageCard>
+          <section className="bento p-6">
+            <SectionHeader
+              title="Datos de la clínica"
+              subtitle="Información institucional visible en documentos internos y operación diaria."
+            />
+            <ClinicInfoFields
+              disabled={disabled}
+              subscriptionPlan={settings?.subscriptionPlan}
+            />
+          </section>
 
-        <PageCard
-          title="Configuración regional"
-          subtitle="Valores base para interpretar fechas, horarios y moneda de la clínica."
-        >
-          <Row gutter={[16, 0]}>
-            <Col xs={24} md={12}>
-              <FormSelect
-                name="currency"
-                label="Moneda"
-                required
-                allowClear={false}
-                options={currencyOptions}
-              />
-            </Col>
-            <Col xs={24} md={12}>
-              <FormSelect
-                name="timezone"
-                label="Zona horaria"
-                required
-                allowClear={false}
-                options={timezoneOptions}
-              />
-            </Col>
-          </Row>
-          <Text type="secondary">
-            Plan actual: <Tag>{settings?.subscriptionPlan || "Sin plan"}</Tag>
-          </Text>
-        </PageCard>
+          <section className="bento p-6">
+            <SectionHeader
+              title="Horarios de atención"
+              subtitle="Horario global de la clínica. El horario efectivo de citas se define junto con el horario de cada doctor."
+            />
+            <ScheduleEditor disabled={disabled} />
+          </section>
 
-        <PageCard
-          title="Horarios de atención"
-          subtitle="Horario global de la clínica. El horario efectivo de citas se define junto con el horario de cada doctor."
-        >
-          <div className="space-y-4">
-            {CLINIC_SCHEDULE_DAYS.map(({ key, label }) => (
-              <ScheduleDayRow key={key} dayKey={key} label={label} />
-            ))}
-          </div>
-        </PageCard>
+          <section className="bento p-6">
+            <SectionHeader
+              title="Políticas de operación"
+              subtitle="Parámetros activos para disponibilidad, creación, actualización y reagenda de citas futuras."
+            />
+            <PolicyFields disabled={disabled} />
+          </section>
 
-        <PageCard
-          title="Políticas base de citas"
-          subtitle="Parámetros activos para disponibilidad, creación, actualización y reagenda de citas futuras."
-          actions={[
-            <Flex key="actions" justify="end" style={{ padding: "0 16px" }}>
-              <Space>
-                <Button icon={<ReloadOutlined />} onClick={reload} disabled={saving}>
-                  Recargar
+          {/* Barra de acciones sticky y consciente de cambios: permanece visible
+              al hacer scroll y sólo habilita Guardar/Descartar cuando hay cambios
+              sin guardar (patrón de settings 2026). Oculta en solo lectura. */}
+          {canEdit && (
+            <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-xl border border-hairline bg-surface/85 px-4 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-surface/70 sm:flex-row sm:items-center sm:justify-between">
+              <p
+                aria-live="polite"
+                className="flex items-center gap-2 text-sm text-subtle"
+              >
+                {isDirty ? (
+                  <>
+                    <span
+                      aria-hidden="true"
+                      className="inline-block h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-500"
+                    />
+                    Tienes cambios sin guardar
+                  </>
+                ) : (
+                  <>
+                    <Check
+                      aria-hidden="true"
+                      className="h-4 w-4 shrink-0 text-emerald-500"
+                    />
+                    Todo está guardado
+                  </>
+                )}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => form.reset()}
+                  disabled={saving || !isDirty}
+                  className="gap-2"
+                >
+                  <RotateCw aria-hidden="true" className="h-4 w-4" />
+                  Descartar
                 </Button>
                 <Button
-                  type="primary"
-                  htmlType="submit"
-                  icon={<SaveOutlined />}
+                  type="submit"
                   loading={saving}
-                  disabled={!canEdit}
+                  disabled={saving || !isDirty}
+                  className="gap-2"
                 >
-                  Guardar configuración
+                  <Save aria-hidden="true" className="h-4 w-4" />
+                  Guardar cambios
                 </Button>
-              </Space>
-            </Flex>,
-          ]}
-        >
-          <Row gutter={[16, 0]}>
-            <Col xs={24} md={8}>
-              <Form.Item
-                name="minimumAdvanceNoticePeriod"
-                label="Anticipación mínima (minutos)"
-                rules={[
-                  {
-                    type: "number",
-                    min: 0,
-                    message: "Debe ser mayor o igual a 0",
-                  },
-                ]}
-              >
-                <InputNumber min={0} precision={0} style={{ width: "100%" }} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item
-                name="standardAppointmentDuration"
-                label="Duración estándar (minutos)"
-                rules={[
-                  { required: true, message: "La duración estándar es requerida" },
-                  {
-                    type: "number",
-                    min: 1,
-                    message: "Debe ser mayor que 0",
-                  },
-                ]}
-              >
-                <InputNumber min={1} precision={0} style={{ width: "100%" }} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item
-                name="cancellationLimitPerMonth"
-                label="Cancelaciones por mes"
-                rules={[
-                  {
-                    type: "number",
-                    min: 0,
-                    message: "Debe ser mayor o igual a 0",
-                  },
-                ]}
-              >
-                <InputNumber min={0} precision={0} style={{ width: "100%" }} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Divider />
-
-          <Row gutter={[16, 0]}>
-            <Col xs={24} md={8}>
-              <FormSwitch
-                name="allowOnlineReservations"
-                label="Reservas en línea"
-                checkedText="Activas"
-                uncheckedText="Inactivas"
-                help="Define si la clínica acepta reservas online."
-              />
-            </Col>
-            <Col xs={24} md={8}>
-              <FormSwitch
-                name="requireConfirmation"
-                label="Requiere confirmación"
-                checkedText="Sí"
-                uncheckedText="No"
-                help="Aplica a reservas online futuras."
-              />
-            </Col>
-            <Col xs={24} md={8}>
-              <FormSwitch
-                name="sendReminders"
-                label="Enviar recordatorios"
-                checkedText="Sí"
-                uncheckedText="No"
-                help="Activa recordatorios automáticos futuros."
-              />
-            </Col>
-          </Row>
-
-          <Form.Item noStyle shouldUpdate>
-            {({ getFieldValue }) =>
-              getFieldValue("sendReminders") ? (
-                <Row gutter={[16, 0]}>
-                  <Col xs={24} md={8}>
-                    <Form.Item
-                      name="reminderTime"
-                      label="Recordatorio antes de la cita (minutos)"
-                      rules={[
-                        {
-                          required: true,
-                          message: "El tiempo de recordatorio es requerido",
-                        },
-                        {
-                          type: "number",
-                          min: 1,
-                          message: "Debe ser mayor que 0",
-                        },
-                      ]}
-                    >
-                      <InputNumber min={1} precision={0} style={{ width: "100%" }} />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              ) : null
-            }
-          </Form.Item>
-        </PageCard>
+              </div>
+            </div>
+          )}
+        </form>
       </Form>
     </div>
-  );
-}
-
-function ScheduleDayRow({
-  dayKey,
-  label,
-}: {
-  dayKey: ClinicScheduleDayKey;
-  label: string;
-}) {
-  return (
-    <Form.Item noStyle shouldUpdate>
-      {({ getFieldValue }) => {
-        const enabled = getFieldValue(["schedule", dayKey, "enabled"]);
-
-        return (
-          <div className="rounded-xl border border-hairline bg-hover p-4">
-            <Row gutter={[16, 12]} align="middle">
-              <Col xs={24} md={6}>
-                <Text strong>{label}</Text>
-              </Col>
-              <Col xs={24} md={6}>
-                <FormSwitch
-                  name={["schedule", dayKey, "enabled"]}
-                  checkedText="Abierto"
-                  uncheckedText="Cerrado"
-                />
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <FormTimePicker
-                  name={["schedule", dayKey, "startTime"]}
-                  label="Apertura"
-                  disabled={!enabled}
-                  required={Boolean(enabled)}
-                />
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <FormTimePicker
-                  name={["schedule", dayKey, "endTime"]}
-                  label="Cierre"
-                  disabled={!enabled}
-                  required={Boolean(enabled)}
-                />
-              </Col>
-            </Row>
-          </div>
-        );
-      }}
-    </Form.Item>
   );
 }

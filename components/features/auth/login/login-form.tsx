@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { AlertCircle, ArrowRight, Lock, Mail, Sparkles } from "lucide-react";
 import { useLoginForm } from "@/lib/hooks/use-login-form";
+import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { AuthShell } from "../components/auth-shell";
 import { AuthCard } from "../components/auth-card";
@@ -21,6 +22,8 @@ export function LoginForm() {
     authError,
     handleSubmit,
   } = useLoginForm();
+
+  const { name: clinicName, logoUrl } = useClinicBranding();
 
   const [emailTouched, setEmailTouched] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
@@ -47,8 +50,19 @@ export function LoginForm() {
 
         <AuthCard
           className="relative z-10 bg-surface/72 auth-glass backdrop-blur-md"
-          icon={<Sparkles className="h-7 w-7" />}
-          eyebrow="Clinic Flow 360"
+          icon={
+            logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={`Logo de ${clinicName}`}
+                className="h-full w-full rounded-2xl object-cover"
+              />
+            ) : (
+              <Sparkles className="h-7 w-7" />
+            )
+          }
+          eyebrow={clinicName}
           title="Bienvenido de vuelta"
           description="Inicia sesión para continuar"
           footer={

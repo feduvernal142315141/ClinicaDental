@@ -31,6 +31,8 @@ export interface ClinicGeneralSettings {
   requireConfirmation?: boolean | null;
   sendReminders?: boolean | null;
   reminderTime?: number | null;
+  /** URL absoluta del logo de la clínica (subido a Cloudinary). */
+  logoUrl?: string | null;
 }
 
 export type UpdateClinicGeneralSettingsRequest = Omit<
@@ -77,4 +79,5 @@ export const DEFAULT_CLINIC_GENERAL_SETTINGS: ClinicGeneralSettings = {
   requireConfirmation: false,
   sendReminders: false,
   reminderTime: 1440,
+  logoUrl: null,
 };

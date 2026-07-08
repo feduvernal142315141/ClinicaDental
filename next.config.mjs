@@ -15,9 +15,9 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
+  "img-src 'self' data: blob: https: https://res.cloudinary.com",
   "font-src 'self' data:",
-  "connect-src 'self' https: http://localhost:* ws: wss:",
+  "connect-src 'self' https: http://localhost:* ws: wss: https://api.cloudinary.com",
   "frame-src 'self'",
 ].join("; ");
 

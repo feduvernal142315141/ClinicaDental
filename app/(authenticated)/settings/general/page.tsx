@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Spin } from "antd";
+import { Loader2 } from "lucide-react";
 
 const GeneralSettings = dynamic(
   () =>
@@ -10,10 +10,9 @@ const GeneralSettings = dynamic(
     ),
   {
     loading: () => (
-      <div className="flex justify-center items-center h-64">
-        <Spin description="Cargando...">
-          <div style={{ padding: "50px" }} />
-        </Spin>
+      <div className="flex h-64 items-center justify-center gap-2 text-subtle">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-sm">Cargando…</span>
       </div>
     ),
   },

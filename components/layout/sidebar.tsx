@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils/utils";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
 import { useSidebarNavigation } from "@/lib/hooks/use-sidebar-navigation";
 import { SidebarSection } from "@/components/ui/atomic/navigation/sidebar-section";
 import { SidebarNavItem } from "@/components/ui/atomic/navigation/sidebar-nav-item";
@@ -25,6 +26,7 @@ export function Sidebar({
   onToggleCollapse,
 }: SidebarProps) {
   const { user } = useAuth();
+  const { name: clinicName, logoUrl } = useClinicBranding();
   const router = useRouter();
   const { mainMenuItems, secondaryMenuItems, isActiveRoute } =
     useSidebarNavigation(user?.roleName);
@@ -148,12 +150,21 @@ export function Sidebar({
           >
             <div
               className={cn(
-                "grid h-9 w-9 shrink-0 place-items-center rounded-2xl text-white",
-                "bg-gradient-to-br from-brand to-brand-strong",
-                "shadow-[0_4px_14px_-4px_rgb(var(--brand)/0.55)]",
+                "grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-2xl text-white",
+                !logoUrl && "bg-gradient-to-br from-brand to-brand-strong",
+                !logoUrl && "shadow-[0_4px_14px_-4px_rgb(var(--brand)/0.55)]",
               )}
             >
-              <Activity className="h-[18px] w-[18px]" strokeWidth={2.5} />
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoUrl}
+                  alt={`Logo de ${clinicName}`}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <Activity className="h-[18px] w-[18px]" strokeWidth={2.5} />
+              )}
             </div>
             <div
               className={cn(
@@ -163,7 +174,7 @@ export function Sidebar({
             >
               <div className="overflow-hidden">
                 <p className="truncate text-sm font-semibold leading-tight text-ink">
-                  Clinic Flow 360
+                  {clinicName}
                 </p>
                 <p className="truncate text-[11px] leading-tight text-subtle">
                   Gestión clínica

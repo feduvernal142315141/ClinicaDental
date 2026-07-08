@@ -40,7 +40,7 @@ export function AuthCard({
       <div className="mb-6 text-center">
         <div className="animate-auth-float relative mx-auto mb-4 inline-flex">
           <span className="animate-auth-pulse-ring absolute inset-0 rounded-2xl bg-brand/40" />
-          <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-brand text-white shadow-lg shadow-brand/30">
+          <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-brand text-white shadow-lg shadow-brand/30">
             {icon ?? <ShieldCheck className="h-7 w-7" />}
           </div>
         </div>

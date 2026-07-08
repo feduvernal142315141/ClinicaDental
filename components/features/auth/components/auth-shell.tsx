@@ -9,6 +9,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
 import { AuthParticles } from "./auth-particles";
 
 interface AuthShellProps {
@@ -98,6 +99,8 @@ const FEATURES = [
 ] as const;
 
 function AuthBrandPanel() {
+  const { name: clinicName, logoUrl } = useClinicBranding();
+
   return (
     <section className="relative hidden lg:block animate-auth-rise">
       {/* Tiles decorativos flotantes */}
@@ -111,16 +114,25 @@ function AuthBrandPanel() {
       />
 
       <div className="relative rounded-bento border border-hairline bg-surface/55 p-8 shadow-sm backdrop-blur-xl xl:p-10">
-        {/* Logo orb */}
+        {/* Logo orb: imagen de la clínica si existe, si no el ícono por defecto */}
         <div className="relative inline-flex">
           <span className="animate-auth-pulse-ring absolute inset-0 rounded-2xl bg-brand/40" />
-          <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-brand text-white shadow-lg shadow-brand/30">
-            <Sparkles className="h-7 w-7" />
+          <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-brand text-white shadow-lg shadow-brand/30">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={`Logo de ${clinicName}`}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <Sparkles className="h-7 w-7" />
+            )}
           </div>
         </div>
 
         <h1 className="mt-6 text-3xl font-bold tracking-tight text-ink xl:text-4xl">
-          Clinic Flow 360
+          {clinicName}
         </h1>
         <p className="mt-2 max-w-sm text-balance text-subtle">
           La plataforma 2026 para gestionar tu clínica dental: citas, pacientes,
