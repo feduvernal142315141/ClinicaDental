@@ -127,12 +127,13 @@ export function PatientOdontogramPanel({
   // y appointmentsLoading) NO se bloquea, para no flashear "solo lectura".
   const isNonEditableVisit = !appointmentsLoading && !isActiveVisitStatus;
 
-  // El odontograma es documentación clínica: su edición se gatea con permiso
-  // clínico (clinical_history), no con patients:EDIT.
+  // El odontograma es documentación clínica: su edición se gatea con la
+  // autoridad 'odontogram' (backend @PreAuthorize), no con clinical_history
+  // ni con patients:EDIT.
   const canEditClinical =
     isAdmin ||
-    can("clinical_history", PermissionAction.EDIT) ||
-    can("clinical_history", PermissionAction.CREATE);
+    can("odontogram", PermissionAction.EDIT) ||
+    can("odontogram", PermissionAction.CREATE);
 
   // US-03: odontogram is read-only when no active consultation, historic mode,
   // a finalized visit, or insufficient clinical permission.

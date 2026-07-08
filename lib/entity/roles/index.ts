@@ -119,7 +119,8 @@ export const SYSTEM_ROLES = {
 export const PERMISSION_TYPES = {
   APPOINTMENTS: "appointments",
   PATIENTS: "patients",
-  PATIENT_MANAGEMENT: "patient_management",
+  // Debe coincidir exactamente con Permissions.java (backend): "patient management" con espacio.
+  PATIENT_MANAGEMENT: "patient management",
   DOCTOR: "doctor",
   ROLE: "role",
   CAMPAIGN: "campaign",

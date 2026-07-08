@@ -53,7 +53,10 @@ export const PERMISSIONS = {
     category: PERMISSION_CATEGORIES.PATIENTS,
   },
   PATIENT_MANAGEMENT: {
-    id: "patient_management",
+    // Nota: el backend define esta autoridad como "patient management" (con
+    // espacio, no guion bajo) — ver Permissions.java. El id debe coincidir
+    // exactamente porque el claim del JWT usa `${name}-${actionsBitmask}`.
+    id: "patient management",
     name: "Administración de Pacientes",
     description: "Operaciones administrativas de pacientes",
     category: PERMISSION_CATEGORIES.PATIENTS,
@@ -110,6 +113,12 @@ export const PERMISSIONS = {
     id: "clinical_history",
     name: "Historia Clínica",
     description: "Gestión de historia clínica",
+    category: PERMISSION_CATEGORIES.CLINICAL,
+  },
+  ODONTOGRAM: {
+    id: "odontogram",
+    name: "Odontograma",
+    description: "Gestión del odontograma clínico",
     category: PERMISSION_CATEGORIES.CLINICAL,
   },
   REPORTS: {
