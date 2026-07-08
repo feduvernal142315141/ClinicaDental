@@ -60,3 +60,7 @@ Thumbs.db
 
 # Logos subidos localmente (driver de subida "local", solo dev)
 /public/uploads/
+
+# Variables de entorno: nunca commitear valores reales. `.env.example` SÍ se versiona.
+.env
+.env*.local
