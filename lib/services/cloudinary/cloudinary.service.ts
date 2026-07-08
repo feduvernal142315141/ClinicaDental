@@ -120,7 +120,15 @@ async function uploadLocal(file: File): Promise<string> {
   if (!data.url) {
     throw new Error("La subida local no devolvió una URL válida.");
   }
-  return data.url;
+  // El backend exige una URL ABSOLUTA (http(s)://). El driver local devuelve
+  // una ruta relativa (/uploads/..) servida por Next; la volvemos absoluta con
+  // el origin actual para que pase la validación del backend y renderice igual.
+  if (data.url.startsWith("http://") || data.url.startsWith("https://")) {
+    return data.url;
+  }
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
+  return `${origin}${data.url}`;
 }
 
 /** Driver CLOUDINARY: unsigned upload directo desde el navegador. */

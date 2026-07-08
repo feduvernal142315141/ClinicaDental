@@ -53,13 +53,18 @@ export function LogoUploader({
   const [uploading, setUploading] = React.useState(false);
   const [localPreview, setLocalPreview] = React.useState<string | null>(null);
 
-  React.useEffect(
-    () => () => {
+  React.useEffect(() => {
+    // Reponer a `true` en CADA montaje: bajo React 18 Strict Mode (dev) el
+    // componente se monta → desmonta → remonta, y si solo se pusiera `false`
+    // en el cleanup, `mountedRef` quedaría en `false` de por vida — dejando el
+    // uploader colgado en "Subiendo…" porque el `finally` no llegaría a
+    // `setUploading(false)`.
+    mountedRef.current = true;
+    return () => {
       mountedRef.current = false;
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-    },
-    [],
-  );
+    };
+  }, []);
 
   const pick = () => {
     if (!disabled && !uploading) inputRef.current?.click();
