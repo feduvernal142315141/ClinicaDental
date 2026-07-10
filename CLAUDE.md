@@ -16,7 +16,7 @@ yarn dev                                       # next dev --turbopack
 
 ## Reglas (no negociables)
 - Capas: `page.tsx → component → hook → service → entity`. HTTP **solo** en `lib/services/*` (Axios `baseService`); tipos en `lib/entity/*`.
-- **UI 2026 Bento**: `@/components/ui` (Radix/shadcn/atomic + controles). **Prohibido antd en código nuevo.** Toasts `notify` (sonner), iconos `lucide-react`, copy en **español**.
+- **UI 2026 Bento**: `@/components/ui` (Radix/shadcn/atomic + controles). **Prohibido antd en código nuevo.** Toasts `notify` (Sileo), iconos `lucide-react`, copy en **español**.
 - Forms: **react-hook-form + zod**, validación onBlur 3 estados, floating labels, WCAG 2.2.
 - Tokens semánticos (`canvas/surface/ink/brand/subtle/hairline/rounded-bento`). Fechas `YYYY-MM-DD`/`HH:mm`, inputs en hora LOCAL (`lib/datetime.ts`).
 - Datos solo-cliente (storage) → leer en `useEffect`, **nunca en render** (hidratación).
