@@ -1,9 +1,9 @@
 "use client";
 
-import { AlertCircle, Check, Lock, RotateCw, Save } from "lucide-react";
+import { AlertCircle, Lock, RotateCw } from "lucide-react";
 
 import { PageHeader } from "@/components/ui/layout/page-header";
-import { Form } from "@/components/ui/atomic/forms";
+import { Form, FormActionBar } from "@/components/ui/atomic/forms";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { useGeneralSettingsForm } from "@/lib/hooks/settings";
 import { ClinicInfoFields } from "@/components/features/settings/clinic-info-fields";
@@ -165,55 +165,20 @@ export function GeneralSettings() {
             <PolicyFields disabled={disabled} />
           </section>
 
-          {/* Barra de acciones sticky y consciente de cambios: permanece visible
-              al hacer scroll y sólo habilita Guardar/Descartar cuando hay cambios
-              sin guardar (patrón de settings 2026). Oculta en solo lectura. */}
+          {/* Barra de acciones sticky ESTÁNDAR del proyecto (FormActionBar). En
+              settings usa el patrón "Descartar" (reset) y sólo habilita cuando hay
+              cambios sin guardar. Oculta en solo lectura. */}
           {canEdit && (
-            <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-xl border border-hairline bg-surface/85 px-4 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-surface/70 sm:flex-row sm:items-center sm:justify-between">
-              <p
-                aria-live="polite"
-                className="flex items-center gap-2 text-sm text-subtle"
-              >
-                {isDirty ? (
-                  <>
-                    <span
-                      aria-hidden="true"
-                      className="inline-block h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-500"
-                    />
-                    Tienes cambios sin guardar
-                  </>
-                ) : (
-                  <>
-                    <Check
-                      aria-hidden="true"
-                      className="h-4 w-4 shrink-0 text-emerald-500"
-                    />
-                    Todo está guardado
-                  </>
-                )}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => form.reset()}
-                  disabled={saving || !isDirty}
-                  className="gap-2"
-                >
-                  <RotateCw aria-hidden="true" className="h-4 w-4" />
-                  Descartar
-                </Button>
-                <Button
-                  type="submit"
-                  loading={saving}
-                  disabled={saving || !isDirty}
-                  className="gap-2"
-                >
-                  <Save aria-hidden="true" className="h-4 w-4" />
-                  Guardar cambios
-                </Button>
-              </div>
-            </div>
+            <FormActionBar
+              isDirty={isDirty}
+              onSecondary={() => form.reset()}
+              secondaryLabel="Descartar"
+              secondaryIcon={RotateCw}
+              disableSecondaryWhenClean
+              submitLabel="Guardar cambios"
+              disableSubmitWhenClean
+              loading={saving}
+            />
           )}
         </form>
       </Form>

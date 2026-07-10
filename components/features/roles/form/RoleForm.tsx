@@ -4,6 +4,7 @@ import { ShieldAlert } from "lucide-react";
 
 import {
   Form,
+  FormActionBar,
   FormControl,
   FormField,
   FormItem,
@@ -11,7 +12,6 @@ import {
   FormMessage,
   Input,
 } from "@/components/ui/atomic/forms";
-import { Button } from "@/components/ui/primitives/shadcn/button";
 import { useRoleForm } from "@/lib/hooks/roles/use-role-form";
 import { PermissionsSelector } from "./PermissionsSelector";
 
@@ -30,6 +30,7 @@ export function RoleForm({
     useRoleForm({ roleId, basePath });
 
   const disabled = loading || isSystem;
+  const { isDirty } = form.formState;
 
   return (
     <Form {...form}>
@@ -92,19 +93,13 @@ export function RoleForm({
           )}
         />
 
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleCancel}
-            disabled={loading}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={disabled}>
-            {isEdit ? "Guardar cambios" : "Crear rol"}
-          </Button>
-        </div>
+        <FormActionBar
+          isDirty={isEdit ? isDirty : undefined}
+          onSecondary={handleCancel}
+          submitLabel={isEdit ? "Guardar cambios" : "Crear rol"}
+          loading={loading}
+          submitDisabled={disabled}
+        />
       </form>
     </Form>
   );

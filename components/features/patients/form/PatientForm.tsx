@@ -1,8 +1,7 @@
 "use client";
 
 import { forwardRef, useImperativeHandle } from "react";
-import { Form } from "@/components/ui/atomic/forms";
-import { FormActions } from "@/components/features/doctors/form/components/FormActions";
+import { Form, FormActionBar } from "@/components/ui/atomic/forms";
 import { usePatientForm } from "@/lib/hooks/patients";
 import { PatientFormFields } from "./PatientFormFields";
 import type { Patient } from "@/lib/entity/patients";
@@ -96,13 +95,12 @@ export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
     const fields = <PatientFormFields disabled={formDisabled} />;
 
     const actions = !hideActions && !readOnly && (
-      <div className="flex justify-end pt-2">
-        <FormActions
-          loading={loading}
-          onCancel={handleCancel}
-          submitText={isEdit ? "Actualizar" : "Guardar"}
-        />
-      </div>
+      <FormActionBar
+        isDirty={isEdit ? form.formState.isDirty : undefined}
+        onSecondary={handleCancel}
+        submitLabel={isEdit ? "Actualizar" : "Guardar"}
+        loading={loading}
+      />
     );
 
     if (hideActions) {
@@ -132,8 +130,8 @@ export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
               Información del paciente
             </h3>
             {fields}
-            {actions}
           </section>
+          {actions}
         </form>
       </Form>
     );

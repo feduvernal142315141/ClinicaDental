@@ -4,6 +4,7 @@ import { Info, Stethoscope, FileText, Sparkles } from "lucide-react";
 
 import {
   Form,
+  FormActionBar,
   FormControl,
   FormField,
   FormItem,
@@ -15,7 +16,6 @@ import {
 import TextArea from "@/components/ui/atomic/forms/textarea";
 import { Select } from "@/components/ui/controls/select";
 import { AvatarField } from "@/components/ui/controls/avatar-field";
-import { Button } from "@/components/ui/primitives/shadcn/button";
 import { useServiceForm } from "@/lib/hooks/services/use-service-form";
 import {
   SERVICE_TYPE_LABELS,
@@ -114,6 +114,8 @@ export function ServiceForm({
     serviceId,
     basePath,
   });
+
+  const { isDirty } = form.formState;
 
   const odontogramEnabled = form.watch("odontogramEnabled");
   const symbolMode = form.watch("odontogramSymbolMode");
@@ -489,19 +491,12 @@ export function ServiceForm({
         </section>
 
         {/* Acciones */}
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleCancel}
-            disabled={loading}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={loading}>
-            {isEdit ? "Guardar cambios" : "Guardar servicio"}
-          </Button>
-        </div>
+        <FormActionBar
+          isDirty={isEdit ? isDirty : undefined}
+          onSecondary={handleCancel}
+          submitLabel={isEdit ? "Guardar cambios" : "Guardar servicio"}
+          loading={loading}
+        />
       </form>
     </Form>
   );

@@ -8,3 +8,4 @@ export * from "./slider";
 export * from "./label";
 export * from "./input-otp";
 export * from "./form";
+export * from "./form-action-bar";
