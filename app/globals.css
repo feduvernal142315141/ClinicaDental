@@ -201,6 +201,7 @@ html {
   body {
     @apply bg-background text-foreground;
   }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
 }
 
 /* ── Bento card (sistema de diseño 2026) ────────────────────────────── */
