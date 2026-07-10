@@ -28,6 +28,8 @@ export interface DateTimePickerProps {
   toYear?: number;
   /** Permite limpiar el valor (X + botón "Limpiar"). Def. true. */
   allowClear?: boolean;
+  /** Anclaje horizontal del popover. Def. "start" (izquierda, comportamiento actual). */
+  align?: "start" | "end";
   "aria-label"?: string;
   "aria-invalid"?: boolean;
 }
@@ -54,6 +56,7 @@ export function DateTimePicker({
   fromYear,
   toYear,
   allowClear = true,
+  align = "start",
   "aria-label": ariaLabel,
   "aria-invalid": ariaInvalid,
 }: DateTimePickerProps) {
@@ -193,7 +196,10 @@ export function DateTimePicker({
           role="dialog"
           aria-modal="false"
           aria-label={placeholder}
-          className="absolute z-50 mt-2 w-[19rem] rounded-xl border border-hairline bg-elevated p-3 shadow-bento"
+          className={cn(
+            "absolute z-50 mt-2 w-[20.5rem] rounded-xl border border-hairline bg-elevated p-3 shadow-bento",
+            align === "end" ? "right-0" : "left-0",
+          )}
         >
           {/* Navegación: mes anterior · selects mes/año · mes siguiente */}
           <div className="mb-2 flex items-center gap-1">
@@ -214,7 +220,7 @@ export function DateTimePicker({
                   aria-label="Mes"
                 />
               </div>
-              <div className="w-[5.25rem]">
+              <div className="w-24">
                 <Select
                   value={String(year)}
                   onChange={(y) => setView(new Date(Number(y), month, 1))}

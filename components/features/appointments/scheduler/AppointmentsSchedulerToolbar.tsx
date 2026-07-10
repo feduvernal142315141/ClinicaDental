@@ -140,6 +140,7 @@ export function AppointmentsSchedulerToolbar({
           }}
           aria-label="Ir a una fecha"
           className="ml-auto w-44"
+          align="end"
         />
       </div>
     </div>
