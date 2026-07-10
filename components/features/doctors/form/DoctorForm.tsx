@@ -7,6 +7,7 @@ import {
   Form,
   FormActionBar,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -304,6 +305,9 @@ export function DoctorForm({
                         </FormLabel>
                         <FormControl>
                           <Input
+                            type="tel"
+                            inputMode="tel"
+                            autoComplete="tel"
                             placeholder="+591 7000 0000"
                             disabled={formDisabled}
                             {...field}
@@ -438,23 +442,55 @@ export function DoctorForm({
                     <FormField
                       control={form.control}
                       name="active"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-xl border border-hairline bg-elevated px-4 py-3">
-                          <div className="space-y-0.5">
-                            <FormLabel>Estado</FormLabel>
-                            <p className="text-xs text-subtle">
-                              {field.value ? "Activo" : "Inactivo"}
-                            </p>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                              disabled={formDisabled}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
+                      render={({ field }) => {
+                        const isActive = !!field.value;
+                        return (
+                          <FormItem
+                            className={cn(
+                              "flex flex-row items-center justify-between gap-4 rounded-xl border px-4 py-3.5 transition-colors",
+                              isActive
+                                ? "border-emerald-400/25 bg-emerald-500/[0.06]"
+                                : "border-hairline bg-elevated",
+                            )}
+                          >
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <FormLabel>Estado</FormLabel>
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1",
+                                    isActive
+                                      ? "bg-emerald-500/15 text-emerald-700 ring-emerald-400/25 dark:text-emerald-300"
+                                      : "bg-hover text-subtle ring-hairline",
+                                  )}
+                                >
+                                  <span
+                                    aria-hidden="true"
+                                    className={cn(
+                                      "h-1.5 w-1.5 rounded-full",
+                                      isActive ? "bg-emerald-500" : "bg-subtle",
+                                    )}
+                                  />
+                                  {isActive ? "Activo" : "Inactivo"}
+                                </span>
+                              </div>
+                              <FormDescription className="text-xs leading-snug text-subtle">
+                                {isActive
+                                  ? "Puede iniciar sesión en el sistema."
+                                  : "No podrá iniciar sesión en el sistema."}
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={isActive}
+                                onCheckedChange={field.onChange}
+                                disabled={formDisabled}
+                                className="relative shrink-0 before:absolute before:-inset-3 before:content-['']"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        );
+                      }}
                     />
                   </div>
                 </section>
