@@ -36,7 +36,7 @@ export function useServiceForm({
       code: "",
       name: "",
       type: "TREATMENT",
-      cost: 0,
+      cost: undefined,
       duration: undefined,
       category: undefined,
       description: "",
