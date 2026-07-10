@@ -6,9 +6,11 @@ import {
   Clock,
   FileText,
   Plus,
+  Save,
   Stethoscope,
   Tag as TagIcon,
   User,
+  X,
 } from "lucide-react";
 import {
   Form,
@@ -188,8 +190,11 @@ export function AppointmentForm({
                             label: o.label,
                           }))}
                           placeholder="Seleccione paciente"
+                          searchable
+                          searchPlaceholder="Buscar paciente…"
                           disabled={formDisabled || catalogsLoading}
                           className="flex-1"
+                          aria-label="Paciente"
                         />
                       </FormControl>
                       {!readOnly && (
@@ -228,7 +233,10 @@ export function AppointmentForm({
                           label: o.label,
                         }))}
                         placeholder="Seleccione doctor"
+                        searchable
+                        searchPlaceholder="Buscar doctor…"
                         disabled={formDisabled || catalogsLoading}
+                        aria-label="Doctor"
                       />
                     </FormControl>
                     <FormMessage />
@@ -542,8 +550,9 @@ export function AppointmentForm({
                 <Button
                   type="submit"
                   loading={loading || patientCreationLoading}
-                  className="w-full"
+                  className="w-full gap-2"
                 >
+                  <Save aria-hidden="true" className="h-4 w-4" />
                   {isEdit ? "Actualizar cita" : "Guardar cita"}
                 </Button>
                 <Button
@@ -551,8 +560,9 @@ export function AppointmentForm({
                   type="button"
                   onClick={handleCancel}
                   disabled={loading || patientCreationLoading}
-                  className="w-full"
+                  className="w-full gap-2"
                 >
+                  <X aria-hidden="true" className="h-4 w-4" />
                   Cancelar
                 </Button>
               </div>
