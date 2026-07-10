@@ -9,12 +9,7 @@ import type {
   PaginatedPatientsResponse,
 } from "@/lib/entity/patients";
 import { notify } from "@/lib/utils/notify";
-
-/** Extracts a human-readable message from an unknown catch value. */
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error) return error.message || fallback;
-  return fallback;
-}
+import { notifyApiError } from "@/lib/utils/notify-error";
 
 /**
  * usePatients Hook
@@ -57,12 +52,10 @@ export function usePatients() {
         const err =
           error instanceof Error ? error : new Error("Error desconocido");
         setFetchError(err);
-        notify.error(
-          getErrorMessage(error, "No se pudo cargar el listado de pacientes"),
-          {
-            description:
-              "Revisa tu conexión e inténtalo de nuevo; si el problema continúa, contacta a soporte.",
-          },
+        notifyApiError(
+          "No se pudo cargar el listado de pacientes",
+          error,
+          "Revisa tu conexión e inténtalo de nuevo; si el problema continúa, contacta a soporte.",
         );
         throw error;
       } finally {
@@ -82,12 +75,10 @@ export function usePatients() {
         const patient = await patientsService.getPatientById(id);
         return patient;
       } catch (error: unknown) {
-        notify.error(
-          getErrorMessage(error, "No se pudo cargar el paciente"),
-          {
-            description:
-              "Vuelve a intentarlo en unos segundos; si persiste, revisa tu conexión o contacta a soporte.",
-          },
+        notifyApiError(
+          "No se pudo cargar el paciente",
+          error,
+          "Vuelve a intentarlo en unos segundos; si persiste, revisa tu conexión o contacta a soporte.",
         );
         throw error;
       } finally {
@@ -112,12 +103,10 @@ export function usePatients() {
         });
         return patientId;
       } catch (error: unknown) {
-        notify.error(
-          getErrorMessage(error, "No se pudo crear el paciente"),
-          {
-            description:
-              "Revisa que los datos estén completos e inténtalo otra vez; si continúa, contacta a soporte.",
-          },
+        notifyApiError(
+          "No se pudo crear el paciente",
+          error,
+          "Revisa que los datos estén completos e inténtalo otra vez; si continúa, contacta a soporte.",
         );
         throw error;
       } finally {
@@ -140,12 +129,10 @@ export function usePatients() {
         });
         return true;
       } catch (error: unknown) {
-        notify.error(
-          getErrorMessage(error, "No se pudo actualizar el paciente"),
-          {
-            description:
-              "Tus cambios no se guardaron. Inténtalo de nuevo y, si persiste, contacta a soporte.",
-          },
+        notifyApiError(
+          "No se pudo actualizar el paciente",
+          error,
+          "Tus cambios no se guardaron. Inténtalo de nuevo y, si persiste, contacta a soporte.",
         );
         throw error;
       } finally {
@@ -169,12 +156,10 @@ export function usePatients() {
         });
         return true;
       } catch (error: unknown) {
-        notify.error(
-          getErrorMessage(error, "No se pudo desactivar el paciente"),
-          {
-            description:
-              "El paciente sigue en el listado. Inténtalo de nuevo; si continúa, contacta a soporte.",
-          },
+        notifyApiError(
+          "No se pudo desactivar el paciente",
+          error,
+          "El paciente sigue en el listado. Inténtalo de nuevo; si continúa, contacta a soporte.",
         );
         throw error;
       } finally {
@@ -198,12 +183,10 @@ export function usePatients() {
         });
         return true;
       } catch (error: unknown) {
-        notify.error(
-          getErrorMessage(error, "No se pudo activar el paciente"),
-          {
-            description:
-              "El estado no cambió. Inténtalo de nuevo y, si persiste, contacta a soporte.",
-          },
+        notifyApiError(
+          "No se pudo activar el paciente",
+          error,
+          "El estado no cambió. Inténtalo de nuevo y, si persiste, contacta a soporte.",
         );
         throw error;
       } finally {
@@ -227,12 +210,10 @@ export function usePatients() {
         });
         return true;
       } catch (error: unknown) {
-        notify.error(
-          getErrorMessage(error, "No se pudo restaurar el paciente"),
-          {
-            description:
-              "El paciente sigue eliminado. Inténtalo de nuevo; si continúa, contacta a soporte.",
-          },
+        notifyApiError(
+          "No se pudo restaurar el paciente",
+          error,
+          "El paciente sigue eliminado. Inténtalo de nuevo; si continúa, contacta a soporte.",
         );
         throw error;
       } finally {
@@ -260,12 +241,10 @@ export function usePatients() {
         );
         return true;
       } catch (error: unknown) {
-        notify.error(
-          getErrorMessage(error, "No se pudo cambiar el estado del paciente"),
-          {
-            description:
-              "El estado no se actualizó. Inténtalo de nuevo y, si persiste, contacta a soporte.",
-          },
+        notifyApiError(
+          "No se pudo cambiar el estado del paciente",
+          error,
+          "El estado no se actualizó. Inténtalo de nuevo y, si persiste, contacta a soporte.",
         );
         throw error;
       } finally {

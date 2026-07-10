@@ -128,6 +128,16 @@ export function useAppointmentForm({
     >
   >(new Map());
 
+  // Catálogo id → etiqueta de doctor (incluye inactivos) para poder mostrar en
+  // edición el doctor ya asignado aunque hoy esté inactivo (no sale en el Select).
+  const doctorCatalogRef = useRef<Map<string, string>>(new Map());
+
+  /** Etiqueta "Nombre - especialidad" de un doctor del catálogo (para edición). */
+  const getDoctorLabel = useCallback(
+    (id: string): string | undefined => doctorCatalogRef.current.get(id),
+    [],
+  );
+
   /** Etiqueta "CÓDIGO - Nombre" de un servicio del catálogo (para chips en edición). */
   const getServiceLabel = useCallback((id: string): string | undefined => {
     const s = serviceCatalogRef.current.get(id);
@@ -215,11 +225,24 @@ export function useAppointmentForm({
           label: `${item.name}${item.email ? ` - ${item.email}` : ""}`,
         })),
       );
+      const doctorEntities = doctorsResponse.entities ?? [];
+      // Catálogo completo id → etiqueta (incluye inactivos) para resolver en
+      // edición el doctor ya asignado aunque hoy esté inactivo.
+      doctorCatalogRef.current = new Map(
+        doctorEntities.map((item) => [
+          item.id,
+          `${item.name}${item.specialty ? ` - ${item.specialty}` : ""}`,
+        ]),
+      );
+      // En el scheduler solo ofrecemos doctores activos: un doctor inactivo no
+      // puede recibir nuevas citas (espeja el filtro `active` de los servicios).
       setDoctorsOptions(
-        (doctorsResponse.entities ?? []).map((item) => ({
-          id: item.id,
-          label: `${item.name}${item.specialty ? ` - ${item.specialty}` : ""}`,
-        })),
+        doctorEntities
+          .filter((item) => item.active)
+          .map((item) => ({
+            id: item.id,
+            label: `${item.name}${item.specialty ? ` - ${item.specialty}` : ""}`,
+          })),
       );
       // Mapa completo id → datos para sugerir duración y resolver etiquetas.
       serviceCatalogRef.current = new Map(
@@ -443,23 +466,30 @@ export function useAppointmentForm({
         agreement: values.agreement ?? true,
       };
 
-      const patientId = await createPatientFromPatientsModule(payload);
-      if (!patientId) return null;
+      try {
+        const patientId = await createPatientFromPatientsModule(payload);
+        if (!patientId) return null;
 
-      const newOption = {
-        id: patientId,
-        label: `${values.name}${values.email ? ` - ${values.email}` : ""}`,
-      };
+        const newOption = {
+          id: patientId,
+          label: `${values.name}${values.email ? ` - ${values.email}` : ""}`,
+        };
 
-      setPatientsOptions((prev) =>
-        prev.some((item) => item.id === patientId)
-          ? prev
-          : [newOption, ...prev],
-      );
+        setPatientsOptions((prev) =>
+          prev.some((item) => item.id === patientId)
+            ? prev
+            : [newOption, ...prev],
+        );
 
-      setValue("patientId", patientId);
+        setValue("patientId", patientId);
 
-      return patientId;
+        return patientId;
+      } catch {
+        // usePatients.createPatient ya mostró el toast con el mensaje del backend.
+        // Devolvemos null para que el modal mantenga el formulario abierto y NO
+        // se dispare el toast genérico global (unhandledrejection).
+        return null;
+      }
     },
     [createPatientFromPatientsModule, setValue],
   );
@@ -481,6 +511,7 @@ export function useAppointmentForm({
     selectedDayWorked,
     getSuggestedDuration,
     getServiceLabel,
+    getDoctorLabel,
     handleSubmit,
     handleCancel,
     handleBack,
