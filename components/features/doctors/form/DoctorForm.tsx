@@ -435,6 +435,10 @@ export function DoctorForm({
                               searchPlaceholder="Buscar rol…"
                             />
                           </FormControl>
+                          <FormDescription className="text-xs leading-snug text-subtle">
+                            Define los permisos y accesos del doctor en el
+                            sistema.
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -445,49 +449,51 @@ export function DoctorForm({
                       render={({ field }) => {
                         const isActive = !!field.value;
                         return (
-                          <FormItem
-                            className={cn(
-                              "flex flex-row items-center justify-between gap-4 rounded-xl border px-4 py-3.5 transition-colors",
-                              isActive
-                                ? "border-emerald-400/25 bg-emerald-500/[0.06]"
-                                : "border-hairline bg-elevated",
-                            )}
-                          >
-                            <div className="space-y-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <FormLabel>Estado</FormLabel>
+                          <FormItem>
+                            <FormLabel>Estado</FormLabel>
+                            <div
+                              className={cn(
+                                // Compacto: la caja se ajusta al contenido (w-fit) y
+                                // el switch va pegado al pill (gap-2.5), en vez de
+                                // estirarse a lo ancho con el switch solitario a la
+                                // derecha. py-2 mantiene 42px de alto (Switch = 24px).
+                                "flex w-fit items-center gap-2.5 rounded-xl border bg-elevated px-3 py-2 transition-colors",
+                                isActive
+                                  ? "border-emerald-400/25 bg-emerald-500/[0.06]"
+                                  : "border-hairline",
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1",
+                                  isActive
+                                    ? "bg-emerald-500/15 text-emerald-700 ring-emerald-400/25 dark:text-emerald-300"
+                                    : "bg-hover text-subtle ring-hairline",
+                                )}
+                              >
                                 <span
+                                  aria-hidden="true"
                                   className={cn(
-                                    "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1",
-                                    isActive
-                                      ? "bg-emerald-500/15 text-emerald-700 ring-emerald-400/25 dark:text-emerald-300"
-                                      : "bg-hover text-subtle ring-hairline",
+                                    "h-1.5 w-1.5 rounded-full",
+                                    isActive ? "bg-emerald-500" : "bg-subtle",
                                   )}
-                                >
-                                  <span
-                                    aria-hidden="true"
-                                    className={cn(
-                                      "h-1.5 w-1.5 rounded-full",
-                                      isActive ? "bg-emerald-500" : "bg-subtle",
-                                    )}
-                                  />
-                                  {isActive ? "Activo" : "Inactivo"}
-                                </span>
-                              </div>
-                              <FormDescription className="text-xs leading-snug text-subtle">
-                                {isActive
-                                  ? "Puede iniciar sesión en el sistema."
-                                  : "No podrá iniciar sesión en el sistema."}
-                              </FormDescription>
+                                />
+                                {isActive ? "Activo" : "Inactivo"}
+                              </span>
+                              <FormControl>
+                                <Switch
+                                  checked={isActive}
+                                  onCheckedChange={field.onChange}
+                                  disabled={formDisabled}
+                                  className="relative shrink-0 before:absolute before:-inset-3 before:content-['']"
+                                />
+                              </FormControl>
                             </div>
-                            <FormControl>
-                              <Switch
-                                checked={isActive}
-                                onCheckedChange={field.onChange}
-                                disabled={formDisabled}
-                                className="relative shrink-0 before:absolute before:-inset-3 before:content-['']"
-                              />
-                            </FormControl>
+                            <FormDescription className="text-xs leading-snug text-subtle">
+                              {isActive
+                                ? "Puede iniciar sesión en el sistema."
+                                : "No podrá iniciar sesión en el sistema."}
+                            </FormDescription>
                           </FormItem>
                         );
                       }}
