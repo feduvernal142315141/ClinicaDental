@@ -1,7 +1,7 @@
 /**
  * Image Upload Services Module
  *
- * Subida del logo con driver seleccionable (local en dev, cloudinary en prod).
+ * Subida del logo al backend firmado (`POST /api/v1/cloudinary/upload`).
  */
-export { imageUploadService, cloudinaryService } from "./cloudinary.service";
-export type { LogoFileValidation, UploadDriver } from "./cloudinary.service";
+export { imageUploadService } from "./cloudinary.service";
+export type { LogoFileValidation } from "./cloudinary.service";

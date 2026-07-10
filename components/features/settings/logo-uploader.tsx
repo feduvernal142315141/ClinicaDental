@@ -10,10 +10,10 @@ export interface LogoUploaderProps {
   /** URL absoluta del logo actual (o `null`/vacío si no hay). */
   value?: string | null;
   /**
-   * Se llama con la `secure_url` de Cloudinary tras subir, o `null` al quitar.
-   * Opcional en el tipo para permitir su uso fuera de un `Controller` de RHF
-   * (p. ej. en un preview de solo lectura); dentro de un form se cablea con
-   * `field.onChange` (ver `ClinicInfoFields`).
+   * Se llama con la `secureUrl` que devuelve el backend tras subir, o `null`
+   * al quitar. Opcional en el tipo para permitir su uso fuera de un
+   * `Controller` de RHF (p. ej. en un preview de solo lectura); dentro de un
+   * form se cablea con `field.onChange` (ver `ClinicInfoFields`).
    */
   onChange?: (url: string | null) => void;
   disabled?: boolean;
@@ -31,10 +31,10 @@ export interface LogoUploaderProps {
 /**
  * Subida del logo de la clínica (Bento, sin Ant Design).
  *
- * Sube el archivo DIRECTO a Cloudinary (unsigned upload) desde el navegador
- * — sin pasar por el backend — y reporta la `secure_url` resultante vía
+ * Sube el archivo al BACKEND (`POST /api/v1/cloudinary/upload`), que lo
+ * reenvía a Cloudinary y devuelve la `secureUrl` resultante, reportada vía
  * `onChange`. Mientras sube muestra un preview local inmediato (object URL);
- * si Cloudinary responde error, revierte al valor anterior.
+ * si la subida falla, revierte al valor anterior.
  *
  * Expone `value`/`onChange` con la forma de un control controlado estándar,
  * por lo que se integra vía `Controller`/`FormField` de react-hook-form
@@ -101,8 +101,11 @@ export function LogoUploader({
       }
       if (!mountedRef.current) return;
       setLocalPreview(null);
+      // El servicio ya produce mensajes explicativos y seguros en español
+      // (normalizados vía `normalizeError`). El fallback cubre el caso
+      // (improbable) de un error sin mensaje.
       const errorMessage =
-        err instanceof Error
+        err instanceof Error && err.message
           ? err.message
           : "No se pudo subir el logo. Inténtalo de nuevo.";
       notify.error("No se pudo subir el logo", {

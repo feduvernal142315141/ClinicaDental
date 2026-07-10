@@ -91,23 +91,12 @@ Todas llevan prefijo `NEXT_PUBLIC_` → se inyectan **en build** y quedan expues
 | Variable | Requerida | Descripción |
 |---|:--:|---|
 | `NEXT_PUBLIC_API_URL` | ✅ | URL del backend (`backend-clinic`). En local: `http://localhost:8080/`. |
-| `NEXT_PUBLIC_UPLOAD_DRIVER` | — | Driver de subida de logo: `local` \| `cloudinary`. Si se omite → `local` en dev, `cloudinary` en prod. |
-| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | prod | Cloud name de Cloudinary (ver abajo). |
-| `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | prod | Upload preset **unsigned** de Cloudinary. |
 | `NEXT_PUBLIC_AUTH_DEBUG` | — | Loguea el flujo OTP/JWT en consola. |
 | `NEXT_PUBLIC_SUPABASE_*` | legacy | Solo para código legacy en retirada (JWT-only es el objetivo). |
 
-### 🖼️ Subida del logo — local vs. Cloudinary
+### 🖼️ Subida del logo
 
-El logo de la clínica se sube con un **driver seleccionable**:
-
-- **`local`** (desarrollo) — sube a `/api/upload` y guarda en `public/uploads/`. Sin dependencias externas. Deshabilitado en producción (filesystem efímero).
-- **`cloudinary`** (producción) — *unsigned upload* directo desde el navegador. Para activarlo:
-  1. Crea una cuenta en **Cloudinary** y anota tu **Cloud name**.
-  2. Crea un **Upload preset** en modo **Unsigned** (*Settings → Upload → Upload presets*). ⚠️ Si el preset es *Signed*, el navegador recibe **401 Unauthorized**.
-  3. Define `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` y `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` en el hosting (Vercel) y **redeploy** (las `NEXT_PUBLIC_*` se resuelven en build).
-
-> La CSP (`next.config.mjs`) y el validador del backend ya aceptan URLs de Cloudinary — solo falta la configuración de entorno.
+El logo de la clínica se sube al **backend** (`POST /api/v1/cloudinary/upload`, autenticado con el Bearer del usuario), que reenvía la imagen a Cloudinary de forma firmada y devuelve su `secureUrl`. El frontend no habla directo con Cloudinary ni necesita credenciales propias — no hay variables de entorno que configurar para esto.
 
 <br/>
 
