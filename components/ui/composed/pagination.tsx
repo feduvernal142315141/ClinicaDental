@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils/utils'
-import { Button, buttonVariants } from '@/components/ui/primitives/shadcn/button'
+import { buttonVariants } from '@/components/ui/primitives/shadcn/button'
 
 function Pagination({ className, ...props }: React.ComponentProps<'nav'>) {
   return (
@@ -39,8 +39,9 @@ function PaginationItem({ ...props }: React.ComponentProps<'li'>) {
 
 type PaginationLinkProps = {
   isActive?: boolean
-} & Pick<React.ComponentProps<typeof Button>, 'size'> &
-  React.ComponentProps<'a'>
+  /** Tamaño de `buttonVariants` (shadcn). No usa los tamaños antd del Button. */
+  size?: 'default' | 'sm' | 'lg' | 'icon'
+} & React.ComponentProps<'a'>
 
 function PaginationLink({
   className,
