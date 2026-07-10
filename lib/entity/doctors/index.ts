@@ -86,15 +86,13 @@ export interface UpdateDoctorRequest {
 }
 
 /**
- * Query parameters for doctors list
+ * Query parameters for doctors list with filtering and pagination
  */
 export interface DoctorsQueryParams {
   page?: number;
   pageSize?: number;
-  search?: string;
-  role?: string;
-  active?: boolean;
-  specialty?: string;
+  filters?: string[];
+  orders?: string[];
 }
 
 /**

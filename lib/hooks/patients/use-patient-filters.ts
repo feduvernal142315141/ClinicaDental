@@ -8,7 +8,7 @@ import { buildFilter } from "@/lib/entity/patients";
  * Calls `onFiltersChange` after `debounceMs` ms of inactivity with
  * a filter array ready to be passed to `fetchPatients`.
  *
- * Searches by patient name using CONTAINS (case-insensitive on backend).
+ * Searches by patient name using CONTAINS_IGNORE_CASE (case-insensitive on backend).
  *
  * @example
  * const { search, setSearch, clearSearch, hasActiveFilters } =
@@ -26,7 +26,7 @@ export function usePatientFilters(
     const timer = setTimeout(() => {
       const built: string[] = [];
       if (search.trim())
-        built.push(buildFilter("name", "CONTAINS", search.trim()));
+        built.push(buildFilter("name", "CONTAINS_IGNORE_CASE", search.trim()));
       onFiltersChange(built);
     }, debounceMs);
 

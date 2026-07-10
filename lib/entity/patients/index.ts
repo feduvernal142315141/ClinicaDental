@@ -115,6 +115,7 @@ export type FilterOperator =
   | "EQ"
   | "NEQ"
   | "CONTAINS"
+  | "CONTAINS_IGNORE_CASE"
   | "NOT_CONTAINS"
   | "GTE"
   | "LTE"

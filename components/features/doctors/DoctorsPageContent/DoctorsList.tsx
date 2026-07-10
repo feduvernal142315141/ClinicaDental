@@ -47,7 +47,7 @@ export function DoctorsList({
   useEffect(() => {
     const timer = setTimeout(() => {
       const filters = search.trim()
-        ? [buildFilter("name", "CONTAINS", search.trim())]
+        ? [buildFilter("name", "CONTAINS_IGNORE_CASE", search.trim())]
         : [];
       handleFiltersChange(filters);
     }, 350);

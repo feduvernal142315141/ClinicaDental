@@ -40,7 +40,8 @@ export function ServicesList({
   const buildCurrentFilters = useCallback(
     (term: string, includeInactive: boolean): string[] => {
       const filters: string[] = [];
-      if (term.trim()) filters.push(buildFilter("name", "CONTAINS", term.trim()));
+      if (term.trim())
+        filters.push(buildFilter("name", "CONTAINS_IGNORE_CASE", term.trim()));
       if (!includeInactive) filters.push(buildFilter("active", "EQ", true));
       return filters;
     },

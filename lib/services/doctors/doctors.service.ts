@@ -24,27 +24,39 @@ const endpoint = "/doctor";
 
 /**
  * Build query string from params
+ * Supports filters, orders, and pagination as per backend API spec
  */
 function buildQueryString(params?: DoctorsQueryParams): string {
   if (!params) return "";
 
   const queryParams = new URLSearchParams();
 
-  if (params.page) queryParams.append("page", params.page.toString());
-  if (params.pageSize)
+  // Pagination
+  if (params.page !== undefined)
+    queryParams.append("page", params.page.toString());
+  if (params.pageSize !== undefined)
     queryParams.append("pageSize", params.pageSize.toString());
-  if (params.search) queryParams.append("search", params.search);
-  if (params.role) queryParams.append("role", params.role);
-  if (params.active !== undefined)
-    queryParams.append("active", params.active.toString());
-  if (params.specialty) queryParams.append("specialty", params.specialty);
+
+  // Filters - format: campo__OPERADOR__valor
+  if (params.filters && params.filters.length > 0) {
+    params.filters.forEach((filter) => {
+      queryParams.append("filters", filter);
+    });
+  }
+
+  // Orders - format: campo__ASC/DESC
+  if (params.orders && params.orders.length > 0) {
+    params.orders.forEach((order) => {
+      queryParams.append("orders", order);
+    });
+  }
 
   return queryParams.toString();
 }
 
 /**
  * Get paginated list of doctors
- * GET /doctor?page=1&pageSize=10&search=...
+ * GET /doctor?page=0&pageSize=10&filters=...&orders=...
  */
 async function getDoctors(
   params?: DoctorsQueryParams
