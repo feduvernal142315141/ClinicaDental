@@ -112,6 +112,7 @@ export function AppointmentForm({
     selectedDayWorked,
     getSuggestedDuration,
     getServiceLabel,
+    getDoctorLabel,
     handleSubmit,
     handleCancel,
     createQuickPatient,
@@ -135,7 +136,9 @@ export function AppointmentForm({
   const patientLabel = patientsOptions.find(
     (o) => o.id === watchedPatientId,
   )?.label;
-  const doctorLabel = doctorsOptions.find((o) => o.id === watchedDoctorId)?.label;
+  const doctorLabel =
+    doctorsOptions.find((o) => o.id === watchedDoctorId)?.label ??
+    (watchedDoctorId ? getDoctorLabel(watchedDoctorId) : undefined);
   const typeLabel = TYPE_OPTIONS.find((o) => o.value === watchedType)?.label;
   const serviceCount = (watchedServiceIds ?? []).length;
   const dateLabel = watchedDate
@@ -175,11 +178,11 @@ export function AppointmentForm({
                 control={form.control}
                 name="patientId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="min-w-0">
                     <FormLabel>
                       Paciente <span className="text-rose-500">*</span>
                     </FormLabel>
-                    <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
                       <FormControl>
                         <Select
                           value={field.value}
@@ -193,21 +196,26 @@ export function AppointmentForm({
                           searchable
                           searchPlaceholder="Buscar paciente…"
                           disabled={formDisabled || catalogsLoading}
-                          className="flex-1"
+                          className="min-w-0 flex-1"
                           aria-label="Paciente"
                         />
                       </FormControl>
                       {!readOnly && (
-                        <Button
-                          variant="outline"
+                        <button
                           type="button"
-                          aria-label="Nuevo paciente"
+                          aria-label="Registrar nuevo paciente"
+                          title="Registrar nuevo paciente"
                           disabled={formDisabled || catalogsLoading}
                           onClick={() => setIsCreatePatientModalOpen(true)}
-                          className="shrink-0"
+                          className={cn(
+                            "grid h-[42px] w-[42px] shrink-0 place-items-center rounded-xl border border-hairline bg-elevated text-subtle",
+                            "transition-colors hover:border-brand/40 hover:bg-brand/10 hover:text-brand",
+                            "focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30",
+                            "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-hairline disabled:hover:bg-elevated disabled:hover:text-subtle",
+                          )}
                         >
                           <Plus className="h-4 w-4" />
-                        </Button>
+                        </button>
                       )}
                     </div>
                     <FormMessage />
@@ -228,10 +236,26 @@ export function AppointmentForm({
                         value={field.value}
                         onChange={field.onChange}
                         onBlur={field.onBlur}
-                        options={doctorsOptions.map((o) => ({
-                          value: o.id,
-                          label: o.label,
-                        }))}
+                        options={(() => {
+                          const base = doctorsOptions.map((o) => ({
+                            value: o.id,
+                            label: o.label,
+                          }));
+                          const present = new Set(base.map((o) => o.value));
+                          // En edición, conserva el doctor ya asignado aunque
+                          // hoy esté inactivo (para verlo/reasignarlo); el filtro
+                          // de activos lo ocultaría del scheduler.
+                          const extra =
+                            watchedDoctorId && !present.has(watchedDoctorId)
+                              ? [
+                                  {
+                                    value: watchedDoctorId,
+                                    label: `${getDoctorLabel(watchedDoctorId) ?? watchedDoctorId} (no disponible)`,
+                                  },
+                                ]
+                              : [];
+                          return [...base, ...extra];
+                        })()}
                         placeholder="Seleccione doctor"
                         searchable
                         searchPlaceholder="Buscar doctor…"

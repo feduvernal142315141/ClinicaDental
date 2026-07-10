@@ -5,6 +5,12 @@ import { Calendar, Clock, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { Select } from "@/components/ui/controls/select";
 import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/primitives/shadcn/popover";
+import {
   parseLocalValue,
   dateToLocalDate,
   isSameLocalDay,
@@ -61,7 +67,6 @@ export function DateTimePicker({
   "aria-invalid": ariaInvalid,
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
-  const rootRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
 
   const selected = parseLocalValue(value);
@@ -76,29 +81,13 @@ export function DateTimePicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // El cierre por click-afuera y tecla Escape lo maneja Radix Popover
+  // (DismissableLayer), que además evita el falso-cierre del Sheet host al
+  // registrarse en la misma pila de "layers" que el Dialog/Sheet.
   const close = React.useCallback((focus = true) => {
     setOpen(false);
     if (focus) triggerRef.current?.focus();
   }, []);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        close();
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey, true);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey, true);
-    };
-  }, [open, close]);
 
   const compose = (d: Date, h: string, m: string) =>
     showTime ? `${dateToLocalDate(d)}T${h}:${m}` : dateToLocalDate(d);
@@ -147,60 +136,64 @@ export function DateTimePicker({
     .map((y) => ({ value: String(y), label: String(y) }));
 
   return (
-    <div ref={rootRef} className={cn("relative", className)}>
-      <div
-        className={cn(
-          "flex w-full items-center gap-2 rounded-xl border bg-elevated px-3 py-2.5 text-sm transition-colors",
-          "focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/30",
-          open ? "border-brand ring-2 ring-brand/30" : "border-hairline",
-          ariaInvalid && "border-rose-500/60",
-          disabled && "cursor-not-allowed opacity-50",
-        )}
-      >
-        {showTime ? (
-          <Clock className="h-4 w-4 shrink-0 text-subtle" />
-        ) : (
-          <Calendar className="h-4 w-4 shrink-0 text-subtle" />
-        )}
-        <button
-          ref={triggerRef}
-          type="button"
-          id={id}
-          disabled={disabled}
-          onClick={() => setOpen((o) => !o)}
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          aria-label={ariaLabel ?? placeholder}
-          aria-invalid={ariaInvalid}
-          className={cn(
-            "flex-1 truncate text-left outline-none tabular-nums",
-            selected ? "text-ink" : "text-subtle",
-          )}
-        >
-          {display || placeholder}
-        </button>
-        {allowClear && selected && !disabled && (
-          <button
-            type="button"
-            aria-label="Limpiar"
-            onClick={() => onChange("")}
-            className="grid h-5 w-5 shrink-0 place-items-center rounded text-subtle hover:text-ink"
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <div className={cn("relative", className)}>
+          <div
+            className={cn(
+              "flex w-full items-center gap-2 rounded-xl border bg-elevated px-3 py-2.5 text-sm transition-colors",
+              "focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/30",
+              open ? "border-brand ring-2 ring-brand/30" : "border-hairline",
+              ariaInvalid && "border-rose-500/60",
+              disabled && "cursor-not-allowed opacity-50",
+            )}
           >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
+            {showTime ? (
+              <Clock className="h-4 w-4 shrink-0 text-subtle" />
+            ) : (
+              <Calendar className="h-4 w-4 shrink-0 text-subtle" />
+            )}
+            {/* PopoverTrigger (no un onClick manual) para que Radix registre
+                el triggerRef y su guard de dismiss: al hacer click en el campo
+                estando abierto, cierra limpio en vez de parpadear-y-reabrir. */}
+            <PopoverTrigger asChild>
+              <button
+                ref={triggerRef}
+                type="button"
+                id={id}
+                disabled={disabled}
+                aria-label={ariaLabel ?? placeholder}
+                aria-invalid={ariaInvalid}
+                className={cn(
+                  "flex-1 truncate text-left outline-none tabular-nums",
+                  selected ? "text-ink" : "text-subtle",
+                )}
+              >
+                {display || placeholder}
+              </button>
+            </PopoverTrigger>
+            {allowClear && selected && !disabled && (
+              <button
+                type="button"
+                aria-label="Limpiar"
+                onClick={() => onChange("")}
+                className="grid h-5 w-5 shrink-0 place-items-center rounded text-subtle hover:text-ink"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </PopoverAnchor>
 
-      {open && (
-        <div
-          role="dialog"
-          aria-modal="false"
-          aria-label={placeholder}
-          className={cn(
-            "absolute z-50 mt-2 w-[20.5rem] rounded-xl border border-hairline bg-elevated p-3 shadow-bento",
-            align === "end" ? "right-0" : "left-0",
-          )}
-        >
+      <PopoverContent
+        align={align}
+        sideOffset={8}
+        collisionPadding={8}
+        role="dialog"
+        aria-label={placeholder}
+        className="z-[60] w-[20.5rem] rounded-xl border-hairline bg-elevated p-3 text-popover-foreground shadow-bento"
+      >
           {/* Navegación: mes anterior · selects mes/año · mes siguiente */}
           <div className="mb-2 flex items-center gap-1">
             <button
@@ -339,8 +332,7 @@ export function DateTimePicker({
               {showTime ? "Ahora" : "Hoy"}
             </button>
           </div>
-        </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }
