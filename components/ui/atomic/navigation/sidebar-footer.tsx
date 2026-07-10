@@ -18,6 +18,8 @@ interface SidebarFooterProps {
   onProfile?: () => void;
   onSupport?: () => void;
   onSettings?: () => void;
+  /** Trigger compacto (solo avatar) para barras estrechas como el header móvil. */
+  compact?: boolean;
 }
 
 const itemClass =
@@ -31,27 +33,39 @@ export function SidebarFooter({
   onProfile,
   onSupport,
   onSettings,
+  compact = false,
 }: SidebarFooterProps) {
   return (
-    <div className="mt-auto p-2">
+    <div className={compact ? "" : "mt-auto p-2"}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-auto w-full justify-start gap-2 rounded-xl px-2 py-1.5 text-ink hover:bg-hover"
-          >
-            <UserAvatar src={userAvatar} name={userName} size="sm" />
-            <div className="min-w-0 flex-1 text-left">
-              <p className="truncate text-sm font-medium leading-tight text-ink">
-                {userName}
-              </p>
-              <p className="truncate text-xs leading-tight text-subtle">
-                {userEmail}
-              </p>
-            </div>
-            <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-subtle" />
-          </Button>
+          {compact ? (
+            <Button
+              type="button"
+              variant="ghost"
+              aria-label="Cuenta"
+              className="h-10 w-10 rounded-full p-0 hover:bg-hover"
+            >
+              <UserAvatar src={userAvatar} name={userName} size="sm" />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-auto w-full justify-start gap-2 rounded-xl px-2 py-1.5 text-ink hover:bg-hover"
+            >
+              <UserAvatar src={userAvatar} name={userName} size="sm" />
+              <div className="min-w-0 flex-1 text-left">
+                <p className="truncate text-sm font-medium leading-tight text-ink">
+                  {userName}
+                </p>
+                <p className="truncate text-xs leading-tight text-subtle">
+                  {userEmail}
+                </p>
+              </div>
+              <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-subtle" />
+            </Button>
+          )}
         </DropdownMenuTrigger>
 
         <DropdownMenuContent

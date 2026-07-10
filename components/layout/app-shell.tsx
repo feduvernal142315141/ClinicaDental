@@ -44,9 +44,11 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="flex h-screen overflow-hidden bg-canvas">
       {/* Sidebar - ancho dinámico según estado colapsado */}
+      {/* En móvil el aside es `contents` (sin caja) para que el drawer `fixed`
+          del Sidebar sí se renderice; en `lg+` es la barra lateral normal. */}
       <aside
-        className={`hidden lg:flex flex-col border-r border-hairline bg-surface transition-[width] duration-300 ease-emphasized will-change-[width] motion-reduce:transition-none ${
-          isSidebarCollapsed ? "w-20" : "w-64"
+        className={`contents lg:flex lg:flex-col lg:border-r lg:border-hairline lg:bg-surface lg:transition-[width] lg:duration-300 lg:ease-emphasized lg:will-change-[width] lg:motion-reduce:transition-none ${
+          isSidebarCollapsed ? "lg:w-20" : "lg:w-64"
         }`}
       >
         <Sidebar
