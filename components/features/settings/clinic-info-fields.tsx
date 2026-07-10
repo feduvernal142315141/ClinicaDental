@@ -38,7 +38,7 @@ const CURRENCY_OPTIONS = [
   { value: "COP", label: "COP - Peso colombiano" },
   { value: "MXN", label: "MXN - Peso mexicano" },
   { value: "EUR", label: "EUR - Euro" },
-];
+].sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
 
 const TIMEZONE_OPTIONS = [
   { value: "America/La_Paz", label: "Bolivia (La Paz)" },
@@ -48,7 +48,7 @@ const TIMEZONE_OPTIONS = [
   { value: "America/Chicago", label: "Central (Chicago)" },
   { value: "America/Los_Angeles", label: "Pacífico (Los Angeles)" },
   { value: "America/Argentina/Buenos_Aires", label: "Argentina (Buenos Aires)" },
-];
+].sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
 
 /**
  * Puente entre el `FormItem`/`FormField` de "logoUrl" y `LogoUploader`.
