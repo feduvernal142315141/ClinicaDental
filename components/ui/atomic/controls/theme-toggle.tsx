@@ -58,7 +58,7 @@ export function ThemeToggle({
       <div className="relative h-5 w-5">
         <Sun
           className={cn(
-            "absolute inset-0 h-5 w-5 transition-all duration-300 fill-amber-400 stroke-amber-400 hover:fill-amber-50 hover:stroke-amber-50",
+            "absolute inset-0 h-5 w-5 transition-all duration-300 fill-amber-400 stroke-amber-400 hover:fill-amber-500 hover:stroke-amber-500",
             isDark
               ? "rotate-90 scale-0 opacity-0"
               : "rotate-0 scale-100 opacity-100"
