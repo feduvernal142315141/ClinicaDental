@@ -24,6 +24,13 @@ export interface AvatarFieldProps {
   changeLabel?: string;
   /** alt de la imagen. */
   alt?: string;
+  /**
+   * Si se provee, sube el archivo a través de este callback (p.ej. Cloudinary
+   * vía el backend) y emite la URL https resultante por `onChange` en vez de
+   * generar base64. Úsalo cuando el contrato del campo espera una URL
+   * persistida (no un data-url).
+   */
+  uploader?: (file: File) => Promise<string>;
 }
 
 const DEFAULT_FORMATS = ["image/jpeg", "image/png"];
@@ -62,8 +69,11 @@ function downscaleToDataUrl(file: File, max: number): Promise<string> {
 
 /**
  * Subida de avatar corporativa (Bento) sin Ant Design. Dropzone circular con
- * borde punteado + input file oculto; reescala y genera base64 vía canvas y lo
- * emite por `onChange` (el doctor se envía con `avatarUrl` = base64). No multipart.
+ * borde punteado + input file oculto. Si se pasa `uploader`, sube el archivo
+ * a través de él (p.ej. Cloudinary vía el backend) y emite la URL https
+ * resultante por `onChange`. Si no, conserva el comportamiento base64
+ * (reescala vía canvas y emite un data-url) para consumidores que no
+ * necesitan persistir una URL.
  */
 export function AvatarField({
   value,
@@ -78,18 +88,25 @@ export function AvatarField({
   label = "Subir foto",
   changeLabel = "Cambiar foto",
   alt = "Imagen",
+  uploader,
 }: AvatarFieldProps) {
   const radiusClass = shape === "square" ? "rounded-xl" : "rounded-full";
   const inputRef = React.useRef<HTMLInputElement>(null);
   const mountedRef = React.useRef(true);
   const [loading, setLoading] = React.useState(false);
 
-  React.useEffect(
-    () => () => {
+  React.useEffect(() => {
+    // Reponer a `true` en CADA montaje: bajo React 18 Strict Mode (dev) el
+    // componente se monta → desmonta → remonta, y si solo se pusiera `false`
+    // en el cleanup, `mountedRef` quedaría en `false` de por vida — dejando el
+    // uploader colgado en "Subiendo…" (el `finally` no llegaría a
+    // `setLoading(false)`) y con `onChange` nunca disparado. (Mismo patrón que
+    // LogoUploader.)
+    mountedRef.current = true;
+    return () => {
       mountedRef.current = false;
-    },
-    [],
-  );
+    };
+  }, []);
 
   const pick = () => {
     if (!disabled) inputRef.current?.click();
@@ -110,12 +127,19 @@ export function AvatarField({
     }
     setLoading(true);
     try {
-      const dataUrl = await downscaleToDataUrl(file, maxDimension);
-      if (mountedRef.current) onChange(dataUrl);
-    } catch {
-      notify.error("No se pudo procesar la imagen", {
-        description: "Hubo un problema al preparar la foto. Inténtalo de nuevo o prueba con otra imagen.",
-      });
+      if (uploader) {
+        const url = await uploader(file);
+        if (mountedRef.current) onChange(url);
+      } else {
+        const dataUrl = await downscaleToDataUrl(file, maxDimension);
+        if (mountedRef.current) onChange(dataUrl);
+      }
+    } catch (err) {
+      const description =
+        uploader && err instanceof Error && err.message
+          ? err.message
+          : "Hubo un problema al preparar la foto. Inténtalo de nuevo o prueba con otra imagen.";
+      notify.error("No se pudo procesar la imagen", { description });
     } finally {
       if (mountedRef.current) setLoading(false);
     }

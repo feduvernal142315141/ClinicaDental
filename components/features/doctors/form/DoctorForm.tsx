@@ -5,6 +5,7 @@ import type { FieldErrors, UseFormReturn } from "react-hook-form";
 import { CircleAlert, Clock, User } from "lucide-react";
 import {
   Form,
+  FormActionBar,
   FormControl,
   FormField,
   FormItem,
@@ -14,7 +15,6 @@ import {
   Switch,
 } from "@/components/ui/atomic/forms";
 import TextArea from "@/components/ui/atomic/forms/textarea";
-import { Button } from "@/components/ui/primitives/shadcn/button";
 import {
   Tabs,
   TabsContent,
@@ -24,6 +24,7 @@ import {
 import { Select } from "@/components/ui/controls/select";
 import { TimeField } from "@/components/ui/controls/time-field";
 import { AvatarField } from "@/components/ui/controls/avatar-field";
+import { imageUploadService } from "@/lib/services/cloudinary/cloudinary.service";
 import { useDoctorForm } from "@/lib/hooks/doctors/use-doctor-form";
 import { useRoles } from "@/lib/hooks/roles";
 import { DAYS_OF_WEEK } from "@/lib/entity/schedule";
@@ -167,7 +168,7 @@ export function DoctorForm({
     initialData,
     requireRole: showRoleStatusFields,
   });
-  const { errors } = form.formState;
+  const { errors, isDirty } = form.formState;
   const { roles, loading: rolesLoading, fetchRoles } = useRoles();
   const [tab, setTab] = useState("datos");
 
@@ -207,7 +208,7 @@ export function DoctorForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(handleSubmit, onInvalid)}
-        className="space-y-6"
+        className="space-y-6 pb-4"
         noValidate
       >
         <Tabs value={tab} onValueChange={setTab}>
@@ -240,6 +241,9 @@ export function DoctorForm({
                     value={field.value ?? ""}
                     onChange={field.onChange}
                     disabled={formDisabled}
+                    uploader={(file) =>
+                      imageUploadService.uploadImage(file, "doctors")
+                    }
                   />
                 )}
               />
@@ -488,19 +492,12 @@ export function DoctorForm({
         </Tabs>
 
         {!readOnly && (
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              type="button"
-              onClick={handleCancel}
-              disabled={loading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" loading={loading}>
-              {isEdit ? "Actualizar" : "Guardar"}
-            </Button>
-          </div>
+          <FormActionBar
+            isDirty={isEdit ? isDirty : undefined}
+            onSecondary={handleCancel}
+            submitLabel={isEdit ? "Actualizar" : "Guardar"}
+            loading={loading}
+          />
         )}
       </form>
     </Form>
