@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { requiredText } from "@/lib/validation/fields";
 import { Tag, Check, Ban } from "lucide-react";
 import { Modal } from "@/components/ui/primitives/custom";
 import { Button } from "@/components/ui/primitives/shadcn/button";
@@ -142,10 +143,7 @@ const PRESET_COLORS = [
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 const labelSchema = z.object({
-  name: z
-    .string()
-    .min(1, "El nombre es requerido")
-    .max(50, "Máximo 50 caracteres"),
+  name: requiredText({ min: 1, max: 50, label: "El nombre" }),
   color: z.string().regex(HEX_RE, "Usa un color válido (#RRGGBB)"),
   description: z.string().optional(),
   icon: z.string().optional(),

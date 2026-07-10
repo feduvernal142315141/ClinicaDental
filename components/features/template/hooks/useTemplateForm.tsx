@@ -3,6 +3,7 @@ import {
   TemplateVariableRequest,
 } from "@/lib/entity/template/template";
 import * as z from "zod";
+import { requiredText } from "@/lib/validation/fields";
 import { useAuth } from "@/lib/contexts/auth-context";
 import * as React from "react";
 import { useForm } from "react-hook-form";
@@ -29,9 +30,9 @@ const variablesSchema = z.object({
 
 const schema = z.object({
   variables: z.array(variablesSchema),
-  body: z.string().min(25, "El mensaje debe tener minimo 25 caracteres"),
+  body: requiredText({ min: 25, label: "El mensaje" }),
   type: z.string(),
-  name: z.string().min(5, "El nombre debe tener minimo 5 caracteres"),
+  name: requiredText({ min: 5, label: "El nombre" }),
 }) satisfies z.ZodType<TemplateFormData>;
 
 const replaceVariablesWithSamples = (

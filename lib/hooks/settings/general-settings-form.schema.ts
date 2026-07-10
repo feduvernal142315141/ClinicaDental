@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { requiredText } from "@/lib/validation/fields";
 import { CLINIC_SCHEDULE_DAYS } from "@/lib/entity/settings";
 
 /**
@@ -35,11 +36,7 @@ const scheduleSchema = z.object({
 
 export const generalSettingsFormSchema = z
   .object({
-    name: z
-      .string()
-      .trim()
-      .min(2, "El nombre debe tener al menos 2 caracteres")
-      .max(120, "El nombre debe tener máximo 120 caracteres"),
+    name: requiredText({ min: 2, max: 120, label: "El nombre" }),
     address: z
       .string()
       .max(255, "La dirección debe tener máximo 255 caracteres")

@@ -18,6 +18,11 @@ import {
 import { PasswordInput } from "@/components/ui/atomic/forms/password-input";
 import { useDoctorChangePassword } from "@/lib/hooks/doctors";
 import { cn } from "@/lib/utils/utils";
+import {
+  password,
+  requiredText,
+  confirmPasswordRefine,
+} from "@/lib/validation/fields";
 
 interface ChangePasswordModalProps {
   open: boolean;
@@ -25,25 +30,16 @@ interface ChangePasswordModalProps {
   onClose: () => void;
 }
 
-// Reglas conservadas exactamente desde SecurityFields (mode="changePassword").
+// Compone las primitivas compartidas de lib/validation/fields: unifica la
+// política de contraseña de doctores con el resto del sistema (mayúsculas +
+// minúsculas + número + carácter especial, acorde a PasswordStrength debajo).
 const changePasswordSchema = z
   .object({
-    oldPassword: z.string().min(1, "Ingresa tu contraseña actual"),
-    password: z
-      .string()
-      .min(1, "Ingresa tu nueva contraseña")
-      .min(8, "Mínimo 8 caracteres")
-      .max(50, "Máximo 50 caracteres")
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        "Debe contener mayúsculas, minúsculas y números"
-      ),
+    oldPassword: requiredText({ min: 1, label: "La contraseña actual" }),
+    password: password,
     confirmPassword: z.string().min(1, "Confirma tu nueva contraseña"),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Las contraseñas no coinciden",
-    path: ["confirmPassword"],
-  });
+  .superRefine(confirmPasswordRefine("password", "confirmPassword"));
 
 type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
 

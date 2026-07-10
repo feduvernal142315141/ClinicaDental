@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { optionalText, requiredText } from "@/lib/validation/fields";
+
 /**
  * Tuplas espejo de los uniones del entity (lib/entity/services). zod necesita
  * tuplas literales; el `z.infer` resultante coincide exactamente con
@@ -34,21 +36,24 @@ export const SERVICE_CATEGORY_VALUES = [
  */
 export const serviceFormSchema = z
   .object({
-    code: z
-      .string()
-      .trim()
-      .min(1, "El código es obligatorio")
-      .max(20, "El código debe tener máximo 20 caracteres"),
-    name: z
-      .string()
-      .trim()
-      .min(1, "El nombre es obligatorio")
-      .min(3, "El nombre debe tener mínimo 3 caracteres")
-      .max(100, "El nombre debe tener máximo 100 caracteres"),
+    // No usamos `fullName`: el nombre del servicio puede incluir dígitos
+    // (ej: "Radiografía panorámica 3D"), algo que la regex de nombre de
+    // persona (NAME_RE) rechaza.
+    code: requiredText({ min: 1, max: 20, label: "El código" }),
+    name: requiredText({ min: 3, max: 100, label: "El nombre" }),
     type: z.enum(SERVICE_TYPE_VALUES),
     cost: z
       .number({ invalid_type_error: "El costo es obligatorio" })
-      .min(0, "El costo no puede ser negativo"),
+      .min(0, "El costo no puede ser negativo")
+      .max(999999.99, "El costo no puede superar $999,999.99")
+      .refine(
+        (v) => Math.round(v * 100) / 100 === v,
+        "El costo admite máximo 2 decimales",
+      ),
+    // Mantenemos el rango int/0..600 tal cual (en vez de componer
+    // `durationMinutesOptional`, que exige múltiplos de 5): endurecer esa
+    // regla podría romper la edición de servicios ya guardados con una
+    // duración que no sea múltiplo de 5.
     duration: z
       .number({ invalid_type_error: "Duración inválida" })
       .int("La duración debe ser un número entero de minutos")
@@ -56,10 +61,7 @@ export const serviceFormSchema = z
       .max(600, "La duración no puede superar 600 minutos")
       .optional(),
     category: z.enum(SERVICE_CATEGORY_VALUES).optional(),
-    description: z
-      .string()
-      .max(500, "La descripción debe tener máximo 500 caracteres")
-      .optional(),
+    description: optionalText({ max: 500 }),
     odontogramEnabled: z.boolean(),
     odontogramSymbolMode: z.enum(SYMBOL_MODE_VALUES),
     symbolText: z

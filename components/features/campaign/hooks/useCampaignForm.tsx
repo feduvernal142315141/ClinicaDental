@@ -2,6 +2,7 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { requiredText } from "@/lib/validation/fields";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect } from "react";
 import {
@@ -16,7 +17,7 @@ import moment from "moment";
 type CampaignFormData = Omit<RequestCreateCampaign, "clinicId">;
 
 const schema = z.object({
-  name: z.string().min(1, "El nombre es obligatorio"),
+  name: requiredText({ min: 1, label: "El nombre" }),
   effectiveDate: z.string().min(1, "La fecha efectiva es obligatoria"),
   fileBase64: z.string().min(1, "El archivo es obligatorio"),
   fileName: z.string().min(1, "El nombre del archivo es obligatorio"),

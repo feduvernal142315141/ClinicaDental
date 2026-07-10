@@ -100,8 +100,12 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
       (val: string) => {
         if (selectedSet.has(val)) onChange(value.filter((v) => v !== val));
         else onChange([...value, val]);
+        // El popover permanece abierto y el foco sigue dentro del root, así
+        // que un blur nativo nunca dispara aquí. Revalidamos manualmente
+        // para que RHF (mode:"onBlur") limpie un error "required" previo.
+        onBlur?.();
       },
-      [onChange, selectedSet, value],
+      [onChange, selectedSet, value, onBlur],
     );
 
     const remove = React.useCallback(

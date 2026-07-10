@@ -190,9 +190,12 @@ export function useDoctorForm({
             email: values.email,
             phone: values.phone,
             licenceNumber: values.licenceNumber,
-            specialty: values.specialty,
+            // El esquema normaliza "" -> undefined (optionalText); se restaura ""
+            // aquí para preservar el contrato de UPDATE: permitir VACIAR el campo
+            // enviando cadena vacía en vez de omitir la clave.
+            specialty: values.specialty ?? "",
             gender: values.gender,
-            description: values.description,
+            description: values.description ?? "",
             avatarUrl: values.avatarUrl,
             schedule: scheduleData,
             roleId: values.roleId,

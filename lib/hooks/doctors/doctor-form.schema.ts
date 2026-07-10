@@ -1,9 +1,17 @@
 import { z } from "zod";
+import {
+  TIME_RE,
+  fullName,
+  email,
+  phone,
+  licenceNumber,
+  optionalText,
+  requiredId,
+} from "@/lib/validation/fields";
 
 /** Géneros admitidos por el backend. */
 export const DOCTOR_GENDERS = ["male", "female", "other"] as const;
 
-const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const isTime = (t: string) => TIME_RE.test(t);
 
 /**
@@ -52,31 +60,15 @@ const daySchedule = z
  */
 export function makeDoctorFormSchema(requireRole: boolean) {
   return z.object({
-    name: z
-      .string()
-      .min(2, "El nombre debe tener al menos 2 caracteres")
-      .max(100, "Máximo 100 caracteres"),
-    email: z
-      .string()
-      .min(1, "El correo es obligatorio")
-      .email("Correo electrónico no válido")
-      .max(100, "Máximo 100 caracteres"),
-    phone: z
-      .string()
-      .min(7, "Mínimo 7 caracteres")
-      .max(20, "Máximo 20 caracteres")
-      .regex(/^[0-9+\-\s()]+$/, "Teléfono no válido"),
-    licenceNumber: z
-      .string()
-      .min(3, "Mínimo 3 caracteres")
-      .max(50, "Máximo 50 caracteres"),
-    specialty: z.string().max(100, "Máximo 100 caracteres").optional(),
+    name: fullName,
+    email: email,
+    phone: phone,
+    licenceNumber: licenceNumber,
+    specialty: optionalText({ max: 100 }),
     gender: z.enum(DOCTOR_GENDERS, { message: "El género es obligatorio" }),
-    description: z.string().optional(),
+    description: optionalText({ max: 1000 }),
     avatarUrl: z.string().optional(),
-    roleId: requireRole
-      ? z.string().min(1, "El rol es obligatorio")
-      : z.string().optional(),
+    roleId: requireRole ? requiredId("El rol") : z.string().optional(),
     active: z.boolean(),
     schedule: z.object({
       monday: daySchedule,

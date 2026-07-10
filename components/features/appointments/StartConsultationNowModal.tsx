@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { requiredId } from "@/lib/validation/fields";
 import { Stethoscope } from "lucide-react";
 import { Modal as CustomModal } from "@/components/ui/primitives/custom";
 import { Button } from "@/components/ui/primitives/shadcn/button";
@@ -21,7 +22,7 @@ import { doctorsService } from "@/lib/services/doctors/doctors.service";
 import type { Doctor } from "@/lib/entity/doctors";
 
 const startConsultationSchema = z.object({
-  doctorId: z.string().min(1, "Seleccione un doctor"),
+  doctorId: requiredId("El doctor"),
   reason: z.string().max(500).optional(),
 });
 

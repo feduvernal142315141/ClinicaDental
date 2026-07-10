@@ -1,4 +1,11 @@
 import { z } from "zod";
+import {
+  ISO_DATE,
+  durationMinutes,
+  optionalText,
+  requiredId,
+  time,
+} from "@/lib/validation/fields";
 
 /** Tipos de cita admitidos (espejo de AppointmentType del backend). */
 export const APPOINTMENT_TYPES = [
@@ -11,20 +18,21 @@ export const APPOINTMENT_TYPES = [
 
 /**
  * Esquema de validación del formulario de citas.
- * Reemplaza las `rules` de Ant Design por validación declarativa con zod.
+ * Compone las primitivas compartidas de `@/lib/validation/fields` en lugar
+ * de re-declarar sus propias reglas.
  */
 export const appointmentFormSchema = z.object({
-  patientId: z.string().min(1, "El paciente es obligatorio"),
-  doctorId: z.string().min(1, "El doctor es obligatorio"),
-  date: z.string().min(1, "La fecha es obligatoria"),
-  time: z.string().min(1, "La hora es obligatoria"),
-  duration: z
-    .number({ invalid_type_error: "La duración es obligatoria" })
-    .int()
-    .positive("La duración es obligatoria"),
+  patientId: requiredId("El paciente"),
+  doctorId: requiredId("El doctor"),
+  date: requiredId("La fecha", "La fecha es obligatoria").regex(
+    ISO_DATE,
+    "Formato de fecha inválido (AAAA-MM-DD)",
+  ),
+  time,
+  duration: durationMinutes,
   type: z.enum(APPOINTMENT_TYPES, { message: "El tipo es obligatorio" }),
-  reason: z.string().optional(),
-  notes: z.string().optional(),
+  reason: optionalText({ max: 1000 }),
+  notes: optionalText({ max: 1000 }),
   serviceIds: z.array(z.string()).optional(),
   labelIds: z.array(z.string()).optional(),
 });

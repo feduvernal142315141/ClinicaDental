@@ -279,3 +279,14 @@ export const ALERT_SEVERITY_COLORS: Record<AlertSeverity, string> = {
   warning: "orange",
   info: "blue",
 };
+
+/** Valores permitidos para `ClinicalHistoryMedicalHistory.maritalStatus`. */
+export const MARITAL_STATUS_VALUES = [
+  "Soltero/a",
+  "Casado/a",
+  "Divorciado/a",
+  "Viudo/a",
+  "Unión libre",
+] as const;
+
+export type MaritalStatus = (typeof MARITAL_STATUS_VALUES)[number];

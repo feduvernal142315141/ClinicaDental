@@ -9,22 +9,16 @@ import { ArrowLeft, KeyRound, Save } from "lucide-react";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { notify } from "@/lib/utils/notify";
 import { useDoctorAuth } from "@/lib/hooks/doctors/useDoctorAuth";
+import { requiredText, password } from "@/lib/validation/fields";
 import { AuthShell } from "../components/auth-shell";
 import { AuthCard } from "../components/auth-card";
 import { FloatingField } from "../components/floating-field";
 import { PasswordStrength } from "../components/password-strength";
 
-// Reglas conservadas exactamente desde la versión antd (8-20 + complejidad).
+// Compuesto desde lib/validation/fields (unifica política con change-password: 8-64 + mensajes por clase).
 const schema = z.object({
-  code: z.string().min(1, "El código es requerido"),
-  password: z
-    .string()
-    .min(8, "La contraseña debe tener entre 8 y 20 caracteres")
-    .max(20, "La contraseña debe tener entre 8 y 20 caracteres")
-    .regex(/[A-Z]/, "Debe contener al menos una letra mayúscula")
-    .regex(/[a-z]/, "Debe contener al menos una letra minúscula")
-    .regex(/\d/, "Debe contener al menos un número")
-    .regex(/[^a-zA-Z0-9]/, "Debe contener al menos un carácter especial"),
+  code: requiredText({ min: 1, label: "El código" }),
+  password,
 });
 
 type ResetPasswordValues = z.infer<typeof schema>;

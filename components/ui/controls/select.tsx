@@ -121,8 +121,12 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
         if (!opt || opt.disabled) return;
         onChange(opt.value);
         closeMenu();
+        // Una opción confirmada nunca dispara un blur nativo del trigger
+        // (closeMenu re-enfoca el mismo trigger). Revalidamos aquí para que
+        // RHF (mode:"onBlur") limpie un error "required" previo al instante.
+        onBlur?.();
       },
-      [display, onChange, closeMenu],
+      [display, onChange, closeMenu, onBlur],
     );
 
     // Foco al buscador al abrir (modo searchable)
@@ -230,10 +234,24 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       navKeyDown(e);
     };
 
+    // onBlur solo cuando el foco abandona TODO el widget (trigger + popover +
+    // buscador). Wirear onBlur directo en el trigger es incorrecto: al abrir
+    // en modo searchable, el foco salta del trigger al buscador y dispara un
+    // blur nativo prematuro que valida el valor todavía vacío.
+    const handleRootBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+      if (!rootRef.current?.contains(e.relatedTarget as Node | null)) {
+        onBlur?.();
+      }
+    };
+
     const activeDescId = open && active >= 0 ? optionId(active) : undefined;
 
     return (
-      <div ref={rootRef} className={cn("relative", className)}>
+      <div
+        ref={rootRef}
+        className={cn("relative", className)}
+        onBlur={handleRootBlur}
+      >
         <button
           ref={setTriggerRef}
           type="button"
@@ -241,7 +259,6 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
           disabled={disabled}
           onClick={() => (open ? closeMenu(false) : openMenu())}
           onKeyDown={onTriggerKeyDown}
-          onBlur={onBlur}
           role="combobox"
           aria-haspopup="listbox"
           aria-expanded={open}

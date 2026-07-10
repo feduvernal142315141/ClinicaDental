@@ -26,19 +26,18 @@ import { Input } from "@/components/ui/atomic/forms/input";
 import { Select } from "@/components/ui/controls/select";
 import { DateTimePicker } from "@/components/ui/controls/date-time-picker";
 import { cn } from "@/lib/utils/utils";
-import type {
-  ClinicalHistoryMedicalHistory,
-  UpdateMedicalHistoryRequest,
+import {
+  MARITAL_STATUS_VALUES,
+  type ClinicalHistoryMedicalHistory,
+  type MaritalStatus,
+  type UpdateMedicalHistoryRequest,
 } from "@/lib/entity/clinical-history";
+import { optionalText } from "@/lib/validation/fields";
 
-
-const MARITAL_STATUS_OPTIONS = [
-  { label: "Soltero/a", value: "Soltero/a" },
-  { label: "Casado/a", value: "Casado/a" },
-  { label: "Divorciado/a", value: "Divorciado/a" },
-  { label: "Viudo/a", value: "Viudo/a" },
-  { label: "Unión libre", value: "Unión libre" },
-];
+const MARITAL_STATUS_OPTIONS = MARITAL_STATUS_VALUES.map((value) => ({
+  label: value,
+  value,
+}));
 
 const EMPTY_OPTION = { label: "Sin especificar", value: "" };
 
@@ -50,14 +49,34 @@ interface MedicalHistoryDrawerProps {
   loading: boolean;
 }
 
+/**
+ * Tags libres (enfermedades, medicamentos, alergias, cirugías, hábitos):
+ * acotados en longitud y cantidad. Se CLAMPA cada etiqueta (trim + máx 80) y se
+ * filtran las vacías en vez de rechazar por elemento — así una etiqueta larga o
+ * un valor legacy nunca bloquea el guardado con un `FormMessage` en blanco (el
+ * error por-índice no se renderiza en el mensaje del array). El tope de 50 sí es
+ * un error a nivel de array (se muestra en el `FormMessage`).
+ */
+const tagArraySchema = z
+  .array(z.string().trim())
+  .transform((arr) => arr.filter((t) => t.length > 0).map((t) => t.slice(0, 80)))
+  .pipe(z.array(z.string()).max(50, "Máximo 50 elementos"));
+
+/** `maritalStatus` acepta un valor del catálogo o "" ("Sin especificar"). */
+const MARITAL_STATUS_FORM_VALUES = [...MARITAL_STATUS_VALUES, ""] as const;
+
 const formSchema = z.object({
-  occupation: z.string().optional(),
-  maritalStatus: z.string().optional(),
-  systemicDiseases: z.array(z.string()),
-  currentMedications: z.array(z.string()),
-  allergies: z.array(z.string()),
-  previousSurgeries: z.array(z.string()),
-  habits: z.array(z.string()),
+  occupation: optionalText({ max: 100 }),
+  maritalStatus: z
+    .enum(MARITAL_STATUS_FORM_VALUES, {
+      errorMap: () => ({ message: "Estado civil no válido" }),
+    })
+    .optional(),
+  systemicDiseases: tagArraySchema,
+  currentMedications: tagArraySchema,
+  allergies: tagArraySchema,
+  previousSurgeries: tagArraySchema,
+  habits: tagArraySchema,
   lastDentalVisit: z.string().optional(),
 });
 
@@ -74,12 +93,18 @@ const EMPTY_VALUES: MedicalHistoryFormValues = {
   lastDentalVisit: "",
 };
 
+/** Valida que un valor de marital status persistido siga perteneciendo al catálogo vigente. */
+function isKnownMaritalStatus(value: string | undefined): value is MaritalStatus {
+  return (MARITAL_STATUS_VALUES as readonly string[]).includes(value ?? "");
+}
+
 function toFormValues(
   mh: ClinicalHistoryMedicalHistory,
 ): MedicalHistoryFormValues {
   return {
     occupation: mh.occupation ?? "",
-    maritalStatus: mh.maritalStatus ?? "",
+    // Valores legacy fuera del catálogo actual caen a "Sin especificar".
+    maritalStatus: isKnownMaritalStatus(mh.maritalStatus) ? mh.maritalStatus : "",
     systemicDiseases: mh.systemicDiseases ?? [],
     currentMedications: mh.currentMedications ?? [],
     allergies: mh.allergies ?? [],
@@ -113,7 +138,7 @@ function TagInput({
   const [draft, setDraft] = useState("");
 
   const addToken = (raw: string) => {
-    const token = raw.trim();
+    const token = raw.trim().slice(0, 80);
     setDraft("");
     if (!token || value.includes(token)) return;
     onChange([...value, token]);
@@ -163,6 +188,7 @@ function TagInput({
       <input
         id={id}
         type="text"
+        maxLength={80}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={handleKeyDown}
