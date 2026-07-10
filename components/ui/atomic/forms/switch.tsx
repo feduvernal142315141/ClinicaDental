@@ -19,7 +19,10 @@ const Switch = React.forwardRef<
   >
     <SwitchPrimitives.Thumb
       className={cn(
-        "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0",
+        // Knob SIEMPRE blanco (no `bg-background`, que en oscuro se vuelve negro):
+        // blanco contrasta bien sobre el track brand (marcado) y subtle (sin
+        // marcar) en ambos temas; la sombra define el borde en el track claro.
+        "pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0",
       )}
     />
   </SwitchPrimitives.Root>
