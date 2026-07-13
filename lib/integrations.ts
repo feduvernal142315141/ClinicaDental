@@ -1,3 +1,5 @@
+import { DEFAULT_CURRENCY } from "@/lib/entity/settings";
+
 export interface Integration {
   id: string
   name: string
@@ -81,7 +83,7 @@ const defaultIntegrationSettings: IntegrationSettings = {
     publicKey: "",
     secretKey: "",
     webhookSecret: "",
-    currency: "USD",
+    currency: DEFAULT_CURRENCY,
   },
   paypal: {
     enabled: false,

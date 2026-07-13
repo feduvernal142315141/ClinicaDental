@@ -19,6 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/atomic/forms/select";
+// Select buscable (combobox) para el catálogo completo de monedas: 162
+// opciones exceden lo usable en el Select shadcn (sin búsqueda) del resto de
+// la pantalla. Mismo control que usa Opciones Generales para la moneda.
+import { Select as SearchableSelect } from "@/components/ui/controls/select";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import {
   Tabs,
@@ -44,6 +48,7 @@ import {
   integrationsList,
   type IntegrationSettings,
 } from "@/lib/integrations";
+import { CURRENCY_OPTIONS } from "@/lib/entity/settings";
 
 export function IntegrationsSettings() {
   const [settings, setSettings] = useState<IntegrationSettings | null>(null);
@@ -230,28 +235,18 @@ export function IntegrationsSettings() {
                     </div>
                     <div>
                       <Label htmlFor="stripe-currency">Moneda</Label>
-                      <Select
+                      <SearchableSelect
+                        id="stripe-currency"
                         value={settings.stripe.currency}
-                        onValueChange={(currency) =>
+                        onChange={(currency) =>
                           handleSave("stripe", { currency })
                         }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="USD">
-                            USD - Dólar Americano
-                          </SelectItem>
-                          <SelectItem value="EUR">EUR - Euro</SelectItem>
-                          <SelectItem value="MXN">
-                            MXN - Peso Mexicano
-                          </SelectItem>
-                          <SelectItem value="COP">
-                            COP - Peso Colombiano
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                        options={CURRENCY_OPTIONS}
+                        searchable
+                        searchPlaceholder="Buscar moneda…"
+                        placeholder="Seleccione moneda…"
+                        aria-label="Moneda"
+                      />
                     </div>
                   </div>
                 )}
