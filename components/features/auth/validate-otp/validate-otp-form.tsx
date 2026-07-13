@@ -38,14 +38,19 @@ const WAVE_DELAYS = [
 ] as const;
 
 function getSlotClassName(index: number, state: OtpValidationState): string {
-  const base = "h-12 w-12 rounded-xl border text-lg font-semibold";
+  // El tamaño (h-12 w-12), el radio uniforme (rounded-xl) y el ancho de borde
+  // viven una sola vez en InputOTPSlot. Aquí solo aportamos COLOR de estado
+  // terminal; empty/filled/active los resuelve el slot vía data-attrs.
   if (state === "success") {
-    return `${base} border-emerald-500 !border-emerald-500 bg-emerald-500/10 shadow-[0_0_0_3px_rgba(34,197,94,0.25)] animate-otp-wave ${WAVE_DELAYS[index] ?? ""}`;
+    return `!border-emerald-600 dark:!border-emerald-500 !bg-emerald-500/10 shadow-[0_0_0_3px_rgba(16,185,129,0.25)] animate-otp-wave ${WAVE_DELAYS[index] ?? ""}`;
   }
   if (state === "error") {
-    return `${base} border-rose-500 !border-rose-500 bg-rose-500/10`;
+    // La casilla enfocada conserva su anillo de foco (visible = WCAG 2.4.7),
+    // pero recoloreado a rosa: así el anillo de marca (brand) no se filtra en
+    // error y las 6 casillas quedan cromáticamente uniformes.
+    return `!border-rose-600 dark:!border-rose-500 !bg-rose-500/10 data-[active=true]:!ring-rose-500/30`;
   }
-  return `${base} border-hairline`;
+  return "";
 }
 
 export function ValidateOtpForm() {
@@ -210,6 +215,9 @@ export function ValidateOtpForm() {
               }}
               inputMode="numeric"
               pattern="^[0-9]*$"
+              autoComplete="one-time-code"
+              aria-label="Código de verificación de 6 dígitos"
+              aria-invalid={validationState === "error" || undefined}
               disabled={loading || validationState === "success"}
             >
               <InputOTPGroup className="gap-2">
