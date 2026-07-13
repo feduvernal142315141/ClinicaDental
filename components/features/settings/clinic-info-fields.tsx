@@ -15,6 +15,7 @@ import { Select } from "@/components/ui/controls/select";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { LogoUploader } from "@/components/features/settings/logo-uploader";
 import type { GeneralSettingsFormValues } from "@/lib/hooks/settings";
+import { CURRENCY_OPTIONS } from "@/lib/entity/settings";
 
 const Req = () => <span className="text-rose-500">*</span>;
 
@@ -31,14 +32,6 @@ function maskPhoneInput(raw: string): string {
   const rest = raw.slice(hasLeadingPlus ? 1 : 0).replace(/[^\d\s()-]/g, "");
   return (hasLeadingPlus ? "+" : "") + rest;
 }
-
-const CURRENCY_OPTIONS = [
-  { value: "USD", label: "USD - Dólar estadounidense" },
-  { value: "BOB", label: "BOB - Boliviano" },
-  { value: "COP", label: "COP - Peso colombiano" },
-  { value: "MXN", label: "MXN - Peso mexicano" },
-  { value: "EUR", label: "EUR - Euro" },
-].sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
 
 const TIMEZONE_OPTIONS = [
   { value: "America/La_Paz", label: "Bolivia (La Paz)" },
@@ -212,6 +205,8 @@ export function ClinicInfoFields({
                     onBlur={field.onBlur}
                     options={CURRENCY_OPTIONS}
                     placeholder="Seleccione moneda…"
+                    searchable
+                    searchPlaceholder="Buscar moneda…"
                     disabled={disabled}
                   />
                 </FormControl>

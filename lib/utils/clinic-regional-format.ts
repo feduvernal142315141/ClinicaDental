@@ -1,10 +1,4 @@
-const CURRENCY_LOCALE_BY_CODE: Record<string, string> = {
-  BOB: "es-BO",
-  COP: "es-CO",
-  EUR: "es-ES",
-  MXN: "es-MX",
-  USD: "es-US",
-};
+import { CURRENCY_LOCALE_BY_CODE } from "@/lib/entity/settings";
 
 export function formatClinicCurrency(
   value: number | null | undefined,
