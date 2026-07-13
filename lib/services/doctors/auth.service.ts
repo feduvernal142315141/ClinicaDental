@@ -1,5 +1,6 @@
 import { serviceGet, servicePost } from "../baseService";
 import { handleServiceError } from "@/lib/utils/error.utils";
+import { encryptPasswordForTransport } from "@/lib/auth/password-encryption";
 import type {
   LoginRequest,
   LoginResponse,
@@ -33,13 +34,12 @@ function isLoginResponse(data: unknown): data is LoginResponse {
  * POST /auth/login
  */
 async function login(credentials: LoginRequest): Promise<LoginResponse> {
-  // const encryptedPassword = await encryptPasswordForTransport(
-  //   credentials.password
-  // );
-
+  // Password cifrado con RSA (defensa en profundidad SOBRE TLS): no viaja legible en el
+  // cuerpo. El backend lo descifra; en reposo sigue siendo BCrypt. Ver password-encryption.
+  const encryptedPassword = await encryptPasswordForTransport(credentials.password);
   const response = await servicePost<LoginRequest, LoginResponse>(
     "/auth/login",
-    { ...credentials, password: credentials.password },
+    { email: credentials.email, password: encryptedPassword },
   );
 
   const status = response?.status;
@@ -130,7 +130,9 @@ async function forgotPassword(data: ForgotPasswordRequest): Promise<void> {
  * POST /auth/reset-password
  */
 async function resetPassword(data: ResetPasswordRequest): Promise<void> {
-  const response = await servicePost("/auth/reset-password", data);
+  // Password cifrado con RSA en tránsito (el backend lo descifra). El `code` es un token, no viaja password en claro.
+  const password = await encryptPasswordForTransport(data.password);
+  const response = await servicePost("/auth/reset-password", { ...data, password });
   if (!response?.data) {
     handleServiceError(typeof response !== "undefined" ? response : null, "Error al restablecer contraseña");
   }
@@ -141,7 +143,12 @@ async function resetPassword(data: ResetPasswordRequest): Promise<void> {
  * POST /auth/change-password
  */
 async function changePassword(data: ChangePasswordRequest): Promise<void> {
-  const response = await servicePost("/auth/change-password", data);
+  // Ambos passwords cifrados con RSA en tránsito (el backend los descifra).
+  const [oldPassword, newPassword] = await Promise.all([
+    encryptPasswordForTransport(data.oldPassword),
+    encryptPasswordForTransport(data.newPassword),
+  ]);
+  const response = await servicePost("/auth/change-password", { oldPassword, newPassword });
   if (!response?.data) {
     handleServiceError(typeof response !== "undefined" ? response : null, "Error al cambiar contraseña");
   }

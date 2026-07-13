@@ -57,6 +57,7 @@
     "embla-carousel-react": "8.5.1",
     "geist": "^1.7.0",
     "input-otp": "1.4.1",
+    "jsencrypt": "^3.5.4",
     "lucide-react": "^0.454.0",
     "moment": "^2.30.1",
     "next": "15.5.19",
