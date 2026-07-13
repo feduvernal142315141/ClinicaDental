@@ -1,5 +1,25 @@
 import {QueryPaginationModel} from "@/lib/models/queryPaginationModel";
 
+/**
+ * Parámetros de listado de campañas — ruta semántica (Fase 4).
+ * El front manda INTENCIÓN plana (q/status/resourceType/sort); el backend
+ * (`CampaignSearchMapper`) resuelve columnas/operadores/joins. Reemplaza el
+ * dialecto `?filters=field__OP__TYPE_value__AND` que armaba `convertToQueryString`
+ * (retirado junto con su único consumidor, `useTable`).
+ */
+export interface CampaignQueryParams {
+    page?: number;
+    pageSize?: number;
+    /** Búsqueda libre (barre name server-side) */
+    q?: string;
+    /** Faceta de texto sobre la relación de estado (status.name) */
+    status?: string;
+    /** Faceta escalar exacta: "image" | "video" */
+    resourceType?: string;
+    /** Orden semántico: clave lógica + dirección, ej. "name:asc" */
+    sort?: string;
+}
+
 export interface Campaign {
     id: string;
     name: string;

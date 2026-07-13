@@ -5,6 +5,7 @@ import {
   servicePut,
   servicePatch,
 } from "../baseService";
+import { servicesQuery } from "@/lib/query/domains/services";
 import type {
   Service,
   ServiceListItem,
@@ -57,6 +58,22 @@ function buildQueryString(params?: ServicesQueryParams): string {
     params.orders.forEach((order) => {
       queryParams.append("orders", order);
     });
+  }
+
+  // Fase 2 (GET semántico) — intención plana; el backend resuelve el significado.
+  // Aditivo respecto a filters/orders (coexistencia total); el front deja de armar
+  // strings del dialecto de 4 segmentos para la búsqueda y las facetas.
+  if (params.q !== undefined && params.q !== "") {
+    queryParams.append("q", params.q);
+  }
+  if (params.active !== undefined) {
+    queryParams.append("active", String(params.active));
+  }
+  if (params.odontogramEnabled !== undefined) {
+    queryParams.append("odontogramEnabled", String(params.odontogramEnabled));
+  }
+  if (params.sort !== undefined && params.sort !== "") {
+    queryParams.append("sort", params.sort);
   }
 
   return queryParams.toString();
@@ -158,39 +175,9 @@ async function toggleServiceStatus(id: string): Promise<boolean> {
  * Uses backend filter format: field__OP__value
  */
 async function getActiveOdontogramServices(): Promise<ServiceListItem[]> {
-  const filters = [
-    buildFilter("active", "EQ", true, "AND"),
-    buildFilter("odontogramEnabled", "EQ", true, "AND"),
-  ];
+  const { filters } = servicesQuery().active(true).odontogramEnabled(true).build();
   const response = await getServices({ filters });
   return response.entities;
-}
-
-/**
- * Helper: Build filter string (services backend format)
- * Example: buildFilter('name', 'CONTAINS', 'Limpieza') => 'name__CONTAINS__Limpieza__AND'
- */
-export function buildFilter(
-  field: string,
-  operator: string,
-  value: string | boolean | Date,
-  concat: "AND" | "OR" = "AND",
-): string {
-  let formattedValue = String(value);
-
-  if (value instanceof Date) {
-    formattedValue = value.toISOString().split("T")[0];
-  }
-
-  return `${field}__${operator}__${formattedValue}__${concat}`;
-}
-
-/**
- * Helper: Build order string (canonical backend format)
- * Example: buildOrder('name', 'asc') => 'name__ASC'
- */
-export function buildOrder(field: string, direction: "asc" | "desc"): string {
-  return `${field}__${direction.toUpperCase()}`;
 }
 
 /**

@@ -20,7 +20,7 @@ import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { getPatientsColumns } from "../columns/patients-table.config";
 import { PatientSearchBar } from "./PatientSearchBar";
-import { buildOrder } from "@/lib/entity/patients";
+import { patientsQuery, type PatientField } from "@/lib/query/domains/patients";
 import type { Patient } from "@/lib/entity/patients";
 
 interface PatientListProps {
@@ -63,19 +63,22 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
   const [confirmLoading, setConfirmLoading] = useState(false);
 
   // ── Persistent refs (survive re-renders without causing them) ────────────
-  const activeFiltersRef = useRef<string[]>([]);
+  // Fase 2 (GET semántico): la búsqueda viaja como intención plana `q`
+  // (el backend barre name + email). El orden sigue por la ruta estructurada
+  // (`orders`) durante la coexistencia.
+  const qRef = useRef<string>("");
   const activeOrdersRef = useRef<string[]>([]);
   const pageSizeRef = useRef(10);
   pageSizeRef.current = pagination.pageSize;
 
-  // ── Filters / search ─────────────────────────────────────────────────────
+  // ── Search (semantic intent) ─────────────────────────────────────────────
   const handleFiltersChange = useCallback(
-    (filters: string[]) => {
-      activeFiltersRef.current = filters;
+    ({ q }: { q: string }) => {
+      qRef.current = q;
       fetchPatients({
         page: 0,
         pageSize: pageSizeRef.current,
-        filters,
+        q,
         orders: activeOrdersRef.current,
       }).catch(() => {
         /* toast already shown by hook */
@@ -95,15 +98,17 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
   }, [fetchPatients]);
 
   // ── Sort ─────────────────────────────────────────────────────────────────
-  // buildOrder emits the canonical backend format "field__ASC" / "field__DESC".
+  // patientsQuery().order() emits the canonical backend format "field__ASC" / "field__DESC".
   const handleSortChange = useCallback(
     (field: string, order: "asc" | "desc" | null) => {
-      const orders = order ? [buildOrder(field, order)] : [];
+      const orders = order
+        ? patientsQuery().order(field as PatientField, order).build().orders
+        : [];
       activeOrdersRef.current = orders;
       fetchPatients({
         page: 0,
         pageSize: pageSizeRef.current,
-        filters: activeFiltersRef.current,
+        q: qRef.current,
         orders,
       }).catch(() => {
         /* toast already shown by hook */
@@ -135,7 +140,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
       await fetchPatients({
         page: pagination.page,
         pageSize: pagination.pageSize,
-        filters: activeFiltersRef.current,
+        q: qRef.current,
         orders: activeOrdersRef.current,
       });
     } catch {
@@ -191,7 +196,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
           fetchPatients({
             page: 0,
             pageSize: pageSizeRef.current,
-            filters: activeFiltersRef.current,
+            q: qRef.current,
             orders: activeOrdersRef.current,
           }).catch(() => {})
         }
@@ -253,7 +258,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
           fetchPatients({
             page: page - 1,
             pageSize,
-            filters: activeFiltersRef.current,
+            q: qRef.current,
             orders: activeOrdersRef.current,
           }).catch(() => {});
         }}

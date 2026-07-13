@@ -4,6 +4,8 @@
  * Type definitions for role-related entities
  */
 
+import type { RolesFilterOperator } from "@/lib/query/domains/roles";
+
 /**
  * Permission entity
  */
@@ -49,13 +51,26 @@ export interface CreateRoleRequest {
 }
 
 /**
- * Query parameters for roles list
+ * Query parameters for roles list.
+ *
+ * Fase 2 (GET semántico): el front expresa INTENCIÓN plana (`q`, `active`, `sort`)
+ * y el backend resuelve el significado server-side. Migrar a `q` permite DEJAR DE
+ * emitir el straggler de separador coma de roles. Los campos estructurados
+ * `filters`/`orders` se mantienen para coexistencia (aún soportados; endurecimiento
+ * de la ruta cruda en Fase 4).
  */
 export interface RolesQueryParams {
   page?: number;
   pageSize?: number;
+  /** @deprecated ruta estructurada (separador coma); usar `q` para la búsqueda de roles (coexistencia) */
   filters?: string[];
   orders?: string[];
+  /** Búsqueda semántica (barre name server-side) */
+  q?: string;
+  /** Filtro escalar de estado (activos/inactivos) */
+  active?: boolean;
+  /** Orden semántico: clave lógica + dirección, ej. "name:asc" */
+  sort?: string;
 }
 
 /**
@@ -72,15 +87,11 @@ export interface PaginatedRolesResponse {
 
 /**
  * Filter operator types
+ * @deprecated Vocabulario del straggler de roles (separador coma); usa
+ * @/lib/query (rolesQuery() / rolesDialect). Miembros idénticos, solo
+ * redirigido a la fuente única.
  */
-export type FilterOperator =
-  | "eq"
-  | "ne"
-  | "contains"
-  | "startsWith"
-  | "endsWith"
-  | "gte"
-  | "lte";
+export type FilterOperator = RolesFilterOperator;
 
 /**
  * Filter builder helper

@@ -3,10 +3,10 @@
 import { useMemo, useEffect, useCallback, useRef, useState } from "react";
 import { DataTable } from "@/components/ui/data-display/data-table";
 import { TableSearch } from "@/components/ui/data-display/table-search";
+import { useDebouncedValue } from "@/lib/hooks/useDebounce";
 import { useDoctors } from "@/lib/hooks/doctors";
 import { useDoctorsPage } from "@/lib/hooks/doctors/use-doctors-page";
 import { getDoctorsColumns } from "../columns/doctors-table.config";
-import { buildFilter } from "@/lib/entity/patients";
 
 interface DoctorsListProps {
   /** Base path for navigation */
@@ -28,31 +28,28 @@ export function DoctorsList({
 
   const { doctors, loading, pagination, fetchDoctors } = useDoctors();
 
-  // Persist active filters and current pageSize across re-renders
-  const activeFiltersRef = useRef<string[]>([]);
+  // Fase 2 (GET semántico): la búsqueda viaja como intención plana `q`
+  // (el backend barre name). Se persiste `q` y el pageSize actual entre
+  // re-renders para reusarlos en la paginación.
+  const qRef = useRef<string>("");
   const pageSizeRef = useRef(10);
   pageSizeRef.current = pagination.pageSize;
 
   const [search, setSearch] = useState("");
 
-  const handleFiltersChange = useCallback(
-    (filters: string[]) => {
-      activeFiltersRef.current = filters;
-      fetchDoctors({ page: 0, pageSize: pageSizeRef.current, filters });
+  const handleSearchChange = useCallback(
+    (q: string) => {
+      qRef.current = q;
+      fetchDoctors({ page: 0, pageSize: pageSizeRef.current, q });
     },
     [fetchDoctors],
   );
 
-  // Debounce: 350ms tras cambio en el buscador
+  // Debounce: 350ms tras cambio en el buscador (hook genérico compartido).
+  const debouncedSearch = useDebouncedValue(search, 350);
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const filters = search.trim()
-        ? [buildFilter("name", "CONTAINS_IGNORE_CASE", search.trim())]
-        : [];
-      handleFiltersChange(filters);
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [search, handleFiltersChange]);
+    handleSearchChange(debouncedSearch.trim());
+  }, [debouncedSearch, handleSearchChange]);
 
   // Load doctors on component mount
   useEffect(() => {
@@ -89,7 +86,7 @@ export function DoctorsList({
           fetchDoctors({
             page: page - 1,
             pageSize,
-            filters: activeFiltersRef.current,
+            q: qRef.current,
           });
         }}
       />

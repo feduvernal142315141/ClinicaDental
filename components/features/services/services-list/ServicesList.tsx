@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 
 import { DataTable } from "@/components/ui/data-display/data-table";
+import { useDebouncedValue } from "@/lib/hooks/useDebounce";
 import { TableSearch } from "@/components/ui/data-display/table-search";
 import { Checkbox } from "@/components/ui/atomic/forms/checkbox";
 import { useServices } from "@/lib/hooks/services/useServices";
 import { useServicesPage } from "@/lib/hooks/services/use-services-page";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
-import { buildFilter, buildOrder } from "@/lib/services/services";
+import { servicesQuery, type ServiceField } from "@/lib/query/domains/services";
 import { getServicesColumns } from "../table/services-table.config";
 import { notify } from "@/lib/utils/notify";
 
@@ -29,45 +30,43 @@ export function ServicesList({
   const [search, setSearch] = useState("");
   const [showInactive, setShowInactive] = useState(false);
 
-  // Filtros/orden/pageSize activos, persistidos para paginación y refetch.
-  const activeFiltersRef = useRef<string[]>([]);
+  // Fase 2 (GET semántico): la búsqueda viaja como intención plana `q` (el backend
+  // barre `name`) y el estado como la faceta escalar `active`. El front ya NO arma
+  // strings del dialecto de 4 segmentos para búsqueda/estado. El orden sigue por la
+  // ruta estructurada (`orders`) durante la coexistencia.
   const activeOrdersRef = useRef<string[]>([]);
   const pageSizeRef = useRef(10);
   pageSizeRef.current = pagination.pageSize;
 
-  // Construye los filtros actuales (búsqueda + estado). Por defecto se ocultan
-  // los servicios inactivos (patrón "Show Hidden").
-  const buildCurrentFilters = useCallback(
-    (term: string, includeInactive: boolean): string[] => {
-      const filters: string[] = [];
-      if (term.trim())
-        filters.push(buildFilter("name", "CONTAINS_IGNORE_CASE", term.trim()));
-      if (!includeInactive) filters.push(buildFilter("active", "EQ", true));
-      return filters;
-    },
-    [],
-  );
+  // Faceta de estado: por defecto se ocultan los inactivos (active=true); al mostrar
+  // todos se omite la faceta (patrón "Show Hidden").
+  const activeFacet = showInactive ? undefined : true;
 
-  // Carga inicial + recarga al cambiar buscador/estado (debounce 350ms).
+  // Intención semántica activa, persistida para paginación/orden/refetch sin
+  // re-crear callbacks (survive re-renders without causing them).
+  const qRef = useRef<string>("");
+  qRef.current = search.trim();
+  const activeFacetRef = useRef<boolean | undefined>(activeFacet);
+  activeFacetRef.current = activeFacet;
+
+  // Carga inicial + recarga al cambiar buscador/estado. El término de búsqueda se
+  // debouncea (hook genérico compartido); la faceta de estado dispara de inmediato.
   // Es el único efecto de carga (evita un doble fetch en el montaje).
+  const debouncedSearch = useDebouncedValue(search, 350);
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const filters = buildCurrentFilters(search, showInactive);
-      activeFiltersRef.current = filters;
-      fetchServices({
-        page: 0,
-        pageSize: pageSizeRef.current,
-        filters,
-        orders: activeOrdersRef.current,
-      }).catch((err) => {
-        notify.error(err?.message || "No se pudo cargar la lista de servicios", {
-          description:
-            "Revisa tu conexión e inténtalo de nuevo; si el problema persiste, contacta a soporte.",
-        });
+    fetchServices({
+      page: 0,
+      pageSize: pageSizeRef.current,
+      q: debouncedSearch.trim(),
+      active: activeFacet,
+      orders: activeOrdersRef.current,
+    }).catch((err) => {
+      notify.error(err?.message || "No se pudo cargar la lista de servicios", {
+        description:
+          "Revisa tu conexión e inténtalo de nuevo; si el problema persiste, contacta a soporte.",
       });
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [search, showInactive, fetchServices, buildCurrentFilters]);
+    });
+  }, [debouncedSearch, activeFacet, fetchServices]);
 
   const canEdit = isAdmin || can("service", PermissionAction.EDIT);
   const canBlock = isAdmin || can("service", PermissionAction.BLOCK);
@@ -82,7 +81,8 @@ export function ServicesList({
               fetchServices({
                 page: 0,
                 pageSize: pageSizeRef.current,
-                filters: activeFiltersRef.current,
+                q: qRef.current,
+                active: activeFacetRef.current,
                 orders: activeOrdersRef.current,
               }),
             )
@@ -123,11 +123,14 @@ export function ServicesList({
         total={pagination.total}
         showSizeChanger={true}
         onSortChange={(field, order) => {
-          activeOrdersRef.current = order ? [buildOrder(field, order)] : [];
+          activeOrdersRef.current = order
+            ? servicesQuery().order(field as ServiceField, order).build().orders
+            : [];
           fetchServices({
             page: 0,
             pageSize: pageSizeRef.current,
-            filters: activeFiltersRef.current,
+            q: qRef.current,
+            active: activeFacetRef.current,
             orders: activeOrdersRef.current,
           });
         }}
@@ -135,7 +138,8 @@ export function ServicesList({
           fetchServices({
             page: page - 1,
             pageSize,
-            filters: activeFiltersRef.current,
+            q: qRef.current,
+            active: activeFacetRef.current,
             orders: activeOrdersRef.current,
           });
         }}

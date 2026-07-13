@@ -5,6 +5,7 @@ import {
   servicePut,
   serviceDelete,
   servicePatch,
+  searchTree,
 } from "../baseService";
 import type {
   Patient,
@@ -13,6 +14,7 @@ import type {
   PatientsQueryParams,
   PaginatedPatientsResponse,
 } from "@/lib/entity/patients";
+import type { SearchRequest } from "@/lib/query";
 
 /**
  * PatientsService
@@ -52,6 +54,18 @@ function buildQueryString(params?: PatientsQueryParams): string {
     params.orders.forEach((order) => {
       queryParams.append("orders", order);
     });
+  }
+
+  // Fase 2 (GET semántico) — intención plana; el backend resuelve el significado.
+  // Aditivo respecto a filters/orders (coexistencia total).
+  if (params.q !== undefined && params.q !== "") {
+    queryParams.append("q", params.q);
+  }
+  if (params.active !== undefined) {
+    queryParams.append("active", String(params.active));
+  }
+  if (params.sort !== undefined && params.sort !== "") {
+    queryParams.append("sort", params.sort);
   }
 
   return queryParams.toString();
@@ -176,6 +190,27 @@ async function restorePatient(id: string): Promise<boolean> {
   return updatePatient({ id, active: true });
 }
 
+/**
+ * Search patients by boolean TREE (Fase 3)
+ * POST /patients/search
+ *
+ * Accepts a nested AND/OR tree of logical-field conditions (built with the
+ * `and()/or()/patientCond()` DSL from `@/lib/query`) with REAL precedence,
+ * e.g. `(name~q OR email~q) AND active`. Same response shape as GET /patients.
+ */
+async function searchPatientsTree(
+  body: SearchRequest,
+): Promise<PaginatedPatientsResponse> {
+  const response = await searchTree<PaginatedPatientsResponse>(endpoint, body);
+  if (response?.data) {
+    return response.data;
+  }
+  handleServiceError(
+    typeof response !== "undefined" ? response : null,
+    "Error al buscar pacientes",
+  );
+}
+
 export const patientsService = {
   getPatients,
   getPatientById,
@@ -184,4 +219,5 @@ export const patientsService = {
   deletePatient,
   activatePatient,
   restorePatient,
+  searchTree: searchPatientsTree,
 };

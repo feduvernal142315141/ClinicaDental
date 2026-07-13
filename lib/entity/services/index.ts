@@ -107,13 +107,27 @@ export type UpdateServiceRequest = Partial<CreateServiceRequest> & {
 };
 
 /**
- * Query parameters for services list
+ * Query parameters for services list.
+ *
+ * Fase 2 (GET semántico): el front expresa INTENCIÓN plana (`q`, `active`,
+ * `odontogramEnabled`, `sort`) y el backend resuelve el significado server-side
+ * (barre `name`). Los campos estructurados `filters`/`orders` se mantienen para
+ * coexistencia (aún soportados; endurecimiento de la ruta cruda en Fase 4).
  */
 export interface ServicesQueryParams {
   page?: number;
   pageSize?: number;
+  /** @deprecated ruta estructurada (dialecto 4 segmentos); usar `q`/`active`/`odontogramEnabled` (coexistencia) */
   filters?: string[];
   orders?: string[];
+  /** Búsqueda semántica libre (barre `name` server-side) */
+  q?: string;
+  /** Faceta escalar de estado (activos/inactivos) */
+  active?: boolean;
+  /** Faceta escalar: servicios habilitados para odontograma */
+  odontogramEnabled?: boolean;
+  /** Orden semántico: clave lógica + dirección, ej. "name:asc" */
+  sort?: string;
 }
 
 /**

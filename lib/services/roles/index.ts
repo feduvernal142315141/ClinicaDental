@@ -4,4 +4,4 @@
  * Barrel export for roles service layer
  */
 
-export { rolesService, buildFilter, buildOrder } from "./roles.service";
+export { rolesService } from "./roles.service";

@@ -80,13 +80,25 @@ export interface UpdatePatientRequest {
 }
 
 /**
- * Query parameters for patients list with filtering and pagination
+ * Query parameters for patients list with filtering and pagination.
+ *
+ * Fase 2 (GET semántico): el front expresa INTENCIÓN plana (`q`, `active`, `sort`)
+ * y el backend resuelve el significado server-side. Los campos estructurados
+ * `filters`/`orders` se mantienen para coexistencia (aún soportados; endurecimiento
+ * de la ruta cruda en Fase 4).
  */
 export interface PatientsQueryParams {
   page?: number;
   pageSize?: number;
+  /** @deprecated ruta estructurada; usar `q`/`active` para la búsqueda de pacientes (coexistencia) */
   filters?: string[];
   orders?: string[];
+  /** Búsqueda semántica multi-campo (barre name + email server-side) */
+  q?: string;
+  /** Filtro escalar de estado (activos/inactivos) */
+  active?: boolean;
+  /** Orden semántico: clave lógica + dirección, ej. "name:asc" */
+  sort?: string;
 }
 
 /**
@@ -108,43 +120,13 @@ export interface PaginatedPatientsResponse {
 }
 
 /**
- * Filter operators available for patient queries
- * Matches backend API_CONTRACT.md uppercase operators
+ * Filter operators available for patient queries.
+ * Redirige al vocabulario canónico único: @/lib/query/operators (fuente de
+ * verdad, alineada EXACTO al enum backend FilterOperator). Respecto al union
+ * anterior se agregan *_IGNORE_CASE y RELATED_* y se retiran IS_NULL/IS_NOT_NULL
+ * (sin call-sites que los usen hoy → sin regresión de tipos ni de wire).
  */
-export type FilterOperator =
-  | "EQ"
-  | "NEQ"
-  | "CONTAINS"
-  | "CONTAINS_IGNORE_CASE"
-  | "NOT_CONTAINS"
-  | "GTE"
-  | "LTE"
-  | "GT"
-  | "LT"
-  | "IN"
-  | "NOT_IN"
-  | "IS_NULL"
-  | "IS_NOT_NULL";
-
-/**
- * Helper to build filter string
- * @example buildFilter("name", "CONTAINS", "juan") => "name__CONTAINS__juan"
- */
-export function buildFilter(
-  field: string,
-  operator: FilterOperator,
-  value: string | boolean | number,
-): string {
-  return `${field}__${operator}__${value}`;
-}
-
-/**
- * Helper to build order string (canonical backend format)
- * @example buildOrder("name", "asc") => "name__ASC"
- */
-export function buildOrder(field: string, direction: "asc" | "desc"): string {
-  return `${field}__${direction.toUpperCase()}`;
-}
+export type { FilterOperatorName as FilterOperator } from "@/lib/query/operators";
 
 /**
  * Gender display options for forms

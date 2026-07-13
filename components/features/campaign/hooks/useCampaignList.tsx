@@ -1,9 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useDebouncedCallback } from "@/lib/hooks/useDebounce";
 import { ResponseGetAllCampaign } from "@/lib/entity/campaigns/campaigns";
-import { useDebouncedState } from "@/lib/hooks/useDebouncedState";
 import { Columns } from "@/components/ui/composed/table/TableModels";
-import { FilterOperator } from "@/lib/models/filterOperator";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { Edit, Cog, Image, Trash2, Video } from "lucide-react";
 import { serviceGetAllCampaignByClinicId } from "@/lib/services/campaigns/campaigns";
@@ -16,15 +15,28 @@ import {
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { useRouter } from "next/navigation";
 
+/**
+ * Fase 4 (GET semántico): la tabla (`CustomTable`/`useTable`) emite el mapa CRUDO por columna
+ * `{ columnKey: value }` (ya NO arma `?filters=field__OP__TYPE_value__AND`, ver
+ * `convertToQueryString` retirado en lib/utils/utils.ts). Este hook traduce esas claves a la
+ * intención semántica que entiende `CampaignSearchMapper` en el backend:
+ *   - "name"         -> q (búsqueda libre)
+ *   - "statusName"   -> status (faceta de texto sobre la relación status.name)
+ *   - "resourceType" -> resourceType (faceta escalar exacta image/video)
+ */
 const useCampaignList = () => {
   const { user } = useAuth();
   const router = useRouter();
   const [campaign, setCampaign] = useState<ResponseGetAllCampaign[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useDebouncedState("", 500);
+  const [semanticFilters, setSemanticFilters] = useState<Record<string, string>>({});
   const [page, setPage] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(10);
   const [total, setTotal] = useState<number>(0);
+
+  // Debounce del mapa de filtros crudo (evita un fetch por cada tecla) vía el hook
+  // genérico compartido — mismo criterio que el resto de dominios migrados.
+  const setFilters = useDebouncedCallback(setSemanticFilters, 500);
 
   const columns: Columns[] = useMemo(
     () => [
@@ -33,7 +45,6 @@ const useCampaignList = () => {
         title: "Nombre",
         className: "capitalize",
         filterable: true,
-        filterOperator: FilterOperator.containsIgnoreCase,
         customCell: (value, row) => (
           <div>
             <div className="font-medium">{value}</div>
@@ -45,15 +56,12 @@ const useCampaignList = () => {
         key: "statusName",
         title: "Estado",
         filterable: true,
-        filterOperator: FilterOperator.contains,
-        relatedField: "status.name",
         customCell: (value) => <Badge variant="secondary">{value}</Badge>,
       },
       {
         key: "resourceType",
         title: "Recurso",
         filterable: true,
-        filterOperator: FilterOperator.eq,
         customCell: (value) => (
           <div className="flex items-center">
             {value === "image" ? (
@@ -125,10 +133,15 @@ const useCampaignList = () => {
     try {
       setLoading(false);
 
-      const queryToUse = { page, pageSize, filters: [filters] };
       const response = await serviceGetAllCampaignByClinicId(
         user.clinicId,
-        queryToUse
+        {
+          page,
+          pageSize,
+          q: semanticFilters.name || undefined,
+          status: semanticFilters.statusName || undefined,
+          resourceType: semanticFilters.resourceType || undefined,
+        }
       );
 
       if (response?.status === 200) {
@@ -143,7 +156,7 @@ const useCampaignList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, filters, user?.clinicId]);
+  }, [page, pageSize, semanticFilters, user?.clinicId]);
 
   useEffect(() => {
     loadData();

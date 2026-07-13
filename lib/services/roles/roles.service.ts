@@ -196,6 +196,19 @@ function buildQueryString(params?: RolesQueryParams): string {
     });
   }
 
+  // Fase 2 (GET semántico) — intención plana; el backend resuelve el significado.
+  // Aditivo respecto a filters/orders (coexistencia total). Migrar a `q` elimina
+  // el straggler de separador coma que emitía la búsqueda de roles.
+  if (params.q !== undefined && params.q !== "") {
+    queryParams.append("q", params.q);
+  }
+  if (params.active !== undefined) {
+    queryParams.append("active", String(params.active));
+  }
+  if (params.sort !== undefined && params.sort !== "") {
+    queryParams.append("sort", params.sort);
+  }
+
   return queryParams.toString();
 }
 
@@ -262,35 +275,6 @@ async function updateRole(
     roleName: data.roleName,
     permissions: data.permissions ?? [],
   });
-}
-
-/**
- * Helper: Build filter string
- * Example: buildFilter('name', 'contains', 'Admin') => 'name,contains,Admin'
- */
-export function buildFilter(
-  field: string,
-  operator: string,
-  value: string | boolean | Date,
-): string {
-  let formattedValue = String(value);
-
-  // Add prefixes for special types
-  if (typeof value === "boolean") {
-    formattedValue = `boolean:${value}`;
-  } else if (value instanceof Date) {
-    formattedValue = `date:${value.toISOString().split("T")[0]}`;
-  }
-
-  return `${field},${operator},${formattedValue}`;
-}
-
-/**
- * Helper: Build order string
- * Example: buildOrder('name', 'asc') => 'name,asc'
- */
-export function buildOrder(field: string, direction: "asc" | "desc"): string {
-  return `${field},${direction}`;
 }
 
 /**

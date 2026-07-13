@@ -86,13 +86,25 @@ export interface UpdateDoctorRequest {
 }
 
 /**
- * Query parameters for doctors list with filtering and pagination
+ * Query parameters for doctors list with filtering and pagination.
+ *
+ * Fase 2 (GET semántico): el front expresa INTENCIÓN plana (`q`, `active`, `sort`)
+ * y el backend resuelve el significado server-side. Los campos estructurados
+ * `filters`/`orders` se mantienen para coexistencia (aún soportados; endurecimiento
+ * de la ruta cruda en Fase 4).
  */
 export interface DoctorsQueryParams {
   page?: number;
   pageSize?: number;
+  /** @deprecated ruta estructurada; usar `q`/`active` para la búsqueda de doctores (coexistencia) */
   filters?: string[];
   orders?: string[];
+  /** Búsqueda semántica (barre name server-side) */
+  q?: string;
+  /** Filtro escalar de estado (activos/inactivos) */
+  active?: boolean;
+  /** Orden semántico: clave lógica + dirección, ej. "name:asc" */
+  sort?: string;
 }
 
 /**
@@ -121,8 +133,6 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  /** Solo visible en desarrollo según backend; en prod normalmente no viene */
-  otpCode?: string;
   otpExpiresInSeconds: number;
   /** ISO string */
   otpExpiresAt: string;

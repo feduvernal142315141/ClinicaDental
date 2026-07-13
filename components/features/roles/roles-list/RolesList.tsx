@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "@/components/ui/data-display/data-table";
+import { useDebouncedValue } from "@/lib/hooks/useDebounce";
 import { TableSearch } from "@/components/ui/data-display/table-search";
 import { useRoles } from "@/lib/hooks/roles/useRoles";
 import { useRolesPage } from "@/lib/hooks/roles/use-roles-page";
-import { buildFilter } from "@/lib/services/roles";
 import { getRolesColumns } from "../table/roles-table.config";
 import { notify } from "@/lib/utils/notify";
 
@@ -28,24 +28,18 @@ export function RolesList({ basePath = "/settings/roles" }: RolesListProps) {
     });
   }, [fetchRoles]);
 
-  // Debounced search
+  // Debounced search — Fase 2 (GET semántico): emitimos INTENCIÓN plana `{ q }`
+  // (hook genérico compartido); el backend barre `name` server-side.
+  const debouncedSearch = useDebouncedValue(search, 500);
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const filters = search.trim()
-        ? [buildFilter("name", "contains", search.trim())]
-        : [];
-
-      fetchRoles({
-        page: 0,
-        pageSize: pagination.pageSize,
-        filters,
-      }).catch(() => {
-        // errors are already surfaced by useRoles
-      });
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [search, fetchRoles, pagination.pageSize]);
+    fetchRoles({
+      page: 0,
+      pageSize: pagination.pageSize,
+      q: debouncedSearch.trim(),
+    }).catch(() => {
+      // errors are already surfaced by useRoles
+    });
+  }, [debouncedSearch, fetchRoles, pagination.pageSize]);
 
   const columns = useMemo(
     () =>
@@ -73,10 +67,7 @@ export function RolesList({ basePath = "/settings/roles" }: RolesListProps) {
         total={pagination.total}
         showSizeChanger={true}
         onPageChange={(page, pageSize) => {
-          const filters = search.trim()
-            ? [buildFilter("name", "contains", search.trim())]
-            : [];
-          fetchRoles({ page: page - 1, pageSize, filters });
+          fetchRoles({ page: page - 1, pageSize, q: search.trim() });
         }}
       />
     </section>

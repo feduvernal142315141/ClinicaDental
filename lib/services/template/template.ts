@@ -1,37 +1,12 @@
-import { serviceGet, servicePost } from "@/lib/services/baseService";
+import { servicePost } from "@/lib/services/baseService";
 import { ServiceResponse } from "@/lib/models/response";
-import { QueryModel } from "@/lib/models/queryModel";
-import { getQueryString } from "@/lib/utils/format";
-import {
-  Campaign,
-  CampaignListResponse,
-} from "@/lib/entity/campaigns/campaigns";
 import { RequestCreateTemplate } from "@/lib/entity/template/template";
 
-export const serviceGetCampaignById = async (
-  id: string,
-): ServiceResponse<Campaign> => {
-  return serviceGet<Campaign>(`/campaign/${id}`);
-};
-
-export const serviceGetAllCampaign = async (
-  query: QueryModel,
-): ServiceResponse<CampaignListResponse> => {
-  return serviceGet<CampaignListResponse>(
-    `/campaign${query ? `?${getQueryString(query)}` : ""}`,
-  );
-};
-
-export const serviceGetAllCampaignByClinicId = async (
-  clinicId: string,
-  query: QueryModel,
-): ServiceResponse<CampaignListResponse> => {
-  return serviceGet<CampaignListResponse>(
-    `/campaign/campaign-by-clinic/${clinicId}${
-      query ? `?${getQueryString(query)}` : ""
-    }`,
-  );
-};
+// Nota (Fase 4): este archivo tenía copias muertas de
+// serviceGetCampaignById/serviceGetAllCampaign/serviceGetAllCampaignByClinicId
+// (duplicaban lib/services/campaigns/campaigns.ts, apuntaban a /campaign en vez de
+// /clinic-template, y sin consumidores reales). Se retiraron; usar los de
+// lib/services/campaigns/campaigns.ts si se necesita listar campañas/plantillas.
 
 export const serviceCreateTemplate = async (
   campaign: RequestCreateTemplate,

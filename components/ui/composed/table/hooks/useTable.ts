@@ -1,7 +1,5 @@
 import {useCallback, useState} from "react";
-import {FieldMapping, Columns} from "@/components/ui/composed/table/TableModels";
-import {FilterOperator} from "@/lib/models/filterOperator";
-import {convertFilterToType, convertToQueryString} from "@/lib/utils/utils";
+import {Columns} from "@/components/ui/composed/table/TableModels";
 
 interface UseTableProps {
     columns: Columns[];
@@ -9,11 +7,17 @@ interface UseTableProps {
     externalPageSize?: number;
     onPageChange: (page: number) => void;
     onPageSizeChange?: (pageSize: number) => void;
-    onFilterChange?: (filters: string) => void;
+    onFilterChange?: (filters: Record<string, string>) => void;
 }
 
+/**
+ * Fase 4: ya no arma un string `?filters=` con dialecto propio (retirado
+ * `convertToQueryString`/`convertFilterToType`, ver lib/utils/utils.ts). Este hook solo
+ * mantiene el estado de filtro POR COLUMNA (`{ columnKey: value }`) y lo emite tal cual;
+ * el consumidor (hoy solo Campañas, vía `useCampaignList`) traduce esas claves a la
+ * intención semántica (`q`/facetas) que entiende su propio service.
+ */
 const useTable = ({
-    columns,
     total,
     externalPageSize = 10,
     onPageChange,
@@ -24,54 +28,18 @@ const useTable = ({
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(externalPageSize);
 
-    // No necesitamos useRef - usamos el callback de setFilters
     const handleFilterChange = useCallback((key: string, value: string) => {
-        // Actualizar estado Y procesar los filtros en un solo lugar
         setFilters(prev => {
             const newFilters = {
                 ...prev,
                 [key]: value
             };
 
-            // Construir el query con los filtros actualizados
-            const fieldMappings: FieldMapping[] = [];
-            
-            const objectFilter = Object.keys(newFilters).map(filterKey => {
-                const field = filterKey;
-                const val = newFilters[filterKey];
-                const operator = columns.find(
-                    column => column.key === filterKey
-                )?.filterOperator || FilterOperator.contains;
-
-                return {
-                    field,
-                    value: val,
-                    operator,
-                };
-            });
-
-            columns.forEach((column) => {
-                fieldMappings.push({
-                    field: column.key,
-                    type: convertFilterToType(column?.filterType ?? 'string'),
-                    relatedField: column?.relatedField ?? '',
-                });
-            });
-
-            if (onFilterChange) {
-                onFilterChange(convertToQueryString(
-                    {
-                        logic: "and",
-                        filters: objectFilter
-                    },
-                    fieldMappings,
-                    columns,
-                ));
-            }
+            onFilterChange?.(newFilters);
 
             return newFilters;
         });
-    }, [columns, onFilterChange]);
+    }, [onFilterChange]);
 
     const handlePageSizeChange = useCallback((newPageSize: number) => {
         setPageSize(newPageSize);

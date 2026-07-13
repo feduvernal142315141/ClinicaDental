@@ -1,37 +1,32 @@
 import { useState, useCallback, useEffect } from "react";
-import { buildFilter } from "@/lib/entity/patients";
+import { useDebouncedValue } from "@/lib/hooks/useDebounce";
 
 /**
  * usePatientFilters
  *
  * Manages a single search string with debounced emission.
- * Calls `onFiltersChange` after `debounceMs` ms of inactivity with
- * a filter array ready to be passed to `fetchPatients`.
  *
- * Searches by patient name using CONTAINS_IGNORE_CASE (case-insensitive on backend).
+ * Fase 2 (GET semántico): el hook ya NO arma `?filters=` (columnas/operadores/
+ * separador). Emite INTENCIÓN plana `{ q }` y el backend resuelve el significado
+ * server-side (barre name + email). El cliente tipado Fase 1 (`patientsQuery`)
+ * queda disponible para orden u otros usos durante la coexistencia.
  *
  * @example
  * const { search, setSearch, clearSearch, hasActiveFilters } =
- *   usePatientFilters((filters) => fetchPatients({ page: 0, filters }));
+ *   usePatientFilters(({ q }) => fetchPatients({ page: 0, q }));
  */
 export function usePatientFilters(
-  onFiltersChange: (filters: string[]) => void,
+  onChange: (params: { q: string }) => void,
   debounceMs = 350,
 ) {
   const [search, setSearchState] = useState("");
 
   const hasActiveFilters = search.trim() !== "";
 
+  const debouncedSearch = useDebouncedValue(search, debounceMs);
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const built: string[] = [];
-      if (search.trim())
-        built.push(buildFilter("name", "CONTAINS_IGNORE_CASE", search.trim()));
-      onFiltersChange(built);
-    }, debounceMs);
-
-    return () => clearTimeout(timer);
-  }, [search, debounceMs, onFiltersChange]);
+    onChange({ q: debouncedSearch.trim() });
+  }, [debouncedSearch, onChange]);
 
   const setSearch = useCallback((value: string) => {
     setSearchState(value);

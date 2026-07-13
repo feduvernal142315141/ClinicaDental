@@ -1,10 +1,7 @@
 import type {
   Role,
   RoleListItem,
-  RoleFilter,
-  RoleOrder,
 } from "@/lib/entity/roles";
-import { buildFilter, buildOrder } from "@/lib/services/roles";
 
 /**
  * Roles Utility Functions
@@ -52,22 +49,6 @@ export function getRoleColor(roleName: string): string {
     return "green";
   }
   return "default";
-}
-
-/**
- * Build filters array from filter objects
- */
-export function buildFiltersArray(filters: RoleFilter[]): string[] {
-  return filters.map((filter) =>
-    buildFilter(filter.field, filter.operator, filter.value),
-  );
-}
-
-/**
- * Build orders array from order objects
- */
-export function buildOrdersArray(orders: RoleOrder[]): string[] {
-  return orders.map((order) => buildOrder(order.field, order.direction));
 }
 
 /**

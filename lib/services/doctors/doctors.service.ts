@@ -51,6 +51,18 @@ function buildQueryString(params?: DoctorsQueryParams): string {
     });
   }
 
+  // Fase 2 (GET semántico) — intención plana; el backend resuelve el significado.
+  // Aditivo respecto a filters/orders (coexistencia total).
+  if (params.q !== undefined && params.q !== "") {
+    queryParams.append("q", params.q);
+  }
+  if (params.active !== undefined) {
+    queryParams.append("active", String(params.active));
+  }
+  if (params.sort !== undefined && params.sort !== "") {
+    queryParams.append("sort", params.sort);
+  }
+
   return queryParams.toString();
 }
 

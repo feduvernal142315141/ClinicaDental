@@ -5,5 +5,52 @@
   ],
   "ignorePatterns": [
     "components/features/auth/**/dist/**"
-  ]
+  ],
+  "rules": {
+    "no-restricted-imports": [
+      "warn",
+      {
+        "paths": [
+          {
+            "name": "@/lib/utils/utils",
+            "importNames": ["convertToQueryString", "convertFilterToType"],
+            "message": "Fase 4 (Query Engine): retirado. Los listados mandan intención semántica (q/facetas) al service vía URLSearchParams (ver lib/services/roles|services|campaigns). No reintroducir un serializador de filtros ad-hoc en la tabla."
+          },
+          {
+            "name": "@/lib/services/roles/roles.service",
+            "importNames": ["buildFilter", "buildOrder"],
+            "message": "Fase 4: straggler de coma retirado. Usa rolesService.getRoles({ q, active, sort })."
+          },
+          {
+            "name": "@/lib/services/roles",
+            "importNames": ["buildFilter", "buildOrder"],
+            "message": "Fase 4: straggler de coma retirado. Usa rolesService.getRoles({ q, active, sort })."
+          },
+          {
+            "name": "@/lib/services/services/services.service",
+            "importNames": ["buildFilter", "buildOrder"],
+            "message": "Fase 4: retirado. Usa servicesService.getServices({ q, active, odontogramEnabled, sort }) o servicesQuery() de @/lib/query."
+          },
+          {
+            "name": "@/lib/services/services",
+            "importNames": ["buildFilter", "buildOrder"],
+            "message": "Fase 4: retirado. Usa servicesService.getServices({ q, active, odontogramEnabled, sort }) o servicesQuery() de @/lib/query."
+          },
+          {
+            "name": "@/lib/entity/patients",
+            "importNames": ["buildFilter", "buildOrder"],
+            "message": "Fase 4: retirado. Usa patientsQuery()/createQuery() de @/lib/query o los params semánticos (q/active/sort) del service."
+          },
+          {
+            "name": "@/lib/models/filterOperator",
+            "message": "Fase 4: retirado (straggler camelCase que solo alimentaba convertToQueryString/useTable). Usa @/lib/query/operators (FilterOperator/FilterOperatorName)."
+          },
+          {
+            "name": "@/lib/models/filterValueType",
+            "message": "Fase 4: retirado junto con convertToQueryString. Usa @/lib/query/valueType si necesitas los tags de value-type del backend."
+          }
+        ]
+      }
+    ]
+  }
 }

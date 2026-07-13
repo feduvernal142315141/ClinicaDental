@@ -1,6 +1,10 @@
-import {FilterOperatorType} from "@/lib/models/filterOperator";
-
-
+/**
+ * Fase 4: se retiró el dialecto legado de filtro por-columna (filterOperator/filterType/
+ * relatedField + FilterObject/FieldMapping), que solo existía para alimentar
+ * `convertToQueryString` (ver lib/utils/utils.ts, ahora eliminado). `onFilterChange` emite el
+ * mapa CRUDO `{ columnKey: value }`; cada dominio consumidor (hoy solo Campañas) traduce esas
+ * claves a la intención semántica (`q`/facetas) que entiende su propio service.
+ */
 export interface TableProps<T extends Record<string, unknown>> {
     columns: Columns[];
     data: T[];
@@ -8,7 +12,7 @@ export interface TableProps<T extends Record<string, unknown>> {
     onPageChange: (page: number) => void;
     pageSize?: number;
     onPageSizeChange?: (pageSize: number) => void;
-    onFilterChange?: (filters: string) => void;
+    onFilterChange?: (filters: Record<string, string>) => void;
 }
 
 export interface Columns<T = unknown> {
@@ -16,35 +20,7 @@ export interface Columns<T = unknown> {
     title: string;
     className?: string;
     filterable?: boolean;
-    filterOperator?: FilterOperatorType;
-    filterType?:
-        | 'boolean'
-        | 'text'
-        | 'numeric'
-        | 'numericText'
-        | 'date'
-        | 'datetime'
-        | 'dateRange'
-        | undefined;
-    relatedField?: string;
     customFilters?: (value: unknown, row: T) => React.ReactNode;
     customCell?: (value: unknown, row: T) => React.ReactNode;
 
-}
-
-export interface FilterObject {
-    logic: string;
-    filters: Filter[];
-}
-
-export interface Filter {
-    field: string;
-    operator: string;
-    value: string;
-}
-
-export interface FieldMapping {
-    field: string;
-    type?: string;
-    relatedField?: string;
 }
