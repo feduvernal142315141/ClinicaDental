@@ -46,8 +46,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 const UNCATEGORIZED = "__otros__";
 
 // Plantilla de columnas compartida por la cabecera y las filas (alineación exacta).
+// Las columnas de acción usan un mínimo de 4.5rem para que "BLOQUEAR" (la
+// etiqueta más ancha en mayúsculas) quepa en una sola línea sin partirse.
 const GRID =
-  "grid grid-cols-[minmax(11rem,1fr)_repeat(4,minmax(3.5rem,4rem))_minmax(6rem,7rem)] items-center gap-x-2";
+  "grid grid-cols-[minmax(11rem,1fr)_repeat(4,minmax(4.5rem,4.75rem))_minmax(6rem,7rem)] items-center gap-x-2";
 
 function toggleActionValue(current: number, action: PermissionAction): number {
   const has = (current & action) === action;
@@ -398,18 +400,18 @@ export function PermissionsSelector({
                           "border-b border-hairline bg-elevated/30 px-4 py-2",
                         )}
                       >
-                        <span className="text-[0.7rem] font-medium uppercase tracking-wider text-subtle">
+                        <span className="whitespace-nowrap text-[0.7rem] font-medium uppercase tracking-wider text-subtle">
                           Módulo
                         </span>
                         {ACTIONS.map(({ label, action }) => (
                           <span
                             key={action}
-                            className="text-center text-[0.7rem] font-medium uppercase tracking-wider text-subtle"
+                            className="whitespace-nowrap text-center text-[0.7rem] font-medium uppercase tracking-wider text-subtle"
                           >
                             {label}
                           </span>
                         ))}
-                        <span className="text-right text-[0.7rem] font-medium uppercase tracking-wider text-subtle">
+                        <span className="whitespace-nowrap text-right text-[0.7rem] font-medium uppercase tracking-wider text-subtle">
                           Nivel
                         </span>
                       </div>
