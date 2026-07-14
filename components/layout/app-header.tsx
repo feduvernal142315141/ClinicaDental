@@ -1,6 +1,5 @@
 "use client";
 
-import { SidebarSearch } from "@/components/ui/atomic/navigation/sidebar-search";
 import { HeaderActions } from "@/components/ui/atomic/navigation/header-actions";
 import { SidebarFooter } from "@/components/ui/atomic/navigation/sidebar-footer";
 import { useAuth } from "@/lib/contexts/auth-context";
@@ -17,13 +16,7 @@ export function AppHeader() {
   };
 
   return (
-    <header className="hidden lg:flex h-16 items-center justify-between gap-4 border-b border-hairline bg-surface px-4 lg:px-6">
-      <div className="flex-1 flex justify-center">
-        <div className="w-full max-w-md">
-          <SidebarSearch placeholder="Buscar…  (⌘K)" />
-        </div>
-      </div>
-
+    <header className="hidden lg:flex h-16 items-center justify-end gap-4 border-b border-hairline bg-surface px-4 lg:px-6">
       <div className="flex items-center justify-end gap-2">
         <HeaderActions supportHref="/support" settingsHref="/settings" />
         <SidebarFooter
