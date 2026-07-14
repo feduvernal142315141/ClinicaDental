@@ -15,7 +15,10 @@ import { Select } from "@/components/ui/controls/select";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { LogoUploader } from "@/components/features/settings/logo-uploader";
 import type { GeneralSettingsFormValues } from "@/lib/hooks/settings";
-import { CURRENCY_OPTIONS } from "@/lib/entity/settings";
+import {
+  CURRENCY_SELECT_OPTIONS,
+  TIMEZONE_SELECT_OPTIONS,
+} from "@/components/features/settings/regional-select-options";
 
 const Req = () => <span className="text-rose-500">*</span>;
 
@@ -32,16 +35,6 @@ function maskPhoneInput(raw: string): string {
   const rest = raw.slice(hasLeadingPlus ? 1 : 0).replace(/[^\d\s()-]/g, "");
   return (hasLeadingPlus ? "+" : "") + rest;
 }
-
-const TIMEZONE_OPTIONS = [
-  { value: "America/La_Paz", label: "Bolivia (La Paz)" },
-  { value: "America/Bogota", label: "Colombia (Bogotá)" },
-  { value: "America/Mexico_City", label: "México (Ciudad de México)" },
-  { value: "America/New_York", label: "Este (New York)" },
-  { value: "America/Chicago", label: "Central (Chicago)" },
-  { value: "America/Los_Angeles", label: "Pacífico (Los Angeles)" },
-  { value: "America/Argentina/Buenos_Aires", label: "Argentina (Buenos Aires)" },
-].sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
 
 /**
  * Puente entre el `FormItem`/`FormField` de "logoUrl" y `LogoUploader`.
@@ -203,7 +196,7 @@ export function ClinicInfoFields({
                     value={field.value}
                     onChange={field.onChange}
                     onBlur={field.onBlur}
-                    options={CURRENCY_OPTIONS}
+                    options={CURRENCY_SELECT_OPTIONS}
                     placeholder="Seleccione moneda…"
                     searchable
                     searchPlaceholder="Buscar moneda…"
@@ -228,8 +221,10 @@ export function ClinicInfoFields({
                     value={field.value}
                     onChange={field.onChange}
                     onBlur={field.onBlur}
-                    options={TIMEZONE_OPTIONS}
+                    options={TIMEZONE_SELECT_OPTIONS}
                     placeholder="Seleccione zona horaria…"
+                    searchable
+                    searchPlaceholder="Buscar zona horaria…"
                     disabled={disabled}
                   />
                 </FormControl>

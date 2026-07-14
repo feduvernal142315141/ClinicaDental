@@ -48,7 +48,7 @@ import {
   integrationsList,
   type IntegrationSettings,
 } from "@/lib/integrations";
-import { CURRENCY_OPTIONS } from "@/lib/entity/settings";
+import { CURRENCY_SELECT_OPTIONS } from "@/components/features/settings/regional-select-options";
 
 export function IntegrationsSettings() {
   const [settings, setSettings] = useState<IntegrationSettings | null>(null);
@@ -241,7 +241,7 @@ export function IntegrationsSettings() {
                         onChange={(currency) =>
                           handleSave("stripe", { currency })
                         }
-                        options={CURRENCY_OPTIONS}
+                        options={CURRENCY_SELECT_OPTIONS}
                         searchable
                         searchPlaceholder="Buscar moneda…"
                         placeholder="Seleccione moneda…"

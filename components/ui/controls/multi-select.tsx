@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ChevronDown, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import { matchesQuery } from "@/lib/utils/text";
 import type { SelectOption } from "@/components/ui/controls/select";
 
 export interface MultiSelectProps {
@@ -13,6 +14,8 @@ export interface MultiSelectProps {
   searchPlaceholder?: string;
   disabled?: boolean;
   searchable?: boolean;
+  /** Deriva el texto buscable por opción. Por defecto: `option.searchText ?? option.label`. */
+  getSearchText?: (option: SelectOption) => string;
   /** Máximo de chips a mostrar en el trigger antes de resumir "+N". */
   maxTagCount?: number;
   className?: string;
@@ -39,6 +42,7 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
       searchPlaceholder = "Buscar…",
       disabled = false,
       searchable = true,
+      getSearchText,
       maxTagCount = 4,
       className,
       id,
@@ -72,11 +76,17 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
 
     const selectedSet = React.useMemo(() => new Set(value), [value]);
 
+    const searchTextOf = React.useCallback(
+      (o: SelectOption) =>
+        getSearchText ? getSearchText(o) : (o.searchText ?? o.label),
+      [getSearchText],
+    );
+
     const filtered = React.useMemo(() => {
-      const q = query.trim().toLowerCase();
+      const q = query.trim();
       if (!q) return options;
-      return options.filter((o) => o.label.toLowerCase().includes(q));
-    }, [options, query]);
+      return options.filter((o) => matchesQuery(searchTextOf(o), q));
+    }, [options, query, searchTextOf]);
 
     const selectedOptions = React.useMemo(
       () => options.filter((o) => selectedSet.has(o.value)),
@@ -312,7 +322,22 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
                       >
                         {isSel && <Check className="h-3 w-3" />}
                       </span>
-                      <span className="flex-1 truncate">{o.label}</span>
+                      {o.icon && (
+                        <span
+                          aria-hidden
+                          className="inline-flex shrink-0 items-center"
+                        >
+                          {o.icon}
+                        </span>
+                      )}
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate">{o.label}</span>
+                        {o.description && (
+                          <span className="truncate text-xs text-subtle">
+                            {o.description}
+                          </span>
+                        )}
+                      </span>
                     </li>
                   );
                 })

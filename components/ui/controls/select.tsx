@@ -3,11 +3,18 @@
 import * as React from "react";
 import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import { matchesQuery, normalizeText } from "@/lib/utils/text";
 
 export interface SelectOption {
   value: string;
   label: string;
   disabled?: boolean;
+  /** Nodo inicial (bandera + símbolo…). Decorativo → el componente lo marca aria-hidden. */
+  icon?: React.ReactNode;
+  /** Subtítulo de la fila (offset UTC, dato secundario…). NO se muestra en el trigger. */
+  description?: React.ReactNode;
+  /** Texto de búsqueda adicional (code + name + símbolo + país…). Si falta, se usa `label`. */
+  searchText?: string;
 }
 
 export interface SelectProps {
@@ -19,6 +26,8 @@ export interface SelectProps {
   /** Muestra un buscador dentro del popover (combobox filtrable). */
   searchable?: boolean;
   searchPlaceholder?: string;
+  /** Deriva el texto buscable por opción. Por defecto: `option.searchText ?? option.label`. */
+  getSearchText?: (option: SelectOption) => string;
   className?: string;
   id?: string;
   /** Llamado cuando el control pierde el foco (para validación onBlur de RHF). */
@@ -43,6 +52,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       disabled = false,
       searchable = false,
       searchPlaceholder = "Buscar…",
+      getSearchText,
       className,
       id,
       onBlur,
@@ -81,13 +91,20 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     // El label del trigger se basa SIEMPRE en las opciones completas.
     const selected = options.find((o) => o.value === value);
 
-    // Lista visible: filtrada por query sólo en modo searchable.
+    const searchTextOf = React.useCallback(
+      (o: SelectOption) =>
+        getSearchText ? getSearchText(o) : (o.searchText ?? o.label),
+      [getSearchText],
+    );
+
+    // Lista visible: filtrada por query sólo en modo searchable. El matcher es
+    // acento/mayúsculas/puntuación-insensible (estándar `matchesQuery`).
     const display = React.useMemo(() => {
       if (!searchable) return options;
-      const q = query.trim().toLowerCase();
+      const q = query.trim();
       if (!q) return options;
-      return options.filter((o) => o.label.toLowerCase().includes(q));
-    }, [options, query, searchable]);
+      return options.filter((o) => matchesQuery(searchTextOf(o), q));
+    }, [options, query, searchable, searchTextOf]);
 
     const firstEnabled = React.useCallback(
       (from: number, dir: 1 | -1) => {
@@ -159,12 +176,13 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       const ta = typeahead.current;
       if (ta.t) clearTimeout(ta.t);
       ta.buf += key.toLowerCase();
+      const buf = normalizeText(ta.buf);
       const start = active >= 0 ? active : 0;
       const n = display.length;
       for (let step = 1; step <= n; step++) {
         const i = (start + step) % n;
         const o = display[i];
-        if (!o.disabled && o.label.toLowerCase().startsWith(ta.buf)) {
+        if (!o.disabled && normalizeText(searchTextOf(o)).startsWith(buf)) {
           setActive(i);
           break;
         }
@@ -277,11 +295,18 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
         >
           <span
             className={cn(
-              "flex-1 truncate",
+              "flex flex-1 items-center gap-2 truncate",
               selected ? "text-ink" : "text-subtle",
             )}
           >
-            {selected ? selected.label : placeholder}
+            {selected?.icon && (
+              <span aria-hidden className="inline-flex shrink-0 items-center">
+                {selected.icon}
+              </span>
+            )}
+            <span className="truncate">
+              {selected ? selected.label : placeholder}
+            </span>
           </span>
           <ChevronDown
             className={cn(
@@ -345,7 +370,22 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                         !o.disabled && isSelected ? "text-brand" : "text-ink",
                       )}
                     >
-                      <span className="flex-1 truncate">{o.label}</span>
+                      {o.icon && (
+                        <span
+                          aria-hidden
+                          className="inline-flex shrink-0 items-center"
+                        >
+                          {o.icon}
+                        </span>
+                      )}
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate">{o.label}</span>
+                        {o.description && (
+                          <span className="truncate text-xs text-subtle">
+                            {o.description}
+                          </span>
+                        )}
+                      </span>
                       {isSelected && (
                         <Check className="h-4 w-4 shrink-0 text-brand" />
                       )}
