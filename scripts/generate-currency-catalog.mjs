@@ -73,12 +73,20 @@ const EXPLICIT_LOCALE_BY_CODE = {
 const FALLBACK_LOCALE = "es-419";
 const DEFAULT_CURRENCY = "USD";
 
-// ── Nombres de respaldo en español para códigos que ICU no traduce ──────────
-//    Intl.DisplayNames(["es"]) devuelve el propio código para algunas unidades
-//    de cuenta supranacionales (ICU no trae traducción). Para que el `Select`
-//    nunca muestre "XXX - XXX", damos aquí el nombre en español.
+// ── Overrides de nombre en español (PRECEDEN sobre Intl.DisplayNames) ────────
+//    Dos usos: (1) códigos que ICU no traduce y devolverían "XXX" en el Select;
+//    (2) nombres que ICU sí traduce pero de forma histórica/verbosa/rara para
+//    una clínica (p. ej. NIO "Córdoba oro" → "Córdoba"). El valor de este mapa
+//    SIEMPRE gana. Auditados a mano (revisión de los 162 nombres).
 const NAME_OVERRIDES = {
-  XSU: "Sucre (unidad de cuenta ALBA)",
+  // Must-fix (revisión de los 162 nombres):
+  NIO: "Córdoba", // "oro" es calificador histórico (reforma 1990); hoy solo "córdoba"
+  SLL: "Leona sierraleonesa (antigua)", // defunct + evita duplicar con SLE; no un rango de años crudo
+  XSU: "Sucre (ALBA)", // el paréntesis distingue del sucre ecuatoriano; no dejar "Sucre" pelado
+  // Concisión (nombres CLDR correctos pero muy largos para un dropdown):
+  AED: "Dírham emiratí",
+  BAM: "Marco convertible bosnio",
+  CNY: "Yuan chino",
 };
 
 function localeForCode(code) {
@@ -102,13 +110,13 @@ function buildEntry(code) {
   } catch {
     rawName = code;
   }
-  // Si Intl no reconoce el código, `of` devuelve el mismo código (sin
-  // traducción); en ese caso usamos el override en español si existe, y como
-  // último recurso el propio código.
+  // El override en español SIEMPRE gana (nombres históricos/verbosos de ICU y
+  // códigos que ICU no traduce). Si no hay override, se usa el nombre de Intl
+  // capitalizado; y si Intl tampoco reconoce el código (`of` devuelve el mismo
+  // código), el propio código como último recurso.
   const name =
-    rawName && rawName !== code
-      ? capitalizeFirst(rawName)
-      : NAME_OVERRIDES[code] ?? code;
+    NAME_OVERRIDES[code] ??
+    (rawName && rawName !== code ? capitalizeFirst(rawName) : code);
 
   let symbol = code;
   let decimalDigits = 2;
