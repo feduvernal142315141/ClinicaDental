@@ -17,6 +17,7 @@
  */
 
 import * as React from "react";
+import * as AlertDialogRadix from "@radix-ui/react-alert-dialog";
 import {
   AlertDialog as AlertDialogPrimitive,
   AlertDialogContent,
@@ -24,8 +25,6 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
   AlertDialogDescription,
-  AlertDialogAction,
-  AlertDialogCancel,
 } from "@/components/ui/primitives/shadcn/alert-dialog";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
@@ -228,9 +227,18 @@ export function AlertDialog({
         {!hideFooter && finalActions.length > 0 && (
           <AlertDialogFooter className={footerClassName}>
             {(() => {
+              // El botón de baja énfasis (outline/secondary/ghost/link) es el
+              // "Cancelar" de Radix (cierra con Escape, es la acción segura). El
+              // resto son acciones afirmativas.
               const cancelIndex =
                 finalActions.length > 1
-                  ? finalActions.findIndex((a) => a.variant === "outline")
+                  ? finalActions.findIndex(
+                      (a) =>
+                        a.variant === "outline" ||
+                        a.variant === "secondary" ||
+                        a.variant === "ghost" ||
+                        a.variant === "link",
+                    )
                   : -1;
 
               const mapToButtonProps = (variant?: ButtonVariant) => {
@@ -251,14 +259,20 @@ export function AlertDialog({
 
               return finalActions.map((action, index) => {
                 const isCancel = cancelIndex !== -1 && index === cancelIndex;
-                const Component = isCancel
-                  ? AlertDialogCancel
-                  : AlertDialogAction;
+                // Radix Action/Cancel CRUDOS (no los wrappers shadcn): estos
+                // inyectan `buttonVariants()` por defecto y, con `asChild`, el
+                // Slot de Radix concatena ese `bg-brand-strong` sobre el
+                // <Button> hijo SIN tailwind-merge → una acción `ghost` salía
+                // sólida azul. Con el primitive crudo el <Button> controla el
+                // estilo por completo.
+                const Trigger = isCancel
+                  ? AlertDialogRadix.Cancel
+                  : AlertDialogRadix.Action;
 
                 const buttonProps = mapToButtonProps(action.variant);
 
                 return (
-                  <Component
+                  <Trigger
                     key={`action-${action.label}-${index}`}
                     asChild
                     onClick={() => handleActionClick(action)}
@@ -271,7 +285,7 @@ export function AlertDialog({
                     >
                       {action.label}
                     </Button>
-                  </Component>
+                  </Trigger>
                 );
               });
             })()}
