@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/primitives/shadcn/dropdown-menu";
 import type { Patient } from "@/lib/entity/patients";
 import { calculateAge } from "@/lib/entity/patients";
+import { ActiveBadge } from "@/components/ui/atomic/data-display/status-badge";
 
 interface GetPatientsColumnsParams {
   onView: (id: string) => void;
@@ -120,16 +121,7 @@ export function getPatientsColumns({
       key: "active",
       title: "Estado",
       dataIndex: "active",
-      render: (value: unknown) =>
-        value ? (
-          <span className="inline-flex items-center rounded-full border border-green-100 bg-green-50 px-2.5 py-0.5 text-[11px] font-bold text-green-700">
-            Activo
-          </span>
-        ) : (
-          <span className="inline-flex items-center rounded-full border border-hairline bg-hover px-2.5 py-0.5 text-[11px] font-bold text-ink">
-            Inactivo
-          </span>
-        ),
+      render: (value: unknown) => <ActiveBadge active={Boolean(value)} />,
     },
     {
       key: "actions",

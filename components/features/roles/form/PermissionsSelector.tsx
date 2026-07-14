@@ -5,6 +5,7 @@ import { CheckCheck, ChevronDown, Eraser, Search } from "lucide-react";
 
 import { Checkbox } from "@/components/ui/atomic/forms/checkbox";
 import { Input } from "@/components/ui/atomic/forms/input";
+import { StatusBadge } from "@/components/ui/atomic/data-display/status-badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -85,12 +86,9 @@ function LevelBadge({ value }: { value: number }) {
 
   if (hasFullAccess(value)) {
     return (
-      <span
-        title="Crear, Editar, Eliminar y Bloquear"
-        className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-400/25 dark:text-emerald-300"
-      >
+      <StatusBadge tone="success" title="Crear, Editar, Eliminar y Bloquear">
         Acceso total
-      </span>
+      </StatusBadge>
     );
   }
 
@@ -99,12 +97,12 @@ function LevelBadge({ value }: { value: number }) {
   ).map(({ label }) => label);
 
   return (
-    <span
+    <StatusBadge
+      tone="warning"
       title={actions.length ? actions.join(", ") : "Permisos limitados"}
-      className="inline-flex items-center rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-semibold text-amber-600 ring-1 ring-amber-400/25 dark:text-amber-300"
     >
       Limitado
-    </span>
+    </StatusBadge>
   );
 }
 

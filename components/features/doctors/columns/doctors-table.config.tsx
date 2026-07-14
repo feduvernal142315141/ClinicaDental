@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/primitives/shadcn/dropdown-menu";
 import type { DoctorListItem } from "@/lib/entity/doctors";
+import { ActiveBadge } from "@/components/ui/atomic/data-display/status-badge";
 import dayjs from "dayjs";
 
 interface GetDoctorsColumnsParams {
@@ -89,16 +90,7 @@ export function getDoctorsColumns({
       key: "active",
       title: "Estado",
       dataIndex: "active",
-      render: (value) =>
-        value ? (
-          <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-400/25 dark:text-emerald-300">
-            Activo
-          </span>
-        ) : (
-          <span className="inline-flex items-center rounded-full bg-hover px-2.5 py-0.5 text-xs font-semibold text-subtle ring-1 ring-hairline">
-            Inactivo
-          </span>
-        ),
+      render: (value) => <ActiveBadge active={Boolean(value)} />,
     },
     {
       key: "createAt",

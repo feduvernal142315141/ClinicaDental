@@ -44,6 +44,15 @@ export type { EmptyStateProps } from "./atomic/feedback/empty-state";
 
 export { Badge, badgeVariants } from "./atomic/data-display/badge";
 export {
+  StatusBadge,
+  ActiveBadge,
+  statusBadgeVariants,
+} from "./atomic/data-display/status-badge";
+export type {
+  StatusBadgeProps,
+  ActiveBadgeProps,
+} from "./atomic/data-display/status-badge";
+export {
   Avatar,
   AvatarImage,
   AvatarFallback,
