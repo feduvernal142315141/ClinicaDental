@@ -20,11 +20,17 @@ import { getAccessToken } from "@/lib/auth/token-client";
 import { decodeJwtPayload } from "@/lib/auth/jwt";
 import { createAuthSession } from "@/lib/services/auth/session.service";
 import { clearAuthTokens, saveLoggedUser } from "@/lib/auth/token-storage";
+import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  // Marca de la clínica (AuthProvider es hijo de ClinicBrandingProvider): al
+  // completar el login re-pedimos la marca ya autenticada (tenant-aware) y al
+  // salir la limpiamos, para que el shell/login reflejen la clínica correcta.
+  const { refetch: refetchClinicBranding, clearBranding: clearClinicBranding } =
+    useClinicBranding();
   const [user, setUser] = useState<AppUser | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -160,6 +166,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearOtpSession();
       hydrateUserFromAccessToken(tokens.accessToken);
 
+      // Ya autenticado: la petición ahora lleva token, así que GET /clinic/branding
+      // devuelve la clínica del usuario. Refrescamos para que el sidebar deje de
+      // mostrar la marca pre-auth/cacheada y pase a la de la clínica logueada.
+      void refetchClinicBranding();
+
       if (shouldRedirect) {
         router.push("/dashboard");
         router.refresh();
@@ -192,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       clearOtpSession();
       clearAuthTokens();
+      clearClinicBranding();
       router.push("/login");
       router.refresh();
     } catch (error) {
@@ -199,6 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       clearOtpSession();
       clearAuthTokens();
+      clearClinicBranding();
       router.push("/login");
     }
   };

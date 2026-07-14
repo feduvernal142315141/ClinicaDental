@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { clinicBrandingService } from "@/lib/services/settings";
 import {
   DEFAULT_CLINIC_BRANDING,
@@ -18,6 +18,18 @@ interface ClinicBrandingContextType extends ClinicBranding {
    * reload completo (el provider solo hace fetch una vez al montar).
    */
   updateBranding: (patch: Partial<ClinicBranding>) => void;
+  /**
+   * Vuelve a pedir la marca al backend. Tenant-aware: si hay sesión, el token
+   * viaja en la petición y `GET /clinic/branding` devuelve la clínica del usuario
+   * (no la primera del sistema). Úsalo al COMPLETAR el login para que el shell
+   * pase de la marca pre-auth a la de la clínica autenticada.
+   */
+  refetch: () => Promise<void>;
+  /**
+   * Limpia la caché de marca y vuelve al valor por defecto. Úsalo al hacer LOGOUT
+   * para que el próximo usuario (posible otra clínica) no herede la marca anterior.
+   */
+  clearBranding: () => void;
 }
 
 const ClinicBrandingContext = createContext<ClinicBrandingContextType | undefined>(
@@ -70,36 +82,46 @@ export function ClinicBrandingProvider({ children }: { children: ReactNode }) {
   const [branding, setBranding] = useState<ClinicBranding>(DEFAULT_CLINIC_BRANDING);
   const [loading, setLoading] = useState(true);
 
+  /** Pide la marca al backend y la fija + cachea. Silencioso ante error (cae al caché/default). */
+  const refetch = useCallback(async () => {
+    try {
+      const data = await clinicBrandingService.getClinicBranding();
+      setBranding(data);
+      writeCachedBranding(data);
+    } catch (err) {
+      // Silencioso a propósito: se dispara también en el login (sin sesión), donde
+      // un toast de error sería ruido; la marca se queda en el caché/default.
+      console.error(
+        "[ClinicBranding] No se pudo cargar la marca de la clínica:",
+        err,
+      );
+    }
+  }, []);
+
+  const clearBranding = useCallback(() => {
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // storage no disponible: nada que limpiar
+      }
+    }
+    setBranding(DEFAULT_CLINIC_BRANDING);
+  }, []);
+
   useEffect(() => {
     const cached = readCachedBranding();
     if (cached) setBranding(cached);
 
     let active = true;
-
-    clinicBrandingService
-      .getClinicBranding()
-      .then((data) => {
-        if (!active) return;
-        setBranding(data);
-        writeCachedBranding(data);
-      })
-      .catch((err) => {
-        // Silencioso a propósito: la marca cae al caché/default y esto se
-        // dispara también en el login (sin sesión), donde un toast de error
-        // sería ruido para el usuario.
-        console.error(
-          "[ClinicBranding] No se pudo cargar la marca de la clínica:",
-          err,
-        );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    refetch().finally(() => {
+      if (active) setLoading(false);
+    });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [refetch]);
 
   const updateBranding = (patch: Partial<ClinicBranding>) => {
     setBranding((current) => {
@@ -110,7 +132,9 @@ export function ClinicBrandingProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ClinicBrandingContext.Provider value={{ ...branding, loading, updateBranding }}>
+    <ClinicBrandingContext.Provider
+      value={{ ...branding, loading, updateBranding, refetch, clearBranding }}
+    >
       {children}
     </ClinicBrandingContext.Provider>
   );
