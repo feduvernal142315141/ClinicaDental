@@ -34,12 +34,16 @@ export function AutoLogoutWarningModal({
       title="Advertencia de Inactividad"
       description={warningMessage}
       variant="warning"
-      icon={<span className="text-2xl">⚠️</span>}
       actions={[
+        // Convención de acciones (button-action-standard): primario sólido a la
+        // derecha + secundario `ghost`. "Continuar Trabajando" es la acción
+        // recomendada (primario); "Cerrar Sesión" es la alternativa de baja
+        // emfasis (ghost). El icono lo aporta la variante `warning` (AlertTriangle
+        // de lucide), sin emoji.
         {
           label: "Cerrar Sesión",
           onClick: onLogout,
-          variant: "destructive",
+          variant: "ghost",
           autoClose: false, // No cerrar automáticamente, el logout lo maneja
         },
         {
