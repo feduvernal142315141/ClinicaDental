@@ -8,6 +8,8 @@ import { TableSearch } from "@/components/ui/data-display/table-search";
 import { Checkbox } from "@/components/ui/atomic/forms/checkbox";
 import { useServices } from "@/lib/hooks/services/useServices";
 import { useServicesPage } from "@/lib/hooks/services/use-services-page";
+import { useClinicGeneralSettings } from "@/lib/hooks/settings";
+import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { servicesQuery, type ServiceField } from "@/lib/query/domains/services";
@@ -23,6 +25,8 @@ export function ServicesList({
 }: ServicesListProps) {
   const { handleEditService } = useServicesPage({ basePath });
   const { can, isAdmin } = usePermission();
+  const { settings } = useClinicGeneralSettings();
+  const currency = settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency;
 
   const { services, loading, pagination, fetchServices, toggleServiceStatus } =
     useServices();
@@ -90,8 +94,16 @@ export function ServicesList({
         },
         canEdit,
         canBlock,
+        currency,
       }),
-    [handleEditService, toggleServiceStatus, fetchServices, canEdit, canBlock],
+    [
+      handleEditService,
+      toggleServiceStatus,
+      fetchServices,
+      canEdit,
+      canBlock,
+      currency,
+    ],
   );
 
   return (

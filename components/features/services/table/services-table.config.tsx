@@ -12,6 +12,7 @@ import {
   SERVICE_CATEGORY_LABELS,
 } from "@/lib/entity/services";
 import { cn } from "@/lib/utils/utils";
+import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
 import dayjs from "dayjs";
 
 interface GetServicesColumnsParams {
@@ -19,6 +20,8 @@ interface GetServicesColumnsParams {
   onToggleStatus: (id: string, currentlyActive: boolean) => void;
   canEdit: boolean;
   canBlock: boolean;
+  /** Moneda configurada de la clínica (ISO-4217, ej. "BOB"). */
+  currency: string;
 }
 
 const TYPE_BADGE: Record<ServiceType, string> = {
@@ -33,6 +36,7 @@ export function getServicesColumns({
   onToggleStatus,
   canEdit,
   canBlock,
+  currency,
 }: GetServicesColumnsParams): DataTableColumn<ServiceListItem>[] {
   return [
     {
@@ -95,7 +99,9 @@ export function getServicesColumns({
       align: "right",
       render: (value) => (
         <span className="text-sm tabular-nums text-ink">
-          {typeof value === "number" ? `$${value.toFixed(2)}` : "-"}
+          {typeof value === "number"
+            ? formatClinicCurrencyExact(value, currency)
+            : "-"}
         </span>
       ),
     },

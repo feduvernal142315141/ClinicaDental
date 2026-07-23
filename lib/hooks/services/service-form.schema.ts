@@ -43,7 +43,13 @@ export const serviceFormSchema = z
     name: requiredText({ min: 3, max: 100, label: "El nombre" }),
     type: z.enum(SERVICE_TYPE_VALUES),
     cost: z
-      .number({ invalid_type_error: "El costo es obligatorio" })
+      .number({
+        // Campo vacío → `undefined` → required_error (antes caía en el
+        // "Required" por defecto de zod, en inglés). NaN/tipo inválido →
+        // invalid_type_error. Ambos en español.
+        required_error: "El costo es obligatorio",
+        invalid_type_error: "El costo es obligatorio",
+      })
       .min(0, "El costo no puede ser negativo")
       .max(999999.99, "El costo no puede superar $999,999.99")
       .refine(

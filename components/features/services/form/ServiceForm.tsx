@@ -17,6 +17,9 @@ import TextArea from "@/components/ui/atomic/forms/textarea";
 import { Select } from "@/components/ui/controls/select";
 import { AvatarField } from "@/components/ui/controls/avatar-field";
 import { useServiceForm } from "@/lib/hooks/services/use-service-form";
+import { useClinicGeneralSettings } from "@/lib/hooks/settings";
+import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
+import { getClinicCurrencySymbol } from "@/lib/utils/clinic-regional-format";
 import {
   SERVICE_TYPE_LABELS,
   SERVICE_CATEGORY_LABELS,
@@ -114,6 +117,10 @@ export function ServiceForm({
     serviceId,
     basePath,
   });
+  const { settings } = useClinicGeneralSettings();
+  const currencySymbol = getClinicCurrencySymbol(
+    settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency,
+  );
 
   const { isDirty } = form.formState;
 
@@ -213,7 +220,7 @@ export function ServiceForm({
                   <FormControl>
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-subtle">
-                        $
+                        {currencySymbol}
                       </span>
                       <Input
                         type="number"
@@ -221,7 +228,9 @@ export function ServiceForm({
                         min={0}
                         step="0.01"
                         placeholder="0.00"
-                        className="pl-7"
+                        style={{
+                          paddingLeft: `calc(1.25rem + ${currencySymbol.length}ch)`,
+                        }}
                         disabled={loading}
                         value={field.value ?? ""}
                         onChange={(e) =>
