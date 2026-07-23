@@ -1,6 +1,7 @@
 import { serviceGet, servicePut } from "../baseService";
 import { permissionsToObject } from "@/lib/permissions/permissions-encoding";
 import { PERMISSIONS } from "@/lib/constants/roles.constants";
+import type { RolePermissionRequest } from "@/lib/entity/roles";
 
 import { handleServiceError } from "@/lib/utils/error.utils";
 export interface PermissionsQueryParams {
@@ -14,14 +15,7 @@ export interface UpdateRolePermissionsRequest {
   /** Nota: el backend lo expone como `rolId` (Swagger) */
   rolId: string;
   roleName: string;
-  permissions: Array<{ permissionId: string; actionsValue: number }>;
-}
-
-export interface UpdateRolePermissionsRequestEncoded {
-  rolId: string;
-  roleName: string;
-  /** Formato actual del frontend: ["user-15", "role-3", ...] */
-  permissions: string[];
+  permissions: RolePermissionRequest[];
 }
 
 export interface PermissionCatalogItem {
@@ -58,14 +52,16 @@ function buildQueryString(params?: PermissionsQueryParams): string {
   return queryParams.toString();
 }
 
-async function getPermissions(params?: PermissionsQueryParams): Promise<unknown> {
+async function getPermissions(
+  params?: PermissionsQueryParams
+): Promise<PermissionCatalogItem[]> {
   const queryString = buildQueryString(params);
   const url = `${endpoint}${queryString ? `?${queryString}` : ""}`;
 
   const response = await serviceGet<unknown>(url);
 
   if (response?.status >= 200 && response?.status < 300) {
-    return response.data;
+    return normalizeCatalogItems(response.data);
   }
 
   handleServiceError(response, "Error al cargar permisos");
@@ -130,14 +126,14 @@ function resolvePermissionIdForModuleKey(
   return (chosen.permissionId ?? chosen.id ?? null) as string | null;
 }
 
-function buildUpdatePermissionsPayload(
+function resolveRolePermissions(
   encoded: string[],
   catalog: PermissionCatalogItem[]
-): Array<{ permissionId: string; actionsValue: number }> {
+): RolePermissionRequest[] {
   const obj = permissionsToObject(encoded);
 
   const missing: string[] = [];
-  const result: Array<{ permissionId: string; actionsValue: number }> = [];
+  const result: RolePermissionRequest[] = [];
 
   for (const [moduleKey, actionsValue] of Object.entries(obj)) {
     const permissionId = resolvePermissionIdForModuleKey(moduleKey, catalog);
@@ -160,22 +156,11 @@ function buildUpdatePermissionsPayload(
 }
 
 async function updateRolePermissions(
-  payload: UpdateRolePermissionsRequestEncoded
+  payload: UpdateRolePermissionsRequest
 ): Promise<boolean> {
-  const permissionsResponse = await getPermissions();
-  const catalog = normalizeCatalogItems(permissionsResponse);
-  const permissions = buildUpdatePermissionsPayload(
-    payload.permissions,
-    catalog
-  );
-
   const response = await servicePut<UpdateRolePermissionsRequest, unknown>(
     endpoint,
-    {
-      rolId: payload.rolId,
-      roleName: payload.roleName,
-      permissions,
-    }
+    payload
   );
 
   if (response?.status >= 200 && response?.status < 300) {
@@ -187,5 +172,6 @@ async function updateRolePermissions(
 
 export const permissionsService = {
   getPermissions,
+  resolveRolePermissions,
   updateRolePermissions,
 };

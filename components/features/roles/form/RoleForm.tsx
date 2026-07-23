@@ -26,8 +26,15 @@ export function RoleForm({
   roleId,
   basePath = "/settings/roles",
 }: RoleFormProps) {
-  const { form, isEdit, isSystem, loading, handleSubmit, handleCancel } =
-    useRoleForm({ roleId, basePath });
+  const {
+    form,
+    isEdit,
+    isSystem,
+    loading,
+    permissionsReady,
+    handleSubmit,
+    handleCancel,
+  } = useRoleForm({ roleId, basePath });
 
   const disabled = loading || isSystem;
   const { isDirty } = form.formState;
@@ -98,7 +105,7 @@ export function RoleForm({
           onSecondary={handleCancel}
           submitLabel={isEdit ? "Guardar cambios" : "Crear rol"}
           loading={loading}
-          submitDisabled={disabled}
+          submitDisabled={disabled || !permissionsReady}
         />
       </form>
     </Form>

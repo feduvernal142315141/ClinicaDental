@@ -5,7 +5,7 @@ import { PERMISSIONS } from "@/lib/constants/roles.constants";
 import { handleServiceError } from "@/lib/utils/error.utils";
 import type {
   Role,
-  CreateRoleRequest,
+  CreateRoleApiRequest,
   RolesQueryParams,
   PaginatedRolesResponse,
 } from "@/lib/entity/roles";
@@ -249,8 +249,8 @@ async function getRoles(
  * Create new role
  * POST /roles
  */
-async function createRole(data: CreateRoleRequest): Promise<boolean> {
-  const response = await servicePost<CreateRoleRequest, boolean>(
+async function createRole(data: CreateRoleApiRequest): Promise<boolean> {
+  const response = await servicePost<CreateRoleApiRequest, boolean>(
     endpoint,
     data,
   );
@@ -268,12 +268,12 @@ async function createRole(data: CreateRoleRequest): Promise<boolean> {
  */
 async function updateRole(
   id: string,
-  data: CreateRoleRequest,
+  data: CreateRoleApiRequest,
 ): Promise<boolean> {
   return permissionsService.updateRolePermissions({
     rolId: id,
     roleName: data.roleName,
-    permissions: data.permissions ?? [],
+    permissions: data.permissions,
   });
 }
 

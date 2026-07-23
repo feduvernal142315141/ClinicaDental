@@ -8,6 +8,7 @@ This file is the root Codex instruction surface for `front-clinic`.
 - Prefer current code over stale docs when they conflict.
 - Treat `.github/*` as supplementary context. For Codex in this repo, `AGENTS.md` files and `.agents/skills/*` are the primary instruction surface.
 - Use repo skills from `.agents/skills/*` when the task matches them.
+- Use `docs/development/*` as the maintained technical reference for technology, architecture, standards, contracts, data, security, deployment, and quality.
 
 ## Verified Repository Snapshot
 - Next.js 15 App Router is active under `app/*`; there is no `pages/*` tree.
@@ -62,6 +63,7 @@ This file is the root Codex instruction surface for `front-clinic`.
 - Because no automated test runner is currently configured, do not claim automated coverage unless you also add the tooling explicitly.
 
 ## Available Repo Skills
+- `$clinic-flow-development`
 - `$add-feature`
 - `$fix-bug`
 - `$refactor-component-or-module`
