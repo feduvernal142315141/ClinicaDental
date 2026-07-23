@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useRoles } from "@/lib/hooks/roles/useRoles";
+import {
+  permissionsService,
+  type PermissionCatalogItem,
+} from "@/lib/services/permissions";
 import { isSystemRole } from "@/lib/utils/roles.utils";
 import {
   roleFormSchema,
   type RoleFormValues,
 } from "@/lib/hooks/roles/role-form.schema";
-import type { Role } from "@/lib/entity/roles";
+import type { CreateRoleApiRequest, Role } from "@/lib/entity/roles";
 import { notify } from "@/lib/utils/notify";
 
 export type { RoleFormValues } from "@/lib/hooks/roles/role-form.schema";
@@ -31,7 +35,16 @@ export function useRoleForm({
     [roleId],
   );
 
-  const { loading, getRoleById, createRole, updateRole } = useRoles();
+  const {
+    loading: roleLoading,
+    getRoleById,
+    createRole,
+    updateRole,
+  } = useRoles();
+  const [permissionCatalog, setPermissionCatalog] = useState<
+    PermissionCatalogItem[] | null
+  >(null);
+  const [permissionsLoading, setPermissionsLoading] = useState(true);
 
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(roleFormSchema),
@@ -39,6 +52,38 @@ export function useRoleForm({
     defaultValues: { roleName: "", permissions: [] },
   });
   const { reset } = form;
+
+  useEffect(() => {
+    let active = true;
+
+    setPermissionsLoading(true);
+    setPermissionCatalog(null);
+
+    permissionsService
+      .getPermissions()
+      .then((catalog) => {
+        if (active) setPermissionCatalog(catalog);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        notify.error(
+          error instanceof Error
+            ? error.message
+            : "No se pudieron cargar los permisos",
+          {
+            description:
+              "No pudimos preparar el catálogo de permisos. Recarga la página e inténtalo de nuevo.",
+          },
+        );
+      })
+      .finally(() => {
+        if (active) setPermissionsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Mantener el estado consistente al alternar entre crear/editar o cambiar de
   // roleId (evita que nombre/permisos de un rol previo se filtren a la siguiente
@@ -65,9 +110,32 @@ export function useRoleForm({
 
   const handleSubmit = useCallback(
     async (values: RoleFormValues) => {
-      const payload = {
+      if (!permissionCatalog) {
+        notify.error("Los permisos aún no están disponibles", {
+          description:
+            "Recarga la página para volver a cargar el catálogo de permisos.",
+        });
+        return;
+      }
+
+      let permissions: CreateRoleApiRequest["permissions"];
+      try {
+        permissions = permissionsService.resolveRolePermissions(
+          values.permissions ?? [],
+          permissionCatalog,
+        );
+      } catch (error: unknown) {
+        notify.error(
+          error instanceof Error
+            ? error.message
+            : "No se pudieron preparar los permisos",
+        );
+        return;
+      }
+
+      const payload: CreateRoleApiRequest = {
         roleName: values.roleName,
-        permissions: values.permissions ?? [],
+        permissions,
       };
 
       try {
@@ -82,7 +150,15 @@ export function useRoleForm({
         // El interceptor de Axios / useRoles ya muestra el toast de error.
       }
     },
-    [isEdit, roleId, createRole, updateRole, router, basePath],
+    [
+      isEdit,
+      roleId,
+      permissionCatalog,
+      createRole,
+      updateRole,
+      router,
+      basePath,
+    ],
   );
 
   const handleCancel = useCallback(() => {
@@ -97,7 +173,8 @@ export function useRoleForm({
     form,
     isEdit,
     isSystem,
-    loading,
+    loading: roleLoading || permissionsLoading,
+    permissionsReady: permissionCatalog !== null,
     handleSubmit,
     handleCancel,
     handleBack,

@@ -43,11 +43,19 @@ export interface RoleListItem {
 }
 
 /**
- * Create role request payload
+ * Permission payload expected by the roles API
  */
-export interface CreateRoleRequest {
+export interface RolePermissionRequest {
+  permissionId: string;
+  actionsValue: number;
+}
+
+/**
+ * Create role payload sent to the API
+ */
+export interface CreateRoleApiRequest {
   roleName: string;
-  permissions?: string[]; // Encoded permissions (e.g. "role-3")
+  permissions: RolePermissionRequest[];
 }
 
 /**

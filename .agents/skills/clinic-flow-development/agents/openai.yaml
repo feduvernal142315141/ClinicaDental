@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Flow Development"
+  short_description: "Desarrollo alineado con Clinic Flow 360"
+  default_prompt: "Use $clinic-flow-development para implementar un cambio respetando arquitectura, seguridad y contratos."

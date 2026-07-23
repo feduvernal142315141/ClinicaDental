@@ -3,7 +3,7 @@ import { useState, useCallback } from "react";
 import { rolesService } from "@/lib/services/roles";
 import type {
   RoleListItem,
-  CreateRoleRequest,
+  CreateRoleApiRequest,
   RolesQueryParams,
   PaginatedRolesResponse,
 } from "@/lib/entity/roles";
@@ -80,7 +80,7 @@ export function useRoles() {
    * Create new role
    */
   const createRole = useCallback(
-    async (data: CreateRoleRequest) => {
+    async (data: CreateRoleApiRequest) => {
       setLoading(true);
       try {
         const success = await rolesService.createRole(data);
@@ -110,7 +110,7 @@ export function useRoles() {
    * Update role
    */
   const updateRole = useCallback(
-    async (id: string, data: CreateRoleRequest) => {
+    async (id: string, data: CreateRoleApiRequest) => {
       setLoading(true);
       try {
         const success = await rolesService.updateRole(id, data);

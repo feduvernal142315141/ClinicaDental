@@ -8,6 +8,5 @@ export { permissionsService } from "./permissions.service";
 export type {
   PermissionsQueryParams,
   UpdateRolePermissionsRequest,
-  UpdateRolePermissionsRequestEncoded,
   PermissionCatalogItem,
 } from "./permissions.service";
