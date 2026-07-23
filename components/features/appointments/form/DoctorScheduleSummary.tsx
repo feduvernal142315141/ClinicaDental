@@ -6,20 +6,29 @@ import {
   type DoctorScheduleSummary as Summary,
 } from "@/lib/utils/appointment-utils";
 import type { WeekSchedule } from "@/lib/entity/schedule";
+import type { ClinicSchedule } from "@/lib/entity/settings";
 
 interface DoctorScheduleSummaryProps {
   schedule: WeekSchedule | Record<string, unknown> | null | undefined;
   /** True cuando ya hay un doctor seleccionado. */
   ready: boolean;
+  /**
+   * Horario EFECTIVO = doctor ∩ clínica: horario `rawSchedule` de la clínica
+   * (parcial, tal cual `useClinicGeneralSettings()`). Si no se pasa, o aún
+   * no cargó, el resumen degrada al comportamiento legacy (solo doctor).
+   */
+  clinicSchedule?: Partial<ClinicSchedule> | Record<string, unknown> | null;
 }
 
 /**
- * Resumen de la disponibilidad del doctor: días que atiende, rango horario
- * representativo y descanso. Da contexto inmediato antes de elegir fecha y hora.
+ * Resumen de la disponibilidad EFECTIVA del doctor: días que atiende (doctor ∩
+ * clínica), rango horario representativo y descanso. Da contexto inmediato
+ * antes de elegir fecha y hora.
  */
 export function DoctorScheduleSummary({
   schedule,
   ready,
+  clinicSchedule,
 }: DoctorScheduleSummaryProps) {
   if (!ready) {
     return (
@@ -29,7 +38,10 @@ export function DoctorScheduleSummary({
     );
   }
 
-  const summary: Summary | null = getDoctorScheduleSummary(schedule);
+  const summary: Summary | null = getDoctorScheduleSummary(
+    schedule,
+    clinicSchedule,
+  );
 
   if (!summary || summary.workingDays.length === 0) {
     return (

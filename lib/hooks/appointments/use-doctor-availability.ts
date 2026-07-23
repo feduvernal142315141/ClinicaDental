@@ -9,6 +9,7 @@ import {
   isDoctorWorkingDay,
 } from "@/lib/utils/appointment-utils";
 import type { WeekSchedule } from "@/lib/entity/schedule";
+import { useClinicGeneralSettings } from "@/lib/hooks/settings/use-clinic-general-settings";
 import { notifyApiError } from "@/lib/utils/notify-error";
 
 export interface DoctorAvailabilityOption {
@@ -51,6 +52,11 @@ export function useDoctorAvailability({
   >(null);
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
+
+  // Horario EFECTIVO = doctor ∩ clínica (paridad con el backend). `rawSchedule`
+  // es el horario tal cual lo configuró la clínica (parcial); `undefined`
+  // mientras carga degrada a "solo horario del doctor" (ver appointment-utils).
+  const { rawSchedule: clinicSchedule } = useClinicGeneralSettings();
 
   // Cargar doctores (con estado de carga).
   useEffect(() => {
@@ -111,16 +117,19 @@ export function useDoctorAvailability({
   }, [doctorId]);
 
   const disabledDate = useMemo(
-    () => buildDisabledDate(doctorSchedule),
-    [doctorSchedule],
+    () => buildDisabledDate(doctorSchedule, clinicSchedule),
+    [doctorSchedule, clinicSchedule],
   );
   const isWorkingDay = useCallback(
-    (d: Dayjs) => isDoctorWorkingDay(doctorSchedule, d),
-    [doctorSchedule],
+    (d: Dayjs) => isDoctorWorkingDay(doctorSchedule, d, clinicSchedule),
+    [doctorSchedule, clinicSchedule],
   );
   const selectedDayWorked = useMemo(
-    () => (date ? isDoctorWorkingDay(doctorSchedule, dayjs(date)) : false),
-    [doctorSchedule, date],
+    () =>
+      date
+        ? isDoctorWorkingDay(doctorSchedule, dayjs(date), clinicSchedule)
+        : false,
+    [doctorSchedule, clinicSchedule, date],
   );
 
   // Cargar horarios disponibles (pasa la duración total → el backend filtra los
@@ -155,6 +164,7 @@ export function useDoctorAvailability({
     doctorOptions,
     doctorsLoading,
     doctorSchedule,
+    clinicSchedule,
     disabledDate,
     isWorkingDay,
     selectedDayWorked,

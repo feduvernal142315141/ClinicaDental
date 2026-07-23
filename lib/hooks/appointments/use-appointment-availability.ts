@@ -7,6 +7,7 @@ import { useAppointmentsPage } from "@/lib/hooks/appointments/use-appointments-p
 import { buildDisabledDate } from "@/lib/utils/appointment-utils";
 import type { AvailabilitySlot } from "@/lib/entity/appointment";
 import type { WeekSchedule } from "@/lib/entity/schedule";
+import { useClinicGeneralSettings } from "@/lib/hooks/settings/use-clinic-general-settings";
 
 export interface AvailabilityDoctorOption {
   id: string;
@@ -43,6 +44,9 @@ export function useAppointmentAvailability({
   const [doctorSchedule, setDoctorSchedule] = useState<
     WeekSchedule | Record<string, unknown> | null
   >(null);
+
+  // Horario EFECTIVO = doctor ∩ clínica (paridad con el backend).
+  const { rawSchedule: clinicSchedule } = useClinicGeneralSettings();
 
   const hasRequiredFilters = useMemo(
     () => Boolean(selectedDoctorId && selectedDate),
@@ -107,8 +111,8 @@ export function useAppointmentAvailability({
 
   /** Función para deshabilitar fechas en el calendario según el schedule del doctor */
   const disabledDate = useMemo(
-    () => buildDisabledDate(doctorSchedule),
-    [doctorSchedule],
+    () => buildDisabledDate(doctorSchedule, clinicSchedule),
+    [doctorSchedule, clinicSchedule],
   );
 
   useEffect(() => {

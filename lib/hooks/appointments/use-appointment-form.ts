@@ -24,6 +24,7 @@ import type {
 import type { CreatePatientRequest } from "@/lib/entity/patients";
 import type { WeekSchedule } from "@/lib/entity/schedule";
 import { isSchedulableType, type ServiceType } from "@/lib/entity/services";
+import { useClinicGeneralSettings } from "@/lib/hooks/settings/use-clinic-general-settings";
 import { notify } from "@/lib/utils/notify";
 import { notifyApiError } from "@/lib/utils/notify-error";
 
@@ -113,6 +114,9 @@ export function useAppointmentForm({
     WeekSchedule | Record<string, unknown> | null
   >(null);
 
+  // Horario EFECTIVO = doctor ∩ clínica (paridad con el backend).
+  const { rawSchedule: clinicSchedule } = useClinicGeneralSettings();
+
   // Catálogo de servicios (id → datos) para auto-dimensionar la cita y para
   // poder mostrar/quitar en edición servicios ya asignados aunque hoy estén
   // inactivos o sean de un tipo no agendable.
@@ -166,23 +170,23 @@ export function useAppointmentForm({
   const watchedDate = watch("date");
   const watchedDuration = watch("duration");
 
-  /** `disabledDate` para el calendario según el schedule del doctor. */
+  /** `disabledDate` para el calendario según el horario EFECTIVO (doctor ∩ clínica). */
   const disabledDate = useMemo(
-    () => buildDisabledDate(doctorSchedule),
-    [doctorSchedule],
+    () => buildDisabledDate(doctorSchedule, clinicSchedule),
+    [doctorSchedule, clinicSchedule],
   );
 
-  /** Predicado para resaltar los días que el doctor atiende. */
+  /** Predicado para resaltar los días que el doctor atiende (efectivo). */
   const isWorkingDay = useCallback(
-    (date: Dayjs) => isDoctorWorkingDay(doctorSchedule, date),
-    [doctorSchedule],
+    (date: Dayjs) => isDoctorWorkingDay(doctorSchedule, date, clinicSchedule),
+    [doctorSchedule, clinicSchedule],
   );
 
   /** ¿El doctor atiende en la fecha seleccionada? (para el estado vacío de slots) */
   const selectedDayWorked = useMemo(() => {
     if (!watchedDate) return undefined;
-    return isDoctorWorkingDay(doctorSchedule, dayjs(watchedDate));
-  }, [doctorSchedule, watchedDate]);
+    return isDoctorWorkingDay(doctorSchedule, dayjs(watchedDate), clinicSchedule);
+  }, [doctorSchedule, clinicSchedule, watchedDate]);
 
   // Limpiar la hora seleccionada cuando cambian doctor, fecha o duración:
   // un slot válido para una combinación no lo es necesariamente para otra.
@@ -525,6 +529,7 @@ export function useAppointmentForm({
     disabledDate,
     isWorkingDay,
     doctorSchedule,
+    clinicSchedule,
     selectedDayWorked,
     getSuggestedDuration,
     getServiceLabel,

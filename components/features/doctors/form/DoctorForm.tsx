@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useController } from "react-hook-form";
 import type { FieldErrors, UseFormReturn } from "react-hook-form";
 import { CircleAlert, Clock, User } from "lucide-react";
 import {
@@ -23,8 +24,16 @@ import {
   TabsTrigger,
 } from "@/components/ui/primitives/shadcn/tabs";
 import { Select } from "@/components/ui/controls/select";
-import { TimeField } from "@/components/ui/controls/time-field";
 import { AvatarField } from "@/components/ui/controls/avatar-field";
+import {
+  ClinicRangeHint,
+  ClosedState,
+  DayToggle,
+  ScheduleDayCard,
+  ScheduleHeader,
+  TimeRangeField,
+  type ScheduleDayStatus,
+} from "@/components/ui/atomic/schedule";
 import { imageUploadService } from "@/lib/services/cloudinary/cloudinary.service";
 import { useDoctorForm } from "@/lib/hooks/doctors/use-doctor-form";
 import { useRoles } from "@/lib/hooks/roles";
@@ -85,148 +94,139 @@ function ScheduleDayRow({
   disabled?: boolean;
   clinicDay?: ClinicScheduleDay;
 }) {
-  const enabled = form.watch(`schedule.${dayKey}.enabled`);
+  const { control, setValue } = form;
 
+  const enabledField = useController({
+    control,
+    name: `schedule.${dayKey}.enabled`,
+  });
+  const startField = useController({
+    control,
+    name: `schedule.${dayKey}.startTime`,
+  });
+  const endField = useController({
+    control,
+    name: `schedule.${dayKey}.endTime`,
+  });
+  const breakStartField = useController({
+    control,
+    name: `schedule.${dayKey}.breakStart`,
+  });
+  const breakEndField = useController({
+    control,
+    name: `schedule.${dayKey}.breakEnd`,
+  });
+
+  const enabled = !!enabledField.field.value;
   const clinicClosed = clinicDay !== undefined && clinicDay.enabled === false;
   const clinicOpen = isClinicDayOpen(clinicDay);
   const clinicRange = formatClinicRange(clinicDay);
   const switchDisabled = disabled || (clinicClosed && !enabled);
 
-  return (
-    <div
-      className={cn(
-        "rounded-lg border border-hairline p-3 transition-colors",
-        enabled ? "bg-surface" : "bg-hover/40",
-      )}
-    >
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-        <FormField
-          control={form.control}
-          name={`schedule.${dayKey}.enabled`}
-          render={({ field }) => (
-            <FormItem className="w-32 shrink-0 space-y-0.5">
-              <label className="flex cursor-pointer items-center gap-2">
-                <FormControl>
-                  <Switch
-                    checked={!!field.value}
-                    onCheckedChange={(checked) => {
-                      field.onChange(checked);
-                      if (!checked) return;
-                      // INIT-ON-ENABLE: al encender, nacer dentro del rango
-                      // de la clínica (o el default si no hay uno válido).
-                      const start = clinicOpen
-                        ? (clinicDay!.startTime as string)
-                        : FALLBACK_START;
-                      const end = clinicOpen
-                        ? (clinicDay!.endTime as string)
-                        : FALLBACK_END;
-                      form.setValue(`schedule.${dayKey}.startTime`, start, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      });
-                      form.setValue(`schedule.${dayKey}.endTime`, end, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      });
-                    }}
-                    disabled={switchDisabled}
-                  />
-                </FormControl>
-                <span className="text-sm font-medium text-ink">{label}</span>
-              </label>
-              {clinicClosed && (
-                <p className="text-[11px] leading-tight text-amber-600 dark:text-amber-400">
-                  La clínica no abre este día.
-                </p>
-              )}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+  // Estado visual de la tarjeta: "open" manda incluso en el caso legacy
+  // (doctor con enabled=true en un día que la clínica cerró después) — ese
+  // caso se sigue mostrando como editor abierto + el error de validación
+  // bajo el toggle, igual que antes de atomizar.
+  const status: ScheduleDayStatus = enabled
+    ? "open"
+    : clinicClosed
+      ? "clinic-closed"
+      : "closed";
 
-        {enabled ? (
-          <div className="flex flex-1 flex-col gap-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-subtle">De</span>
-              <FormField
-                control={form.control}
-                name={`schedule.${dayKey}.startTime`}
-                render={({ field }) => (
-                  <TimeField
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    minTime={clinicOpen ? clinicDay!.startTime! : undefined}
-                    maxTime={clinicOpen ? clinicDay!.endTime! : undefined}
-                    disabled={disabled}
-                    aria-label={`${label}: hora de inicio`}
-                    className="w-28"
-                  />
-                )}
-              />
-              <span className="text-xs text-subtle">a</span>
-              <FormField
-                control={form.control}
-                name={`schedule.${dayKey}.endTime`}
-                render={({ field, fieldState }) => (
-                  <FormItem className="w-28 space-y-0">
-                    <TimeField
-                      value={field.value}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      minTime={clinicOpen ? clinicDay!.startTime! : undefined}
-                      maxTime={clinicOpen ? clinicDay!.endTime! : undefined}
-                      disabled={disabled}
-                      aria-invalid={!!fieldState.error}
-                      aria-label={`${label}: hora de fin`}
-                      className="w-28"
-                    />
-                    <FormMessage className="whitespace-nowrap" />
-                  </FormItem>
-                )}
-              />
-              <span className="ml-2 hidden text-xs text-subtle sm:inline">
-                Descanso
-              </span>
-              <FormField
-                control={form.control}
-                name={`schedule.${dayKey}.breakStart`}
-                render={({ field }) => (
-                  <TimeField
-                    value={field.value}
-                    onChange={field.onChange}
-                    disabled={disabled}
-                    aria-label={`${label}: inicio del descanso`}
-                    className="w-28"
-                  />
-                )}
-              />
-              <span className="text-xs text-subtle">a</span>
-              <FormField
-                control={form.control}
-                name={`schedule.${dayKey}.breakEnd`}
-                render={({ field }) => (
-                  <TimeField
-                    value={field.value}
-                    onChange={field.onChange}
-                    disabled={disabled}
-                    aria-label={`${label}: fin del descanso`}
-                    className="w-28"
-                  />
-                )}
-              />
-            </div>
-            {clinicRange && (
-              <span className="text-[11px] text-subtle">
-                Clínica: {clinicRange}
-              </span>
-            )}
-          </div>
-        ) : (
-          <span className="text-sm text-subtle">Cerrado</span>
-        )}
-      </div>
-    </div>
+  const minTime = clinicOpen ? (clinicDay!.startTime as string) : undefined;
+  const maxTime = clinicOpen ? (clinicDay!.endTime as string) : undefined;
+
+  return (
+    <ScheduleDayCard
+      status={status}
+      toggleSlot={
+        <div className="space-y-1">
+          <DayToggle
+            label={label}
+            checked={enabled}
+            onCheckedChange={(checked) => {
+              enabledField.field.onChange(checked);
+              if (!checked) return;
+              // INIT-ON-ENABLE: al encender, nacer dentro del rango de la
+              // clínica (o el default si no hay uno válido).
+              const start = clinicOpen
+                ? (clinicDay!.startTime as string)
+                : FALLBACK_START;
+              const end = clinicOpen
+                ? (clinicDay!.endTime as string)
+                : FALLBACK_END;
+              setValue(`schedule.${dayKey}.startTime`, start, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+              setValue(`schedule.${dayKey}.endTime`, end, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+            }}
+            disabled={switchDisabled}
+          />
+          {enabledField.fieldState.error && (
+            <p
+              aria-live="polite"
+              className="text-[0.8rem] leading-tight text-destructive"
+            >
+              {enabledField.fieldState.error.message}
+            </p>
+          )}
+        </div>
+      }
+    >
+      {enabled ? (
+        <div className="flex flex-col gap-2">
+          <TimeRangeField
+            label="Horario"
+            start={{
+              value: startField.field.value,
+              onChange: startField.field.onChange,
+              onBlur: startField.field.onBlur,
+              ariaLabel: `${label}: hora de inicio`,
+              ariaInvalid: !!startField.fieldState.error,
+              errorMessage: startField.fieldState.error?.message,
+            }}
+            end={{
+              value: endField.field.value,
+              onChange: endField.field.onChange,
+              onBlur: endField.field.onBlur,
+              ariaLabel: `${label}: hora de fin`,
+              ariaInvalid: !!endField.fieldState.error,
+              errorMessage: endField.fieldState.error?.message,
+            }}
+            minTime={minTime}
+            maxTime={maxTime}
+            disabled={disabled}
+          />
+          <TimeRangeField
+            label="Descanso"
+            start={{
+              value: breakStartField.field.value,
+              onChange: breakStartField.field.onChange,
+              onBlur: breakStartField.field.onBlur,
+              ariaLabel: `${label}: inicio del descanso`,
+              ariaInvalid: !!breakStartField.fieldState.error,
+              errorMessage: breakStartField.fieldState.error?.message,
+            }}
+            end={{
+              value: breakEndField.field.value,
+              onChange: breakEndField.field.onChange,
+              onBlur: breakEndField.field.onBlur,
+              ariaLabel: `${label}: fin del descanso`,
+              ariaInvalid: !!breakEndField.fieldState.error,
+              errorMessage: breakEndField.fieldState.error?.message,
+            }}
+            disabled={disabled}
+          />
+          {clinicRange && <ClinicRangeHint range={clinicRange} />}
+        </div>
+      ) : (
+        <ClosedState variant={clinicClosed ? "clinic-closed" : "off"} />
+      )}
+    </ScheduleDayCard>
   );
 }
 
@@ -591,18 +591,11 @@ export function DoctorForm({
 
           {/* ───────────────── Horarios ───────────────── */}
           <TabsContent value="horarios" className="mt-4">
-            <section className="bento space-y-3 p-4 sm:p-6">
-              <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-brand" />
-                <div>
-                  <h3 className="text-sm font-semibold text-ink">
-                    Horarios de atención
-                  </h3>
-                  <p className="text-xs text-subtle">
-                    Configura los días y horarios de atención del doctor.
-                  </p>
-                </div>
-              </div>
+            <section className="bento space-y-4 p-4 sm:p-6">
+              <ScheduleHeader
+                title="Horarios de atención"
+                subtitle="Configura los días y horarios de atención del doctor."
+              />
               <div className="space-y-2">
                 {DAYS_OF_WEEK.map((day) => (
                   <ScheduleDayRow

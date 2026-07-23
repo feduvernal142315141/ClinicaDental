@@ -73,6 +73,7 @@ export function SchedulePlanModal({
     doctorOptions,
     doctorsLoading,
     doctorSchedule,
+    clinicSchedule,
     disabledDate,
     isWorkingDay,
     selectedDayWorked,
@@ -247,7 +248,11 @@ export function SchedulePlanModal({
 
         {/* Horario del doctor seleccionado */}
         {doctorId && (
-          <DoctorScheduleSummary schedule={doctorSchedule} ready={!!doctorId} />
+          <DoctorScheduleSummary
+            schedule={doctorSchedule}
+            ready={!!doctorId}
+            clinicSchedule={clinicSchedule}
+          />
         )}
 
         {/* Fecha + Hora */}

@@ -109,6 +109,7 @@ export function AppointmentForm({
     disabledDate,
     isWorkingDay,
     doctorSchedule,
+    clinicSchedule,
     selectedDayWorked,
     getSuggestedDuration,
     getServiceLabel,
@@ -280,6 +281,7 @@ export function AppointmentForm({
             <DoctorScheduleSummary
               schedule={doctorSchedule}
               ready={Boolean(watchedDoctorId)}
+              clinicSchedule={clinicSchedule}
             />
 
             {!watchedDoctorId ? (
