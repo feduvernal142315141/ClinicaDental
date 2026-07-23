@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 // Direct import to avoid circular dependency through the barrel index.ts
 import { usePatients } from "@/lib/hooks/patients/usePatients";
+import { applyServerErrorToFields } from "@/lib/validation/server-errors";
 import {
   patientFormSchema,
   type PatientFormValues,
@@ -127,12 +128,30 @@ export function usePatientForm({
             else router.push(basePath);
           }
         }
-      } catch {
-        // El toast de error ya fue mostrado por usePatients (createPatient / updatePatient).
-        // Solo prevenimos que el rechazo no manejado rompa el componente.
+      } catch (error) {
+        // El toast de error ya fue mostrado por usePatients (createPatient /
+        // updatePatient). Aquí solo marcamos en rojo los campos citados en el
+        // error de negocio del backend (p.ej. paciente duplicado por correo).
+        applyServerErrorToFields(error, form.setError, [
+          {
+            field: "email",
+            value: values.email,
+            message: "Ya existe un paciente con este correo electrónico.",
+          },
+          {
+            field: "phone",
+            value: values.phone,
+            message: "Ya existe un paciente con este teléfono.",
+          },
+          {
+            field: "name",
+            value: values.name,
+            message: "Ya existe un paciente con este nombre.",
+          },
+        ]);
       }
     },
-    [isEdit, patientId, createPatient, updatePatient, router, basePath, onSuccess],
+    [isEdit, patientId, createPatient, updatePatient, router, basePath, onSuccess, form],
   );
 
   const handleCancel = useCallback(() => {

@@ -3,6 +3,8 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDoctors } from "@/lib/hooks/doctors";
+import { notifyApiError } from "@/lib/utils/notify-error";
+import { applyServerErrorToFields } from "@/lib/validation/server-errors";
 import { DEFAULT_WEEK_SCHEDULE } from "@/lib/entity/schedule";
 import {
   makeDoctorFormSchema,
@@ -222,11 +224,35 @@ export function useDoctorForm({
           const newDoctor = await createDoctor(createData);
           if (newDoctor) router.push(basePath);
         }
-      } catch {
-        // El interceptor de Axios ya muestra el mensaje de error.
+      } catch (error) {
+        // Además del toast, marcar en rojo los campos citados en el error de
+        // negocio del backend (p.ej. doctor duplicado por licencia/correo/nombre).
+        applyServerErrorToFields(error, form.setError, [
+          {
+            field: "licenceNumber",
+            value: values.licenceNumber,
+            message: "Ya existe un doctor con este número de licencia.",
+          },
+          {
+            field: "email",
+            value: values.email,
+            message: "Ya existe un doctor con este correo electrónico.",
+          },
+          {
+            field: "name",
+            value: values.name,
+            message: "Ya existe un doctor con este nombre.",
+          },
+        ]);
+        notifyApiError(
+          isEdit
+            ? "No se pudo actualizar el doctor"
+            : "No se pudo crear el doctor",
+          error,
+        );
       }
     },
-    [isEdit, doctorId, createDoctor, updateDoctor, router, basePath],
+    [isEdit, doctorId, createDoctor, updateDoctor, router, basePath, form],
   );
 
   const handleCancel = useCallback(() => {
