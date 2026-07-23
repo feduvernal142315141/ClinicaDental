@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { servicesService } from "@/lib/services/services/services.service";
+import { notifyApiError } from "@/lib/utils/notify-error";
 import type { ServiceListItem, ServiceCategory } from "@/lib/entity/services";
 import type {
   ProcedureCatalogItem,
@@ -94,6 +95,11 @@ export function useOdontogramServices(): UseOdontogramServicesResult {
       })
       .catch((err) => {
         console.warn("[useOdontogramServices] Fallback to mock catalog:", err);
+        notifyApiError(
+          "No se pudieron cargar los servicios del odontograma",
+          err,
+          "Se muestra un catálogo de referencia: los servicios y precios pueden no ser los reales de la clínica.",
+        );
         setError(err?.message ?? "Error loading services");
         // catalog stays as PROCEDURE_CATALOG_MOCK
       })

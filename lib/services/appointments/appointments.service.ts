@@ -395,8 +395,10 @@ async function getDoctorAvailability(
   interval = 15,
   duration?: number,
 ): Promise<string[]> {
-  // validateStatus < 500 evita que el interceptor global muestre error toast
-  // cuando el backend retorna 400 por "doctor sin horario en ese día".
+  // validateStatus acepta SOLO 2xx y el 400 legítimo de "doctor sin horario
+  // en ese día" (que se traduce a lista vacía sin error). Cualquier otro
+  // status (401/403/404/5xx) rechaza para que el interceptor haga su trabajo
+  // (refresh de sesión + retry en 401) y los catch de los callers se enteren.
   // duration: solo devuelve slots donde la cita de esa duración cabe completa.
   const params = new URLSearchParams({ date, interval: String(interval) });
   if (duration && duration > 0) {
@@ -404,7 +406,7 @@ async function getDoctorAvailability(
   }
   const response = await apiInstance.get<AvailabilityResponse>(
     `${endpoint}/availability/doctor/${doctorId}?${params.toString()}`,
-    { validateStatus: (s) => s < 500 },
+    { validateStatus: (s) => (s >= 200 && s < 300) || s === 400 },
   );
 
   if (response.status >= 200 && response.status < 300 && response.data) {

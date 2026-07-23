@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { patientAttachmentsService } from "@/lib/services/patientAttachments/patientAttachments.service";
+import { notifyApiError, extractApiErrorMessage } from "@/lib/utils/notify-error";
 import type { AttachmentCategory, PatientAttachment } from "@/lib/entity/patientAttachment";
 
 export function usePatientAttachments(patientId: string) {
@@ -15,7 +16,10 @@ export function usePatientAttachments(patientId: string) {
       const data = await patientAttachmentsService.getAttachments(patientId);
       setAttachments(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar archivos");
+      // Sin rethrow: upload() hace `await load()` tras subir con éxito y no debe
+      // convertir un fallo de recarga en un falso "no se pudo subir".
+      notifyApiError("No se pudieron cargar los archivos del paciente", err);
+      setError(extractApiErrorMessage(err) ?? "Error al cargar archivos");
     } finally {
       setLoading(false);
     }

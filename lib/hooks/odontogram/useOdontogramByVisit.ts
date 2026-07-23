@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { odontogramService } from "@/lib/services/odontogram/odontogram.service";
+import { notifyApiError } from "@/lib/utils/notify-error";
 import type { OdontogramVisitSnapshot } from "@/lib/entity/odontogram";
 
 export function useOdontogramByVisit(visitId?: string) {
@@ -15,8 +16,11 @@ export function useOdontogramByVisit(visitId?: string) {
     try {
       const data = await odontogramService.getOdontogramByVisit(vid);
       setSnapshot(data);
-    } catch {
+    } catch (error) {
+      // Limpia el snapshot para no mostrar el odontograma de otra visita como si fuera esta
+      setSnapshot(null);
       setError("No se pudo cargar el odontograma de esta visita");
+      notifyApiError("No se pudo cargar el odontograma de esta visita", error);
     } finally {
       setLoading(false);
     }

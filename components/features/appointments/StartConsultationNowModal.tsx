@@ -19,6 +19,7 @@ import TextArea from "@/components/ui/atomic/forms/textarea";
 import { Select } from "@/components/ui/controls/select";
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
 import { doctorsService } from "@/lib/services/doctors/doctors.service";
+import { notifyApiError } from "@/lib/utils/notify-error";
 import type { Doctor } from "@/lib/entity/doctors";
 
 const startConsultationSchema = z.object({
@@ -65,7 +66,8 @@ export function StartConsultationNowModal({
       .then((result) => {
         setDoctors(result?.entities ?? []);
       })
-      .catch(() => {
+      .catch((error) => {
+        notifyApiError("No se pudieron cargar los doctores", error);
         setDoctors([]);
       })
       .finally(() => setDoctorsLoading(false));
@@ -87,8 +89,9 @@ export function StartConsultationNowModal({
       });
       form.reset();
       onStarted(result.appointmentId);
-    } catch {
-      // Service errors are toasted by the Axios interceptor; keep modal open.
+    } catch (error) {
+      // Notificamos el fallo y mantenemos el modal abierto para reintentar.
+      notifyApiError("No se pudo iniciar la consulta", error);
     } finally {
       setLoading(false);
     }

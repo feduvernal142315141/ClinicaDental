@@ -109,7 +109,9 @@ async function refreshToken(
  */
 async function logout(data: { refreshToken: string }): Promise<void> {
   const response = await servicePost("/auth/logout", data);
-  if (!response?.data) {
+  // servicePost resuelve con err.response en errores HTTP: validar por status,
+  // no por data (un 4xx/5xx con body {message} pasaría como éxito).
+  if (!response?.status || response.status < 200 || response.status >= 300) {
     handleServiceError(typeof response !== "undefined" ? response : null, "Error al cerrar sesión");
   }
 }
@@ -120,8 +122,9 @@ async function logout(data: { refreshToken: string }): Promise<void> {
  */
 async function forgotPassword(data: ForgotPasswordRequest): Promise<void> {
   const response = await servicePost("/auth/forgot-password", data);
-  if (!response?.data) {
-    handleServiceError(typeof response !== "undefined" ? response : null, "Error al solicitar restablecimiento");
+  // Validar por status: un error con body es truthy en data y se tragaba como éxito.
+  if (!response?.status || response.status < 200 || response.status >= 300) {
+    handleServiceError(typeof response !== "undefined" ? response : null, "No se pudo enviar el correo de recuperación");
   }
 }
 
@@ -133,8 +136,9 @@ async function resetPassword(data: ResetPasswordRequest): Promise<void> {
   // Password cifrado con RSA en tránsito (el backend lo descifra). El `code` es un token, no viaja password en claro.
   const password = await encryptPasswordForTransport(data.password);
   const response = await servicePost("/auth/reset-password", { ...data, password });
-  if (!response?.data) {
-    handleServiceError(typeof response !== "undefined" ? response : null, "Error al restablecer contraseña");
+  // Validar por status: un 400 (token inválido/expirado) con body se tragaba como éxito.
+  if (!response?.status || response.status < 200 || response.status >= 300) {
+    handleServiceError(typeof response !== "undefined" ? response : null, "No se pudo restablecer la contraseña");
   }
 }
 
@@ -149,8 +153,9 @@ async function changePassword(data: ChangePasswordRequest): Promise<void> {
     encryptPasswordForTransport(data.newPassword),
   ]);
   const response = await servicePost("/auth/change-password", { oldPassword, newPassword });
-  if (!response?.data) {
-    handleServiceError(typeof response !== "undefined" ? response : null, "Error al cambiar contraseña");
+  // Validar por status: un error con body es truthy en data y se tragaba como éxito.
+  if (!response?.status || response.status < 200 || response.status >= 300) {
+    handleServiceError(typeof response !== "undefined" ? response : null, "No se pudo cambiar la contraseña");
   }
 }
 
@@ -159,13 +164,10 @@ async function changePassword(data: ChangePasswordRequest): Promise<void> {
  * GET /auth/verify-token/:token
  */
 async function verifyResetToken(token: string): Promise<boolean> {
-  try {
-    await serviceGet(`/auth/verify-token/${token}`);
-    return true;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (_error) {
-    return false;
-  }
+  // serviceGet NUNCA rechaza (baseService resuelve con err.response), así que el
+  // try/catch anterior era código muerto y esto devolvía siempre true. Validar por status.
+  const response = await serviceGet(`/auth/verify-token/${token}`);
+  return !!response?.status && response.status >= 200 && response.status < 300;
 }
 
 export const doctorAuthService = {

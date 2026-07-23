@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { patientsService } from "@/lib/services/patients/patients.service";
+import { notifyApiError } from "@/lib/utils/notify-error";
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
 import { useClinicalHistory } from "@/lib/hooks/clinical-history";
 import { usePermission } from "@/lib/hooks/use-permission";
@@ -136,8 +137,23 @@ export function useClinicalHistoryPage({
 
         setRestoredAppointmentId(undefined);
       })
-      .catch(() => {
+      .catch((error) => {
         if (cancelled) return;
+
+        notifyApiError("No se pudo restaurar la consulta activa", error);
+
+        // Distinguir cita inválida (4xx del backend) de fallo transitorio
+        // (red/5xx, sin status): solo la primera justifica purgar la sesión
+        // persistida y expulsar del workspace. Ante un fallo transitorio se
+        // conserva la sesión (fail-open) y solo se avisa.
+        const status = (error as Error & { status?: number }).status;
+        const isInvalidAppointment =
+          typeof status === "number" && status >= 400 && status < 500;
+
+        if (!isInvalidAppointment) {
+          setRestoredAppointmentId(undefined);
+          return;
+        }
 
         if (
           persistedMatchesCurrentPatient &&
@@ -282,7 +298,11 @@ export function useClinicalHistoryPage({
           setPatient(nextPatient);
         }
       })
-      .catch(() => {})
+      .catch((error) => {
+        if (!cancelled) {
+          notifyApiError("No se pudo cargar el paciente", error);
+        }
+      })
       .finally(() => {
         if (!cancelled) {
           setPatientLoading(false);
@@ -304,8 +324,8 @@ export function useClinicalHistoryPage({
       const nextAppointments =
         await appointmentsService.getPatientAppointments(patientId);
       setAppointments(nextAppointments);
-    } catch {
-      // ignore
+    } catch (error) {
+      notifyApiError("No se pudieron cargar las citas del paciente", error);
     } finally {
       setAppointmentsLoading(false);
     }

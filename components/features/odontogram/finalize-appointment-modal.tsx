@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
 import { doctorsService } from "@/lib/services/doctors/doctors.service";
+import { notifyApiError } from "@/lib/utils/notify-error";
 import {
   useOdontogramStore,
   type OdontogramAdapter,
@@ -118,7 +119,10 @@ export function FinalizarCitaModal({
         }));
         setDoctors(items);
       })
-      .catch(() => setDoctors([]));
+      .catch((err) => {
+        setDoctors([]);
+        notifyApiError("No se pudieron cargar los doctores", err);
+      });
   }, [open, scheduleFollowUp]);
 
   useEffect(() => {

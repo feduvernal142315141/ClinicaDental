@@ -168,6 +168,9 @@ apiInstance.interceptors.response.use(
           interceptorHandlers.onUnauthorized?.();
         }
         console.error("[401] Sesión expirada:", appError.technical);
+        // El usuario YA fue notificado (modal de sesión expirada + redirect):
+        // marcar el error para que GlobalErrorListeners no duplique el aviso.
+        (error as { _interceptorHandled?: boolean })._interceptorHandled = true;
         return Promise.reject(error);
       }
 
@@ -180,6 +183,9 @@ apiInstance.interceptors.response.use(
       // ============================================
       if (status === 403) {
         interceptorHandlers.onForbidden?.();
+        // onForbidden ya mostró "Acceso Denegado" al usuario: marcar el error
+        // para que GlobalErrorListeners no duplique el aviso.
+        (error as { _interceptorHandled?: boolean })._interceptorHandled = true;
       }
 
       console.error(
@@ -197,10 +203,11 @@ apiInstance.interceptors.response.use(
       console.error("[CLIENT_ERROR]:", appError.technical);
     }
 
-    // Marcar el AxiosError original como manejado por el interceptor.
-    // GlobalErrorListeners usa este flag para no mostrar un segundo toast
-    // si la promesa sube sin ser atrapada por baseService.
-    (error as { _interceptorHandled?: boolean })._interceptorHandled = true;
+    // OJO: NO marcar `_interceptorHandled` aquí. Para 400/404/409/422/5xx,
+    // timeout y network el interceptor NO muestra ningún toast (solo registra
+    // en consola); el flag se estampa ÚNICAMENTE en las ramas 401-sesión-expirada
+    // y 403, donde el usuario sí fue notificado. Así GlobalErrorListeners
+    // conserva su toast genérico de respaldo para promesas sin catch.
 
     // Propagar el AxiosError original (no el AppError) para mantener
     // compatibilidad con baseService.ts que hace err.response.

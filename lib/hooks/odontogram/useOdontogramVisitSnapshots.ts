@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { odontogramService } from "@/lib/services/odontogram/odontogram.service";
+import { notifyApiError } from "@/lib/utils/notify-error";
 import type { OdontogramVisitSnapshots } from "@/lib/entity/odontogram";
 
 const EMPTY: OdontogramVisitSnapshots = { start: null, finalSnapshot: null };
@@ -22,9 +23,10 @@ export function useOdontogramVisitSnapshots() {
     try {
       const data = await odontogramService.getOdontogramVisitSnapshots(visitId);
       setSnapshots(data);
-    } catch {
+    } catch (error) {
       setSnapshots(EMPTY);
       setError("No se pudo cargar el comparativo del odontograma");
+      notifyApiError("No se pudo cargar el comparativo del odontograma", error);
     } finally {
       setLoading(false);
     }

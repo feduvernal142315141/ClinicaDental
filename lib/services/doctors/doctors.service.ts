@@ -77,7 +77,9 @@ async function getDoctors(
   const url = `${endpoint}${queryString ? `?${queryString}` : ""}`;
 
   const response = await serviceGet<PaginatedDoctorsResponse>(url);
-  if (response?.data) {
+  // Check for successful response (2xx status codes) — en error HTTP,
+  // response.data es el body de error del backend y NO debe devolverse.
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
     // Backend returns { entities: Doctor[], pagination: { page, pageSize, total } }
     return response.data;
   }
@@ -90,7 +92,9 @@ async function getDoctors(
  */
 async function getDoctorById(id: string): Promise<Doctor> {
   const response = await serviceGet<Doctor>(`${endpoint}/${id}`);
-  if (response?.data) {
+  // Check for successful response (2xx status codes) — en error HTTP,
+  // response.data es el body de error del backend y NO debe devolverse.
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
     return response.data;
   }
   handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar doctor");
@@ -141,9 +145,12 @@ async function updateDoctor(
  */
 async function deleteDoctor(id: string): Promise<void> {
   const response = await serviceDelete(`${endpoint}/${id}`);
-  if (!response?.data) {
-    handleServiceError(typeof response !== "undefined" ? response : null, "Error al eliminar doctor");
+  // Check for successful response (2xx status codes) — chequear solo `data`
+  // convertía un error HTTP con body en un falso éxito ("Doctor eliminado").
+  if (response?.status >= 200 && response?.status < 300) {
+    return;
   }
+  handleServiceError(typeof response !== "undefined" ? response : null, "Error al eliminar doctor");
 }
 
 /**

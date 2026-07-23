@@ -5,6 +5,7 @@ import isoWeek from "dayjs/plugin/isoWeek";
 import { appointmentsService } from "@/lib/services/appointments";
 import { doctorsService } from "@/lib/services/doctors";
 import { notify } from "@/lib/utils/notify";
+import { notifyApiError } from "@/lib/utils/notify-error";
 import { getDoctorColor } from "@/lib/constants/scheduler-colors";
 import {
   getWeekDays,
@@ -164,8 +165,11 @@ export function useAppointmentsScheduler(
 
         setDoctors(list);
         setVisibleDoctorIds(new Set(list.map((d) => d.id)));
-      } catch {
-        if (!cancelled) setError("Error al cargar especialistas");
+      } catch (error) {
+        if (!cancelled) {
+          setError("Error al cargar especialistas");
+          notifyApiError("No se pudieron cargar los especialistas", error);
+        }
       } finally {
         if (!cancelled) setDoctorsLoading(false);
       }
@@ -210,9 +214,10 @@ export function useAppointmentsScheduler(
 
         cacheRef.current.set(cacheKey, data);
         setCacheVersion((v) => v + 1);
-      } catch {
+      } catch (error) {
         if (seq === fetchSeqRef.current) {
           setError("Error al cargar citas del calendario");
+          notifyApiError("No se pudieron cargar las citas del calendario", error);
         }
       } finally {
         if (seq === fetchSeqRef.current) {
@@ -437,10 +442,11 @@ export function useAppointmentsScheduler(
           description:
             "La cita se movió a su nuevo horario y ya aparece en el calendario.",
         });
-      } catch {
-        // El interceptor de Axios ya notifica el error (incl. el 409 con el
-        // mensaje del backend); aquí sólo revertimos el parche optimista.
+      } catch (error) {
+        // Revertimos el parche optimista y notificamos (incl. el 409 con el
+        // mensaje del backend).
         patch(prev.date, prev.time, prev.startAt, prev.endAt);
+        notifyApiError("No se pudo reagendar la cita", error);
       }
     },
     [],
@@ -460,8 +466,8 @@ export function useAppointmentsScheduler(
             await appointmentsService.cancelAppointment(appointment.id);
             const doctorId = appointment.doctorId ?? appointment.doctor_id;
             invalidateCache(doctorId);
-          } catch {
-            // Error notification handled by interceptor
+          } catch (error) {
+            notifyApiError("No se pudo cancelar la cita", error);
           }
         },
       });
@@ -483,8 +489,8 @@ export function useAppointmentsScheduler(
             await appointmentsService.completeAppointment(appointment.id);
             const doctorId = appointment.doctorId ?? appointment.doctor_id;
             invalidateCache(doctorId);
-          } catch {
-            // Error notification handled by interceptor
+          } catch (error) {
+            notifyApiError("No se pudo marcar la cita como realizada", error);
           }
         },
       });

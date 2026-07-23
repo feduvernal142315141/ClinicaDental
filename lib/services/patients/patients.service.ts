@@ -82,7 +82,8 @@ async function getPatients(
   const url = `${endpoint}${queryString ? `?${queryString}` : ""}`;
 
   const response = await serviceGet<PaginatedPatientsResponse>(url);
-  if (response?.data) {
+  // Check for successful response (200 OK) — un 4xx/5xx con body NO es data
+  if (response?.status === 200 && response?.data) {
     return response.data;
   }
   handleServiceError(
@@ -97,7 +98,8 @@ async function getPatients(
  */
 async function getPatientById(id: string): Promise<Patient> {
   const response = await serviceGet<Patient>(`${endpoint}/${id}`);
-  if (response?.data) {
+  // Check for successful response (200 OK) — un 4xx/5xx con body NO es data
+  if (response?.status === 200 && response?.data) {
     return response.data;
   }
   handleServiceError(
@@ -202,7 +204,8 @@ async function searchPatientsTree(
   body: SearchRequest,
 ): Promise<PaginatedPatientsResponse> {
   const response = await searchTree<PaginatedPatientsResponse>(endpoint, body);
-  if (response?.data) {
+  // Check for successful response (200 OK) — un 4xx/5xx con body NO es data
+  if (response?.status === 200 && response?.data) {
     return response.data;
   }
   handleServiceError(

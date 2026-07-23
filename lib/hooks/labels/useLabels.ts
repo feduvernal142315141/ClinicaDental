@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect } from "react";
 import { labelsService } from "@/lib/services/labels";
 import type { Label, CreateLabelDto, UpdateLabelDto } from "@/lib/entity/label";
 import { notify } from "@/lib/utils/notify";
+import { notifyApiError } from "@/lib/utils/notify-error";
 
 // ── useLabels ────────────────────────────────────────────────────────────────
 
@@ -17,8 +18,8 @@ export function useLabels(includeArchived = false) {
     try {
       const data = await labelsService.getLabels(includeArchived);
       setLabels(data);
-    } catch {
-      // error handled in service
+    } catch (error) {
+      notifyApiError("No se pudieron cargar las etiquetas", error);
     } finally {
       setLoading(false);
     }

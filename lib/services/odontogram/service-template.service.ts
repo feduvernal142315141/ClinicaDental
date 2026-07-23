@@ -1,5 +1,6 @@
 import { serviceGet } from "../baseService";
 import { handleServiceError } from "@/lib/utils/error.utils";
+import { notifyApiError } from "@/lib/utils/notify-error";
 import type {
   IcdasTemplateSuggestion,
   PaginatedServiceTemplatesResponse,
@@ -26,17 +27,33 @@ async function getIcdasSuggestions(
   icdasScore: number,
   surface?: string | null,
 ): Promise<IcdasTemplateSuggestion[]> {
-  try {
-    const params = new URLSearchParams({ icdasScore: icdasScore.toString() });
-    if (surface) params.append("surface", surface);
+  const params = new URLSearchParams({ icdasScore: icdasScore.toString() });
+  if (surface) params.append("surface", surface);
 
-    const result = await serviceGet<IcdasTemplateSuggestion[]>(
-      `${endpoint}/suggest?${params.toString()}`,
+  const result = await serviceGet<IcdasTemplateSuggestion[]>(
+    `${endpoint}/suggest?${params.toString()}`,
+  );
+
+  if (
+    result &&
+    typeof result.status === "number" &&
+    result.status >= 200 &&
+    result.status < 300
+  ) {
+    return Array.isArray(result.data) ? result.data : [];
+  }
+
+  // serviceGet nunca rechaza: un 401/403/500 llega como respuesta resuelta.
+  // Lanzar el Error saneado (y avisar al usuario) en vez de degradar a []
+  // como si no existieran plantillas.
+  try {
+    handleServiceError(
+      result ?? null,
+      "No se pudieron cargar las plantillas ICDAS",
     );
-    return Array.isArray(result?.data) ? result.data : [];
   } catch (err) {
-    handleServiceError(err, "getIcdasSuggestions");
-    return [];
+    notifyApiError("No se pudieron cargar las plantillas ICDAS", err);
+    throw err;
   }
 }
 

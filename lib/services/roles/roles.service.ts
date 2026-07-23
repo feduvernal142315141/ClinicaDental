@@ -139,7 +139,11 @@ async function normalizeRolePermissions(raw: unknown): Promise<string[]> {
     const permissionsResponse = await permissionsService.getPermissions();
     catalog = normalizeCatalogItems(permissionsResponse);
   } catch {
-    return encoded;
+    // Sin el catálogo no se pueden mapear los permisos por UUID: devolver solo
+    // los codificados mostraría el rol recortado y, al guardarlo, degradaría
+    // permisos reales. Propagamos con mensaje saneado para que el caller
+    // (useRoles.getRoleById) muestre el aviso al usuario.
+    throw new Error("No se pudieron cargar los permisos del rol");
   }
 
   const byId = new Map<string, PermissionCatalogItem>();

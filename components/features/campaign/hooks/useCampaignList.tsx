@@ -6,6 +6,7 @@ import { Columns } from "@/components/ui/composed/table/TableModels";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { Edit, Cog, Image, Trash2, Video } from "lucide-react";
 import { serviceGetAllCampaignByClinicId } from "@/lib/services/campaigns/campaigns";
+import { notifyApiError } from "@/lib/utils/notify-error";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -131,7 +132,7 @@ const useCampaignList = () => {
     if (!user?.clinicId) return;
 
     try {
-      setLoading(false);
+      setLoading(true);
 
       const response = await serviceGetAllCampaignByClinicId(
         user.clinicId,
@@ -148,10 +149,17 @@ const useCampaignList = () => {
         setTotal(response.data.pagination.total);
         setCampaign(response.data.entities);
       } else {
+        // serviceGet nunca lanza: en error devuelve la respuesta (4xx/5xx) o
+        // undefined en fallo de red, así que este else es el camino real de error.
+        notifyApiError(
+          "No se pudieron cargar las campañas",
+          response ? { response } : undefined
+        );
         setCampaign([]);
       }
     } catch (err) {
       console.error("Error loading campaigns:", err);
+      notifyApiError("No se pudieron cargar las campañas", err);
       setCampaign([]);
     } finally {
       setLoading(false);

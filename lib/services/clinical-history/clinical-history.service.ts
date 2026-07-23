@@ -243,7 +243,7 @@ async function getVisitAttachments(
   if (response?.status >= 200 && response?.status < 300 && response?.data) {
     return response.data;
   }
-  return [];
+  handleServiceError(response, "Error al cargar adjuntos de la visita");
 }
 
 export const clinicalHistoryService = {

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useVisitRecord } from "@/lib/hooks/clinical-history";
 import { useOdontogramVisitSnapshots } from "@/lib/hooks/odontogram/useOdontogramVisitSnapshots";
 import { clinicalHistoryService } from "@/lib/services/clinical-history";
+import { notifyApiError } from "@/lib/utils/notify-error";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
 import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 
@@ -57,7 +58,10 @@ export function useVisitHistoryDrawer({
     clinicalHistoryService
       .getVisitAttachments(patientId, appointmentId)
       .then(setAttachments)
-      .catch(() => setAttachments([]));
+      .catch((error) => {
+        notifyApiError("No se pudieron cargar los archivos adjuntos", error);
+        setAttachments([]);
+      });
   }, [
     open,
     appointmentId,

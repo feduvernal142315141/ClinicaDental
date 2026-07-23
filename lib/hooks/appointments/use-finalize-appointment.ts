@@ -141,6 +141,8 @@ export function useFinalizeAppointment({
             .map((ev) => ev.id),
         );
 
+        const failedPlans: string[] = [];
+
         for (const plan of treatmentPlans) {
           if (plan.status === "completed") continue;
 
@@ -164,8 +166,23 @@ export function useFinalizeAppointment({
               `[useFinalizeAppointment] No se pudo completar el plan ${plan.id}`,
               err,
             );
+            failedPlans.push(plan.name || plan.id);
           }
         }
+
+        if (failedPlans.length > 0) {
+          notify.warning(
+            "No se pudieron cerrar algunos planes de tratamiento",
+            {
+              description: `Quedaron abiertos: ${failedPlans.join(", ")}. Márcalos como completados manualmente desde el plan de tratamiento del paciente.`,
+            },
+          );
+        }
+
+        const planClosureDescription =
+          failedPlans.length > 0
+            ? "La cita quedó registrada como realizada, pero algunos planes de tratamiento no se pudieron cerrar automáticamente."
+            : "La cita quedó registrada como realizada y los planes completados se cerraron automáticamente.";
 
         // ── 3. Completar la cita actual ────────────────────────────────
         try {
@@ -228,14 +245,12 @@ export function useFinalizeAppointment({
             }
           } else {
             notify.success("Cita finalizada", {
-              description:
-                "La cita quedó registrada como realizada y los planes completados se cerraron automáticamente.",
+              description: planClosureDescription,
             });
           }
         } else {
           notify.success("Cita finalizada", {
-            description:
-              "La cita quedó registrada como realizada y los planes completados se cerraron automáticamente.",
+            description: planClosureDescription,
           });
         }
 

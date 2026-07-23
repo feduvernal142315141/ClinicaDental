@@ -9,6 +9,7 @@ import {
   isDoctorWorkingDay,
 } from "@/lib/utils/appointment-utils";
 import type { WeekSchedule } from "@/lib/entity/schedule";
+import { notifyApiError } from "@/lib/utils/notify-error";
 
 export interface DoctorAvailabilityOption {
   id: string;
@@ -68,8 +69,11 @@ export function useDoctorAvailability({
           })),
         );
       })
-      .catch(() => {
-        if (!cancelled) setDoctorOptions([]);
+      .catch((error) => {
+        if (!cancelled) {
+          setDoctorOptions([]);
+          notifyApiError("No se pudieron cargar los doctores", error);
+        }
       })
       .finally(() => {
         if (!cancelled) setDoctorsLoading(false);
@@ -95,8 +99,11 @@ export function useDoctorAvailability({
           );
         }
       })
-      .catch(() => {
-        if (!cancelled) setDoctorSchedule(null);
+      .catch((error) => {
+        if (!cancelled) {
+          setDoctorSchedule(null);
+          notifyApiError("No se pudo cargar el horario del doctor", error);
+        }
       });
     return () => {
       cancelled = true;
@@ -130,8 +137,11 @@ export function useDoctorAvailability({
       .then((times) => {
         if (!cancelled) setAvailableTimes(times);
       })
-      .catch(() => {
-        if (!cancelled) setAvailableTimes([]);
+      .catch((error) => {
+        if (!cancelled) {
+          setAvailableTimes([]);
+          notifyApiError("No se pudo cargar la disponibilidad del doctor", error);
+        }
       })
       .finally(() => {
         if (!cancelled) setAvailabilityLoading(false);

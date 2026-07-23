@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { appointmentsService } from "@/lib/services/appointments";
+import { notifyApiError } from "@/lib/utils/notify-error";
 import type {
   Appointment,
   AppointmentsQueryParams,
@@ -62,7 +63,8 @@ export function useAppointments() {
         const createdId = await appointmentsService.createAppointment(data);
         return createdId;
       } catch (error) {
-        throw error;
+        notifyApiError("No se pudo agendar la cita", error);
+        return null;
       } finally {
         setLoading(false);
       }
@@ -77,7 +79,8 @@ export function useAppointments() {
         const updated = await appointmentsService.updateAppointment(id, data);
         return updated;
       } catch (error) {
-        throw error;
+        notifyApiError("No se pudo actualizar la cita", error);
+        return null;
       } finally {
         setLoading(false);
       }
@@ -109,6 +112,13 @@ export function useAppointments() {
       const result = await appointmentsService.cancelAppointment(id);
       return result;
     } catch (error) {
+      notifyApiError("No se pudo cancelar la cita", error);
+      // Toast contextual ya emitido: marcar el error para que
+      // GlobalErrorListeners no muestre el genérico duplicado si el
+      // caller (p. ej. onOk del modal) deja escapar el rechazo.
+      if (error && typeof error === "object") {
+        (error as { _interceptorHandled?: boolean })._interceptorHandled = true;
+      }
       throw error;
     } finally {
       setLoading(false);

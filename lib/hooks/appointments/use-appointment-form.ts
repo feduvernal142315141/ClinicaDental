@@ -25,6 +25,7 @@ import type { CreatePatientRequest } from "@/lib/entity/patients";
 import type { WeekSchedule } from "@/lib/entity/schedule";
 import { isSchedulableType, type ServiceType } from "@/lib/entity/services";
 import { notify } from "@/lib/utils/notify";
+import { notifyApiError } from "@/lib/utils/notify-error";
 
 export type { AppointmentFormValues } from "@/lib/hooks/appointments/appointment-form.schema";
 
@@ -266,7 +267,8 @@ export function useAppointmentForm({
             label: `${item.code} - ${item.name}`,
           })),
       );
-    } catch {
+    } catch (error) {
+      notifyApiError("No se pudieron cargar los datos del formulario", error);
       setPatientsOptions([]);
       setDoctorsOptions([]);
       setServicesOptions([]);
@@ -280,7 +282,10 @@ export function useAppointmentForm({
 
     const appointment =
       initialData ??
-      (await getAppointmentById(appointmentId).catch(() => null));
+      (await getAppointmentById(appointmentId).catch((error) => {
+        notifyApiError("No se pudo cargar la cita", error);
+        return null;
+      }));
 
     if (!appointment) return;
 
@@ -337,8 +342,11 @@ export function useAppointmentForm({
             (doctor.schedule as WeekSchedule | Record<string, unknown>) ?? null,
           );
         }
-      } catch {
-        if (!cancelled) setDoctorSchedule(null);
+      } catch (error) {
+        if (!cancelled) {
+          notifyApiError("No se pudo cargar el horario del doctor", error);
+          setDoctorSchedule(null);
+        }
       }
     };
 
@@ -372,7 +380,8 @@ export function useAppointmentForm({
           watchedDuration || 30,
         );
         setAvailableTimes(times);
-      } catch {
+      } catch (error) {
+        notifyApiError("No se pudieron cargar los horarios disponibles", error);
         setAvailableTimes([]);
       } finally {
         setAvailabilityLoading(false);
@@ -406,13 +415,17 @@ export function useAppointmentForm({
 
       if (isEdit && appointmentId) {
         const payload: UpdateAppointmentRequest = payloadBase;
-        const updated = await updateAppointment(appointmentId, payload);
-        if (updated) {
-          notify.success("Cita actualizada", {
-            description:
-              "Los cambios de la cita se guardaron. Revisa los detalles actualizados.",
-          });
-          router.push(`${basePath}/${appointmentId}`);
+        try {
+          const updated = await updateAppointment(appointmentId, payload);
+          if (updated) {
+            notify.success("Cita actualizada", {
+              description:
+                "Los cambios de la cita se guardaron. Revisa los detalles actualizados.",
+            });
+            router.push(`${basePath}/${appointmentId}`);
+          }
+        } catch (error) {
+          notifyApiError("No se pudo actualizar la cita", error);
         }
         return;
       }
@@ -422,13 +435,17 @@ export function useAppointmentForm({
         status: "scheduled",
       };
 
-      const createdId = await createAppointment(payload);
-      if (createdId) {
-        notify.success("Cita agendada", {
-          description:
-            "La cita se creó correctamente y ya aparece en la agenda.",
-        });
-        router.push(basePath);
+      try {
+        const createdId = await createAppointment(payload);
+        if (createdId) {
+          notify.success("Cita agendada", {
+            description:
+              "La cita se creó correctamente y ya aparece en la agenda.",
+          });
+          router.push(basePath);
+        }
+      } catch (error) {
+        notifyApiError("No se pudo agendar la cita", error);
       }
     },
     [

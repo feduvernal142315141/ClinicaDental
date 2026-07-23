@@ -12,6 +12,7 @@ import {
 } from "@/lib/services/campaigns/campaigns";
 import { RequestCreateCampaign } from "@/lib/entity/campaigns/campaigns";
 import { notify } from "@/lib/utils/notify";
+import { notifyApiError } from "@/lib/utils/notify-error";
 import moment from "moment";
 
 type CampaignFormData = Omit<RequestCreateCampaign, "clinicId">;
@@ -49,17 +50,24 @@ const useCampaignForm = () => {
 
   const getCampaign = useCallback(
     async (id: string) => {
-      const response = await serviceGetCampaignById(id);
+      try {
+        const response = await serviceGetCampaignById(id);
 
-      if (response.status === 200) {
-        const data = response.data;
-        reset({
-          name: data.name,
-          effectiveDate: moment.utc(data.effectiveDate).format("YYYY-MM-DD"),
-          fileBase64: data.resourceUrl,
-          fileName: data.resourceType,
-          message: data.message,
-        });
+        if (response?.status === 200) {
+          const data = response.data;
+          reset({
+            name: data.name,
+            effectiveDate: moment.utc(data.effectiveDate).format("YYYY-MM-DD"),
+            fileBase64: data.resourceUrl,
+            fileName: data.resourceType,
+            message: data.message,
+          });
+        } else {
+          // baseService resuelve con la respuesta de error en vez de lanzar
+          notifyApiError("No se pudo cargar la campaña", { response });
+        }
+      } catch (error) {
+        notifyApiError("No se pudo cargar la campaña", error);
       }
     },
     [reset]
@@ -102,9 +110,12 @@ const useCampaignForm = () => {
             });
           }
           router.push("/campaigns");
+        } else {
+          // baseService resuelve con la respuesta de error en vez de lanzar
+          notifyApiError("No se pudo guardar la campaña", { response });
         }
       } catch (error) {
-        console.error("Error saving campaign:", error);
+        notifyApiError("No se pudo guardar la campaña", error);
       }
     },
     [param.id, user?.clinicId, router]
