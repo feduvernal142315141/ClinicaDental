@@ -42,6 +42,16 @@ function normalizeSettings(settings: ClinicGeneralSettings): ClinicGeneralSettin
 
 export function useClinicGeneralSettings() {
   const [settings, setSettings] = useState<ClinicGeneralSettings | null>(null);
+  // Horario TAL CUAL lo devolvió el backend (parcial: los días que la clínica
+  // nunca configuró están AUSENTES, no rellenados con defaults). Es la fuente
+  // correcta para acotar el horario del doctor: un día ausente ⇒ sin regla,
+  // en paridad con el backend (DoctorClinicScheduleBoundsChecker trata
+  // `clinicByDay.get(day) == null` como permisivo). NO usar `settings.schedule`
+  // para eso: ese está normalizado con DEFAULT_CLINIC_SCHEDULE para el editor
+  // de Opciones Generales y fabricaría límites (Lun–Vie 08:00–17:00) que el
+  // backend no impone, produciendo falsos-rojos en el form de doctor.
+  const [rawSchedule, setRawSchedule] =
+    useState<Partial<ClinicSchedule> | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +62,7 @@ export function useClinicGeneralSettings() {
 
     try {
       const data = await clinicGeneralSettingsService.getGeneralSettings();
+      setRawSchedule(data.schedule ?? null);
       setSettings(normalizeSettings(data));
     } catch (err) {
       const errorMessage =
@@ -82,6 +93,9 @@ export function useClinicGeneralSettings() {
 
       try {
         await clinicGeneralSettingsService.updateGeneralSettings(payload);
+        // El payload del editor lleva los 7 días explícitos ⇒ es el nuevo
+        // horario "crudo" configurado por la clínica.
+        setRawSchedule(payload.schedule ?? null);
         setSettings((current) =>
           current ? normalizeSettings({ ...current, ...payload }) : current,
         );
@@ -110,6 +124,7 @@ export function useClinicGeneralSettings() {
 
   return {
     settings,
+    rawSchedule,
     loading,
     saving,
     error,

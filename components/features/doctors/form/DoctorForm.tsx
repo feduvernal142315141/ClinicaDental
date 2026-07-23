@@ -28,9 +28,15 @@ import { AvatarField } from "@/components/ui/controls/avatar-field";
 import { imageUploadService } from "@/lib/services/cloudinary/cloudinary.service";
 import { useDoctorForm } from "@/lib/hooks/doctors/use-doctor-form";
 import { useRoles } from "@/lib/hooks/roles";
+import { useClinicGeneralSettings } from "@/lib/hooks/settings";
 import { DAYS_OF_WEEK } from "@/lib/entity/schedule";
+import {
+  formatClinicRange,
+  isClinicDayOpen,
+} from "@/lib/utils/schedule-bounds";
 import { cn } from "@/lib/utils/utils";
 import type { Doctor } from "@/lib/entity/doctors";
+import type { ClinicScheduleDay } from "@/lib/entity/settings";
 import type { DoctorFormValues } from "@/lib/hooks/doctors/doctor-form.schema";
 
 const GENDER_OPTIONS = [
@@ -50,19 +56,41 @@ interface DoctorFormProps {
 
 const Req = () => <span className="text-rose-500">*</span>;
 
-/** Una fila de día del editor de horarios. */
+/** Horario de respaldo cuando la clínica no define horas válidas ese día. */
+const FALLBACK_START = "09:00";
+const FALLBACK_END = "18:00";
+
+/**
+ * Una fila de día del editor de horarios. El horario del doctor queda
+ * acotado por el horario global de la clínica (`clinicDay`, ver contrato de
+ * alineación front/back en `lib/utils/schedule-bounds.ts`):
+ * - Día cerrado en la clínica → el switch no puede ENCENDERSE (si ya estaba
+ *   encendido —doctor legacy—, sí puede apagarse, para no bloquear el
+ *   guardado).
+ * - Día abierto → se muestra el rango de la clínica como contexto y se
+ *   acotan las horas seleccionables del doctor a ese rango.
+ * `clinicDay === undefined` (settings aún no cargó) ⇒ no se acota nada;
+ * el schema tampoco acota en ese caso (degradación permisiva).
+ */
 function ScheduleDayRow({
   form,
   dayKey,
   label,
   disabled,
+  clinicDay,
 }: {
   form: UseFormReturn<DoctorFormValues>;
   dayKey: keyof DoctorFormValues["schedule"];
   label: string;
   disabled?: boolean;
+  clinicDay?: ClinicScheduleDay;
 }) {
   const enabled = form.watch(`schedule.${dayKey}.enabled`);
+
+  const clinicClosed = clinicDay !== undefined && clinicDay.enabled === false;
+  const clinicOpen = isClinicDayOpen(clinicDay);
+  const clinicRange = formatClinicRange(clinicDay);
+  const switchDisabled = disabled || (clinicClosed && !enabled);
 
   return (
     <div
@@ -76,77 +104,123 @@ function ScheduleDayRow({
           control={form.control}
           name={`schedule.${dayKey}.enabled`}
           render={({ field }) => (
-            <label className="flex w-32 shrink-0 cursor-pointer items-center gap-2">
-              <Switch
-                checked={!!field.value}
-                onCheckedChange={field.onChange}
-                disabled={disabled}
-              />
-              <span className="text-sm font-medium text-ink">{label}</span>
-            </label>
+            <FormItem className="w-32 shrink-0 space-y-0.5">
+              <label className="flex cursor-pointer items-center gap-2">
+                <FormControl>
+                  <Switch
+                    checked={!!field.value}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      if (!checked) return;
+                      // INIT-ON-ENABLE: al encender, nacer dentro del rango
+                      // de la clínica (o el default si no hay uno válido).
+                      const start = clinicOpen
+                        ? (clinicDay!.startTime as string)
+                        : FALLBACK_START;
+                      const end = clinicOpen
+                        ? (clinicDay!.endTime as string)
+                        : FALLBACK_END;
+                      form.setValue(`schedule.${dayKey}.startTime`, start, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                      form.setValue(`schedule.${dayKey}.endTime`, end, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }}
+                    disabled={switchDisabled}
+                  />
+                </FormControl>
+                <span className="text-sm font-medium text-ink">{label}</span>
+              </label>
+              {clinicClosed && (
+                <p className="text-[11px] leading-tight text-amber-600 dark:text-amber-400">
+                  La clínica no abre este día.
+                </p>
+              )}
+              <FormMessage />
+            </FormItem>
           )}
         />
 
         {enabled ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-subtle">De</span>
-            <FormField
-              control={form.control}
-              name={`schedule.${dayKey}.startTime`}
-              render={({ field }) => (
-                <TimeField
-                  value={field.value}
-                  onChange={field.onChange}
-                  disabled={disabled}
-                  aria-label={`${label}: hora de inicio`}
-                  className="w-28"
-                />
-              )}
-            />
-            <span className="text-xs text-subtle">a</span>
-            <FormField
-              control={form.control}
-              name={`schedule.${dayKey}.endTime`}
-              render={({ field }) => (
-                <TimeField
-                  value={field.value}
-                  onChange={field.onChange}
-                  disabled={disabled}
-                  aria-label={`${label}: hora de fin`}
-                  className="w-28"
-                />
-              )}
-            />
-            <span className="ml-2 hidden text-xs text-subtle sm:inline">
-              Descanso
-            </span>
-            <FormField
-              control={form.control}
-              name={`schedule.${dayKey}.breakStart`}
-              render={({ field }) => (
-                <TimeField
-                  value={field.value}
-                  onChange={field.onChange}
-                  disabled={disabled}
-                  aria-label={`${label}: inicio del descanso`}
-                  className="w-28"
-                />
-              )}
-            />
-            <span className="text-xs text-subtle">a</span>
-            <FormField
-              control={form.control}
-              name={`schedule.${dayKey}.breakEnd`}
-              render={({ field }) => (
-                <TimeField
-                  value={field.value}
-                  onChange={field.onChange}
-                  disabled={disabled}
-                  aria-label={`${label}: fin del descanso`}
-                  className="w-28"
-                />
-              )}
-            />
+          <div className="flex flex-1 flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-subtle">De</span>
+              <FormField
+                control={form.control}
+                name={`schedule.${dayKey}.startTime`}
+                render={({ field }) => (
+                  <TimeField
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    minTime={clinicOpen ? clinicDay!.startTime! : undefined}
+                    maxTime={clinicOpen ? clinicDay!.endTime! : undefined}
+                    disabled={disabled}
+                    aria-label={`${label}: hora de inicio`}
+                    className="w-28"
+                  />
+                )}
+              />
+              <span className="text-xs text-subtle">a</span>
+              <FormField
+                control={form.control}
+                name={`schedule.${dayKey}.endTime`}
+                render={({ field, fieldState }) => (
+                  <FormItem className="w-28 space-y-0">
+                    <TimeField
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      minTime={clinicOpen ? clinicDay!.startTime! : undefined}
+                      maxTime={clinicOpen ? clinicDay!.endTime! : undefined}
+                      disabled={disabled}
+                      aria-invalid={!!fieldState.error}
+                      aria-label={`${label}: hora de fin`}
+                      className="w-28"
+                    />
+                    <FormMessage className="whitespace-nowrap" />
+                  </FormItem>
+                )}
+              />
+              <span className="ml-2 hidden text-xs text-subtle sm:inline">
+                Descanso
+              </span>
+              <FormField
+                control={form.control}
+                name={`schedule.${dayKey}.breakStart`}
+                render={({ field }) => (
+                  <TimeField
+                    value={field.value}
+                    onChange={field.onChange}
+                    disabled={disabled}
+                    aria-label={`${label}: inicio del descanso`}
+                    className="w-28"
+                  />
+                )}
+              />
+              <span className="text-xs text-subtle">a</span>
+              <FormField
+                control={form.control}
+                name={`schedule.${dayKey}.breakEnd`}
+                render={({ field }) => (
+                  <TimeField
+                    value={field.value}
+                    onChange={field.onChange}
+                    disabled={disabled}
+                    aria-label={`${label}: fin del descanso`}
+                    className="w-28"
+                  />
+                )}
+              />
+            </div>
+            {clinicRange && (
+              <span className="text-[11px] text-subtle">
+                Clínica: {clinicRange}
+              </span>
+            )}
           </div>
         ) : (
           <span className="text-sm text-subtle">Cerrado</span>
@@ -163,11 +237,22 @@ export function DoctorForm({
   readOnly = false,
   showRoleStatusFields = true,
 }: DoctorFormProps) {
+  // Único punto de montaje de useClinicGeneralSettings en esta pantalla: se
+  // inyecta en useDoctorForm (validación) y se reutiliza aquí para la UI
+  // (contexto/límites por día) sin volver a disparar el fetch.
+  // `rawSchedule` = horario tal cual lo configuró la clínica (parcial). Se usa
+  // en vez de `settings.schedule` (normalizado con defaults para el editor)
+  // para no acotar días que la clínica nunca configuró: así el form de doctor
+  // queda en paridad con el backend (día ausente ⇒ sin regla).
+  const { rawSchedule } = useClinicGeneralSettings();
+  const clinicSchedule = rawSchedule ?? null;
+
   const { form, isEdit, loading, handleSubmit, handleCancel } = useDoctorForm({
     doctorId,
     basePath,
     initialData,
     requireRole: showRoleStatusFields,
+    clinicSchedule,
   });
   const { errors, isDirty } = form.formState;
   const { roles, loading: rolesLoading, fetchRoles } = useRoles();
@@ -526,6 +611,7 @@ export function DoctorForm({
                     dayKey={day.key}
                     label={day.label}
                     disabled={formDisabled}
+                    clinicDay={clinicSchedule?.[day.key]}
                   />
                 ))}
               </div>

@@ -8,11 +8,29 @@ import {
   optionalText,
   requiredId,
 } from "@/lib/validation/fields";
+import {
+  checkDoctorDayWithinClinic,
+  CLINIC_DAY_CLOSED_MESSAGE,
+  clinicRangeMessage,
+} from "@/lib/utils/schedule-bounds";
+import type { DaySchedule } from "@/lib/entity/schedule";
+import type { ClinicSchedule, ClinicScheduleDayKey } from "@/lib/entity/settings";
 
 /** Géneros admitidos por el backend. */
 export const DOCTOR_GENDERS = ["male", "female", "other"] as const;
 
 const isTime = (t: string) => TIME_RE.test(t);
+
+/** Claves de día, mismo orden que `WeekSchedule` / `ClinicSchedule`. */
+const SCHEDULE_DAY_KEYS: ClinicScheduleDayKey[] = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
 
 /**
  * Día del horario. Cuando está habilitado, exige horas válidas con inicio < fin
@@ -57,8 +75,67 @@ const daySchedule = z
  * `requireRole` permite relajar `roleId` cuando la sección Acceso no se muestra
  * (p. ej. en "Mi perfil", donde el formulario se monta con showRoleStatusFields=false).
  * NOTA: el formulario NO captura contraseña (la fija el flujo OTP del doctor).
+ *
+ * `clinicSchedule` acota el horario del doctor al horario global de la
+ * clínica (ver `lib/utils/schedule-bounds.ts`): un día cerrado en la clínica
+ * no puede habilitarse para el doctor, y en un día abierto el rango del
+ * doctor debe quedar contenido en el de la clínica. Mientras el horario de
+ * la clínica no haya cargado (`clinicSchedule` es `undefined`/`null`), no se
+ * acota — degradación permisiva, el backend igual valida en el submit.
  */
-export function makeDoctorFormSchema(requireRole: boolean) {
+export function makeDoctorFormSchema(
+  requireRole: boolean,
+  clinicSchedule?: Partial<ClinicSchedule> | null,
+) {
+  const scheduleSchema = z
+    .object({
+      monday: daySchedule,
+      tuesday: daySchedule,
+      wednesday: daySchedule,
+      thursday: daySchedule,
+      friday: daySchedule,
+      saturday: daySchedule,
+      sunday: daySchedule,
+    })
+    .superRefine((schedule, ctx) => {
+      if (!clinicSchedule) return;
+
+      SCHEDULE_DAY_KEYS.forEach((day) => {
+        const dayValue = schedule[day] as DaySchedule;
+        const result = checkDoctorDayWithinClinic(
+          dayValue,
+          clinicSchedule[day],
+        );
+
+        if (result.code === "clinic-closed") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: CLINIC_DAY_CLOSED_MESSAGE,
+            path: [day, "enabled"],
+          });
+        } else if (result.code === "out-of-range") {
+          const message = clinicRangeMessage(result.clinicStart, result.clinicEnd);
+          // Anclar el error en el campo REALMENTE fuera de rango (inicio y/o fin),
+          // no siempre en "hora de fin": si el inicio es anterior a la apertura de
+          // la clínica, el mensaje debe salir bajo "hora de inicio".
+          if (dayValue.startTime < result.clinicStart) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message,
+              path: [day, "startTime"],
+            });
+          }
+          if (dayValue.endTime > result.clinicEnd) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message,
+              path: [day, "endTime"],
+            });
+          }
+        }
+      });
+    });
+
   return z.object({
     name: fullName,
     email: email,
@@ -70,15 +147,7 @@ export function makeDoctorFormSchema(requireRole: boolean) {
     avatarUrl: z.string().optional(),
     roleId: requireRole ? requiredId("El rol") : z.string().optional(),
     active: z.boolean(),
-    schedule: z.object({
-      monday: daySchedule,
-      tuesday: daySchedule,
-      wednesday: daySchedule,
-      thursday: daySchedule,
-      friday: daySchedule,
-      saturday: daySchedule,
-      sunday: daySchedule,
-    }),
+    schedule: scheduleSchema,
   });
 }
 

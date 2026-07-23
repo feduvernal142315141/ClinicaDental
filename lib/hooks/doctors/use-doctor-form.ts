@@ -15,6 +15,7 @@ import type {
   UpdateDoctorRequest,
   Doctor,
 } from "@/lib/entity/doctors";
+import type { ClinicSchedule } from "@/lib/entity/settings";
 
 export type { DoctorFormValues } from "@/lib/hooks/doctors/doctor-form.schema";
 
@@ -101,6 +102,16 @@ interface UseDoctorFormParams {
   initialData?: Doctor;
   /** Exigir rol (false en "Mi perfil", donde no se muestra la sección Acceso). */
   requireRole?: boolean;
+  /**
+   * Horario global de la clínica: acota el horario específico del doctor
+   * (mismo concepto que la disponibilidad de citas acotada por el horario
+   * del doctor). Lo carga e inyecta `DoctorForm` (vía `useClinicGeneralSettings`)
+   * para que este hook no vuelva a montar el fetch (evita doble llamada).
+   * `undefined`/`null` ⇒ aún no cargó o no aplica ⇒ el esquema no acota.
+   * Parcial a propósito: los días que la clínica nunca configuró están
+   * ausentes ⇒ ese día no se acota (paridad con el backend).
+   */
+  clinicSchedule?: Partial<ClinicSchedule> | null;
 }
 
 /**
@@ -112,6 +123,7 @@ export function useDoctorForm({
   basePath = "/settings/doctors",
   initialData,
   requireRole = true,
+  clinicSchedule = null,
 }: UseDoctorFormParams) {
   const router = useRouter();
   const isEdit = !!doctorId;
@@ -119,8 +131,8 @@ export function useDoctorForm({
   const { createDoctor, updateDoctor, getDoctorById, loading } = useDoctors();
 
   const resolver = useMemo(
-    () => zodResolver(makeDoctorFormSchema(requireRole)),
-    [requireRole],
+    () => zodResolver(makeDoctorFormSchema(requireRole, clinicSchedule)),
+    [requireRole, clinicSchedule],
   );
 
   const form = useForm<DoctorFormValues>({

@@ -11,6 +11,10 @@ export interface TimeFieldProps {
   onChange: (value: string) => void;
   /** Paso de minutos en el selector (def. 5). */
   minuteStep?: number;
+  /** Hora mínima seleccionable "HH:mm" (acota las horas del selector). */
+  minTime?: string;
+  /** Hora máxima seleccionable "HH:mm" (acota las horas del selector). */
+  maxTime?: string;
   disabled?: boolean;
   className?: string;
   id?: string;
@@ -34,6 +38,8 @@ export const TimeField = React.forwardRef<HTMLButtonElement, TimeFieldProps>(
       value,
       onChange,
       minuteStep = 5,
+      minTime,
+      maxTime,
       disabled = false,
       className,
       id,
@@ -58,6 +64,25 @@ export const TimeField = React.forwardRef<HTMLButtonElement, TimeFieldProps>(
 
     const hasValue = !!value && value.includes(":");
     const [hh, mm] = hasValue ? value.split(":") : ["", ""];
+
+    // Acota las horas del selector a [minTime,maxTime] (granularidad de hora;
+    // el minuto exacto lo sigue resolviendo la validación del esquema — ver
+    // lib/utils/schedule-bounds.ts). Sin minTime/maxTime, sin acotar.
+    const hours = React.useMemo(() => {
+      if (!minTime && !maxTime) return HOURS;
+      const minH = minTime ? Number(minTime.slice(0, 2)) : 0;
+      const maxH = maxTime ? Number(maxTime.slice(0, 2)) : 23;
+      const filtered = HOURS.filter(
+        (o) => Number(o.value) >= minH && Number(o.value) <= maxH,
+      );
+      // Incluye la hora actual aunque quede fuera del rango (datos legacy);
+      // el schema la marcará inválida, pero no se "pierde" el valor tecleado.
+      if (hh && !filtered.some((o) => o.value === hh)) {
+        filtered.push({ value: hh, label: hh });
+        filtered.sort((a, b) => a.value.localeCompare(b.value));
+      }
+      return filtered;
+    }, [minTime, maxTime, hh]);
 
     const minutes = React.useMemo(() => {
       const step = minuteStep > 0 ? minuteStep : 5;
@@ -145,7 +170,7 @@ export const TimeField = React.forwardRef<HTMLButtonElement, TimeFieldProps>(
               <Select
                 value={hh || "00"}
                 onChange={(h) => setPart(h, mm)}
-                options={HOURS}
+                options={hours}
                 aria-label="Hora"
               />
             </div>
