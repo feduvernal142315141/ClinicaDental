@@ -4,6 +4,8 @@ Coloque en esta carpeta las capturas de pantalla reales del sistema, con los nom
 
 Recomendaciones de captura: navegador maximizado, tema claro, datos de demostración (sin información real de pacientes), formato PNG.
 
+> **Automatización**: la especificación detallada de cada captura (ruta, pasos, selectores, checklist `mustShow`, riesgos) vive en [`shots.manifest.json`](./shots.manifest.json) — es la fuente de verdad del script de captura (proyecto `manual-capture/` en la raíz del workspace) y de los agentes `manual-capture-*`. Ver la skill `capturar-manual`. `odontograma.png` e `historia-clinica.png` están diferidas (2026-07-21).
+
 | Archivo | Pantalla a capturar |
 |---|---|
 | `login.png` | Pantalla de inicio de sesión ("Bienvenido de vuelta"). |
@@ -16,5 +18,5 @@ Recomendaciones de captura: navegador maximizado, tema claro, datos de demostrac
 | `historia-clinica.png` | Historia clínica de la visita (diagnóstico, hallazgos). |
 | `config-regional.png` | Configuración regional (selector de moneda con bandera y símbolo). |
 | `doctores-lista.png` | Listado de doctores en Configuración. |
-| `roles-permisos.png` | Editor de rol con la matriz de permisos por módulo. |
 | `servicios-lista.png` | Catálogo de servicios. |
+| `roles-permisos.png` | Editor de rol con la matriz de permisos por módulo. |

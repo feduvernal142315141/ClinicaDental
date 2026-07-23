@@ -1,0 +1,286 @@
+{
+  "$comment": "Manifiesto de las 12 capturas del Manual de Usuario. Fuente de verdad para el script de captura (proyecto aparte `manual-capture/` en la raíz del workspace) y los agentes manual-capture-*. Derivado del mapeo de rutas/flujos contra el código real (2026-07-21). Si el manual o la UI cambian, actualizar aquí primero. DIFERIDOS por decisión del usuario (2026-07-21): odontograma e historia-clinica (flujo de consulta activa) — ver campo deferred.",
+  "version": 1,
+  "standard": {
+    "viewport": { "width": 1440, "height": 900, "deviceScaleFactor": 2 },
+    "theme": "claro",
+    "baseUrl": "http://localhost:3000",
+    "apiUrl": "http://localhost:8080",
+    "credentials": "admin@clinic.com / Admin123 (seed automático de DoctorSeeder.java, perfil local; OTP legible en la respuesta del POST /auth/login en perfiles no-prod)",
+    "outputDir": "docs/manual-assets/",
+    "rules": [
+      "Solo datos de demostración; nunca información real de pacientes.",
+      "No enviar submits que creen datos (paciente-form, cita-nueva): capturar el estado previo al submit.",
+      "Esperar a que desaparezcan spinners/skeletons y a que carguen imágenes (logos, avatares) antes de capturar.",
+      "Las vistas autenticadas deben mostrar el menú lateral y la barra superior (campana, toggle de tema, menú de cuenta)."
+    ]
+  },
+  "shots": [
+    {
+      "id": "login",
+      "file": "login.png",
+      "figura": 1,
+      "seccion": "4. Inicio de sesión y seguridad de la sesión",
+      "route": "/login",
+      "vista": "página (pública)",
+      "steps": [
+        "Navegar a /login sin sesión.",
+        "No escribir nada ni enviar: la tarjeta 'Bienvenido de vuelta' ya es el estado a capturar.",
+        "Esperar ~1s a que se estabilicen las partículas/halo animados (AuthParticles) y cargue el logo de ClinicBrandingContext."
+      ],
+      "mustShow": [
+        "Título 'Bienvenido de vuelta' y logo de la clínica",
+        "Campos de correo y contraseña",
+        "Control 'Mantener sesión'",
+        "Botón 'Continuar'",
+        "Enlace '¿Olvidaste tu contraseña?'",
+        "Texto 'Conexión cifrada · verificación en dos pasos'"
+      ],
+      "selectors": "input#email, input#password, button[type=submit], checkbox 'Mantener sesión'. No hay data-testid en el repo: usar ids/roles/texto.",
+      "risks": "Animaciones de fondo; no enviar el form (dispararía OTP por email real vía Mailjet)."
+    },
+    {
+      "id": "inactividad",
+      "file": "inactividad.png",
+      "figura": 2,
+      "seccion": "4.2 Cierre de sesión por inactividad",
+      "route": "/dashboard (modal global sobre cualquier ruta autenticada)",
+      "vista": "modal (AlertDialog)",
+      "specialFlow": "Editar TEMPORALMENTE lib/constants/auto-logout.ts → WARNING_TIME_MINUTES: 0.1, INACTIVITY_TIME_MINUTES: 5 (el worker multiplica por 60000, acepta fracciones). Recargar la página logueada (el worker se crea al montar). REVERTIR al terminar.",
+      "steps": [
+        "Con la sesión iniciada y la constante bajada, recargar /dashboard.",
+        "NO emitir mousedown/keydown/scroll/touchstart durante ~7s (mousemove NO resetea; los requests Axios también resetean vía onActivity).",
+        "Al aparecer [role=alertdialog] 'Advertencia de Inactividad', capturar sin clickear (el propio click lo cerraría/resetearía).",
+        "Señal previa en consola: '⚠️ Advertencia: La sesión está por expirar'."
+      ],
+      "mustShow": [
+        "Diálogo con título 'Advertencia de Inactividad'",
+        "Botón primario 'Continuar Trabajando' y botón ghost 'Cerrar Sesión'",
+        "App autenticada visible de fondo"
+      ],
+      "selectors": "[role=alertdialog]; título y botones por texto.",
+      "risks": "Cualquier input event resetea el timer. Revertir auto-logout.ts es OBLIGATORIO — producción: INACTIVITY_TIME_MINUTES=15, WARNING_TIME_MINUTES=13 (WARNING siempre menor); lo más seguro: git checkout -- lib/constants/auto-logout.ts."
+    },
+    {
+      "id": "pacientes-lista",
+      "file": "pacientes-lista.png",
+      "figura": 3,
+      "seccion": "8.1 Ver la lista de pacientes",
+      "route": "/patients",
+      "vista": "página",
+      "steps": [
+        "Login como admin → click 'Pacientes' en el sidebar.",
+        "Esperar la tabla bajo el header 'Gestión de Pacientes' (sin spinner)."
+      ],
+      "mustShow": [
+        "Columnas: Paciente (nombre+inicial), Edad, Contacto (correo y teléfono), Dirección, Estado",
+        "Badge 'Activo' en verde (idealmente también un 'Inactivo' gris)",
+        "Buscador 'Buscar paciente por nombre…'",
+        "Paginación abajo",
+        "Botón '+ Nuevo Paciente'",
+        "Íconos ver (ojo) / editar (lápiz) y menú ⋯ por fila"
+      ],
+      "selectors": "heading 'Gestión de Pacientes'; botón 'Nuevo Paciente'; table tbody tr.",
+      "risks": "A 1440px con sidebar expandido la tabla (6 columnas) no cabe: Estado/Acciones quedan fuera del viewport — capture.mjs colapsa el sidebar y aplica zoom 0.95 antes de capturar. Además la página 1 (orden por defecto) muestra primero al paciente basura 'asdasdasd…' y a un paciente con datos reales ('Luis Enrique Ballagas Gonzalez'); ambos ya están active=false pero la lista no filtra por activo y ordenar por nombre tampoco los saca de la página 1 → capture.mjs navega a la página 2 (5 pacientes demo restantes, todos activos, cero PII) en vez de capturar la página 1."
+    },
+    {
+      "id": "paciente-form",
+      "file": "paciente-form.png",
+      "figura": 4,
+      "seccion": "8.2 Registrar un paciente nuevo",
+      "route": "/patients/new",
+      "vista": "página",
+      "steps": [
+        "Desde /patients click 'Nuevo Paciente' (o URL directa).",
+        "Opcional para ilustrar la validación onBlur: escribir un correo inválido y salir del campo para que aparezca el mensaje en rojo.",
+        "NO enviar el formulario."
+      ],
+      "mustShow": [
+        "Campos de nombre, fecha de nacimiento, contacto (correo/teléfono) y dirección",
+        "Asterisco rojo en obligatorios",
+        "Idealmente un mensaje de validación visible bajo un campo",
+        "Botón de guardar en la FormActionBar"
+      ],
+      "selectors": "heading 'Nuevo Paciente'; secciones bento; FormActionBar sticky.",
+      "risks": "No crear datos reales."
+    },
+    {
+      "id": "agenda",
+      "file": "agenda.png",
+      "figura": 5,
+      "seccion": "9. Agenda de citas",
+      "route": "/appointments",
+      "vista": "página",
+      "steps": [
+        "Login como admin → click 'Citas' en el sidebar.",
+        "Elegir vista 'Día' (o 'Semana') en la toolbar.",
+        "Seleccionar doctor(es) en el sidebar de especialistas y situarse en una fecha CON citas."
+      ],
+      "mustShow": [
+        "Selector de doctor y selector de fecha visibles (vista admin, no 'Mis Citas')",
+        "Varias citas del día ordenadas por hora",
+        "Etiquetas de estado en color (mínimo una 'Agendada' azul; idealmente varios estados)",
+        "Botón '+ Nueva Cita'",
+        "Menú ⋯ en las citas"
+      ],
+      "selectors": "botones 'Día'/'Semana'/'Mes'; tarjetas AppointmentEventCard por nombre de paciente.",
+      "risks": "HOY (2026-07-21) no hay citas futuras en la DB nativa: sembrar 2-3 citas scheduled para el día de la captura ANTES. Una cita in_progress puede abrir un modal de consulta pendiente que tapa la agenda."
+    },
+    {
+      "id": "cita-nueva",
+      "file": "cita-nueva.png",
+      "figura": 6,
+      "seccion": "9.2 Programar una cita nueva",
+      "route": "/appointments/new (prefill: ?doctorId=&patientId=&date=YYYY-MM-DD&time=HH:mm)",
+      "vista": "página",
+      "steps": [
+        "Desde /appointments click el botón de nueva cita (o URL directa con prefill de doctorId+date para automatizar).",
+        "Seleccionar Paciente, Doctor y Servicio en los combobox ([role=combobox] → [role=option], son searchable).",
+        "Elegir fecha en el AvailabilityCalendar y esperar los chips de horarios disponibles.",
+        "Seleccionar un slot para el estado exacto del README. NO enviar el submit."
+      ],
+      "mustShow": [
+        "Selectores de Paciente, Doctor y Servicio (con valores elegidos)",
+        "Calendario de fecha",
+        "Bloque de horarios disponibles (chips de horas libres)",
+        "Campo opcional 'Etiquetas'",
+        "Botón 'Guardar'"
+      ],
+      "selectors": "[role=combobox] triggers; slots = botones con texto HH:mm.",
+      "risks": "Sin horario del doctor configurado no se pintan slots. No crear la cita."
+    },
+    {
+      "id": "odontograma",
+      "file": "odontograma.png",
+      "deferred": "Decisión del usuario 2026-07-21: NO capturar ni analizar este flujo por ahora. El PDF usa placeholder.",
+      "figura": 7,
+      "seccion": "10.1 El odontograma digital",
+      "route": "/patients/{id}?tab=workspace&appointmentId={appointmentId}",
+      "vista": "página (workspace de consulta activa)",
+      "specialFlow": "Requiere CONSULTA ACTIVA: en /patients/{id} → 'Cronología de visitas' → 'Iniciar Nueva Consulta' → modal 'Nueva Consulta Express' → elegir doctor → 'Iniciar Consulta' (POST /appointments/start-now, 201). FINALIZAR la consulta al terminar (banner → Finalizar) para no dejarla colgada.",
+      "steps": [
+        "Usar un paciente con odontograma rico (p.ej. Valentina Gómez, 31KB de estado).",
+        "Iniciar consulta express → se navega a ?tab=workspace&appointmentId=….",
+        "Esperar el ActiveConsultationBanner y a que monte el SVG del odontograma (panel derecho).",
+        "Capturar el panel SIN overlay de solo-lectura."
+      ],
+      "mustShow": [
+        "Piezas numeradas en notación FDI de dos dígitos",
+        "Al menos una pieza con superficies marcadas en color (hallazgo + tratamiento planificado para la distinción plan/realizado)",
+        "Título de la cara/vista visible (p.ej. 'Vestibular')",
+        "Edición habilitada (consulta activa), idealmente indicador de guardado automático"
+      ],
+      "selectors": "[role=tab] 'Workspace'; modal 'Nueva Consulta Express'; botón 'Iniciar Consulta'; SVG en el panel derecho del grid.",
+      "risks": "El store useActiveConsultation se reconcilia con el backend: si la cita quedó finalizada, purga y redirige. Sin doctor activo el modal no avanza."
+    },
+    {
+      "id": "historia-clinica",
+      "file": "historia-clinica.png",
+      "deferred": "Decisión del usuario 2026-07-21: NO capturar ni analizar este flujo por ahora. El PDF usa placeholder.",
+      "figura": 8,
+      "seccion": "10.2 Historia clínica de la visita",
+      "route": "/patients/{id}?tab=workspace&appointmentId={appointmentId}",
+      "vista": "página (workspace de consulta activa)",
+      "specialFlow": "Misma consulta activa que odontograma.png (capturar ambas en la misma sesión de consulta y LUEGO finalizar).",
+      "steps": [
+        "Con la consulta activa, permanecer en 'Workspace': la columna izquierda ActiveConsultationNotes es el registro de la visita.",
+        "Escribir texto DEMO en motivo/diagnóstico/hallazgos (el autosave es real contra el backend: solo texto demo).",
+        "Capturar con las secciones pobladas. Complemento: tab 'Historia Clínica (Lectura)' para el layout de 3 columnas."
+      ],
+      "mustShow": [
+        "Motivo de consulta con diente asociado (referencia FDI)",
+        "Diagnóstico estructurado con códigos CIE-10 y estado provisional/confirmado",
+        "Hallazgos de examen (extraoral/intraoral)",
+        "Anamnesis o antecedentes",
+        "Banner de consulta activa"
+      ],
+      "selectors": "[role=tab] por texto; secciones 'Perfil · Adjuntos' / 'Anamnesis · Plan de Tratamiento · Evolución / Notas' / 'Cronología de visitas'.",
+      "risks": "Lo escrito SE GUARDA (autosave). El grid de 3 columnas necesita viewport ≥1440px. medical_histories está en 0 en la DB: sembrar antecedentes demo si la sección sale vacía."
+    },
+    {
+      "id": "config-regional",
+      "file": "config-regional.png",
+      "figura": 9,
+      "seccion": "12.1 Opciones Generales",
+      "route": "/settings/general",
+      "vista": "página",
+      "steps": [
+        "Login como admin → sidebar 'Configuración' → 'Opciones Generales'.",
+        "Esperar a que desaparezca 'Cargando…' (componente dynamic()).",
+        "Scroll a 'Configuración regional' (h4).",
+        "Abrir el Select de Moneda ([role=combobox]) y capturar INMEDIATAMENTE con el popover abierto (se cierra con click fuera/scroll)."
+      ],
+      "mustShow": [
+        "Selector de Moneda abierto: bandera + símbolo + 'CÓDIGO · Nombre' (ej. COP · Peso colombiano)",
+        "Selector de Zona horaria (cerrado) con bandera + 'País · Ciudad' (NOTA 2026-07-21: el desfase UTC solo se renderiza como subtítulo DENTRO del popover de Zona horaria — components/ui/controls/select.tsx solo pinta `description` en las opciones abiertas, no en el trigger cerrado; como el shot mantiene abierto el popover de Moneda, el desfase UTC no es visible simultáneamente en esta captura, es una limitación de diseño aceptada)",
+        "Horario de atención por día con interruptor y horas",
+        "Idealmente la barra 'Tienes cambios sin guardar' con 'Descartar'/'Guardar cambios' (hacer un cambio pendiente antes)"
+      ],
+      "selectors": "h4 'Configuración regional'; [role=combobox][aria-haspopup=listbox]; [role=listbox] con buscador 'Buscar moneda…'.",
+      "risks": "clinic_settings=0 en la DB: guardar antes una configuración con moneda para que se vea poblado. Usuario sin permiso EDIT ve selects disabled."
+    },
+    {
+      "id": "doctores-lista",
+      "file": "doctores-lista.png",
+      "figura": 10,
+      "seccion": "12.2 Doctores",
+      "route": "/settings/doctors",
+      "vista": "página",
+      "steps": [
+        "Login como admin → sidebar 'Configuración' → 'Doctores'.",
+        "Esperar la tabla bajo 'Gestión de Doctores' (CORREGIDO 2026-07-21: doctors-table.config.tsx SIEMPRE pinta iniciales — getInitials(name) en un círculo — nunca un <img> con avatar_url; no hay foto Cloudinary que 'cargar' en esta vista, aunque el doctor tenga avatar_url en BD)."
+      ],
+      "mustShow": [
+        "Columnas: licencia, teléfono, rol, estado (badge Activo/Inactivo), fecha de creación",
+        "Buscador y paginación",
+        "Botón '+ Nuevo Doctor'",
+        "Acciones por fila (ver/editar)",
+        "Idealmente algún avatar visible (círculo de iniciales, no foto — ver nota en steps)"
+      ],
+      "selectors": "heading 'Gestión de Doctores'; botón 'Nuevo Doctor'; table tbody tr.",
+      "risks": "Existe un doctor llamado 'Admin' que afea la lista: valorar renombrarlo/ocultarlo para la captura (se dejó tal cual 2026-07-21 para no desincronizar el nombre mostrado en la topbar/cuenta con el resto de figuras ya capturadas en esta misma sesión). Además había un doctor con PII real (nombre y correo personal reales) sembrado en algún momento anterior a esta sesión: se anonimizó por SQL directo a 'Camila Herrera' / camila.herrera@clinic.com / +59170000005 / LIC-005 (valores originales respaldados en el reporte de la sesión que hizo el cambio, revertible)."
+    },
+    {
+      "id": "servicios-lista",
+      "file": "servicios-lista.png",
+      "figura": 11,
+      "seccion": "12.3 Servicios",
+      "route": "/settings/services",
+      "vista": "página",
+      "steps": [
+        "Login como admin → sidebar 'Configuración' → 'Servicios'.",
+        "Esperar la tabla bajo 'Gestión de Servicios' (26 servicios reales sembrados: Endodoncia, Carillas, Coronas…)."
+      ],
+      "mustShow": [
+        "Por servicio: nombre, badge de Tipo (Tratamiento/Procedimiento/...) y estado (CORREGIDO 2026-07-21: la tabla real — services-table.config.tsx — no tiene columna de ícono/símbolo por fila; el badge de Tipo es el elemento visual equivalente más cercano)",
+        "Idealmente código, tipo, costo y duración en minutos",
+        "Buscador, paginación y botón de crear"
+      ],
+      "selectors": "heading 'Gestión de Servicios'; table tbody tr.",
+      "risks": "CORREGIDO 2026-07-21 (mandó el código sobre este supuesto): la columna Costo de components/features/services/table/services-table.config.tsx NO lee la moneda de la clínica — usa un prefijo '$' hardcodeado (`$${value.toFixed(2)}`) sin pasar por lib/utils/clinic-regional-format.ts. Fijar la moneda regional antes de capturar sigue siendo correcto (12.1), pero NO cambia el símbolo mostrado aquí; no es un requisito de consistencia real hasta que se corrija ese bug (ver tarea derivada)."
+    },
+    {
+      "id": "roles-permisos",
+      "file": "roles-permisos.png",
+      "figura": 12,
+      "seccion": "12.4 Roles y permisos",
+      "route": "/settings/roles/{id}/edit",
+      "vista": "página",
+      "steps": [
+        "Login como admin → sidebar 'Configuración' → 'Roles'.",
+        "Click editar sobre un rol existente NO protegido → /settings/roles/{id}/edit.",
+        "Capturar el RoleForm con la matriz PermissionsSelector."
+      ],
+      "mustShow": [
+        "Campo de nombre del rol",
+        "Matriz por módulo agrupado por categoría con las 4 acciones: Crear, Editar, Eliminar, Bloquear",
+        "Atajos 'Seleccionar todo' y 'Limpiar'",
+        "Buscador de módulos",
+        "Nivel por módulo ('Acceso total' / 'Limitado')",
+        "Botón 'Guardar cambios'"
+      ],
+      "selectors": "headers 'Crear'/'Editar'/'Eliminar'/'Bloquear'; checkboxes Radix button[role=checkbox][data-state].",
+      "risks": "Solo existe el rol 'Administrador' (protegido: 'Sus permisos están protegidos…'): sembrar 2-3 roles demo (Recepción, Doctor) con matrices variadas ANTES. No guardar cambios."
+    }
+  ]
+}
