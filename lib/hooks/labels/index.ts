@@ -11,3 +11,4 @@ export {
   useAssignLabels,
   useRemoveLabel,
 } from "./useLabels";
+export { useLabelCatalog, CATALOG_PAGE_SIZE } from "./useLabelCatalog";

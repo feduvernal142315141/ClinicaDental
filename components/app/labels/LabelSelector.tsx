@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronsUpDown, Plus, Check, Tag } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
-import { useLabels } from "@/lib/hooks/labels";
+import { useLabelCatalog } from "@/lib/hooks/labels";
 import { LabelChip } from "./LabelChip";
 import {
   Popover,
@@ -18,7 +18,12 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/primitives/shadcn/command";
-import type { Label, LabelSummary } from "@/lib/entity/label";
+import type { LabelSummary } from "@/lib/entity/label";
+
+// Cap de opciones visibles en el desplegable (seleccionadas primero). Mismo
+// criterio que el sidebar de filtros — evita renderizar de golpe las ~200
+// etiquetas de la primera carga del catálogo.
+const VISIBLE_OPTIONS_CAP = 24;
 
 interface LabelSelectorProps {
   appointmentId?: string;
@@ -27,6 +32,13 @@ interface LabelSelectorProps {
   maxLabels?: number;
   disabled?: boolean;
   onCreateNew?: () => void;
+  /**
+   * Etiquetas ya asignadas (ej. `appointment.labels`), tal cual llegan del
+   * recurso padre. Garantiza que sus chips se rendericen siempre aunque el
+   * catálogo paginado (`useLabelCatalog`, primera carga = 200) aún no las
+   * haya cargado o la búsqueda activa las haya filtrado.
+   */
+  assignedLabels?: LabelSummary[];
 }
 
 export function LabelSelector({
@@ -35,18 +47,45 @@ export function LabelSelector({
   maxLabels = 5,
   disabled = false,
   onCreateNew,
+  assignedLabels = [],
 }: LabelSelectorProps) {
-  const { labels, loading } = useLabels(false);
+  const { labels, loading, search, results, query } = useLabelCatalog(false);
   const [open, setOpen] = useState(false);
+
+  // Etiquetas conocidas por id: catálogo cargado (más fresco) + las ya
+  // asignadas que traiga el padre (garantía de render aunque no estén en la
+  // página cargada del catálogo).
+  const knownLabelsMap = useMemo(() => {
+    const map = new Map<string, LabelSummary>();
+    assignedLabels.forEach((l) => map.set(l.id, l));
+    labels.forEach((l) => map.set(l.id, l));
+    return map;
+  }, [assignedLabels, labels]);
 
   // Chips seleccionados, en el mismo orden que `value`.
   const selected = useMemo(
     () =>
       value
-        .map((id) => labels.find((l) => l.id === id))
-        .filter((l): l is Label => Boolean(l)),
-    [value, labels],
+        .map((id) => knownLabelsMap.get(id))
+        .filter((l): l is LabelSummary => Boolean(l)),
+    [value, knownLabelsMap],
   );
+
+  // Opciones del desplegable: resultados de la búsqueda (client o server,
+  // según decida el hook) + cualquier seleccionada ausente de esa página,
+  // seleccionadas primero, con cap de render.
+  const optionPool = useMemo(() => {
+    const selectedIds = new Set(value);
+    const missingSelected = selected.filter(
+      (l) => !results.some((r) => r.id === l.id),
+    );
+    const selectedInResults = results.filter((l) => selectedIds.has(l.id));
+    const rest = results.filter((l) => !selectedIds.has(l.id));
+    return [...missingSelected, ...selectedInResults, ...rest];
+  }, [results, value, selected]);
+
+  const visibleOptions = optionPool.slice(0, VISIBLE_OPTIONS_CAP);
+  const hiddenCount = optionPool.length - visibleOptions.length;
 
   const atLimit = value.length >= maxLabels;
 
@@ -109,20 +148,29 @@ export function LabelSelector({
           align="start"
           className="w-[var(--radix-popover-trigger-width)] overflow-hidden border-hairline bg-elevated p-0 shadow-bento"
         >
-          <Command className="bg-transparent">
-            <CommandInput placeholder="Buscar etiqueta..." className="text-sm" />
+          {/* shouldFilter=false: el filtrado ya lo resuelve useLabelCatalog
+              (client-side instantáneo o server-side con debounce cuando el
+              catálogo excede CATALOG_PAGE_SIZE); dejar el filtro propio de
+              cmdk activo pelearía contra ese resultado durante el debounce. */}
+          <Command className="bg-transparent" shouldFilter={false}>
+            <CommandInput
+              placeholder="Buscar etiqueta..."
+              className="text-sm"
+              value={query}
+              onValueChange={search}
+            />
             <CommandList>
               <CommandEmpty className="py-6 text-center text-sm text-subtle">
                 {loading ? "Cargando..." : "Sin etiquetas"}
               </CommandEmpty>
               <CommandGroup className="p-1.5">
-                {labels.map((label) => {
+                {visibleOptions.map((label) => {
                   const isSelected = value.includes(label.id);
                   const isDisabled = !isSelected && atLimit;
                   return (
                     <CommandItem
                       key={label.id}
-                      value={label.name}
+                      value={label.id}
                       disabled={isDisabled}
                       onSelect={() => toggle(label.id)}
                       // cmdk 1.x emite data-disabled="false" en TODOS los ítems y el
@@ -134,7 +182,7 @@ export function LabelSelector({
                         "data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-40",
                       )}
                     >
-                      <LabelChip label={label as LabelSummary} size="sm" />
+                      <LabelChip label={label} size="sm" />
                       <Check
                         className={cn(
                           "h-4 w-4 shrink-0 text-brand transition-opacity",
@@ -146,6 +194,11 @@ export function LabelSelector({
                   );
                 })}
               </CommandGroup>
+              {hiddenCount > 0 && (
+                <p className="px-3 pb-2 text-center text-xs text-subtle">
+                  +{hiddenCount} más — refina la búsqueda para encontrarlas
+                </p>
+              )}
             </CommandList>
 
             {onCreateNew && (

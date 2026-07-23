@@ -6,8 +6,12 @@ import type { SchedulerDoctorOption } from "@/lib/entity/appointment";
 import type { Label } from "@/lib/entity/label";
 import { SearchInput } from "@/components/ui/atomic/forms/search-input";
 import { DynamicIcon } from "@/components/app/labels/DynamicIcon";
-import { useLabels } from "@/lib/hooks/labels";
+import { useLabelCatalog } from "@/lib/hooks/labels";
 import { cn } from "@/lib/utils/utils";
+
+/** Máximo de chips de etiqueta que se pintan en el sidebar; el resto se
+ * resume en un indicador no-interactivo que remite al buscador. */
+const SIDEBAR_CHIP_CAP = 24;
 
 interface AppointmentsSpecialistSidebarProps {
   doctors: SchedulerDoctorOption[];
@@ -46,9 +50,11 @@ function CountBadge({ children }: { children: React.ReactNode }) {
 }
 
 // Encabezado de sección: micro-label uppercase (jerarquía secundaria Bento).
+// nowrap: el título se muestra SIEMPRE completo; en anchos estrechos la fila
+// del encabezado (flex-wrap) baja las acciones a una segunda línea.
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-subtle">
+    <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.08em] text-subtle">
       {children}
     </span>
   );
@@ -193,30 +199,65 @@ function LabelFilterSection({
   onToggle: (id: string) => void;
   onClear: () => void;
 }) {
-  const { labels, loading } = useLabels(false);
-  const activeLabels = labels.filter((l) => !l.isArchived);
+  // Estrategia híbrida (ver useLabelCatalog): catálogo completo en cliente
+  // cuando total <= CATALOG_PAGE_SIZE, búsqueda server-side si no. `results`
+  // ya viene filtrado por `query` en ambos casos — transparente para la UI.
+  const { total, results, query, search } = useLabelCatalog(false);
 
-  if (loading || activeLabels.length === 0) return null;
+  // `total === 0` cubre tanto "aún cargando la primera página" como
+  // "catálogo vacío" (pagination.total solo se fija tras la 1ª carga
+  // exitosa), evitando que la sección parpadee oculta en búsquedas
+  // posteriores como pasaba con el `loading` del hook anterior.
+  if (total === 0) return null;
 
-  const selectedCount = activeLabels.filter((l) =>
-    selectedLabelIds.has(l.id),
-  ).length;
+  const activeResults = results.filter((l) => !l.isArchived);
+
+  // Badge de conteo: SIEMPRE sobre la selección real (viene del padre), no
+  // sobre lo cargado — una etiqueta seleccionada fuera de la página actual
+  // sigue contando y sigue siendo limpiable vía `onClear`.
+  const selectedCount = selectedLabelIds.size;
+
+  // Prioriza SIEMPRE las seleccionadas primero, luego recorta a
+  // SIDEBAR_CHIP_CAP para que el sidebar no crezca sin límite.
+  const orderedResults = [
+    ...activeResults.filter((l) => selectedLabelIds.has(l.id)),
+    ...activeResults.filter((l) => !selectedLabelIds.has(l.id)),
+  ];
+  const visibleLabels = orderedResults.slice(0, SIDEBAR_CHIP_CAP);
+  const overflowCount = orderedResults.length - visibleLabels.length;
 
   return (
     <div className="border-t border-hairline pt-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <div className="flex shrink-0 items-center gap-1.5">
           <SectionTitle>Etiquetas</SectionTitle>
           {selectedCount > 0 && <CountBadge>{selectedCount}</CountBadge>}
         </div>
-        {selectedCount > 0 && <TextAction onClick={onClear}>Limpiar</TextAction>}
+        {selectedCount > 0 && (
+          <span className="ml-auto">
+            <TextAction onClick={onClear}>Limpiar</TextAction>
+          </span>
+        )}
       </div>
+      {/* Minimalista: el buscador solo aparece cuando hay suficientes
+          etiquetas como para que buscar aporte algo (sobre el total real,
+          no solo lo ya cargado). */}
+      {total > 5 && (
+        <div className="mb-2">
+          <SearchInput
+            value={query}
+            onChange={(e) => search(e.target.value)}
+            placeholder="Buscar etiqueta..."
+            aria-label="Buscar etiqueta"
+          />
+        </div>
+      )}
       <div
         role="group"
         aria-label="Filtrar por etiqueta"
         className="flex flex-wrap gap-1.5"
       >
-        {activeLabels.map((label) => (
+        {visibleLabels.map((label) => (
           <LabelFilterChip
             key={label.id}
             label={label}
@@ -224,6 +265,16 @@ function LabelFilterSection({
             onToggle={() => onToggle(label.id)}
           />
         ))}
+        {overflowCount > 0 && (
+          <span className="inline-flex shrink-0 items-center rounded-full border border-dashed border-hairline px-2.5 py-1 text-[12px] font-medium text-subtle">
+            +{overflowCount} más — usa el buscador
+          </span>
+        )}
+        {orderedResults.length === 0 && (
+          <p className="text-xs text-subtle">
+            Sin etiquetas que coincidan con «{query.trim()}».
+          </p>
+        )}
       </div>
     </div>
   );
@@ -284,8 +335,10 @@ export function AppointmentsSpecialistSidebar({
 
       {/* Nivel 2 — ESPECIALISTAS */}
       <section className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">
+        {/* flex-wrap: si "Especialistas 5/5" + acciones no caben en una línea,
+            Todos/Ninguno bajan a la siguiente en vez de montarse sobre el título. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <div className="flex shrink-0 items-center gap-1.5">
             <Users className="h-3.5 w-3.5 shrink-0 text-subtle" aria-hidden />
             <SectionTitle>Especialistas</SectionTitle>
             {total > 0 && (
@@ -294,7 +347,9 @@ export function AppointmentsSpecialistSidebar({
               </CountBadge>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-0.5">
+          {/* ml-auto: al envolver a segunda línea las acciones quedan pegadas
+              a la derecha, no colgando a la izquierda. */}
+          <div className="ml-auto flex shrink-0 items-center gap-0.5">
             <TextAction onClick={onSelectAll} disabled={allVisible}>
               Todos
             </TextAction>

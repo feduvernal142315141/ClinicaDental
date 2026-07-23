@@ -512,6 +512,7 @@ export function AppointmentForm({
                     value={field.value ?? []}
                     onChange={field.onChange}
                     disabled={formDisabled}
+                    assignedLabels={initialData?.labels}
                     onCreateNew={
                       readOnly ? undefined : () => setIsCreateLabelModalOpen(true)
                     }

@@ -15,7 +15,7 @@ import {
   Clock,
 } from "lucide-react";
 import {
-  useLabels,
+  useLabelCatalog,
   useArchiveLabelWithUndo,
   useUnarchiveLabel,
 } from "@/lib/hooks/labels";
@@ -40,6 +40,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/primitives/shadcn/tooltip";
 import { cn } from "@/lib/utils/utils";
+import { matchesQuery } from "@/lib/utils/text";
 
 // ── Tipos locales ─────────────────────────────────────────────────────────────
 
@@ -50,12 +51,21 @@ type ViewMode = "cards" | "list";
 // ── Página ────────────────────────────────────────────────────────────────────
 
 export default function LabelsSettingsPage() {
-  const { labels, loading, refetch } = useLabels(true);
+  const {
+    labels,
+    total,
+    isComplete,
+    loading,
+    search: searchCatalog,
+    results,
+    query: search,
+    loadMore,
+    refetch,
+  } = useLabelCatalog(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingLabel, setEditingLabel] = useState<Label | undefined>(undefined);
 
   // Toolbar state
-  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [sort, setSort] = useState<SortMode>("name");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
@@ -78,22 +88,26 @@ export default function LabelsSettingsPage() {
   const handleArchive = (label: Label) => archiveWithUndo(label.id, label.name);
   const handleRestore = (label: Label) => unarchiveLabel(label.id, label.name, refetch);
 
-  // ── Filtrado y orden (client-side) ─────────────────────────────────────────
+  // ── Filtrado y orden ─────────────────────────────────────────────────────
+  // Catálogo completo en cliente (caso real, total <= CATALOG_PAGE_SIZE): todos
+  // los filtros (estado, búsqueda por nombre/descripción, orden) se aplican
+  // sobre `labels` — UX idéntica a la versión anterior.
+  // Catálogo incompleto (total > CATALOG_PAGE_SIZE): la búsqueda ya viene
+  // resuelta por el servidor en `results` (filters=name__CONTAINS__q); aquí
+  // solo se aplican estado y orden sobre ese resultado.
 
   const filtered = useMemo(() => {
-    let list = labels;
+    let list = isComplete ? labels : results;
 
     // Estado
     if (statusFilter === "active") list = list.filter((l) => !l.isArchived);
     else if (statusFilter === "archived") list = list.filter((l) => l.isArchived);
 
-    // Búsqueda por nombre o descripción
-    const q = search.trim().toLowerCase();
-    if (q) {
+    // Búsqueda por nombre o descripción (solo client-side; server-side ya filtró por nombre)
+    const q = search.trim();
+    if (isComplete && q) {
       list = list.filter(
-        (l) =>
-          l.name.toLowerCase().includes(q) ||
-          (l.description ?? "").toLowerCase().includes(q),
+        (l) => matchesQuery(l.name, q) || matchesQuery(l.description ?? "", q),
       );
     }
 
@@ -107,7 +121,7 @@ export default function LabelsSettingsPage() {
       );
     }
     return sorted;
-  }, [labels, statusFilter, search, sort]);
+  }, [isComplete, labels, results, statusFilter, search, sort]);
 
   const totalByFilter = useMemo(() => {
     if (statusFilter === "active") return labels.filter((l) => !l.isArchived).length;
@@ -117,6 +131,7 @@ export default function LabelsSettingsPage() {
 
   const hasLabels = labels.length > 0;
   const hasSearch = search.trim().length > 0;
+  const canLoadMore = !isComplete && !loading;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -150,7 +165,7 @@ export default function LabelsSettingsPage() {
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => searchCatalog(e.target.value)}
                 placeholder="Buscar etiqueta..."
                 aria-label="Buscar etiqueta por nombre o descripción"
                 className={cn(
@@ -161,7 +176,7 @@ export default function LabelsSettingsPage() {
               {search && (
                 <button
                   type="button"
-                  onClick={() => setSearch("")}
+                  onClick={() => searchCatalog("")}
                   aria-label="Limpiar búsqueda"
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-subtle hover:text-ink"
                 >
@@ -253,7 +268,9 @@ export default function LabelsSettingsPage() {
 
           {/* Contador de resultados */}
           <p className="text-xs text-subtle" aria-live="polite" aria-atomic>
-            {hasSearch || statusFilter !== "all"
+            {!isComplete
+              ? `${labels.length} de ${total} etiquetas`
+              : hasSearch || statusFilter !== "all"
               ? filtered.length === totalByFilter
                 ? `${filtered.length} ${filtered.length === 1 ? "etiqueta" : "etiquetas"}`
                 : `${filtered.length} de ${totalByFilter} ${totalByFilter === 1 ? "etiqueta" : "etiquetas"}`
@@ -268,7 +285,7 @@ export default function LabelsSettingsPage() {
       )}
 
       {/* ── Contenido ── */}
-      {loading ? (
+      {loading && labels.length === 0 ? (
         <LabelGridSkeleton viewMode={viewMode} />
       ) : !hasLabels ? (
         <EmptyLabels onCreate={handleNewLabel} />
@@ -276,7 +293,7 @@ export default function LabelsSettingsPage() {
         <EmptyFiltered
           hasSearch={hasSearch}
           statusFilter={statusFilter}
-          onClearSearch={() => setSearch("")}
+          onClearSearch={() => searchCatalog("")}
           onSwitchFilter={() => setStatusFilter("all")}
         />
       ) : viewMode === "cards" ? (
@@ -303,6 +320,21 @@ export default function LabelsSettingsPage() {
             />
           ))}
         </LabelList>
+      )}
+
+      {/* Carga incremental — solo cuando el catálogo excede CATALOG_PAGE_SIZE */}
+      {!isComplete && filtered.length > 0 && (
+        <div className="mt-4 flex justify-center">
+          <Button
+            variant="ghost"
+            type="button"
+            size="sm"
+            onClick={loadMore}
+            disabled={!canLoadMore}
+          >
+            {loading ? "Cargando…" : "Cargar más etiquetas"}
+          </Button>
+        </div>
       )}
 
       <LabelFormModal
