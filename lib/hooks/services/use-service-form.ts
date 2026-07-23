@@ -10,6 +10,7 @@ import {
 } from "@/lib/hooks/services/service-form.schema";
 import type { CreateServiceRequest } from "@/lib/entity/services";
 import { notify } from "@/lib/utils/notify";
+import { applyServerErrorToFields } from "@/lib/validation/server-errors";
 
 export type { ServiceFormValues } from "@/lib/hooks/services/service-form.schema";
 
@@ -114,11 +115,21 @@ export function useServiceForm({
         }
         router.push(basePath);
         router.refresh();
-      } catch {
+      } catch (error) {
         // useServices ya muestra el toast de error (incl. 409 código duplicado).
+        // Además, si el mensaje real del backend cita el código enviado (ahora
+        // que services.service.ts ya no lo remapea a copy genérica), marcamos
+        // inline el campo Código para que el usuario vea qué corregir.
+        applyServerErrorToFields(error, form.setError, [
+          {
+            field: "code",
+            value: values.code,
+            message: "Ya existe un servicio con este código en tu clínica.",
+          },
+        ]);
       }
     },
-    [isEdit, serviceId, createService, updateService, router, basePath],
+    [isEdit, serviceId, createService, updateService, router, basePath, form.setError],
   );
 
   const handleCancel = useCallback(() => {

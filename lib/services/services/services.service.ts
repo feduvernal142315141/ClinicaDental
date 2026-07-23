@@ -24,18 +24,6 @@ import type {
 const endpoint = "/services";
 
 /**
- * Lanza un error amigable y específico para el conflicto de código duplicado
- * (HTTP 409), en vez del mensaje genérico/técnico del backend.
- */
-function throwDuplicateCodeError(): never {
-  const error = new Error(
-    "Ya existe un servicio con ese código. Usa un código distinto.",
-  ) as Error & { status?: number };
-  error.status = 409;
-  throw error;
-}
-
-/**
  * Build query string from params
  */
 function buildQueryString(params?: ServicesQueryParams): string {
@@ -125,10 +113,10 @@ async function createService(
     return (response.data as unknown as string) || true;
   }
 
-  if (response?.status === 409) {
-    throwDuplicateCodeError();
-  }
-
+  // El 409 ya no se remapea a copy genérica: handleServiceError propaga el
+  // mensaje real del backend (p.ej. "...en esta clínica.") vía safeUserMessage,
+  // lo que permite distinguir un conflicto scopeado a la clínica de cualquier
+  // otro 409 y evita ocultar el matiz de aislamiento multi-tenant.
   handleServiceError(response, "Error al crear servicio");
 }
 
@@ -149,10 +137,8 @@ async function updateService(
     return true;
   }
 
-  if (response?.status === 409) {
-    throwDuplicateCodeError();
-  }
-
+  // Ídem createService: dejamos que el mensaje real del backend fluya en vez
+  // de remapear el 409 a copy genérica.
   handleServiceError(response, "Error al actualizar servicio");
 }
 
