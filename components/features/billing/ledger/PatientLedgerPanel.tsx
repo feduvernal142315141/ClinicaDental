@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Wallet, Banknote, CircleDollarSign } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Wallet, Banknote, CircleDollarSign, FileText } from "lucide-react";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { DataTable } from "@/components/ui/data-display/data-table";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
@@ -24,6 +25,7 @@ export function PatientLedgerPanel({
   patientId,
   patientName,
 }: PatientLedgerPanelProps) {
+  const router = useRouter();
   const { can, isAdmin } = usePermission();
   const canCreate = isAdmin || can("billing", PermissionAction.CREATE);
   const { loading, ledger, fetchLedger } = usePatientLedger(patientId);
@@ -73,14 +75,24 @@ export function PatientLedgerPanel({
             </p>
           </div>
           {canCreate && (
-            <Button
-              type="button"
-              onClick={() => setPaymentOpen(true)}
-              className="shrink-0"
-            >
-              <Banknote className="h-4 w-4" />
-              Registrar pago
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  router.push(
+                    `/billing/estimates/new?patientId=${encodeURIComponent(patientId)}`,
+                  )
+                }
+              >
+                <FileText className="h-4 w-4" />
+                Nuevo presupuesto
+              </Button>
+              <Button type="button" onClick={() => setPaymentOpen(true)}>
+                <Banknote className="h-4 w-4" />
+                Registrar pago
+              </Button>
+            </div>
           )}
         </div>
 
@@ -155,9 +167,17 @@ export function PatientLedgerPanel({
                 key={est.id}
                 className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(
+                      `/billing/estimates/${est.id}?patientId=${encodeURIComponent(patientId)}`,
+                    )
+                  }
+                  className="text-left"
+                >
                   <p className="font-mono text-xs text-subtle">{est.code}</p>
-                  <p className="text-sm font-medium text-ink">
+                  <p className="text-sm font-medium text-ink hover:underline">
                     {formatMoney(est.total, est.currency)}
                     {est.validUntil && (
                       <span className="ml-2 text-xs font-normal text-subtle">
@@ -166,7 +186,7 @@ export function PatientLedgerPanel({
                       </span>
                     )}
                   </p>
-                </div>
+                </button>
                 <EstimateStatusBadge status={est.status} />
               </li>
             ))}
