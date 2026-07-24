@@ -16,6 +16,7 @@ import { AntdCompatProvider } from "@/components/layout/antd-compat-provider";
 import { AppChrome } from "@/components/layout/app-chrome";
 import { CommandPalette } from "@/components/ui/navigation/command-palette";
 import { GlobalErrorListeners } from "@/components/layout/global-error-listeners";
+import { FeedbackFAB } from "@/components/features/feedback/FeedbackFAB";
 
 interface RootClientProps {
   children: React.ReactNode;
@@ -48,6 +49,7 @@ export function RootClient({ children }: RootClientProps) {
                       <GlobalAlertDialog />
                       <CommandPalette />
                       <AppChrome>{children}</AppChrome>
+                      <FeedbackFAB />
                     </AlertProvider>
                   </AuthProvider>
                 </ClinicBrandingProvider>
