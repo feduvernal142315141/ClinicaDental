@@ -10,10 +10,10 @@ export default function UsersPage() {
   return (
     <>
       <PageHeader
-        title="Gestión de Doctores"
-        subtitle="Administre los doctores del sistema"
+        title="Gestión de Usuarios"
+        subtitle="Administre los usuarios del sistema"
         actionButton={{
-          label: "Nuevo Doctor",
+          label: "Nuevo Usuario",
           onClick: handleNewDoctor,
         }}
       />

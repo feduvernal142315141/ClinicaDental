@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 import type { FieldErrors, UseFormReturn } from "react-hook-form";
 import { CircleAlert, Clock, Coffee, User } from "lucide-react";
@@ -46,6 +46,7 @@ import {
 } from "@/lib/utils/schedule-bounds";
 import { cn } from "@/lib/utils/utils";
 import type { Doctor } from "@/lib/entity/doctors";
+import type { SelectOption } from "@/components/ui/controls/select";
 import type { ClinicScheduleDay } from "@/lib/entity/settings";
 import type { DoctorFormValues } from "@/lib/hooks/doctors/doctor-form.schema";
 
@@ -257,7 +258,16 @@ export function DoctorForm({
   const { rawSchedule } = useClinicGeneralSettings();
   const clinicSchedule = rawSchedule ?? null;
 
-  const { form, isEdit, loading, handleSubmit, handleCancel } = useDoctorForm({
+  const {
+    form,
+    isEdit,
+    loading,
+    handleSubmit,
+    handleCancel,
+    userTypes,
+    userTypesLoading,
+    assignedUserType,
+  } = useDoctorForm({
     doctorId,
     basePath,
     initialData,
@@ -282,12 +292,32 @@ export function DoctorForm({
       errs.licenceNumber ||
       errs.specialty ||
       errs.gender ||
+      errs.userTypeId ||
       errs.roleId;
     setTab(datos ? "datos" : errs.schedule ? "horarios" : "datos");
   };
 
   const roleOptions = roles.map((r) => ({ value: r.id, label: r.name }));
   const formDisabled = loading || readOnly;
+
+  // Opciones del Select "Tipo de usuario": catálogo ACTIVO de la clínica
+  // (`useUserTypes`, ver useDoctorForm) + el tipo ya asignado al doctor
+  // aunque esté ARCHIVADO (fusionado, marcado "(archivado)") — de lo
+  // contrario un doctor con un tipo archivado quedaría con el Select vacío
+  // y `requiredId` bloquearía el guardado sin tocar el campo.
+  const userTypeOptions: SelectOption[] = useMemo(() => {
+    const options = userTypes.map((t) => ({ value: t.id, label: t.name }));
+    if (
+      assignedUserType &&
+      !userTypes.some((t) => t.id === assignedUserType.id)
+    ) {
+      options.push({
+        value: assignedUserType.id,
+        label: `${assignedUserType.name} (archivado)`,
+      });
+    }
+    return options;
+  }, [userTypes, assignedUserType]);
 
   // Resumen + control de días con horario (variante ClinicPro). Abre/cierra un
   // día (misma acción que el switch del tile). Un día que la clínica no abre no
@@ -333,8 +363,17 @@ export function DoctorForm({
       errors.licenceNumber ||
       errors.specialty ||
       errors.gender ||
+      errors.userTypeId ||
       errors.roleId,
   );
+  const userTypeIdWatch = form.watch("userTypeId");
+  // La especialidad es obligatoria solo si el tipo elegido "atiende citas"
+  // (`attendsAppointments`) — se busca primero en el catálogo activo y, si no
+  // aparece (tipo archivado ya asignado), en `assignedUserType`.
+  const selectedUserType =
+    userTypes.find((t) => t.id === userTypeIdWatch) ??
+    (assignedUserType?.id === userTypeIdWatch ? assignedUserType : undefined);
+  const specialtyRequired = !!selectedUserType?.attendsAppointments;
   const horariosError = Boolean(errors.schedule);
 
   return (
@@ -456,7 +495,50 @@ export function DoctorForm({
                 <h3 className="text-sm font-semibold text-ink">
                   Información profesional
                 </h3>
-                <div className="grid gap-5 sm:grid-cols-3">
+                {/* items-start: evita que los FormItem se estiren a la altura
+                    del más alto (el de "Tipo de usuario" con su descripción) y
+                    los inputs de licencia/especialidad crezcan desalineados. */}
+                <div className="grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                  <FormField
+                    control={form.control}
+                    name="userTypeId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Tipo de usuario <Req />
+                        </FormLabel>
+                        <FormControl>
+                          {showRoleStatusFields ? (
+                            <Select
+                              value={field.value ?? ""}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              options={userTypeOptions}
+                              placeholder={
+                                userTypesLoading
+                                  ? "Cargando tipos…"
+                                  : "Seleccione un tipo"
+                              }
+                              disabled={formDisabled || userTypesLoading}
+                              searchable
+                              searchPlaceholder="Buscar tipo…"
+                            />
+                          ) : (
+                            <Input
+                              readOnly
+                              disabled
+                              value={assignedUserType?.name ?? ""}
+                            />
+                          )}
+                        </FormControl>
+                        <FormDescription className="text-xs leading-snug text-subtle">
+                          Cargo o profesión del usuario. Es distinto del Rol,
+                          que define los permisos.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="licenceNumber"
@@ -481,7 +563,9 @@ export function DoctorForm({
                     name="specialty"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Especialidad</FormLabel>
+                        <FormLabel>
+                          Especialidad {specialtyRequired && <Req />}
+                        </FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Ej: Ortodoncia"

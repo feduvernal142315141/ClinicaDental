@@ -4,7 +4,7 @@ import { useState, useMemo, type ReactNode } from "react";
 import {
   Pencil,
   Archive,
-  Tags,
+  IdCard,
   Plus,
   Search,
   LayoutGrid,
@@ -13,14 +13,16 @@ import {
   X,
   ArrowUpAZ,
   Clock,
+  CalendarCheck2,
+  CalendarOff,
 } from "lucide-react";
 import {
-  useLabelCatalog,
-  useArchiveLabelWithUndo,
-  useUnarchiveLabel,
-} from "@/lib/hooks/labels";
-import { LabelChip, LabelFormModal } from "@/components/app/labels";
-import type { Label } from "@/lib/entity/label";
+  useUserTypeCatalog,
+  useArchiveUserTypeWithUndo,
+  useUnarchiveUserType,
+} from "@/lib/hooks/userTypes";
+import { UserTypeFormModal } from "@/components/app/user-types";
+import type { UserType } from "@/lib/entity/userType";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import {
   Tabs,
@@ -51,9 +53,9 @@ type ViewMode = "cards" | "list";
 
 // ── Página ────────────────────────────────────────────────────────────────────
 
-export default function LabelsSettingsPage() {
+export default function UserTypesSettingsPage() {
   const {
-    labels,
+    userTypes,
     total,
     isComplete,
     loading,
@@ -62,9 +64,9 @@ export default function LabelsSettingsPage() {
     query: search,
     loadMore,
     refetch,
-  } = useLabelCatalog(true);
+  } = useUserTypeCatalog(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingLabel, setEditingLabel] = useState<Label | undefined>(undefined);
+  const [editingUserType, setEditingUserType] = useState<UserType | undefined>(undefined);
 
   // Toolbar state
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
@@ -73,42 +75,57 @@ export default function LabelsSettingsPage() {
 
   // Hooks de acciones — instanciados en página para que el Deshacer sobreviva
   // al desmontaje de tarjetas individuales.
-  const { archiveWithUndo } = useArchiveLabelWithUndo(refetch);
-  const { unarchiveLabel } = useUnarchiveLabel();
+  const { archiveWithUndo } = useArchiveUserTypeWithUndo(refetch);
+  const { unarchiveUserType } = useUnarchiveUserType();
 
-  const handleNewLabel = () => {
-    setEditingLabel(undefined);
+  // Tipos proveedor activos (attendsAppointments=true, no archivados) — para
+  // la defensa UX del switch "Atiende citas" en el modal (último proveedor).
+  const activeProviderIds = useMemo(
+    () =>
+      new Set(
+        userTypes.filter((t) => t.attendsAppointments && !t.isArchived).map((t) => t.id),
+      ),
+    [userTypes],
+  );
+  const isLastProvider =
+    !!editingUserType &&
+    activeProviderIds.size === 1 &&
+    activeProviderIds.has(editingUserType.id);
+
+  const handleNewUserType = () => {
+    setEditingUserType(undefined);
     setModalOpen(true);
   };
 
-  const handleEdit = (label: Label) => {
-    setEditingLabel(label);
+  const handleEdit = (userType: UserType) => {
+    setEditingUserType(userType);
     setModalOpen(true);
   };
 
-  const handleArchive = (label: Label) => archiveWithUndo(label.id, label.name);
-  const handleRestore = (label: Label) => unarchiveLabel(label.id, label.name, refetch);
+  const handleArchive = (userType: UserType) => archiveWithUndo(userType.id, userType.name);
+  const handleRestore = (userType: UserType) =>
+    unarchiveUserType(userType.id, userType.name, refetch);
 
   // ── Filtrado y orden ─────────────────────────────────────────────────────
   // Catálogo completo en cliente (caso real, total <= CATALOG_PAGE_SIZE): todos
   // los filtros (estado, búsqueda por nombre/descripción, orden) se aplican
-  // sobre `labels` — UX idéntica a la versión anterior.
+  // sobre `userTypes` — UX idéntica a la versión anterior.
   // Catálogo incompleto (total > CATALOG_PAGE_SIZE): la búsqueda ya viene
   // resuelta por el servidor en `results` (filters=name__CONTAINS__q); aquí
   // solo se aplican estado y orden sobre ese resultado.
 
   const filtered = useMemo(() => {
-    let list = isComplete ? labels : results;
+    let list = isComplete ? userTypes : results;
 
     // Estado
-    if (statusFilter === "active") list = list.filter((l) => !l.isArchived);
-    else if (statusFilter === "archived") list = list.filter((l) => l.isArchived);
+    if (statusFilter === "active") list = list.filter((t) => !t.isArchived);
+    else if (statusFilter === "archived") list = list.filter((t) => t.isArchived);
 
     // Búsqueda por nombre o descripción (solo client-side; server-side ya filtró por nombre)
     const q = search.trim();
     if (isComplete && q) {
       list = list.filter(
-        (l) => matchesQuery(l.name, q) || matchesQuery(l.description ?? "", q),
+        (t) => matchesQuery(t.name, q) || matchesQuery(t.description ?? "", q),
       );
     }
 
@@ -122,15 +139,15 @@ export default function LabelsSettingsPage() {
       );
     }
     return sorted;
-  }, [isComplete, labels, results, statusFilter, search, sort]);
+  }, [isComplete, userTypes, results, statusFilter, search, sort]);
 
   const totalByFilter = useMemo(() => {
-    if (statusFilter === "active") return labels.filter((l) => !l.isArchived).length;
-    if (statusFilter === "archived") return labels.filter((l) => l.isArchived).length;
-    return labels.length;
-  }, [labels, statusFilter]);
+    if (statusFilter === "active") return userTypes.filter((t) => !t.isArchived).length;
+    if (statusFilter === "archived") return userTypes.filter((t) => t.isArchived).length;
+    return userTypes.length;
+  }, [userTypes, statusFilter]);
 
-  const hasLabels = labels.length > 0;
+  const hasUserTypes = userTypes.length > 0;
   const hasSearch = search.trim().length > 0;
   const canLoadMore = !isComplete && !loading;
 
@@ -141,23 +158,23 @@ export default function LabelsSettingsPage() {
       {/* ── Cabecera ── */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-ink">Etiquetas</h2>
+          <h2 className="text-xl font-semibold text-ink">Tipos de usuario</h2>
           <p className="mt-0.5 text-sm text-subtle">
-            Administra las etiquetas para categorizar citas
+            Administra los tipos de usuario (profesión/cargo) de tu clínica
           </p>
         </div>
         <Button
           type="primary"
-          onClick={handleNewLabel}
+          onClick={handleNewUserType}
           icon={<Plus className="h-4 w-4" />}
           size="middle"
         >
-          Nueva etiqueta
+          Nuevo tipo de usuario
         </Button>
       </div>
 
       {/* ── Toolbar ── */}
-      {hasLabels && (
+      {hasUserTypes && (
         <div className="mb-5 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             {/* Búsqueda */}
@@ -167,8 +184,8 @@ export default function LabelsSettingsPage() {
                 type="text"
                 value={search}
                 onChange={(e) => searchCatalog(e.target.value)}
-                placeholder="Buscar etiqueta..."
-                aria-label="Buscar etiqueta por nombre o descripción"
+                placeholder="Buscar tipo de usuario..."
+                aria-label="Buscar tipo de usuario por nombre o descripción"
                 className={cn(
                   "h-9 w-full rounded-lg border border-hairline bg-surface pl-9 pr-9 text-sm text-ink placeholder:text-subtle",
                   "outline-none transition-colors focus:border-brand/60 focus:ring-2 focus:ring-brand/20",
@@ -193,13 +210,13 @@ export default function LabelsSettingsPage() {
             >
               <TabsList className="h-9">
                 <TabsTrigger value="active" className="py-1 text-xs">
-                  Activas
+                  Activos
                 </TabsTrigger>
                 <TabsTrigger value="archived" className="py-1 text-xs">
-                  Archivadas
+                  Archivados
                 </TabsTrigger>
                 <TabsTrigger value="all" className="py-1 text-xs">
-                  Todas
+                  Todos
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -270,15 +287,15 @@ export default function LabelsSettingsPage() {
           {/* Contador de resultados */}
           <p className="text-xs text-subtle" aria-live="polite" aria-atomic>
             {!isComplete
-              ? `${labels.length} de ${total} etiquetas`
+              ? `${userTypes.length} de ${total} tipos de usuario`
               : hasSearch || statusFilter !== "all"
               ? filtered.length === totalByFilter
-                ? `${filtered.length} ${filtered.length === 1 ? "etiqueta" : "etiquetas"}`
-                : `${filtered.length} de ${totalByFilter} ${totalByFilter === 1 ? "etiqueta" : "etiquetas"}`
-              : `${filtered.length} ${filtered.length === 1 ? "etiqueta" : "etiquetas"}`}
+                ? `${filtered.length} ${filtered.length === 1 ? "tipo de usuario" : "tipos de usuario"}`
+                : `${filtered.length} de ${totalByFilter} ${totalByFilter === 1 ? "tipo de usuario" : "tipos de usuario"}`
+              : `${filtered.length} ${filtered.length === 1 ? "tipo de usuario" : "tipos de usuario"}`}
             {statusFilter === "archived" && filtered.length > 0 && (
               <span className="ml-1.5 text-subtle/70">
-                — archivadas (ocultas para nuevas citas)
+                — archivados (ocultos al asignar tipo a nuevos usuarios)
               </span>
             )}
           </p>
@@ -286,10 +303,10 @@ export default function LabelsSettingsPage() {
       )}
 
       {/* ── Contenido ── */}
-      {loading && labels.length === 0 ? (
-        <LabelGridSkeleton viewMode={viewMode} />
-      ) : !hasLabels ? (
-        <EmptyLabels onCreate={handleNewLabel} />
+      {loading && userTypes.length === 0 ? (
+        <UserTypeGridSkeleton viewMode={viewMode} />
+      ) : !hasUserTypes ? (
+        <EmptyUserTypes onCreate={handleNewUserType} />
       ) : filtered.length === 0 ? (
         <EmptyFiltered
           hasSearch={hasSearch}
@@ -298,29 +315,29 @@ export default function LabelsSettingsPage() {
           onSwitchFilter={() => setStatusFilter("all")}
         />
       ) : viewMode === "cards" ? (
-        <LabelGrid>
-          {filtered.map((label) => (
-            <LabelCard
-              key={label.id}
-              label={label}
+        <UserTypeGrid>
+          {filtered.map((userType) => (
+            <UserTypeCard
+              key={userType.id}
+              userType={userType}
               onEdit={handleEdit}
               onArchive={handleArchive}
               onRestore={handleRestore}
             />
           ))}
-        </LabelGrid>
+        </UserTypeGrid>
       ) : (
-        <LabelList>
-          {filtered.map((label) => (
-            <LabelListRow
-              key={label.id}
-              label={label}
+        <UserTypeList>
+          {filtered.map((userType) => (
+            <UserTypeListRow
+              key={userType.id}
+              userType={userType}
               onEdit={handleEdit}
               onArchive={handleArchive}
               onRestore={handleRestore}
             />
           ))}
-        </LabelList>
+        </UserTypeList>
       )}
 
       {/* Carga incremental — solo cuando el catálogo excede CATALOG_PAGE_SIZE */}
@@ -333,16 +350,17 @@ export default function LabelsSettingsPage() {
             onClick={loadMore}
             disabled={!canLoadMore}
           >
-            {loading ? "Cargando…" : "Cargar más etiquetas"}
+            {loading ? "Cargando…" : "Cargar más tipos de usuario"}
           </Button>
         </div>
       )}
 
-      <LabelFormModal
+      <UserTypeFormModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSuccess={refetch}
-        label={editingLabel}
+        userType={editingUserType}
+        isLastProvider={isLastProvider}
       />
     </>
   );
@@ -350,7 +368,7 @@ export default function LabelsSettingsPage() {
 
 // ── Layout helpers ─────────────────────────────────────────────────────────────
 
-function LabelGrid({ children }: { children: ReactNode }) {
+function UserTypeGrid({ children }: { children: ReactNode }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
       {children}
@@ -358,7 +376,7 @@ function LabelGrid({ children }: { children: ReactNode }) {
   );
 }
 
-function LabelList({ children }: { children: ReactNode }) {
+function UserTypeList({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col divide-y divide-hairline rounded-bento border border-hairline bg-surface">
       {children}
@@ -366,7 +384,7 @@ function LabelList({ children }: { children: ReactNode }) {
   );
 }
 
-function LabelGridSkeleton({ viewMode }: { viewMode: ViewMode }) {
+function UserTypeGridSkeleton({ viewMode }: { viewMode: ViewMode }) {
   if (viewMode === "list") {
     return (
       <div className="flex flex-col divide-y divide-hairline rounded-bento border border-hairline bg-surface">
@@ -395,21 +413,21 @@ function LabelGridSkeleton({ viewMode }: { viewMode: ViewMode }) {
 
 // ── Estados vacíos ─────────────────────────────────────────────────────────────
 
-function EmptyLabels({ onCreate }: { onCreate: () => void }) {
+function EmptyUserTypes({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="bento flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
       <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand/10 text-brand">
-        <Tags className="h-7 w-7" />
+        <IdCard className="h-7 w-7" />
       </span>
       <div className="space-y-1">
-        <h3 className="text-base font-semibold text-ink">Aún no hay etiquetas</h3>
+        <h3 className="text-base font-semibold text-ink">Aún no hay tipos de usuario</h3>
         <p className="mx-auto max-w-sm text-sm text-subtle">
-          Crea tu primera etiqueta para clasificar y filtrar las citas por tipo,
-          prioridad o estado.
+          Crea el primer tipo (ej. Dentista, Recepcionista) para clasificar al
+          personal de tu clínica y definir quién atiende citas.
         </p>
       </div>
       <Button type="primary" onClick={onCreate} icon={<Plus className="h-4 w-4" />}>
-        Nueva etiqueta
+        Nuevo tipo de usuario
       </Button>
     </div>
   );
@@ -435,26 +453,26 @@ function EmptyFiltered({
         {hasSearch ? (
           <Search className="h-5 w-5" />
         ) : (
-          <Tags className="h-5 w-5" />
+          <IdCard className="h-5 w-5" />
         )}
       </span>
       <h3 className="mb-1 text-sm font-semibold text-ink">
         {hasSearch
           ? "Sin resultados para esa búsqueda"
           : isArchived
-          ? "No hay etiquetas archivadas"
+          ? "No hay tipos de usuario archivados"
           : isActive
-          ? "No hay etiquetas activas"
-          : "No hay etiquetas"}
+          ? "No hay tipos de usuario activos"
+          : "No hay tipos de usuario"}
       </h3>
       <p className="mx-auto mb-4 max-w-xs text-xs text-subtle">
         {hasSearch
           ? "Prueba con otro término o limpia el filtro de búsqueda."
           : isArchived
-          ? "Las etiquetas archivadas se muestran aquí. Puedes archivar cualquier etiqueta activa."
+          ? "Los tipos archivados se muestran aquí. Puedes archivar cualquier tipo activo."
           : isActive
-          ? "Todas tus etiquetas están archivadas. Puedes restaurarlas desde el filtro «Archivadas»."
-          : "No hay etiquetas que coincidan con los filtros activos."}
+          ? "Todos tus tipos de usuario están archivados. Puedes restaurarlos desde el filtro «Archivados»."
+          : "No hay tipos de usuario que coincidan con los filtros activos."}
       </p>
       <div className="flex items-center justify-center gap-2">
         {hasSearch && (
@@ -464,7 +482,7 @@ function EmptyFiltered({
         )}
         {(isArchived || isActive) && !hasSearch && (
           <Button variant="outline" type="button" size="sm" onClick={onSwitchFilter}>
-            Ver todas las etiquetas
+            Ver todos los tipos de usuario
           </Button>
         )}
       </div>
@@ -472,17 +490,39 @@ function EmptyFiltered({
   );
 }
 
-// ── LabelCard (vista tarjetas) ─────────────────────────────────────────────────
+// ── ProviderBadge ────────────────────────────────────────────────────────────
 
-interface CardProps {
-  label: Label;
-  onEdit: (l: Label) => void;
-  onArchive: (l: Label) => void;
-  onRestore: (l: Label) => void;
+function ProviderBadge({ attendsAppointments }: { attendsAppointments: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+        attendsAppointments
+          ? "bg-brand/10 text-brand"
+          : "bg-hover text-subtle",
+      )}
+    >
+      {attendsAppointments ? (
+        <CalendarCheck2 className="h-3 w-3" />
+      ) : (
+        <CalendarOff className="h-3 w-3" />
+      )}
+      {attendsAppointments ? "Atiende citas" : "No atiende citas"}
+    </span>
+  );
 }
 
-function LabelCard({ label, onEdit, onArchive, onRestore }: CardProps) {
-  const isArchived = label.isArchived;
+// ── UserTypeCard (vista tarjetas) ───────────────────────────────────────────────
+
+interface CardProps {
+  userType: UserType;
+  onEdit: (t: UserType) => void;
+  onArchive: (t: UserType) => void;
+  onRestore: (t: UserType) => void;
+}
+
+function UserTypeCard({ userType, onEdit, onArchive, onRestore }: CardProps) {
+  const isArchived = userType.isArchived;
 
   return (
     <article
@@ -494,32 +534,34 @@ function LabelCard({ label, onEdit, onArchive, onRestore }: CardProps) {
           : "hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-20px_rgba(16,24,40,0.5)]",
       )}
     >
-      {/* Acento de color */}
+      {/* Acento */}
       <span
         aria-hidden
-        className="absolute inset-x-0 top-0 h-1"
-        style={{ backgroundColor: label.color }}
+        className={cn(
+          "absolute inset-x-0 top-0 h-1",
+          userType.attendsAppointments ? "bg-brand" : "bg-subtle/40",
+        )}
       />
 
       <div className="flex items-start justify-between gap-2 pt-1">
-        <LabelChip label={label} size="md" />
+        <h3 className="truncate text-sm font-semibold text-ink" title={userType.name}>
+          {userType.name}
+        </h3>
 
         {isArchived ? (
-          /* Tarjeta archivada: badge + botón Restaurar */
           <div className="flex shrink-0 items-center gap-1.5">
             <span className="rounded-full bg-hover px-2 py-0.5 text-[11px] font-medium text-subtle">
-              Archivada
+              Archivado
             </span>
           </div>
         ) : (
-          /* Tarjeta activa: editar + archivar (hover) */
           <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover:opacity-100 [@media(pointer:coarse)]:opacity-100">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => onEdit(label)}
-                  aria-label={`Editar ${label.name}`}
+                  onClick={() => onEdit(userType)}
+                  aria-label={`Editar ${userType.name}`}
                   className="grid h-8 w-8 place-items-center rounded-lg text-subtle outline-none transition-colors hover:bg-hover hover:text-brand focus-visible:ring-2 focus-visible:ring-brand/45"
                 >
                   <Pencil className="h-4 w-4" />
@@ -532,37 +574,39 @@ function LabelCard({ label, onEdit, onArchive, onRestore }: CardProps) {
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => onArchive(label)}
-                  aria-label={`Archivar ${label.name}`}
+                  onClick={() => onArchive(userType)}
+                  aria-label={`Archivar ${userType.name}`}
                   className="grid h-8 w-8 place-items-center rounded-lg text-subtle outline-none transition-colors hover:bg-amber-500/10 hover:text-amber-600 focus-visible:ring-2 focus-visible:ring-amber-400/40 dark:hover:text-amber-400"
                 >
                   <Archive className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                Archivar — se ocultará para nuevas citas
+                Archivar — se ocultará al asignar tipo a nuevos usuarios
               </TooltipContent>
             </Tooltip>
           </div>
         )}
       </div>
 
+      <ProviderBadge attendsAppointments={userType.attendsAppointments} />
+
       <p
         className={cn(
           "line-clamp-2 text-[13px] leading-relaxed",
-          label.description ? "text-subtle" : "italic text-subtle/50",
+          userType.description ? "text-subtle" : "italic text-subtle/50",
         )}
       >
-        {label.description || "Sin descripción"}
+        {userType.description || "Sin descripción"}
       </p>
 
-      {/* Restaurar — solo en archivadas, siempre visible */}
+      {/* Restaurar — solo en archivados, siempre visible */}
       {isArchived && (
         <div className="mt-auto pt-1">
           <button
             type="button"
-            onClick={() => onRestore(label)}
-            aria-label={`Restaurar ${label.name}`}
+            onClick={() => onRestore(userType)}
+            aria-label={`Restaurar ${userType.name}`}
             className={cn(
               "flex w-full items-center justify-center gap-1.5 rounded-lg border border-hairline bg-hover px-3 py-1.5",
               "text-xs font-medium text-subtle outline-none transition-colors",
@@ -571,7 +615,7 @@ function LabelCard({ label, onEdit, onArchive, onRestore }: CardProps) {
             )}
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            Restaurar etiqueta
+            Restaurar tipo de usuario
           </button>
         </div>
       )}
@@ -579,25 +623,32 @@ function LabelCard({ label, onEdit, onArchive, onRestore }: CardProps) {
   );
 }
 
-// ── LabelListRow (vista lista compacta) ────────────────────────────────────────
+// ── UserTypeListRow (vista lista compacta) ──────────────────────────────────────
 
-function LabelListRow({ label, onEdit, onArchive, onRestore }: CardProps) {
+function UserTypeListRow({ userType, onEdit, onArchive, onRestore }: CardProps) {
   return (
     <CatalogListRow
       leading={
         <span
           aria-hidden
-          className="mt-0.5 block h-2.5 w-2.5 rounded-full"
-          style={{ backgroundColor: label.color }}
+          className={cn(
+            "mt-0.5 block h-2.5 w-2.5 rounded-full",
+            userType.attendsAppointments ? "bg-brand" : "bg-subtle/40",
+          )}
         />
       }
-      title={<LabelChip label={label} size="sm" />}
-      description={label.description}
-      archived={label.isArchived}
-      entityName={label.name}
-      onEdit={() => onEdit(label)}
-      onArchive={() => onArchive(label)}
-      onRestore={() => onRestore(label)}
+      title={
+        <span className="truncate text-sm font-medium text-ink" title={userType.name}>
+          {userType.name}
+        </span>
+      }
+      meta={<ProviderBadge attendsAppointments={userType.attendsAppointments} />}
+      description={userType.description}
+      archived={userType.isArchived}
+      entityName={userType.name}
+      onEdit={() => onEdit(userType)}
+      onArchive={() => onArchive(userType)}
+      onRestore={() => onRestore(userType)}
     />
   );
 }

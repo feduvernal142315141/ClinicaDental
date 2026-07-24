@@ -12,7 +12,7 @@ import {
 
 const SETTINGS_TABS = [
   { value: "general", label: "Opciones Generales" },
-  { value: "doctors", label: "Doctores y Roles" },
+  { value: "doctors", label: "Usuarios y Roles" },
   { value: "notifications", label: "Notificaciones" },
   { value: "integrations", label: "Integraciones" },
 ];

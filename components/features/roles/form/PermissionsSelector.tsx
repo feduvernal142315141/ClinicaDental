@@ -39,7 +39,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   appointments: "Citas",
   patients: "Pacientes",
   clinical: "Clínico",
-  doctors: "Doctores",
+  doctors: "Usuarios",
   settings: "Configuración",
   reports: "Reportes",
 };

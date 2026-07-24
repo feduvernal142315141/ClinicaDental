@@ -63,6 +63,13 @@ function buildQueryString(params?: DoctorsQueryParams): string {
     queryParams.append("sort", params.sort);
   }
 
+  // Endpoint semántico: "los que atienden citas" — el BACKEND resuelve qué
+  // tipos de usuario cumplen attendsAppointments=true. El front nunca manda
+  // la lista de tipos.
+  if (params.onlyProviders === true) {
+    queryParams.append("onlyProviders", "true");
+  }
+
   return queryParams.toString();
 }
 

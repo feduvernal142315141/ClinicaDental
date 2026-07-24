@@ -12,8 +12,8 @@ export default function NewUserPage() {
   return (
     <>
       <PageHeader
-        title="Nuevo Doctor"
-        subtitle="Registre un nuevo doctor en el sistema"
+        title="Nuevo Usuario"
+        subtitle="Registre un nuevo usuario en el sistema"
         actionButton={{
           label: "Atrás",
           onClick: handleBackToList,

@@ -15,9 +15,9 @@ interface DoctorDetailProps {
 }
 
 /**
- * Doctor Detail Component
+ * Doctor Detail Component (Usuario)
  *
- * Displays detailed information about a doctor in read-only mode.
+ * Displays detailed information about a clinic user in read-only mode.
  * Uses the same DoctorForm component with disabled fields.
  *
  * @example
@@ -37,8 +37,8 @@ export function DoctorDetail({
   return (
     <>
       <PageHeader
-        title="Detalle del Doctor"
-        subtitle="Visualice la información del doctor en el sistema"
+        title="Detalle del Usuario"
+        subtitle="Visualice la información del usuario en el sistema"
         actions={
           <div className="flex gap-2">
             <Button type="button" onClick={handleEdit} className="gap-2">

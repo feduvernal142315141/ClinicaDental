@@ -18,8 +18,8 @@ export default function EditDoctorPage({ params }: PageProps) {
   return (
     <>
       <PageHeader
-        title="Editar Doctor"
-        subtitle="Actualice la información del doctor en el sistema"
+        title="Editar Usuario"
+        subtitle="Actualice la información del usuario en el sistema"
         actionButton={{
           label: "Atrás",
           onClick: handleBackToList,

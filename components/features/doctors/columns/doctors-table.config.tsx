@@ -13,7 +13,10 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/primitives/shadcn/dropdown-menu";
 import type { DoctorListItem } from "@/lib/entity/doctors";
-import { ActiveBadge } from "@/components/ui/atomic/data-display/status-badge";
+import {
+  ActiveBadge,
+  StatusBadge,
+} from "@/components/ui/atomic/data-display/status-badge";
 import dayjs from "dayjs";
 
 interface GetDoctorsColumnsParams {
@@ -41,7 +44,7 @@ export function getDoctorsColumns({
   return [
     {
       key: "name",
-      title: "Doctor",
+      title: "Usuario",
       dataIndex: "name",
       sorter: true,
       render: (_, record) => (
@@ -87,6 +90,22 @@ export function getDoctorsColumns({
       ),
     },
     {
+      key: "userType",
+      title: "Tipo",
+      dataIndex: "userType",
+      render: (_, record) => {
+        const userType = record.userType;
+        if (!userType?.name) {
+          return <span className="text-sm text-subtle">-</span>;
+        }
+        return (
+          <StatusBadge tone={userType.attendsAppointments ? "info" : "neutral"}>
+            {userType.name}
+          </StatusBadge>
+        );
+      },
+    },
+    {
       key: "active",
       title: "Estado",
       dataIndex: "active",
@@ -111,14 +130,14 @@ export function getDoctorsColumns({
         <div className="flex items-center justify-center gap-1">
           <button
             onClick={() => onView(record.id)}
-            title="Ver doctor"
+            title="Ver usuario"
             className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-brand"
           >
             <Eye className="h-4 w-4" />
           </button>
           <button
             onClick={() => onEdit(record.id)}
-            title="Editar doctor"
+            title="Editar usuario"
             className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink"
           >
             <Pencil className="h-4 w-4" />

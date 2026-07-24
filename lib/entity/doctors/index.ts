@@ -3,6 +3,9 @@
  *
  * Type definitions for doctor-related entities
  */
+import type { UserTypeRef } from "@/lib/entity/userType";
+
+export type { UserTypeRef } from "@/lib/entity/userType";
 
 /**
  * Role entity
@@ -12,6 +15,20 @@ export interface Role {
   name: string;
   description?: string;
 }
+
+/**
+ * Tipo de usuario (profesión/cargo). ORTOGONAL al Rol (permisos): el Rol
+ * define qué puede hacer en el sistema (Administrador/DOCTOR); el tipo de
+ * usuario describe su cargo clínico o administrativo. No mezclar.
+ *
+ * El tipo de usuario es un CATÁLOGO GESTIONABLE per-clínica (`GET /user-types`,
+ * ver `lib/entity/userType`): el front NUNCA hardcodea la lista ni sus labels.
+ * Un `Doctor` referencia el catálogo por `userTypeId` (FK) y el backend resuelve
+ * el objeto embebido `userType` (`{ id, name, attendsAppointments }`). La
+ * clinicalidad ("atiende citas") se lee de `attendsAppointments` del dato
+ * (`isProviderUserType` / `deriveProviderUserTypeIds` en `lib/entity/userType`),
+ * no de una lista fija de códigos.
+ */
 
 /**
  * Doctor entity - Full representation
@@ -27,6 +44,17 @@ export interface Doctor {
   avatarUrl?: string;
   schedule?: Record<string, unknown>; // JSON schedule data
   gender?: "male" | "female" | "other";
+  /**
+   * FK al catálogo de tipos de usuario (`GET /user-types`). `null`/`undefined`
+   * ⇒ el backend resuelve el default proveedor de la clínica al crear.
+   */
+  userTypeId?: string | null;
+  /**
+   * Tipo de usuario resuelto por el backend a partir del catálogo:
+   * `{ id, name, attendsAppointments }`. `null` si `userTypeId` no matchea
+   * ningún tipo del catálogo de la clínica. Distinto del Rol (permisos).
+   */
+  userType?: UserTypeRef | null;
   role?: Role;
   roleId?: string;
   active: boolean;
@@ -44,6 +72,10 @@ export interface DoctorListItem {
   phone?: string;
   licenceNumber: string;
   specialty?: string;
+  /** FK al catálogo de tipos de usuario; ver `Doctor.userTypeId`. */
+  userTypeId?: string | null;
+  /** Tipo de usuario resuelto del catálogo; ver `Doctor.userType`. */
+  userType?: UserTypeRef | null;
   role?: Role;
   active: boolean;
   createAt: string;
@@ -63,6 +95,11 @@ export interface CreateDoctorRequest {
   avatarUrl?: string;
   schedule?: object; // JSON object (Spring Boot handles conversion)
   gender?: "male" | "female" | "other";
+  /**
+   * FK al catálogo de tipos de usuario (`UUID`). Opcional; si se omite el
+   * backend aplica el tipo proveedor por defecto de la clínica.
+   */
+  userTypeId?: string;
   roleId?: string;
   active?: boolean;
 }
@@ -81,6 +118,8 @@ export interface UpdateDoctorRequest {
   avatarUrl?: string;
   schedule?: object; // JSON object (Spring Boot handles conversion)
   gender?: "male" | "female" | "other";
+  /** FK al catálogo de tipos de usuario. Merge null-aware: omitido conserva el actual. */
+  userTypeId?: string;
   roleId?: string;
   active?: boolean;
 }
@@ -105,6 +144,12 @@ export interface DoctorsQueryParams {
   active?: boolean;
   /** Orden semántico: clave lógica + dirección, ej. "name:asc" */
   sort?: string;
+  /**
+   * Endpoint semántico: pide al BACKEND solo los doctores cuyo tipo de
+   * usuario atiende citas (`attendsAppointments=true`). El front nunca
+   * envía la lista de tipos, solo esta intención.
+   */
+  onlyProviders?: boolean;
 }
 
 /**

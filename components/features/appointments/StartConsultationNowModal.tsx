@@ -62,7 +62,10 @@ export function StartConsultationNowModal({
     if (!open) return;
     setDoctorsLoading(true);
     doctorsService
-      .getDoctors({ pageSize: 100 })
+      // Consulta express: el BACKEND resuelve qué tipos de usuario atienden
+      // citas (endpoint semántico `onlyProviders`); el front nunca conoce la
+      // lista de tipos clínicos.
+      .getDoctors({ pageSize: 100, onlyProviders: true })
       .then((result) => {
         setDoctors(result?.entities ?? []);
       })

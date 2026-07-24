@@ -217,7 +217,14 @@ export function useAppointmentForm({
       const [patientsResponse, doctorsResponse, servicesResponse] =
         await Promise.all([
           patientsService.getPatients({ page: 0, pageSize: 100 }),
-          doctorsService.getDoctors({ page: 0, pageSize: 100 }),
+          // Proveedor de cita: el BACKEND resuelve qué tipos de usuario
+          // atienden citas (endpoint semántico `onlyProviders`); el front
+          // nunca envía la lista de tipos.
+          doctorsService.getDoctors({
+            page: 0,
+            pageSize: 100,
+            onlyProviders: true,
+          }),
           servicesService.getServices({ page: 0, pageSize: 200 }),
         ]);
 
@@ -236,8 +243,13 @@ export function useAppointmentForm({
           `${item.name}${item.specialty ? ` - ${item.specialty}` : ""}`,
         ]),
       );
-      // En el scheduler solo ofrecemos doctores activos: un doctor inactivo no
-      // puede recibir nuevas citas (espeja el filtro `active` de los servicios).
+      // En el selector solo ofrecemos doctores activos: el BACKEND ya
+      // restringe la lista a proveedores (tipo con `attendsAppointments=true`)
+      // vía `onlyProviders`, así que aquí solo filtramos por `active` (un
+      // doctor inactivo no puede recibir nuevas citas, espeja el filtro de
+      // los servicios). `doctorCatalogRef` arriba SÍ conserva el catálogo
+      // completo (incluye inactivos) para poder seguir resolviendo en edición
+      // un proveedor ya asignado que hoy no aparecería como opción nueva.
       setDoctorsOptions(
         doctorEntities
           .filter((item) => item.active)

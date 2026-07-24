@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDoctors } from "@/lib/hooks/doctors";
+import { useUserTypes } from "@/lib/hooks/userTypes";
 import { notifyApiError } from "@/lib/utils/notify-error";
 import { applyServerErrorToFields } from "@/lib/validation/server-errors";
 import { DEFAULT_WEEK_SCHEDULE } from "@/lib/entity/schedule";
@@ -16,6 +17,8 @@ import type {
   Doctor,
 } from "@/lib/entity/doctors";
 import type { ClinicSchedule } from "@/lib/entity/settings";
+import type { UserTypeRef } from "@/lib/entity/userType";
+import { deriveProviderUserTypeIds } from "@/lib/entity/userType";
 
 export type { DoctorFormValues } from "@/lib/hooks/doctors/doctor-form.schema";
 
@@ -130,9 +133,33 @@ export function useDoctorForm({
 
   const { createDoctor, updateDoctor, getDoctorById, loading } = useDoctors();
 
+  // Catálogo GESTIONABLE de tipos de usuario (solo activos): reemplaza el
+  // enum hardcodeado. Se centraliza aquí (capa hook) porque tanto el resolver
+  // (especialidad condicional) como el Select de `DoctorForm` lo necesitan.
+  const { userTypes, loading: userTypesLoading } = useUserTypes();
+
+  // Tipo asignado al doctor en edición, tal como lo resuelve el backend
+  // (`{ id, name, attendsAppointments }`). Puede estar ARCHIVADO (fuera de
+  // `userTypes`) — se conserva aparte para no perderlo del Select ni de la
+  // validación de especialidad.
+  const [assignedUserType, setAssignedUserType] = useState<UserTypeRef | null>(
+    null,
+  );
+
+  // ids del catálogo con `attendsAppointments=true` (+ el asignado, aunque
+  // esté archivado) — sustituye la comparación contra `CLINICAL_USER_TYPES`.
+  const providerTypeIds = useMemo(() => {
+    const ids = deriveProviderUserTypeIds(userTypes);
+    if (assignedUserType?.attendsAppointments) ids.add(assignedUserType.id);
+    return ids;
+  }, [userTypes, assignedUserType]);
+
   const resolver = useMemo(
-    () => zodResolver(makeDoctorFormSchema(requireRole, clinicSchedule)),
-    [requireRole, clinicSchedule],
+    () =>
+      zodResolver(
+        makeDoctorFormSchema(requireRole, clinicSchedule, providerTypeIds),
+      ),
+    [requireRole, clinicSchedule, providerTypeIds],
   );
 
   const form = useForm<DoctorFormValues>({
@@ -145,6 +172,10 @@ export function useDoctorForm({
       licenceNumber: "",
       specialty: "",
       gender: undefined,
+      // Sin default hardcodeado: se preselecciona el tipo proveedor del
+      // catálogo (ver efecto más abajo) en cuanto carga; en edición se
+      // prellena con el valor existente (ver `prefill`).
+      userTypeId: "",
       description: "",
       avatarUrl: "",
       roleId: "",
@@ -152,10 +183,26 @@ export function useDoctorForm({
       schedule: DEFAULT_WEEK_SCHEDULE as unknown as ScheduleShape,
     },
   });
-  const { reset } = form;
+  const { reset, getValues, setValue } = form;
+
+  // Alta (create): preseleccionar un tipo proveedor por defecto en cuanto
+  // carga el catálogo (paridad UX con el antiguo default "DENTISTA"), sin
+  // pisar una elección ya hecha por el usuario. Preferimos "Dentista" por
+  // nombre (mismo default que el backfill del backend); si no existe, el
+  // primer tipo con `attendsAppointments=true`.
+  useEffect(() => {
+    if (isEdit || userTypes.length === 0) return;
+    if (getValues("userTypeId")) return;
+    const preferred =
+      userTypes.find((t) => t.name === "Dentista" && t.attendsAppointments) ??
+      userTypes.find((t) => t.attendsAppointments) ??
+      userTypes[0];
+    if (preferred) setValue("userTypeId", preferred.id);
+  }, [isEdit, userTypes, getValues, setValue]);
 
   const prefill = useCallback(
     (doctor: Doctor) => {
+      setAssignedUserType(doctor.userType ?? null);
       reset({
         name: doctor.name ?? "",
         email: doctor.email ?? "",
@@ -163,6 +210,7 @@ export function useDoctorForm({
         licenceNumber: doctor.licenceNumber ?? "",
         specialty: doctor.specialty ?? "",
         gender: doctor.gender,
+        userTypeId: doctor.userTypeId ?? doctor.userType?.id ?? "",
         description: doctor.description ?? "",
         avatarUrl: doctor.avatarUrl ?? "",
         // Fallback a role.id por si el detalle no trae roleId top-level.
@@ -209,6 +257,7 @@ export function useDoctorForm({
             // enviando cadena vacía en vez de omitir la clave.
             specialty: values.specialty ?? "",
             gender: values.gender,
+            userTypeId: values.userTypeId,
             description: values.description ?? "",
             avatarUrl: values.avatarUrl,
             schedule: scheduleData,
@@ -226,6 +275,7 @@ export function useDoctorForm({
             licenceNumber: values.licenceNumber,
             specialty: values.specialty || undefined,
             gender: values.gender,
+            userTypeId: values.userTypeId || undefined,
             description: values.description || undefined,
             avatarUrl: values.avatarUrl || undefined,
             schedule: scheduleData,
@@ -282,5 +332,11 @@ export function useDoctorForm({
     handleSubmit,
     handleCancel,
     handleBack,
+    // Catálogo de tipos de usuario (activos) + tipo asignado (aunque esté
+    // archivado): `DoctorForm` los usa para poblar el Select y para derivar
+    // si la especialidad es obligatoria.
+    userTypes,
+    userTypesLoading,
+    assignedUserType,
   };
 }

@@ -11,6 +11,7 @@ import {
   Shield,
   Briefcase,
   Tag,
+  IdCard,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -36,7 +37,8 @@ export function useSidebarNavigation(userRole?: string) {
 
     const settingsChildren: MenuItem[] = [
       { path: "/settings/general", label: "Opciones Generales", icon: Sliders },
-      { path: "/settings/doctors", label: "Doctores", icon: UserCog },
+      { path: "/settings/doctors", label: "Usuarios", icon: UserCog },
+      { path: "/settings/user-types", label: "Tipos de usuario", icon: IdCard },
       { path: "/settings/roles", label: "Roles", icon: Shield },
       // MVP: notifications and integrations hidden until post-MVP
       // { path: "/settings/notifications", label: "Notificaciones", icon: Bell },

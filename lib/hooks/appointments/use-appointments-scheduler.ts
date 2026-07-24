@@ -107,6 +107,16 @@ export function useAppointmentsScheduler(
   const [visibleDoctorIds, setVisibleDoctorIds] = useState<Set<string>>(
     new Set(),
   );
+  /**
+   * Ids de proveedores NO clínicos (recepción, administrativo, técnico…) que
+   * quedan fuera del sidebar (solo el personal clínico es seleccionable), pero
+   * que pueden tener citas históricas — p. ej. un doctor re-tipificado a
+   * no-clínico. Sus citas SIEMPRE se pintan (no se pueden ocultar, pero
+   * tampoco desaparecen del calendario). Espeja el patrón "(no disponible)"
+   * del AppointmentForm: el filtro clínico afecta a las opciones, nunca al
+   * conjunto que resuelve/pinta las citas existentes.
+   */
+  const [otherDoctorIds, setOtherDoctorIds] = useState<Set<string>>(new Set());
   const [selectedLabelIds, setSelectedLabelIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [doctorsLoading, setDoctorsLoading] = useState(false);
@@ -117,6 +127,16 @@ export function useAppointmentsScheduler(
    * Each entry stores all appointments returned for that range.
    */
   const cacheRef = useRef<Map<string, Appointment[]>>(new Map());
+
+  /**
+   * Catálogo COMPLETO de proveedores (id → opción con color/nombre), incluidos
+   * los NO clínicos. Se usa SOLO para resolver el color/label de las citas ya
+   * existentes; la lista seleccionable del sidebar (`doctors`) sigue siendo
+   * únicamente clínica.
+   */
+  const doctorCatalogRef = useRef<Map<string, SchedulerDoctorOption>>(
+    new Map(),
+  );
 
   /**
    * Monotonically-increasing sequence number used as a stale-request guard.
@@ -136,6 +156,18 @@ export function useAppointmentsScheduler(
 
   const datesInRange = useMemo(() => getDatesInRange(dateRange), [dateRange]);
 
+  /**
+   * Conjunto de proveedores cuyas citas se consultan y pintan: los clínicos
+   * VISIBLES (toggle del sidebar) MÁS todos los no clínicos (siempre visibles).
+   * Filtrar por tipo clínico afecta a lo seleccionable, nunca a la resolución
+   * de citas existentes → un proveedor re-tipificado a no-clínico no pierde su
+   * columna ni sus citas.
+   */
+  const displayDoctorIds = useMemo(
+    () => new Set<string>([...visibleDoctorIds, ...otherDoctorIds]),
+    [visibleDoctorIds, otherDoctorIds],
+  );
+
   const weekDays = useMemo(() => {
     if (viewMode === "week") return getWeekDays(currentDate);
     return [];
@@ -153,13 +185,21 @@ export function useAppointmentsScheduler(
     const load = async () => {
       setDoctorsLoading(true);
       try {
+        // Proveedor de cita: el BACKEND resuelve qué tipos de usuario
+        // atienden citas (endpoint semántico `onlyProviders`); el front
+        // nunca conoce ni envía la lista de tipos clínicos.
         const response = await doctorsService.getDoctors({
           page: 0,
           pageSize: 100,
+          onlyProviders: true,
         });
         if (cancelled) return;
 
-        const list: SchedulerDoctorOption[] = (response.entities ?? []).map(
+        const entities = response.entities ?? [];
+
+        // Catálogo (colores por índice estable) para resolver el
+        // color/label de las citas existentes.
+        const fullCatalog: SchedulerDoctorOption[] = entities.map(
           (doc, idx) => ({
             id: doc.id,
             name: doc.name,
@@ -168,9 +208,16 @@ export function useAppointmentsScheduler(
             visible: true,
           }),
         );
+        doctorCatalogRef.current = new Map(
+          fullCatalog.map((d) => [d.id, d]),
+        );
 
-        setDoctors(list);
-        setVisibleDoctorIds(new Set(list.map((d) => d.id)));
+        setDoctors(fullCatalog);
+        setVisibleDoctorIds(new Set(fullCatalog.map((d) => d.id)));
+        // `onlyProviders` ya excluye del todo el personal no-agendable: no
+        // hay conjunto "otros" que resolver aquí (se mantiene el estado por
+        // si una cita histórica referencia un doctor fuera de este catálogo).
+        setOtherDoctorIds(new Set());
       } catch (error) {
         if (!cancelled) {
           setError("Error al cargar especialistas");
@@ -234,10 +281,11 @@ export function useAppointmentsScheduler(
     [],
   );
 
-  // Auto-fetch when range or visible doctors change
+  // Auto-fetch when range or the display set (visibles clínicos + no clínicos)
+  // change. Se consultan también los no clínicos para no perder sus citas.
   useEffect(() => {
-    fetchRange(visibleDoctorIds, dateRange);
-  }, [visibleDoctorIds, dateRange, fetchRange]);
+    fetchRange(displayDoctorIds, dateRange);
+  }, [displayDoctorIds, dateRange, fetchRange]);
 
   /**
    * Rango de horas dinámico del grid: parte de [DEFAULT_START_HOUR, DEFAULT_END_HOUR]
@@ -250,7 +298,7 @@ export function useAppointmentsScheduler(
   const hourRange = useMemo(() => {
     void cacheVersion;
 
-    const ids = [...visibleDoctorIds];
+    const ids = [...displayDoctorIds];
     let startHour = DEFAULT_START_HOUR;
     let endHour = DEFAULT_END_HOUR;
 
@@ -265,7 +313,7 @@ export function useAppointmentsScheduler(
         if (appt.status === "cancelled") continue;
 
         const doctorId = appt.doctorId ?? appt.doctor_id ?? "";
-        if (!visibleDoctorIds.has(doctorId)) continue;
+        if (!displayDoctorIds.has(doctorId)) continue;
 
         const [h, m] = appt.time.split(":").map(Number);
         if (Number.isNaN(h) || Number.isNaN(m)) continue;
@@ -293,13 +341,13 @@ export function useAppointmentsScheduler(
     endHour = Math.max(endHour, startHour + 1);
 
     return { startHour, endHour };
-  }, [cacheVersion, visibleDoctorIds, dateRange]);
+  }, [cacheVersion, displayDoctorIds, dateRange]);
 
   // ---- Build events from cache ---------------------------------------------
   const events: SchedulerEvent[] = useMemo(() => {
     void cacheVersion;
 
-    const ids = [...visibleDoctorIds];
+    const ids = [...displayDoctorIds];
     if (ids.length === 0) return [];
 
     const cacheKey = buildRangeCacheKey(dateRange.start, dateRange.end, ids);
@@ -311,9 +359,11 @@ export function useAppointmentsScheduler(
       if (appt.status === "cancelled") continue;
 
       const doctorId = appt.doctorId ?? appt.doctor_id ?? "";
-      if (!visibleDoctorIds.has(doctorId)) continue;
+      if (!displayDoctorIds.has(doctorId)) continue;
 
-      const doc = doctors.find((d) => d.id === doctorId);
+      // Color/label desde el catálogo COMPLETO: un proveedor no clínico con
+      // citas históricas conserva su color aunque no esté en el sidebar.
+      const doc = doctorCatalogRef.current.get(doctorId);
       const color = doc?.color ?? "#999";
 
       const pos = calcEventPosition(
@@ -341,7 +391,7 @@ export function useAppointmentsScheduler(
     }
 
     return allEvents;
-  }, [cacheVersion, visibleDoctorIds, doctors, dateRange, hourRange]);
+  }, [cacheVersion, displayDoctorIds, dateRange, hourRange]);
 
   /** Events grouped by date with overlaps resolved. */
   const eventsByDay = useMemo(() => {
@@ -447,9 +497,9 @@ export function useAppointmentsScheduler(
         cache.clear();
       }
 
-      fetchRange(visibleDoctorIds, dateRange);
+      fetchRange(displayDoctorIds, dateRange);
     },
-    [fetchRange, visibleDoctorIds, dateRange],
+    [fetchRange, displayDoctorIds, dateRange],
   );
 
   // ---- Reschedule by drag (optimista + rollback) ---------------------------

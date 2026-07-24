@@ -63,8 +63,8 @@ export const PERMISSIONS = {
   },
   DOCTOR: {
     id: "doctor",
-    name: "Doctores",
-    description: "Gestión de doctores",
+    name: "Usuarios",
+    description: "Gestión de usuarios",
     category: PERMISSION_CATEGORIES.DOCTORS,
   },
   ROLE: {

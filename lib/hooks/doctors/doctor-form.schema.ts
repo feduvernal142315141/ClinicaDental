@@ -82,10 +82,19 @@ const daySchedule = z
  * doctor debe quedar contenido en el de la clínica. Mientras el horario de
  * la clínica no haya cargado (`clinicSchedule` es `undefined`/`null`), no se
  * acota — degradación permisiva, el backend igual valida en el submit.
+ *
+ * `providerTypeIds` es el conjunto de `id`s del catálogo de tipos de usuario
+ * (`GET /user-types`) con `attendsAppointments=true` (ver
+ * `deriveProviderUserTypeIds` en `lib/entity/userType`) — reemplaza la
+ * comparación contra la lista fija `CLINICAL_USER_TYPES`: la especialidad
+ * solo es obligatoria si el tipo elegido pertenece a ese conjunto. Mientras
+ * el catálogo no haya cargado (`providerTypeIds` es `undefined`), no se exige
+ * (degradación permisiva, igual que `clinicSchedule`).
  */
 export function makeDoctorFormSchema(
   requireRole: boolean,
   clinicSchedule?: Partial<ClinicSchedule> | null,
+  providerTypeIds?: Set<string>,
 ) {
   const scheduleSchema = z
     .object({
@@ -136,19 +145,42 @@ export function makeDoctorFormSchema(
       });
     });
 
-  return z.object({
-    name: fullName,
-    email: email,
-    phone: phone,
-    licenceNumber: licenceNumber,
-    specialty: optionalText({ max: 100 }),
-    gender: z.enum(DOCTOR_GENDERS, { message: "El género es obligatorio" }),
-    description: optionalText({ max: 1000 }),
-    avatarUrl: z.string().optional(),
-    roleId: requireRole ? requiredId("El rol") : z.string().optional(),
-    active: z.boolean(),
-    schedule: scheduleSchema,
-  });
+  return z
+    .object({
+      name: fullName,
+      email: email,
+      phone: phone,
+      // Requerido para TODOS los tipos de usuario (número de identificación,
+      // no licencia profesional): el backend lo exige sin distinción de
+      // tipo, así que no se relaja aquí para no divergir del contrato.
+      licenceNumber: licenceNumber,
+      specialty: optionalText({ max: 100 }),
+      gender: z.enum(DOCTOR_GENDERS, { message: "El género es obligatorio" }),
+      // Tipo de usuario (profesión/cargo): ORTOGONAL al Rol (permisos).
+      // FK al catálogo gestionable (`GET /user-types`), no un código fijo.
+      userTypeId: requiredId("El tipo de usuario"),
+      description: optionalText({ max: 1000 }),
+      avatarUrl: z.string().optional(),
+      roleId: requireRole ? requiredId("El rol") : z.string().optional(),
+      active: z.boolean(),
+      schedule: scheduleSchema,
+    })
+    .superRefine((values, ctx) => {
+      // La especialidad solo es obligatoria para tipos de usuario que
+      // atienden citas (`attendsAppointments=true` en el catálogo); para el
+      // resto queda opcional. `providerTypeIds` ausente (catálogo aún sin
+      // cargar) ⇒ no se exige, el backend igual valida en el submit.
+      if (
+        providerTypeIds?.has(values.userTypeId) &&
+        !values.specialty
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "La especialidad es obligatoria para personal clínico",
+          path: ["specialty"],
+        });
+      }
+    });
 }
 
 export const doctorFormSchema = makeDoctorFormSchema(true);
