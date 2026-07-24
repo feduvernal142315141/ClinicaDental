@@ -25,18 +25,21 @@ const BACKGROUND_BY_STATUS: Record<ScheduleDayStatus, string> = {
 export interface ScheduleDayCardProps {
   /** Estado del día: decide el color del acento lateral y el fondo. */
   status: ScheduleDayStatus;
-  /** Columna izquierda fija (36 = 9rem): normalmente un `DayToggle`. */
+  /** Cabecera de identidad: normalmente un `DayToggle`. */
   toggleSlot: React.ReactNode;
-  /** Zona fluida a la derecha: rangos horarios, hints, estado cerrado. */
+  /** Cuerpo de controles: rangos horarios, hints, estado cerrado. */
   children: React.ReactNode;
   className?: string;
 }
 
 /**
- * ScheduleDayCard — tarjeta-fila de un día del editor de horarios (clínica o
- * doctor). Layout: acento lateral de 3px que codifica el estado + columna de
- * toggle fija (`w-36`) + zona de contenido fluida. Responsive: columna en
- * móvil, fila desde `sm:`.
+ * ScheduleDayCard — tile-día del editor de horarios (clínica o doctor).
+ * Layout Bento 2026: acento lateral de 3px que codifica el estado + columna
+ * de contenido de ancho completo, apilada en dos filas — cabecera de
+ * identidad (`toggleSlot`) sobre cuerpo de controles (`children`) —, ambas
+ * naciendo del borde izquierdo. Deliberadamente SIN fila lado-a-lado
+ * (toggle-columna-fija + contenido-flex): ese layout dejaba un hueco muerto
+ * cuando los controles se empujaban al extremo derecho.
  *
  * Componente puro de presentación — no conoce react-hook-form ni el dominio
  * (clínica vs. doctor); el consumidor decide `status` y arma `toggleSlot`
@@ -63,12 +66,9 @@ export function ScheduleDayCard({
           ACCENT_BY_STATUS[status],
         )}
       />
-      <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-        {/* Ancho de contenido con un mínimo para alinear filas: evita que el
-            toggle (switch + nombre largo como "Miércoles" + pill) desborde una
-            columna fija demasiado estrecha. */}
-        <div className="shrink-0 sm:min-w-[9.5rem]">{toggleSlot}</div>
-        <div className="min-w-0 flex-1">{children}</div>
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        <div className="min-w-0">{toggleSlot}</div>
+        <div className="min-w-0">{children}</div>
       </div>
     </div>
   );

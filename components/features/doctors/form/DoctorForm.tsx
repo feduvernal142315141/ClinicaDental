@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useController } from "react-hook-form";
 import type { FieldErrors, UseFormReturn } from "react-hook-form";
-import { CircleAlert, Clock, User } from "lucide-react";
+import { CircleAlert, Clock, Coffee, User } from "lucide-react";
 import {
   Form,
   FormActionBar,
@@ -28,6 +28,7 @@ import { AvatarField } from "@/components/ui/controls/avatar-field";
 import {
   ClinicRangeHint,
   ClosedState,
+  DayOverviewStrip,
   DayToggle,
   ScheduleDayCard,
   ScheduleHeader,
@@ -68,6 +69,17 @@ const Req = () => <span className="text-rose-500">*</span>;
 /** Horario de respaldo cuando la clínica no define horas válidas ese día. */
 const FALLBACK_START = "09:00";
 const FALLBACK_END = "18:00";
+
+/** Inicial de cada día para el resumen (convención ES: miércoles = X). */
+const DAY_SHORT: Record<string, string> = {
+  monday: "L",
+  tuesday: "M",
+  wednesday: "X",
+  thursday: "J",
+  friday: "V",
+  saturday: "S",
+  sunday: "D",
+};
 
 /**
  * Una fila de día del editor de horarios. El horario del doctor queda
@@ -132,6 +144,11 @@ function ScheduleDayRow({
     : clinicClosed
       ? "clinic-closed"
       : "closed";
+  const pillStatus = enabled
+    ? "active"
+    : clinicClosed
+      ? "clinic-closed"
+      : "closed";
 
   const minTime = clinicOpen ? (clinicDay!.startTime as string) : undefined;
   const maxTime = clinicOpen ? (clinicDay!.endTime as string) : undefined;
@@ -143,6 +160,7 @@ function ScheduleDayRow({
         <div className="space-y-1">
           <DayToggle
             label={label}
+            status={pillStatus}
             checked={enabled}
             onCheckedChange={(checked) => {
               enabledField.field.onChange(checked);
@@ -178,49 +196,58 @@ function ScheduleDayRow({
       }
     >
       {enabled ? (
-        <div className="flex flex-col gap-2">
-          <TimeRangeField
-            label="Horario"
-            start={{
-              value: startField.field.value,
-              onChange: startField.field.onChange,
-              onBlur: startField.field.onBlur,
-              ariaLabel: `${label}: hora de inicio`,
-              ariaInvalid: !!startField.fieldState.error,
-              errorMessage: startField.fieldState.error?.message,
-            }}
-            end={{
-              value: endField.field.value,
-              onChange: endField.field.onChange,
-              onBlur: endField.field.onBlur,
-              ariaLabel: `${label}: hora de fin`,
-              ariaInvalid: !!endField.fieldState.error,
-              errorMessage: endField.fieldState.error?.message,
-            }}
-            minTime={minTime}
-            maxTime={maxTime}
-            disabled={disabled}
-          />
-          <TimeRangeField
-            label="Descanso"
-            start={{
-              value: breakStartField.field.value,
-              onChange: breakStartField.field.onChange,
-              onBlur: breakStartField.field.onBlur,
-              ariaLabel: `${label}: inicio del descanso`,
-              ariaInvalid: !!breakStartField.fieldState.error,
-              errorMessage: breakStartField.fieldState.error?.message,
-            }}
-            end={{
-              value: breakEndField.field.value,
-              onChange: breakEndField.field.onChange,
-              onBlur: breakEndField.field.onBlur,
-              ariaLabel: `${label}: fin del descanso`,
-              ariaInvalid: !!breakEndField.fieldState.error,
-              errorMessage: breakEndField.fieldState.error?.message,
-            }}
-            disabled={disabled}
-          />
+        <div className="space-y-3">
+          {/* Dos grupos lado a lado (variante ClinicPro): Horario de Consulta
+              y Descanso Intermedio, cada uno con labels flotantes. */}
+          <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            <TimeRangeField
+              heading="Horario de Consulta"
+              startLabel="Desde"
+              endLabel="Hasta"
+              start={{
+                value: startField.field.value,
+                onChange: startField.field.onChange,
+                onBlur: startField.field.onBlur,
+                ariaLabel: `${label}: hora de inicio`,
+                ariaInvalid: !!startField.fieldState.error,
+                errorMessage: startField.fieldState.error?.message,
+              }}
+              end={{
+                value: endField.field.value,
+                onChange: endField.field.onChange,
+                onBlur: endField.field.onBlur,
+                ariaLabel: `${label}: hora de fin`,
+                ariaInvalid: !!endField.fieldState.error,
+                errorMessage: endField.fieldState.error?.message,
+              }}
+              minTime={minTime}
+              maxTime={maxTime}
+              disabled={disabled}
+            />
+            <TimeRangeField
+              heading="Descanso Intermedio"
+              icon={<Coffee className="h-3.5 w-3.5 shrink-0" />}
+              startLabel="Inicio"
+              endLabel="Fin"
+              start={{
+                value: breakStartField.field.value,
+                onChange: breakStartField.field.onChange,
+                onBlur: breakStartField.field.onBlur,
+                ariaLabel: `${label}: inicio del descanso`,
+                ariaInvalid: !!breakStartField.fieldState.error,
+                errorMessage: breakStartField.fieldState.error?.message,
+              }}
+              end={{
+                value: breakEndField.field.value,
+                onChange: breakEndField.field.onChange,
+                onBlur: breakEndField.field.onBlur,
+                ariaLabel: `${label}: fin del descanso`,
+                ariaInvalid: !!breakEndField.fieldState.error,
+                errorMessage: breakEndField.fieldState.error?.message,
+              }}
+              disabled={disabled}
+            />
+          </div>
           {clinicRange && <ClinicRangeHint range={clinicRange} />}
         </div>
       ) : (
@@ -278,6 +305,14 @@ export function DoctorForm({
 
   const roleOptions = roles.map((r) => ({ value: r.id, label: r.name }));
   const formDisabled = loading || readOnly;
+
+  // Resumen read-only de días con horario (variante ClinicPro).
+  const scheduleWatch = form.watch("schedule");
+  const overviewDays = DAYS_OF_WEEK.map((d) => ({
+    short: DAY_SHORT[d.key],
+    label: d.label,
+    active: !!scheduleWatch?.[d.key]?.enabled,
+  }));
 
   const datosError = Boolean(
     errors.name ||
@@ -596,7 +631,9 @@ export function DoctorForm({
                 title="Horarios de atención"
                 subtitle="Configura los días y horarios de atención del doctor."
               />
-              <div className="space-y-2">
+              <DayOverviewStrip days={overviewDays} />
+              {/* Mismo grid de 2 columnas que el editor de Opciones Generales. */}
+              <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
                 {DAYS_OF_WEEK.map((day) => (
                   <ScheduleDayRow
                     key={day.key}

@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
+
 import { ScheduleTimeField } from "@/components/ui/atomic/schedule/schedule-time-field";
-import { cn } from "@/lib/utils/utils";
 
 /** Props de un slot (inicio o fin) de `TimeRangeField`. */
 export interface TimeRangeFieldSlot {
@@ -13,82 +14,75 @@ export interface TimeRangeFieldSlot {
 }
 
 export interface TimeRangeFieldProps {
-  /** Etiqueta del grupo (p.ej. "Horario", "Descanso"). Omítela para no mostrarla. */
-  label?: string;
-  /** Etiqueta por-slot antes del inicio (p.ej. "Desde:"). Estilo 2026. */
+  /** Encabezado del grupo (p.ej. "Horario de Consulta", "Descanso Intermedio"). */
+  heading?: string;
+  /** Ícono opcional antes del encabezado. */
+  icon?: ReactNode;
+  /** Etiqueta flotante del slot inicial (p.ej. "Desde", "Inicio"). */
   startLabel?: string;
-  /** Etiqueta por-slot antes del fin (p.ej. "Hasta:"). */
+  /** Etiqueta flotante del slot final (p.ej. "Hasta", "Fin"). */
   endLabel?: string;
-  /** Separador entre slots. Por defecto "a" ("de {inicio} a {fin}"); la clínica usa ":". */
-  separator?: string;
   start: TimeRangeFieldSlot;
   end: TimeRangeFieldSlot;
   /** Acota ambos slots (paridad con `lib/utils/schedule-bounds.ts`). */
   minTime?: string;
   maxTime?: string;
   disabled?: boolean;
-  /** Alinea el contenido a la derecha (tarjetas de la clínica en grid). */
-  align?: "start" | "end";
 }
 
 /**
- * TimeRangeField — un rango "de {inicio} a {fin}" con etiqueta de grupo
- * opcional. Usado tanto para el horario principal ("Horario") como para el
- * descanso del doctor ("Descanso"): misma gramática visual, sin duplicar
- * layout entre ambos casos ni entre clínica y doctor.
+ * TimeRangeField — grupo de un rango horario (variante ClinicPro): un
+ * encabezado ("Horario de Consulta" / "Descanso Intermedio") sobre dos campos
+ * de hora con etiqueta flotante ("Desde"/"Hasta", "Inicio"/"Fin") dispuestos
+ * lado a lado. Misma gramática para clínica y doctor, sin duplicar layout.
  */
 export function TimeRangeField({
-  label,
+  heading,
+  icon,
   startLabel,
   endLabel,
-  separator = "a",
   start,
   end,
   minTime,
   maxTime,
   disabled,
-  align = "start",
 }: TimeRangeFieldProps) {
   return (
-    <div
-      className={cn(
-        "flex flex-wrap items-start gap-x-3 gap-y-1",
-        align === "end" && "sm:justify-end",
+    <div className="min-w-0 space-y-1.5">
+      {heading && (
+        <div className="flex items-center gap-1.5 text-xs font-medium text-subtle">
+          {icon}
+          {heading}
+        </div>
       )}
-    >
-      {/* Etiqueta de grupo (doctor: "Horario"/"Descanso"): alineada con la
-          fila del input, no con el error de abajo → self-start + pt. */}
-      {label && (
-        <span className="w-16 shrink-0 pt-2.5 text-xs font-medium text-subtle">{label}</span>
-      )}
-      <ScheduleTimeField
-        label={startLabel}
-        value={start.value}
-        onChange={start.onChange}
-        onBlur={start.onBlur}
-        id={start.id}
-        ariaLabel={start.ariaLabel}
-        ariaInvalid={start.ariaInvalid}
-        errorMessage={start.errorMessage}
-        minTime={minTime}
-        maxTime={maxTime}
-        disabled={disabled}
-      />
-      {/* pt-2.5 alinea el separador con la fila del input (no con el error). */}
-      <span className="pt-2.5 text-xs text-subtle">{separator}</span>
-      <ScheduleTimeField
-        label={endLabel}
-        value={end.value}
-        onChange={end.onChange}
-        onBlur={end.onBlur}
-        id={end.id}
-        ariaLabel={end.ariaLabel}
-        ariaInvalid={end.ariaInvalid}
-        errorMessage={end.errorMessage}
-        minTime={minTime}
-        maxTime={maxTime}
-        disabled={disabled}
-      />
+      <div className="flex items-start gap-3">
+        <ScheduleTimeField
+          label={startLabel}
+          value={start.value}
+          onChange={start.onChange}
+          onBlur={start.onBlur}
+          id={start.id}
+          ariaLabel={start.ariaLabel}
+          ariaInvalid={start.ariaInvalid}
+          errorMessage={start.errorMessage}
+          minTime={minTime}
+          maxTime={maxTime}
+          disabled={disabled}
+        />
+        <ScheduleTimeField
+          label={endLabel}
+          value={end.value}
+          onChange={end.onChange}
+          onBlur={end.onBlur}
+          id={end.id}
+          ariaLabel={end.ariaLabel}
+          ariaInvalid={end.ariaInvalid}
+          errorMessage={end.errorMessage}
+          minTime={minTime}
+          maxTime={maxTime}
+          disabled={disabled}
+        />
+      </div>
     </div>
   );
 }

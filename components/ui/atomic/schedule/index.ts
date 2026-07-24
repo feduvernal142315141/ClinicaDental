@@ -14,3 +14,4 @@ export * from "./time-range-field";
 export * from "./closed-state";
 export * from "./clinic-range-hint";
 export * from "./schedule-header";
+export * from "./day-overview-strip";
