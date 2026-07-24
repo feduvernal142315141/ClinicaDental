@@ -51,12 +51,9 @@ interface UseAppointmentFormParams {
 }
 
 type CreateQuickPatientValues = Required<
-  Pick<
-    CreatePatientRequest,
-    "name" | "email" | "phone" | "dateOfBirth" | "gender"
-  >
+  Pick<CreatePatientRequest, "name" | "phone" | "dateOfBirth" | "gender">
 > &
-  Pick<CreatePatientRequest, "address" | "agreement">;
+  Pick<CreatePatientRequest, "email" | "address" | "agreement">;
 
 const DEFAULT_VALUES: AppointmentFormValues = {
   patientId: "",

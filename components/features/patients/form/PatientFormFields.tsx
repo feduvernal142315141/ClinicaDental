@@ -66,9 +66,7 @@ export function PatientFormFields({ disabled = false }: PatientFormFieldsProps) 
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>
-                Correo electrónico <span className="text-rose-500">*</span>
-              </FormLabel>
+              <FormLabel>Correo electrónico</FormLabel>
               <FormControl>
                 <Input
                   type="email"

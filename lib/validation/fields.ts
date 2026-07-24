@@ -91,6 +91,24 @@ export const email = z
       .max(254, "El correo no puede superar los 254 caracteres"),
   );
 
+/**
+ * Correo electrónico opcional: cadena vacía/solo espacios se trata como ausente.
+ * Cuando hay valor, se normaliza a minúsculas y valida formato + longitud máxima.
+ */
+export const emailOptional = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .optional()
+  .transform((v) => (v === "" || v === undefined ? undefined : v))
+  .pipe(
+    z
+      .string()
+      .email("Correo electrónico no válido")
+      .max(254, "El correo no puede superar los 254 caracteres")
+      .optional(),
+  );
+
 /** Teléfono internacional obligatorio (formato E.164 tolerante a separadores de entrada). */
 export const phone = z
   .string({ required_error: "El teléfono es obligatorio" })

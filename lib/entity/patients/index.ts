@@ -51,12 +51,12 @@ export interface PatientListItem {
 
 /**
  * Create patient request payload.
- * Los campos name, email, phone, dateOfBirth y gender son requeridos
- * por validación de formulario; address y agreement son opcionales.
+ * Los campos name, phone, dateOfBirth y gender son requeridos
+ * por validación de formulario; email, address y agreement son opcionales.
  */
 export interface CreatePatientRequest {
   name: string;
-  email: string;
+  email?: string;
   phone: string;
   dateOfBirth: string; // ISO 8601 YYYY-MM-DD
   gender: "M" | "F";

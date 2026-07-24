@@ -10,7 +10,7 @@
  *
  * Reglas SENSIBLES / NO-BLOQUEANTES:
  *   - Nombre: `fullName` (mín. 2 caracteres, solo letras/espacios/guiones/apóstrofos).
- *   - Email: `email` (formato válido, normalizado a minúsculas).
+ *   - Email: `emailOptional` (opcional; cadena vacía se normaliza a `undefined`; formato válido y minúsculas cuando hay valor).
  *   - Teléfono: `phone` (formato internacional, normalizado tipo E.164).
  *   - Fecha de nacimiento: `dateOfBirth` (requerida, pasada, no mayor a 120 años; SIN restricción de edad mínima).
  *   - Género requerido (M / F).
@@ -19,12 +19,12 @@
  */
 
 import { z } from "zod";
-import { fullName, email, phone, dateOfBirth, address } from "@/lib/validation/fields";
+import { fullName, emailOptional, phone, dateOfBirth, address } from "@/lib/validation/fields";
 
 export const patientFormSchema = z.object({
   name: fullName,
 
-  email,
+  email: emailOptional,
 
   phone,
 

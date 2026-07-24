@@ -211,10 +211,7 @@ export function QuickPatientModal({
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        Correo electrónico
-                        <RequiredMark />
-                      </FormLabel>
+                      <FormLabel>Correo electrónico</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
