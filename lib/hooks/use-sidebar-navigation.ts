@@ -16,6 +16,7 @@ import {
   Megaphone,
   Filter,
   FileText,
+  Wallet,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { usePermission } from "./use-permission";
@@ -104,6 +105,9 @@ export function useSidebarNavigation() {
     }
     if (hasModule("appointments")) {
       main.push({ path: "/appointments", label: t("navigation.appointments"), icon: Calendar });
+    }
+    if (hasModule("billing")) {
+      main.push({ path: "/billing", label: "Finanzas", icon: Wallet });
     }
 
     // Comunicación: solo aparece si tiene al menos un hijo visible.

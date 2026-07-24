@@ -3,6 +3,7 @@ export const PATIENT_TABS = {
   ODONTOGRAM: "odontograma",
   TREATMENT_PLAN: "plan-tratamiento",
   FILES: "imagenes",
+  ACCOUNT: "cuenta",
 } as const;
 export type PatientTab = (typeof PATIENT_TABS)[keyof typeof PATIENT_TABS];
 const MOUNTABLE: readonly string[] = Object.values(PATIENT_TABS);
@@ -21,6 +22,8 @@ const TAB_ALIASES: Record<string, PatientTab> = {
   archivos: PATIENT_TABS.FILES,
   files: PATIENT_TABS.FILES,
   adjuntos: PATIENT_TABS.FILES,
+  cuenta: PATIENT_TABS.ACCOUNT,
+  account: PATIENT_TABS.ACCOUNT,
 };
 export interface ResolveTabOptions {
   canViewTreatmentPlan: boolean;

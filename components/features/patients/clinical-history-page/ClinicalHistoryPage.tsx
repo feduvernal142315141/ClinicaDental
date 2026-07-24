@@ -18,6 +18,7 @@ import {
   Loader2,
   Play,
   Plus,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui";
 import {
@@ -36,6 +37,7 @@ import { EditPatientDrawer } from "./EditPatientDrawer";
 import { StartConsultationNowModal } from "@/components/features/appointments/StartConsultationNowModal";
 import { PatientOdontogramPanel } from "@/components/features/patients/detail/PatientOdontogramPanel";
 import { PatientTreatmentPlanPanel } from "@/components/features/patients/treatment-plan/PatientTreatmentPlanPanel";
+import { PatientLedgerPanel } from "@/components/features/billing";
 import {
   useClinicalHistoryPage,
   type UseClinicalHistoryPageParams,
@@ -450,6 +452,13 @@ export function ClinicalHistoryPage({
               <Images className="h-4 w-4" />
               {t("clinical.tabs.files")}
             </TabsTrigger>
+            <TabsTrigger
+              value={PATIENT_TABS.ACCOUNT}
+              className={PATIENT_TAB_TRIGGER_CLASS}
+            >
+              <Wallet className="h-4 w-4" />
+              Cuenta
+            </TabsTrigger>
           </TabsList>
         </div>
         <TabsContent
@@ -608,6 +617,12 @@ export function ClinicalHistoryPage({
               activeAppointmentId={effectiveActiveAppointmentId}
             />
           </div>
+        </TabsContent>
+        <TabsContent
+          value={PATIENT_TABS.ACCOUNT}
+          className="flex-1 min-h-0 mt-5 overflow-auto"
+        >
+          <PatientLedgerPanel patientId={patientId} patientName={patient.name} />
         </TabsContent>
       </Tabs>
       <StartConsultationNowModal

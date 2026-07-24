@@ -127,6 +127,14 @@ export const PERMISSIONS = {
     description: "Acceso a reportes y dashboard administrativo",
     category: PERMISSION_CATEGORIES.REPORTS,
   },
+  BILLING: {
+    // Debe coincidir con el `name` que emita el backend en el claim JWT
+    // (`billing-${actionsBitmask}`). Coordinar con backend al activar el módulo.
+    id: "billing",
+    name: "Facturación",
+    description: "Presupuestos, facturas, cobros y cuenta del paciente",
+    category: PERMISSION_CATEGORIES.REPORTS,
+  },
 } as const;
 
 /**
