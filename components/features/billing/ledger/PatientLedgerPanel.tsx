@@ -35,7 +35,16 @@ export function PatientLedgerPanel({
     void fetchLedger();
   }, [fetchLedger]);
 
-  const invoiceColumns = useMemo(() => getInvoiceColumns(), []);
+  const invoiceColumns = useMemo(
+    () =>
+      getInvoiceColumns({
+        onSelect: (invoice) =>
+          router.push(
+            `/billing/invoices/${invoice.id}?patientId=${encodeURIComponent(patientId)}`,
+          ),
+      }),
+    [router, patientId],
+  );
   const paymentColumns = useMemo(() => getPaymentColumns(), []);
 
   if (loading && !ledger) {
@@ -87,6 +96,18 @@ export function PatientLedgerPanel({
               >
                 <FileText className="h-4 w-4" />
                 Nuevo presupuesto
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  router.push(
+                    `/billing/invoices/new?patientId=${encodeURIComponent(patientId)}`,
+                  )
+                }
+              >
+                <CircleDollarSign className="h-4 w-4" />
+                Nueva factura
               </Button>
               <Button type="button" onClick={() => setPaymentOpen(true)}>
                 <Banknote className="h-4 w-4" />

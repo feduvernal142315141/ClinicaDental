@@ -65,7 +65,7 @@ export function EstimateDetail({ estimateId, patientId }: EstimateDetailProps) {
       const result = await convertEstimate(estimate.id);
       setEstimate(result.estimate);
       router.push(
-        `/patients/${result.invoice.patientId}?tab=cuenta`,
+        `/billing/invoices/${result.invoice.id}?patientId=${result.invoice.patientId}`,
       );
     } finally {
       setConverting(false);

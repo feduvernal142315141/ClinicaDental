@@ -56,6 +56,10 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
     label: "Presupuestos",
     parent: "billing",
   },
+  invoices: {
+    label: "Facturas",
+    parent: "billing",
+  },
   campaigns: {
     label: "Campañas",
     icon: BookImage,
