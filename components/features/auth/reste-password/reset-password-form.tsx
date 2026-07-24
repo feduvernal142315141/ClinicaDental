@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, KeyRound, Save } from "lucide-react";
+import { ArrowLeft, KeyRound, Save, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { notify } from "@/lib/utils/notify";
 import { useDoctorAuth } from "@/lib/hooks/doctors/useDoctorAuth";
@@ -29,6 +29,7 @@ export function ResetPasswordForm() {
   const { resetPassword, loading } = useDoctorAuth();
 
   const codeFromUrl = useMemo(() => params.get("code") ?? "", [params]);
+  const isWelcome = useMemo(() => params.get("welcome") === "1", [params]);
 
   const form = useForm<ResetPasswordValues>({
     resolver: zodResolver(schema),
@@ -63,9 +64,19 @@ export function ResetPasswordForm() {
   return (
     <AuthShell>
       <AuthCard
-        title="Restablecer contraseña"
-        description="Ingresa el código recibido por correo y define tu nueva contraseña."
-        icon={<KeyRound className="h-7 w-7" />}
+        title={isWelcome ? "Configura tu contraseña" : "Restablecer contraseña"}
+        description={
+          isWelcome
+            ? "Te damos la bienvenida. Crea tu contraseña para acceder a tu cuenta."
+            : "Ingresa el código recibido por correo y define tu nueva contraseña."
+        }
+        icon={
+          isWelcome ? (
+            <ShieldCheck className="h-7 w-7" />
+          ) : (
+            <KeyRound className="h-7 w-7" />
+          )
+        }
         footer={
           <Button
             type="button"
@@ -79,20 +90,24 @@ export function ResetPasswordForm() {
         }
       >
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          <FloatingField
-            id="code"
-            label="Código de verificación"
-            inputMode="text"
-            autoComplete="one-time-code"
-            disabled={loading}
-            error={errors.code?.message}
-            success={!!touchedFields.code && !errors.code}
-            {...register("code")}
-          />
+          {codeFromUrl === "" ? (
+            <FloatingField
+              id="code"
+              label="Código de verificación"
+              inputMode="text"
+              autoComplete="one-time-code"
+              disabled={loading}
+              error={errors.code?.message}
+              success={!!touchedFields.code && !errors.code}
+              {...register("code")}
+            />
+          ) : (
+            <input type="hidden" {...register("code")} />
+          )}
 
           <FloatingField
             id="password"
-            label="Nueva contraseña"
+            label={isWelcome ? "Contraseña" : "Nueva contraseña"}
             type="password"
             autoComplete="new-password"
             disabled={loading}
@@ -108,7 +123,13 @@ export function ResetPasswordForm() {
             className="auth-sheen relative h-12 w-full overflow-hidden bg-brand text-white hover:bg-brand-strong"
           >
             <Save className="mr-2 h-4 w-4" />
-            {loading ? "Guardando..." : "Guardar contraseña"}
+            {isWelcome
+              ? loading
+                ? "Creando..."
+                : "Crear contraseña"
+              : loading
+                ? "Guardando..."
+                : "Guardar contraseña"}
           </Button>
         </form>
       </AuthCard>

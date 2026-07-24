@@ -4,7 +4,7 @@ import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 
 const REQUIREMENTS: { label: string; test: (pwd: string) => boolean }[] = [
-  { label: "Entre 8 y 20 caracteres", test: (p) => p.length >= 8 && p.length <= 20 },
+  { label: "Entre 8 y 64 caracteres", test: (p) => p.length >= 8 && p.length <= 64 },
   { label: "Una letra mayúscula", test: (p) => /[A-Z]/.test(p) },
   { label: "Una letra minúscula", test: (p) => /[a-z]/.test(p) },
   { label: "Un número", test: (p) => /\d/.test(p) },
