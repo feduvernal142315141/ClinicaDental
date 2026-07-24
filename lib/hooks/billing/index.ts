@@ -5,6 +5,7 @@ export { useEstimates } from "./useEstimates";
 export { useEstimateForm } from "./useEstimateForm";
 export { useInvoices } from "./useInvoices";
 export { useInvoiceForm } from "./useInvoiceForm";
+export { useReceivables } from "./useReceivables";
 export {
   paymentFormSchema,
   type PaymentFormValues,

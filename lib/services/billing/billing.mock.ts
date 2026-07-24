@@ -191,6 +191,7 @@ const invoices: InvoiceResponse[] = [
     currency: "USD",
     exchangeRate: 1,
     issuedAt: "2026-07-05T12:00:00.000Z",
+    dueDate: "2026-07-31",
     createdAt: "2026-07-05T12:00:00.000Z",
     updatedAt: "2026-07-12T18:00:00.000Z",
   },
@@ -720,14 +721,24 @@ async function getReceivables(
     }
   }
 
-  const entities = Array.from(byPatient.entries()).map(([patientId, data]) => ({
-    patientId,
-    patientName:
-      patientId === DEMO_PATIENT_ID
-        ? "Paciente Demo Facturación"
-        : `Paciente ${patientId.slice(0, 8)}`,
-    ...data,
-  }));
+  const entities = Array.from(byPatient.entries())
+    .map(([patientId, data]) => ({
+      patientId,
+      patientName:
+        patientId === DEMO_PATIENT_ID
+          ? "Paciente Demo Facturación"
+          : `Paciente ${patientId.slice(0, 8)}`,
+      ...data,
+    }))
+    .filter((row) => {
+      if (!params?.q?.trim()) return true;
+      const q = params.q.trim().toLowerCase();
+      return (
+        row.patientName.toLowerCase().includes(q) ||
+        row.patientId.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => b.balance - a.balance);
 
   return paginate(entities, params);
 }

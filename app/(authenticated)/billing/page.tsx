@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/ui/layout/page-header";
 import { CashSummaryCards } from "@/components/features/billing/summary/CashSummaryCards";
+import { ReceivablesList } from "@/components/features/billing/receivables/ReceivablesList";
 import { useCashSummary } from "@/lib/hooks/billing/useCashSummary";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
@@ -38,8 +39,7 @@ export default function BillingPage() {
           <div>
             <h2 className="text-base font-semibold text-ink">Resumen de caja</h2>
             <p className="text-sm text-subtle">
-              Vista operativa. Para registrar un pago, abre la pestaña Cuenta del
-              paciente.
+              Cobrado del día por método y panorama de saldos.
             </p>
           </div>
           <div className="w-full sm:w-44">
@@ -56,13 +56,18 @@ export default function BillingPage() {
         <CashSummaryCards summary={summary} loading={loading} />
       </section>
 
+      <ReceivablesList />
+
       <section className="bento p-4 lg:p-5">
         <h2 className="mb-1 text-base font-semibold text-ink">
           Cómo registrar un cobro
         </h2>
         <ol className="list-decimal space-y-1 pl-5 text-sm text-subtle">
-          <li>Ve a Pacientes y abre la ficha del paciente.</li>
-          <li>Entra a la pestaña Cuenta.</li>
+          <li>
+            Desde <strong className="font-medium text-ink">Por cobrar</strong>,
+            abre la cuenta del paciente.
+          </li>
+          <li>O entra a Pacientes → ficha → pestaña Cuenta.</li>
           <li>
             Pulsa Registrar pago y anota efectivo, tarjeta (POS) o transferencia.
           </li>
