@@ -1,5 +1,5 @@
 import apiInstance from "@/lib/services/apiConfig";
-import { serviceGet } from "@/lib/services/baseService";
+import { serviceGet, servicePatch } from "@/lib/services/baseService";
 import { handleServiceError } from "@/lib/utils/error.utils";
 import type {
   FeedbackTicket,
@@ -9,6 +9,8 @@ import type {
   CreateFeedbackResponse,
   AddFeedbackCommentRequest,
   FeedbackCommentCreated,
+  UpdateFeedbackStatusRequest,
+  UpdateFeedbackStatusResponse,
 } from "@/lib/entity/feedback";
 
 /**
@@ -124,11 +126,17 @@ async function addComment(
   ticketId: string,
   data: AddFeedbackCommentRequest,
 ): Promise<FeedbackCommentCreated> {
+  // Backend acepta `body` (contrato tipado) y algunos entornos usan `content`.
+  const payload = {
+    body: data.body,
+    content: data.body,
+  };
+
   let response;
   try {
     response = await apiInstance.post<FeedbackCommentCreated>(
       `${endpoint}/${ticketId}/comments`,
-      data,
+      payload,
     );
   } catch (err) {
     const axiosErr = err as { response?: { data?: unknown; status?: number } };
@@ -147,9 +155,32 @@ async function addComment(
   );
 }
 
+/**
+ * Actualizar estado y/o prioridad (solo admin/superadmin).
+ * PATCH /feedback/:id/status
+ */
+async function updateStatus(
+  ticketId: string,
+  data: UpdateFeedbackStatusRequest,
+): Promise<UpdateFeedbackStatusResponse> {
+  const response = await servicePatch<
+    UpdateFeedbackStatusRequest,
+    UpdateFeedbackStatusResponse
+  >(`${endpoint}/${ticketId}/status`, data);
+
+  if (response?.status === 200 && response?.data) {
+    return response.data;
+  }
+  handleServiceError(
+    typeof response !== "undefined" ? response : null,
+    "No se pudo actualizar el estado",
+  );
+}
+
 export const feedbackService = {
   createTicket,
   getMyTickets,
   getTicketById,
   addComment,
+  updateStatus,
 };

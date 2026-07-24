@@ -60,9 +60,9 @@ export function useFeedback() {
     }
   }, []);
 
+  /** Carga detalle sin tocar el loading del listado (evita parpadeo en Soporte). */
   const fetchTicketById = useCallback(
     async (id: string): Promise<FeedbackTicket | null> => {
-      setLoading(true);
       setError(null);
       try {
         return await feedbackService.getTicketById(id);
@@ -71,8 +71,6 @@ export function useFeedback() {
           err instanceof Error ? err.message : "Error al cargar reporte";
         setError(msg);
         return null;
-      } finally {
-        setLoading(false);
       }
     },
     [],

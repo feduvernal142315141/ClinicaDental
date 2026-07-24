@@ -37,13 +37,16 @@ export interface FeedbackMetadata {
 
 export interface FeedbackAttachment {
   id: string;
-  publicId: string;
+  publicId?: string;
+  /** URL pública Cloudinary (contrato principal). */
   secureUrl: string;
-  resourceType: string;
-  originalFileName: string;
-  mimeType: string;
-  sizeBytes: number;
-  position: number;
+  /** Alias plano por si el backend serializa solo `url`. */
+  url?: string;
+  resourceType?: string;
+  originalFileName?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  position?: number;
   width?: number;
   height?: number;
 }
@@ -53,7 +56,10 @@ export interface FeedbackAttachment {
 export interface FeedbackComment {
   id: string;
   authorName: string;
-  body: string;
+  /** Texto del comentario (contrato frontend). */
+  body?: string;
+  /** Alias que algunos payloads del backend pueden devolver. */
+  content?: string;
   createdAt: string;
 }
 
@@ -125,7 +131,16 @@ export interface AddFeedbackCommentRequest {
 
 export interface UpdateFeedbackStatusRequest {
   status: FeedbackStatus;
-  priority?: FeedbackPriority;
+  /** `null` limpia la prioridad asignada. */
+  priority?: FeedbackPriority | null;
+}
+
+/** Response de PATCH /feedback/{id}/status */
+export interface UpdateFeedbackStatusResponse {
+  id: string;
+  status: FeedbackStatus;
+  priority: FeedbackPriority | null;
+  updatedAt: string;
 }
 
 // ── Query params ───────────────────────────────────────────────
