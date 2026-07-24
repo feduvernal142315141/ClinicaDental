@@ -28,8 +28,10 @@ dayjs.extend(isoWeek);
 // ---------------------------------------------------------------------------
 
 const SLOT_HEIGHT = 48; // px per 30-min slot
-const START_HOUR = 7;
-const END_HOUR = 21;
+// Piso/techo por defecto: el rango final es dinámico (ver `hourRange` más abajo)
+// y solo se ensancha más allá de estos valores cuando hay citas fuera de ellos.
+const DEFAULT_START_HOUR = 7;
+const DEFAULT_END_HOUR = 21;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -67,6 +69,10 @@ function computeDateRange(
       };
     }
   }
+}
+
+function clampHour(value: number): number {
+  return Math.max(0, Math.min(24, value));
 }
 
 function getDatesInRange(range: SchedulerDateRange): string[] {
@@ -233,6 +239,62 @@ export function useAppointmentsScheduler(
     fetchRange(visibleDoctorIds, dateRange);
   }, [visibleDoctorIds, dateRange, fetchRange]);
 
+  /**
+   * Rango de horas dinámico del grid: parte de [DEFAULT_START_HOUR, DEFAULT_END_HOUR]
+   * y se ensancha solo lo necesario para que TODAS las citas visibles del rango
+   * (día o semana completa) queden dentro de la rejilla — nunca flotando fuera.
+   * Recorre el MISMO conjunto filtrado (status !== 'cancelled', doctor visible)
+   * que el memo de `events`, para que el startHour usado en `calcEventPosition`
+   * sea idéntico al que reciben los grids.
+   */
+  const hourRange = useMemo(() => {
+    void cacheVersion;
+
+    const ids = [...visibleDoctorIds];
+    let startHour = DEFAULT_START_HOUR;
+    let endHour = DEFAULT_END_HOUR;
+
+    if (ids.length > 0) {
+      const cacheKey = buildRangeCacheKey(dateRange.start, dateRange.end, ids);
+      const appointments = cacheRef.current.get(cacheKey) ?? [];
+
+      let earliestStartMin: number | null = null;
+      let latestEndMin: number | null = null;
+
+      for (const appt of appointments) {
+        if (appt.status === "cancelled") continue;
+
+        const doctorId = appt.doctorId ?? appt.doctor_id ?? "";
+        if (!visibleDoctorIds.has(doctorId)) continue;
+
+        const [h, m] = appt.time.split(":").map(Number);
+        if (Number.isNaN(h) || Number.isNaN(m)) continue;
+
+        const startMin = h * 60 + m;
+        const endMin = startMin + (appt.duration || 30);
+
+        if (earliestStartMin === null || startMin < earliestStartMin) {
+          earliestStartMin = startMin;
+        }
+        if (latestEndMin === null || endMin > latestEndMin) {
+          latestEndMin = endMin;
+        }
+      }
+
+      if (earliestStartMin !== null && latestEndMin !== null) {
+        const earliestStartHour = Math.floor(earliestStartMin / 60);
+        const latestEndHour = Math.ceil(latestEndMin / 60);
+        startHour = clampHour(Math.min(DEFAULT_START_HOUR, earliestStartHour));
+        endHour = clampHour(Math.max(DEFAULT_END_HOUR, latestEndHour));
+      }
+    }
+
+    // Guarda: nunca un rango vacío/invertido.
+    endHour = Math.max(endHour, startHour + 1);
+
+    return { startHour, endHour };
+  }, [cacheVersion, visibleDoctorIds, dateRange]);
+
   // ---- Build events from cache ---------------------------------------------
   const events: SchedulerEvent[] = useMemo(() => {
     void cacheVersion;
@@ -257,21 +319,29 @@ export function useAppointmentsScheduler(
       const pos = calcEventPosition(
         appt.time,
         appt.duration,
-        START_HOUR,
+        hourRange.startHour,
         SLOT_HEIGHT,
+      );
+      // Recorta la altura al fondo del grid: una cita que cruce medianoche
+      // (endHour se topa a 24) no debe desbordar/flotar bajo la rejilla.
+      const gridBottom =
+        (hourRange.endHour - hourRange.startHour) * 2 * SLOT_HEIGHT;
+      const height = Math.max(
+        SLOT_HEIGHT * 0.5,
+        Math.min(pos.height, gridBottom - pos.top),
       );
       allEvents.push({
         appointment: appt,
         doctorColor: color,
         top: pos.top,
-        height: pos.height,
+        height,
         column: 0,
         totalColumns: 1,
       });
     }
 
     return allEvents;
-  }, [cacheVersion, visibleDoctorIds, doctors, dateRange]);
+  }, [cacheVersion, visibleDoctorIds, doctors, dateRange, hourRange]);
 
   /** Events grouped by date with overlaps resolved. */
   const eventsByDay = useMemo(() => {
@@ -540,9 +610,9 @@ export function useAppointmentsScheduler(
     rescheduleByDrag,
     invalidateCache,
 
-    // Constants for grids
-    startHour: START_HOUR,
-    endHour: END_HOUR,
+    // Rango de horas del grid (dinámico — ver `hourRange`)
+    startHour: hourRange.startHour,
+    endHour: hourRange.endHour,
     slotHeight: SLOT_HEIGHT,
   };
 }
