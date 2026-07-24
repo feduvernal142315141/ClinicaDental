@@ -75,10 +75,11 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
   const handleFiltersChange = useCallback(
     ({ q }: { q: string }) => {
       qRef.current = q;
+      const filters = q ? patientsQuery().search(q).build().filters : [];
       fetchPatients({
         page: 0,
         pageSize: pageSizeRef.current,
-        q,
+        filters,
         orders: activeOrdersRef.current,
       }).catch(() => {
         /* toast already shown by hook */
@@ -105,10 +106,11 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
         ? patientsQuery().order(field as PatientField, order).build().orders
         : [];
       activeOrdersRef.current = orders;
+      const filters = qRef.current ? patientsQuery().search(qRef.current).build().filters : [];
       fetchPatients({
         page: 0,
         pageSize: pageSizeRef.current,
-        q: qRef.current,
+        filters,
         orders,
       }).catch(() => {
         /* toast already shown by hook */
@@ -137,10 +139,11 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
         await activatePatient(confirmDialog.patient.id);
       }
       setConfirmDialog(null);
+      const filters = qRef.current ? patientsQuery().search(qRef.current).build().filters : [];
       await fetchPatients({
         page: pagination.page,
         pageSize: pagination.pageSize,
-        q: qRef.current,
+        filters,
         orders: activeOrdersRef.current,
       });
     } catch {
@@ -192,14 +195,15 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
       <Button
         variant="outline"
         size="sm"
-        onClick={() =>
+        onClick={() => {
+          const filters = qRef.current ? patientsQuery().search(qRef.current).build().filters : [];
           fetchPatients({
             page: 0,
             pageSize: pageSizeRef.current,
-            q: qRef.current,
+            filters,
             orders: activeOrdersRef.current,
           }).catch(() => {})
-        }
+        }}
         className="mt-1 gap-2"
       >
         <RefreshCw className="h-4 w-4" />
@@ -255,10 +259,11 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
         total={pagination.total}
         showSizeChanger
         onPageChange={(page, pageSize) => {
+          const filters = qRef.current ? patientsQuery().search(qRef.current).build().filters : [];
           fetchPatients({
             page: page - 1,
             pageSize,
-            q: qRef.current,
+            filters,
             orders: activeOrdersRef.current,
           }).catch(() => {});
         }}
