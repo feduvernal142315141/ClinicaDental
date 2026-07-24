@@ -99,14 +99,16 @@ function ScheduleDayRow({
   label,
   disabled,
   clinicDay,
+  onToggle,
 }: {
   form: UseFormReturn<DoctorFormValues>;
   dayKey: keyof DoctorFormValues["schedule"];
   label: string;
   disabled?: boolean;
   clinicDay?: ClinicScheduleDay;
+  onToggle: (next: boolean) => void;
 }) {
-  const { control, setValue } = form;
+  const { control } = form;
 
   const enabledField = useController({
     control,
@@ -162,26 +164,7 @@ function ScheduleDayRow({
             label={label}
             status={pillStatus}
             checked={enabled}
-            onCheckedChange={(checked) => {
-              enabledField.field.onChange(checked);
-              if (!checked) return;
-              // INIT-ON-ENABLE: al encender, nacer dentro del rango de la
-              // clínica (o el default si no hay uno válido).
-              const start = clinicOpen
-                ? (clinicDay!.startTime as string)
-                : FALLBACK_START;
-              const end = clinicOpen
-                ? (clinicDay!.endTime as string)
-                : FALLBACK_END;
-              setValue(`schedule.${dayKey}.startTime`, start, {
-                shouldDirty: true,
-                shouldValidate: true,
-              });
-              setValue(`schedule.${dayKey}.endTime`, end, {
-                shouldDirty: true,
-                shouldValidate: true,
-              });
-            }}
+            onCheckedChange={onToggle}
             disabled={switchDisabled}
           />
           {enabledField.fieldState.error && (
@@ -306,13 +289,42 @@ export function DoctorForm({
   const roleOptions = roles.map((r) => ({ value: r.id, label: r.name }));
   const formDisabled = loading || readOnly;
 
-  // Resumen read-only de días con horario (variante ClinicPro).
+  // Resumen + control de días con horario (variante ClinicPro). Abre/cierra un
+  // día (misma acción que el switch del tile). Un día que la clínica no abre no
+  // puede encenderse; si ya estaba encendido (legacy) sí puede apagarse.
   const scheduleWatch = form.watch("schedule");
-  const overviewDays = DAYS_OF_WEEK.map((d) => ({
-    short: DAY_SHORT[d.key],
-    label: d.label,
-    active: !!scheduleWatch?.[d.key]?.enabled,
-  }));
+  const setDayEnabled = (
+    dayKey: keyof DoctorFormValues["schedule"],
+    next: boolean,
+  ) => {
+    const clinicDay = clinicSchedule?.[dayKey];
+    if (next && clinicDay?.enabled === false) return;
+    // Prellenar las horas ANTES de encender y validar solo en el último
+    // setValue (enabled), para no disparar el falso "debe indicar hora...".
+    if (next) {
+      const clinicOpen = isClinicDayOpen(clinicDay);
+      const start = clinicOpen ? (clinicDay!.startTime as string) : FALLBACK_START;
+      const end = clinicOpen ? (clinicDay!.endTime as string) : FALLBACK_END;
+      form.setValue(`schedule.${dayKey}.startTime`, start, { shouldDirty: true });
+      form.setValue(`schedule.${dayKey}.endTime`, end, { shouldDirty: true });
+    }
+    form.setValue(`schedule.${dayKey}.enabled`, next, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+  const overviewDays = DAYS_OF_WEEK.map((d) => {
+    const active = !!scheduleWatch?.[d.key]?.enabled;
+    const clinicClosedForDay = clinicSchedule?.[d.key]?.enabled === false;
+    const chipDisabled = formDisabled || (clinicClosedForDay && !active);
+    return {
+      short: DAY_SHORT[d.key],
+      label: d.label,
+      active,
+      disabled: chipDisabled,
+      onToggle: chipDisabled ? undefined : () => setDayEnabled(d.key, !active),
+    };
+  });
 
   const datosError = Boolean(
     errors.name ||
@@ -642,6 +654,7 @@ export function DoctorForm({
                     label={day.label}
                     disabled={formDisabled}
                     clinicDay={clinicSchedule?.[day.key]}
+                    onToggle={(next) => setDayEnabled(day.key, next)}
                   />
                 ))}
               </div>

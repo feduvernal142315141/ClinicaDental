@@ -44,13 +44,40 @@ interface ScheduleEditorProps {
  * `generalSettingsFormSchema` y se muestra vía el `errorMessage` de cada slot.
  */
 export function ScheduleEditor({ disabled = false }: ScheduleEditorProps) {
-  const { control } = useFormContext<GeneralSettingsFormValues>();
+  const { control, getValues, setValue } = useFormContext<GeneralSettingsFormValues>();
   const schedule = useWatch({ control, name: "schedule" });
+
+  // Abre/cierra un día. Lo usan tanto el chip del resumen como el switch del
+  // tile → misma acción sobre `schedule.<day>.enabled`, siempre en sync.
+  // Al ABRIR se prellenan las horas ANTES de encender, y la validación corre
+  // solo en el último `setValue` (enabled) con las horas ya puestas — así no
+  // salta el falso "debe indicar hora de apertura y cierre".
+  const setDayEnabled = (key: ClinicScheduleDayKey, next: boolean) => {
+    if (next) {
+      const day = getValues(`schedule.${key}`);
+      if (!day?.startTime)
+        setValue(`schedule.${key}.startTime`, DEFAULT_OPEN_START, {
+          shouldDirty: true,
+        });
+      if (!day?.endTime)
+        setValue(`schedule.${key}.endTime`, DEFAULT_OPEN_END, {
+          shouldDirty: true,
+        });
+    }
+    setValue(`schedule.${key}.enabled`, next, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
 
   const overviewDays = CLINIC_SCHEDULE_DAYS.map(({ key, label }) => ({
     short: DAY_SHORT[key],
     label,
     active: !!schedule?.[key]?.enabled,
+    disabled,
+    onToggle: disabled
+      ? undefined
+      : () => setDayEnabled(key, !schedule?.[key]?.enabled),
   }));
 
   return (
@@ -59,7 +86,13 @@ export function ScheduleEditor({ disabled = false }: ScheduleEditorProps) {
       {/* Rejilla de 2 columnas en desktop; una sola en móvil/tablet. */}
       <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
         {CLINIC_SCHEDULE_DAYS.map(({ key, label }) => (
-          <ScheduleDayRow key={key} dayKey={key} label={label} disabled={disabled} />
+          <ScheduleDayRow
+            key={key}
+            dayKey={key}
+            label={label}
+            disabled={disabled}
+            onToggle={(next) => setDayEnabled(key, next)}
+          />
         ))}
       </div>
     </div>
@@ -70,10 +103,12 @@ function ScheduleDayRow({
   dayKey,
   label,
   disabled,
+  onToggle,
 }: {
   dayKey: ClinicScheduleDayKey;
   label: string;
   disabled: boolean;
+  onToggle: (next: boolean) => void;
 }) {
   const { control } = useFormContext<GeneralSettingsFormValues>();
 
@@ -109,14 +144,7 @@ function ScheduleDayRow({
           label={label}
           status={pillStatus}
           checked={enabled}
-          onCheckedChange={(checked) => {
-            enabledField.field.onChange(checked);
-            // Al ABRIR un día sin horas, prellenar un horario por defecto.
-            if (checked) {
-              if (!startField.field.value) startField.field.onChange(DEFAULT_OPEN_START);
-              if (!endField.field.value) endField.field.onChange(DEFAULT_OPEN_END);
-            }
-          }}
+          onCheckedChange={onToggle}
           disabled={disabled}
         />
       }
