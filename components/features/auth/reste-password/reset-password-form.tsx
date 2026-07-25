@@ -9,7 +9,7 @@ import { ArrowLeft, KeyRound, Save, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { notify } from "@/lib/utils/notify";
 import { useDoctorAuth } from "@/lib/hooks/doctors/useDoctorAuth";
-import { requiredText, password } from "@/lib/validation/fields";
+import { requiredText, password, confirmPasswordRefine } from "@/lib/validation/fields";
 import { AuthShell } from "../components/auth-shell";
 import { AuthCard } from "../components/auth-card";
 import { FloatingField } from "../components/floating-field";
@@ -19,7 +19,8 @@ import { PasswordStrength } from "../components/password-strength";
 const schema = z.object({
   code: requiredText({ min: 1, label: "El código" }),
   password,
-});
+  confirmPassword: z.string().min(1, "Confirma tu nueva contraseña"),
+}).superRefine(confirmPasswordRefine("password", "confirmPassword"));
 
 type ResetPasswordValues = z.infer<typeof schema>;
 
@@ -34,7 +35,7 @@ export function ResetPasswordForm() {
   const form = useForm<ResetPasswordValues>({
     resolver: zodResolver(schema),
     mode: "onBlur",
-    defaultValues: { code: codeFromUrl, password: "" },
+    defaultValues: { code: codeFromUrl, password: "", confirmPassword: "" },
   });
 
   const {
@@ -113,6 +114,16 @@ export function ResetPasswordForm() {
             disabled={loading}
             error={errors.password?.message}
             {...register("password")}
+          />
+
+          <FloatingField
+            id="confirmPassword"
+            label="Confirmar contraseña"
+            type="password"
+            autoComplete="new-password"
+            disabled={loading}
+            error={errors.confirmPassword?.message}
+            {...register("confirmPassword")}
           />
 
           <PasswordStrength password={passwordValue} />
