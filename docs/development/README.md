@@ -29,6 +29,7 @@ decisión cambia una frontera arquitectónica, actualizar el código, el
 | consumir o cambiar un endpoint | [Contratos API](api-contracts.md), [Datos](data-and-database.md), [Seguridad](security.md) |
 | tocar auth, cookies o permisos | [Seguridad](security.md), [Arquitectura](architecture.md) |
 | modificar el odontograma | [Arquitectura](architecture.md), `lib/odontogram/AGENTS.md`, `$odontogram-module` |
+| integrar Facturación (backend) | [Spec billing backend](billing-backend-spec.md), [Contratos API](api-contracts.md) |
 | preparar una entrega | [Despliegue](deployment.md), [Calidad](quality-and-testing.md) |
 | evaluar una refactorización | [Restricciones conocidas](known-constraints.md), [Estándares](coding-standards.md) |
 
