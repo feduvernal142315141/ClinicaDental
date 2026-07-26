@@ -32,6 +32,7 @@ import {
   SURFACE_STATUS_LABELS,
   TOOTH_TEMPLATES,
 } from "./types";
+import { isToothPhysicallyAbsent } from "@/lib/odontogram/domain/odontogram/constants/tooth-status.constants";
 
 interface SurfacesTabProps {
   tooth: Tooth;
@@ -75,11 +76,9 @@ export function SurfacesTab({
   const isInitialized = useRef<number | null>(null);
   const pendingInit = useRef(false);
   const anterior = isAnterior(tooth.number);
-  const isDisabled =
-    readOnly ||
-    tooth.globalStatus === "absent_pending" ||
-    tooth.globalStatus === "absent_done" ||
-    tooth.globalStatus === "implant";
+  // Una exodoncia INDICADA no bloquea: la pieza sigue en boca y normalmente es
+  // justo la que hay que diagnosticar para justificar la extracción.
+  const isDisabled = readOnly || isToothPhysicallyAbsent(tooth.globalStatus);
 
   // Caras que este diente REALMENTE tiene geometría para marcar (unión de las 3
   // vistas). Evita crear estados "fantasma" que nunca se pintan — p.ej. 'lingual'

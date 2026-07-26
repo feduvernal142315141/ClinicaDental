@@ -5,11 +5,24 @@ import type {
   SurfaceStatus,
 } from "./surface.types";
 
+/**
+ * Estado global de la pieza.
+ *
+ * Eje pendiente/realizado codificado por COLOR, no por estado duplicado:
+ * rojo = por hacer, azul = ya realizado (convención del odontograma).
+ *
+ * `extraction_indicated` y `absent` son hechos clínicos distintos, no dos fases
+ * del mismo: en el primero la pieza SIGUE en boca (y por tanto sus superficies
+ * se pueden diagnosticar); en el segundo ya no está. El modelo anterior tenía
+ * tres estados para esto —'extraction', 'absent_pending' y 'absent_done'— con
+ * los colores cambiados entre sí. Ver `migrateGlobalStatus` en el store.
+ */
 export type ToothGlobalStatus =
   | "healthy"
-  | "extraction"
-  | "absent_pending"
-  | "absent_done"
+  /** Pieza presente con exodoncia indicada — ✕ roja (por hacer). */
+  | "extraction_indicated"
+  /** Pieza no presente: extraída o agenesia — ✕ azul (hecho/registrado). */
+  | "absent"
   | "endodontic"
   | "crown_pending"
   | "crown_done"

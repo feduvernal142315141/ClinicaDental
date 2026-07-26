@@ -20,36 +20,34 @@ import { ClinicalEventStateMachine } from "@/lib/odontogram/domain/odontogram/se
 import { SYMBOL_COLORS } from "@/lib/odontogram/domain/odontogram/constants/odontogram-colors.constants";
 
 /**
- * Estado visual (relleno/símbolo) por estado global de diente — modelo de 3 ciclos.
- * SOLO 'extraction' (rojo) e 'implant' (morado) rellenan la pieza; el resto marca
- * con símbolo (cruz/ENDO/círculo) vía canal symbolColor, sin relleno.
+ * Estado visual (relleno/símbolo) por estado global de diente.
+ * SOLO 'implant' (morado) rellena la pieza; el resto marca con símbolo
+ * (✕/ENDO/anillo) vía canal symbolColor, sin relleno.
+ *
+ * El eje pendiente/realizado lo lleva el COLOR del mismo glifo —✕ roja para la
+ * exodoncia indicada, ✕ azul para la pieza ausente— igual que el anillo de
+ * corona. Antes la exodoncia indicada rellenaba la pieza entera de rojo y
+ * convivía con dos "ausencias" de colores intercambiados.
  */
 const globalStatusVisualState = (
   status: ToothGlobalStatus,
 ): ClinicalEventVisualState => {
   switch (status) {
-    case "extraction":
-      // Pieza completa rellena de rojo, SIN símbolo.
-      return {
-        affectsOdontogram: true,
-        priorityKey: "absent",
-        colorKey: "extraction",
-      };
-    case "absent_pending":
-      // Cruz AZUL, sin relleno.
+    case "extraction_indicated":
+      // ✕ ROJA: la pieza sigue en boca, la exodoncia está por hacer.
       return {
         affectsOdontogram: false,
         priorityKey: "absent",
         symbolKey: "cross",
-        symbolColor: SYMBOL_COLORS.ABSENT_PENDING,
+        symbolColor: SYMBOL_COLORS.EXTRACTION_INDICATED,
       };
-    case "absent_done":
-      // Cruz ROJA, sin relleno.
+    case "absent":
+      // ✕ AZUL: la pieza ya no está (extraída o agenesia).
       return {
         affectsOdontogram: false,
         priorityKey: "absent",
         symbolKey: "cross",
-        symbolColor: SYMBOL_COLORS.ABSENT_DONE,
+        symbolColor: SYMBOL_COLORS.ABSENT,
       };
     case "endodontic":
       // Texto "ENDO" neutro, sin relleno.
@@ -93,22 +91,35 @@ const globalStatusVisualState = (
   }
 };
 
-/** Mapea el status crudo de notas legacy ("Estado global: X") al nuevo modelo. */
-const legacyStatusToGlobalStatus = (raw: string): ToothGlobalStatus | null => {
+/**
+ * Traduce cualquier valor histórico de `globalStatus` al modelo vigente.
+ *
+ * Punto ÚNICO de migración: lo consumen tanto la rehidratación de dientes
+ * guardados como el parseo de notas legacy ("Estado global: X").
+ *
+ * - 'extraction'     → exodoncia indicada (era la pieza rellena de rojo).
+ * - 'absent_pending' → exodoncia indicada: "ausente pendiente" describía una
+ *   pieza que SIGUE en boca y está por extraer, que es justo eso.
+ * - 'absent_done' / 'absent' → ausente.
+ * - 'crown'          → corona realizada.
+ */
+export const migrateGlobalStatus = (
+  raw: string | undefined | null,
+): ToothGlobalStatus | null => {
   switch (raw) {
     case "healthy":
-    case "extraction":
-    case "absent_pending":
-    case "absent_done":
+    case "extraction_indicated":
+    case "absent":
     case "endodontic":
     case "crown_pending":
     case "crown_done":
     case "implant":
       return raw;
-    // Datos antiguos: 'absent' → ausencia hecha (cruz roja).
-    case "absent":
-      return "absent_done";
-    // Datos antiguos: 'crown' (estado único) → corona realizada (anillo azul).
+    case "extraction":
+    case "absent_pending":
+      return "extraction_indicated";
+    case "absent_done":
+      return "absent";
     case "crown":
       return "crown_done";
     default:
@@ -134,7 +145,7 @@ const legacyVisualStateToGlobalStatus = (
   // Símbolos del modelo viejo.
   if (symbolKey === "endodontics") return "endodontic";
   if (symbolKey === "crown" || symbolKey === "crown_ring") return "crown_done";
-  if (symbolKey === "extraction") return "absent_done";
+  if (symbolKey === "extraction") return "absent";
   if (symbolKey === "implant") return "implant";
 
   // Rellenos del modelo viejo (sin símbolo migrable).
@@ -144,9 +155,9 @@ const legacyVisualStateToGlobalStatus = (
     case "crown":
       return "crown_done";
     case "absent":
-      return "absent_done";
+      return "absent";
     case "extraction":
-      return "extraction";
+      return "extraction_indicated";
     case "implant":
       return "implant";
     default:
@@ -491,7 +502,7 @@ const normalizeClinicalEvent = (event: ClinicalEvent): ClinicalEvent => {
   // Re-derivar SIEMPRE el visualState de los eventos de ESTADO DE DIENTE desde
   // sus notas ("Estado global: X"). Es idempotente para datos nuevos y MIGRA los
   // datos legacy que persistieron el visualState del modelo viejo (E/C + relleno
-  // rojo/morado, X gris) al nuevo modelo (ENDO / círculo / cruz azul-roja sin
+  // rojo/morado, X gris) al nuevo modelo (ENDO / anillo / ✕ roja-azul sin
   // relleno). Corre ANTES del early-return de visualState existente, porque el
   // dato legacy YA trae un visualState (obsoleto) que hay que reemplazar.
   const statusFromNotes = normalizedEvent.notes?.startsWith("Estado global:")
@@ -503,7 +514,7 @@ const normalizeClinicalEvent = (event: ClinicalEvent): ClinicalEvent => {
     normalizedEvent.surfaces.length === 0 &&
     statusFromNotes
   ) {
-    const mappedStatus = legacyStatusToGlobalStatus(statusFromNotes);
+    const mappedStatus = migrateGlobalStatus(statusFromNotes);
     if (mappedStatus) {
       return {
         ...normalizedEvent,
@@ -551,11 +562,11 @@ const normalizeClinicalEvent = (event: ClinicalEvent): ClinicalEvent => {
   }
 
   // Datos legacy con type ausente/implante pero sin visualState: reconstruirlo
-  // con el nuevo modelo (ausente → cruz roja; implante → relleno morado + 'I').
+  // con el nuevo modelo (ausente → ✕ azul; implante → relleno morado + 'I').
   if (normalizedEvent.type === "ausente") {
     return {
       ...normalizedEvent,
-      visualState: globalStatusVisualState("absent_done"),
+      visualState: globalStatusVisualState("absent"),
     };
   }
 
@@ -577,13 +588,11 @@ const normalizeTooth = (
     (event) => event.toothNumber === tooth.number,
   );
 
-  // Legacy: el antiguo globalStatus 'absent' ya no es un valor válido del enum
-  // → mapear a 'absent_done' para que el chip de Estado se resalte al reabrir un
-  // diente guardado con el modelo viejo.
+  // Los dientes guardados con modelos anteriores traen valores que ya no
+  // existen en el enum ('extraction', 'absent_pending', 'absent_done', 'crown').
+  // Se traducen aquí para que el chip de Estado se resalte al reabrir la ficha.
   const globalStatus =
-    (tooth.globalStatus as string) === "absent"
-      ? ("absent_done" as ToothGlobalStatus)
-      : tooth.globalStatus;
+    migrateGlobalStatus(tooth.globalStatus as string) ?? tooth.globalStatus;
 
   return {
     ...tooth,
@@ -829,7 +838,7 @@ const createOdontogramStore = ({
       }
 
       const eventType: ClinicalEventType =
-        status === "absent_pending" || status === "absent_done"
+        status === "absent"
           ? "ausente"
           : status === "implant"
             ? "implante"

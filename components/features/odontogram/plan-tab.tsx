@@ -53,6 +53,7 @@ import {
 } from "./types";
 import { useOdontogramServices } from "@/lib/odontogram/application/hooks/useOdontogramServices";
 import { useIcdasTemplateSuggestions } from "@/lib/odontogram/application/hooks/useIcdasTemplateSuggestions";
+import { isToothPhysicallyAbsent } from "@/lib/odontogram/domain/odontogram/constants/tooth-status.constants";
 
 interface PlanTabProps {
   tooth: Tooth;
@@ -321,9 +322,7 @@ export function PlanTab({
   };
 
   const hasCoherenceIssue =
-    (tooth.globalStatus === "absent_pending" ||
-      tooth.globalStatus === "absent_done" ||
-      tooth.globalStatus === "implant") &&
+    isToothPhysicallyAbsent(tooth.globalStatus) &&
     plans.some((p) => p.category === "restaurador");
 
   // Avisos de coherencia diagnóstico↔plan según ICCMS/ICDAS (no bloqueantes).

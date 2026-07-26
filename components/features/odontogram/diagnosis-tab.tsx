@@ -48,6 +48,7 @@ import {
 } from "./types";
 import { ODONTOGRAM_STATE_COLORS } from "@/lib/odontogram/domain/odontogram/constants/odontogram-colors.constants";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
+import { isToothPhysicallyAbsent } from "@/lib/odontogram/domain/odontogram/constants/tooth-status.constants";
 
 interface DiagnosisTabProps {
   tooth: Tooth;
@@ -342,9 +343,7 @@ export function DiagnosisTab({
   };
 
   const hasCoherenceIssue =
-    (tooth.globalStatus === "absent_pending" ||
-      tooth.globalStatus === "absent_done" ||
-      tooth.globalStatus === "implant") &&
+    isToothPhysicallyAbsent(tooth.globalStatus) &&
     Array.from(surfaceDiagnoses.values()).some((d) => d.icdasScore > 0);
 
   const hasMixedState =

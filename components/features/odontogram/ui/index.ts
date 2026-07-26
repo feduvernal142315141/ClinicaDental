@@ -44,6 +44,8 @@ export type { OdontogramEventCardProps } from "./OdontogramEventCard";
 export { OdontogramEmptyState } from "./OdontogramEmptyState";
 export type { OdontogramEmptyStateProps } from "./OdontogramEmptyState";
 
+export { ToothStatusChips } from "./ToothStatusChips";
+
 export { OdontogramVisitContextBar } from "./OdontogramVisitContextBar";
 export { OdontogramHistoricFrame } from "./OdontogramHistoricFrame";
 export { VisitPickerRow } from "./VisitPickerRow";

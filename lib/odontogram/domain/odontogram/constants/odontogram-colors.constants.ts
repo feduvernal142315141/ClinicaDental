@@ -53,16 +53,18 @@ export const ODONTOGRAM_STATE_COLORS = {
 
 /**
  * COLORES DE SÍMBOLO (canal independiente del relleno de pieza).
- * Los usa el render para pintar la cruz de ausencia, el texto "ENDO" y el
- * círculo de corona. Solo 'extraction'/'implant' rellenan la pieza; el resto
- * marca con símbolo usando estos colores.
+ * Los usa el render para pintar la cruz (✕), el texto "ENDO" y el anillo de
+ * corona. Solo 'implant' rellena la pieza; el resto marca con símbolo.
+ *
+ * Regla del odontograma: ROJO = por hacer, AZUL = realizado. El mismo glifo
+ * cambia de color según el eje, igual que el anillo de corona.
  */
 export const SYMBOL_COLORS = {
-  INK: "#1F2937",            // Neutro (ENDO)
-  ABSENT_PENDING: "#2563EB", // Azul (cruz ausencia pendiente)
-  ABSENT_DONE: "#D32F2F",    // Rojo (cruz ausencia hecha)
-  CROWN_PENDING: "#D32F2F",  // Rojo (anillo corona por hacer)
-  CROWN_DONE: "#2563EB",     // Azul (anillo corona realizada)
+  INK: "#1F2937",                 // Neutro (ENDO)
+  EXTRACTION_INDICATED: "#D32F2F", // Rojo (✕ exodoncia indicada)
+  ABSENT: "#2563EB",              // Azul (✕ pieza ausente)
+  CROWN_PENDING: "#D32F2F",       // Rojo (anillo corona por hacer)
+  CROWN_DONE: "#2563EB",          // Azul (anillo corona realizada)
 } as const
 
 /**
@@ -202,26 +204,20 @@ export const ODONTOGRAM_LEGEND_ITEMS = [
     order: 4,
   },
   {
-    label: "Extracción (pieza roja)",
-    color: ODONTOGRAM_STATE_COLORS.EXTRACTION,
-    type: "state" as const,
+    label: "Extracción indicada (✕ roja)",
+    color: ODONTOGRAM_STATE_COLORS.NONE,
+    symbol: "✕",
+    symbolColor: SYMBOL_COLORS.EXTRACTION_INDICATED,
+    type: "symbol" as const,
     order: 5,
   },
   {
-    label: "Ausente pend. (cruz)",
+    label: "Ausente (✕ azul)",
     color: ODONTOGRAM_STATE_COLORS.NONE,
     symbol: "✕",
-    symbolColor: SYMBOL_COLORS.ABSENT_PENDING,
+    symbolColor: SYMBOL_COLORS.ABSENT,
     type: "symbol" as const,
     order: 6,
-  },
-  {
-    label: "Ausente hecha (cruz)",
-    color: ODONTOGRAM_STATE_COLORS.NONE,
-    symbol: "✕",
-    symbolColor: SYMBOL_COLORS.ABSENT_DONE,
-    type: "symbol" as const,
-    order: 7,
   },
   {
     label: "Endodoncia (ENDO)",
