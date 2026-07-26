@@ -86,26 +86,39 @@ function OdontogramModuleContent({
     });
   };
 
+  /**
+   * Lista de eventos con scroll propio: las tabs ocupan una altura fija, así
+   * que el desbordamiento tiene que resolverse dentro del panel y no
+   * recortarse contra el contenedor de la página.
+   */
   function renderEventList(events: ClinicalEvent[], emptyMessage: string) {
-    if (events.length === 0) {
-      return <OdontogramEmptyState description={emptyMessage} />;
-    }
-
-    return events.map((event) => (
-      <OdontogramEventCard
-        key={event.id}
-        toothNumber={event.toothNumber}
-        surfaces={event.surfaces}
-        displayName={getEventDisplayName(event)}
-        typeLabel={getEventTypeLabel(event.type)}
-        tagColor={
-          getEventTagColor(event.type) as OdontogramEventCardProps["tagColor"]
-        }
-        notes={event.notes}
-        date={formatEventDate(event.createdAt)}
-        onClick={() => handlers.handleEventClick(event)}
-      />
-    ));
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="space-y-4 pb-2">
+          {events.length === 0 ? (
+            <OdontogramEmptyState description={emptyMessage} />
+          ) : (
+            events.map((event) => (
+              <OdontogramEventCard
+                key={event.id}
+                toothNumber={event.toothNumber}
+                surfaces={event.surfaces}
+                displayName={getEventDisplayName(event)}
+                typeLabel={getEventTypeLabel(event.type)}
+                tagColor={
+                  getEventTagColor(
+                    event.type,
+                  ) as OdontogramEventCardProps["tagColor"]
+                }
+                notes={event.notes}
+                date={formatEventDate(event.createdAt)}
+                onClick={() => handlers.handleEventClick(event)}
+              />
+            ))
+          )}
+        </div>
+      </div>
+    );
   }
 
   const tabItems: OdontogramTabItem[] = [
@@ -128,11 +141,7 @@ function OdontogramModuleContent({
           count={suggestionEvents.length}
         />
       ),
-      children: (
-        <div className="space-y-4">
-          {renderEventList(suggestionEvents, "No hay sugerencias activas")}
-        </div>
-      ),
+      children: renderEventList(suggestionEvents, "No hay sugerencias activas"),
     },
     {
       key: "diagnosis",
@@ -142,30 +151,24 @@ function OdontogramModuleContent({
           count={diagnosisEvents.length}
         />
       ),
-      children: (
-        <div className="space-y-4">
-          {renderEventList(diagnosisEvents, "No hay diagnósticos registrados")}
-        </div>
+      children: renderEventList(
+        diagnosisEvents,
+        "No hay diagnósticos registrados",
       ),
     },
     {
       key: "plans",
       label: <OdontogramTabLabel label="Planes" count={planEvents.length} />,
-      children: (
-        <div className="space-y-4">
-          {renderEventList(planEvents, "No hay planes registrados")}
-        </div>
-      ),
+      children: renderEventList(planEvents, "No hay planes registrados"),
     },
     {
       key: "performed",
       label: (
         <OdontogramTabLabel label="Realizados" count={performedEvents.length} />
       ),
-      children: (
-        <div className="space-y-4">
-          {renderEventList(performedEvents, "No hay procedimientos realizados")}
-        </div>
+      children: renderEventList(
+        performedEvents,
+        "No hay procedimientos realizados",
       ),
     },
   ];
@@ -197,7 +200,8 @@ function OdontogramModuleContent({
         items={tabItems}
         defaultActiveKey={initialTab}
         onChange={(key) => setActiveTab(key as typeof initialTab)}
-        className="flex-1 min-h-0"
+        fill
+        className="flex-1"
       />
 
       <ToothModal

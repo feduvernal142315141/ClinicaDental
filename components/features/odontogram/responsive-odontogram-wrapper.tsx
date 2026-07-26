@@ -1,272 +1,445 @@
 "use client";
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import { ZoomIn, ZoomOut, Maximize, Keyboard } from "lucide-react";
+import { ZoomIn, ZoomOut, MoveHorizontal, Keyboard } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+
+/** Margen interior del lienzo al calcular el encaje (px por lado) */
+const CANVAS_PADDING = 12;
+/** Tope del encaje automático: en monitores grandes no ampliamos más que esto */
+const DEFAULT_MAX_FIT = 1.5;
+/** Cuánto se permite arrastrar el contenido fuera del contenedor (fracción del contenedor) */
+const PAN_SLACK = 0.25;
+/** Desplazamiento por pulsación de flecha (px de pantalla) */
+const ARROW_STEP = 50;
+const WHEEL_ZOOM_STEP = 1.15;
+const BUTTON_ZOOM_STEP = 1.25;
+/** Umbral para distinguir un arrastre de navegación de un clic sobre un diente */
+const DRAG_THRESHOLD = 3;
+/** Marca los controles flotantes: el lienzo ignora sus eventos de rueda/puntero */
+const UI_SELECTOR = "[data-canvas-ui]";
+
+type Point = { x: number; y: number };
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
 
 interface ResponsiveOdontogramWrapperProps {
   children: React.ReactNode;
-  /** Elemento flotante sobre el lienzo (ej. Leyenda colapsable) no afectado por el zoom */
-  floatingOverlay?: React.ReactNode;
-  /** Ancho base intrínseco del grid de dientes en píxeles (default: 872) */
-  baseWidth?: number;
-  /** Alto base intrínseco del grid de dientes en píxeles (default: 520) */
-  baseHeight?: number;
-  /** Factor máximo de escala para monitores amplios (default: 3.0) */
-  maxScale?: number;
-  /** Factor mínimo de escala para proteger la legibilidad en pantallas compactas (default: 0.35) */
+  /** Controles flotantes sobre el lienzo (ej. leyenda); el wrapper los posiciona abajo-izquierda y los excluye del zoom */
+  overlay?: React.ReactNode;
+  /** Tamaño asumido antes de la primera medición, solo para evitar un salto inicial */
+  fallbackWidth?: number;
+  fallbackHeight?: number;
+  /** Límites del zoom manual del usuario */
   minScale?: number;
+  maxScale?: number;
+  /** Tope del encaje automático (no limita el zoom manual) */
+  maxFitScale?: number;
 }
 
 /**
- * Lienzo interactivo para el Odontograma (Odontogram Canvas).
- * Proporciona escalado dinámico al iniciar, zoom interactivo mediante rueda del mouse,
- * atajos de teclado (+, -, 0, flechas) y una barra de herramientas flotante estilo Bento.
- * Permite además arrastrar el lienzo con el mouse para navegar cómodamente cuando está ampliado.
+ * Lienzo interactivo del Odontograma.
+ *
+ * Mide el contenido real (no asume un tamaño fijo) y lo encaja en el espacio
+ * disponible. Sobre eso ofrece zoom anclado al cursor, arrastre para navegar,
+ * pellizco en pantallas táctiles y atajos de teclado cuando el lienzo tiene
+ * el foco.
+ *
+ * Convención de rueda (estilo Figma): Ctrl/⌘ + rueda hace zoom; la rueda sola
+ * solo navega el lienzo cuando hay contenido fuera de vista y, si todo cabe,
+ * se deja pasar para que la página siga scrolleando con normalidad.
  */
 export function ResponsiveOdontogramWrapper({
   children,
-  floatingOverlay,
-  baseWidth = 872,
-  baseHeight = 520,
-  maxScale = 3.0,
+  overlay,
+  fallbackWidth = 872,
+  fallbackHeight = 520,
   minScale = 0.35,
+  maxScale = 3,
+  maxFitScale = DEFAULT_MAX_FIT,
 }: ResponsiveOdontogramWrapperProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  // Estados de escala y traslación (pan)
-  const [scale, setScale] = useState<number>(1);
-  const [fitScale, setFitScale] = useState<number>(1);
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isReady, setIsReady] = useState<boolean>(false);
+  const [scale, setScale] = useState(1);
+  const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
+  const [fitScale, setFitScale] = useState(1);
+  const [isReady, setIsReady] = useState(false);
+  const [isManual, setIsManualState] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Estado para saber si el usuario ha modificado la vista manualmente
-  const [isManual, setIsManualState] = useState<boolean>(false);
-  const isManualRef = useRef<boolean>(false);
+  // Espejo en refs: los manejadores de puntero/rueda necesitan el valor actual
+  // sin re-suscribirse ni arrastrar closures obsoletos.
+  const scaleRef = useRef(1);
+  const panRef = useRef<Point>({ x: 0, y: 0 });
+  const fitRef = useRef(1);
+  const isManualRef = useRef(false);
+  /** Medidas de layout (no afectadas por el transform) */
+  const sizeRef = useRef({
+    cw: 0,
+    ch: 0,
+    w: fallbackWidth,
+    h: fallbackHeight,
+  });
 
-  const setIsManual = useCallback((val: boolean) => {
-    isManualRef.current = val;
-    setIsManualState(val);
+  // Punteros activos: 1 = arrastre, 2 = pellizco
+  const pointersRef = useRef(new Map<number, Point>());
+  const dragRef = useRef<{ start: Point; startPan: Point } | null>(null);
+  const pinchRef = useRef<{ distance: number } | null>(null);
+  const capturedRef = useRef<number | null>(null);
+  const hasDraggedRef = useRef(false);
+
+  const setIsManual = useCallback((value: boolean) => {
+    isManualRef.current = value;
+    setIsManualState(value);
   }, []);
 
-  // Estados para arrastre (pan con mouse)
-  const [isMouseDown, setIsMouseDown] = useState<boolean>(false);
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [startMouse, setStartMouse] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [startPan, setStartPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const hasDraggedRef = useRef<boolean>(false);
+  const zoomBounds = useCallback(() => {
+    const fit = fitRef.current;
+    return {
+      min: Math.min(minScale, fit),
+      max: Math.max(maxScale, fit),
+    };
+  }, [minScale, maxScale]);
 
-  // Estado de foco/hover para atajos de teclado
-  const [isHovered, setIsHovered] = useState<boolean>(false);
+  /** Impide que el contenido se arrastre completamente fuera de vista */
+  const clampPan = useCallback((next: Point, atScale: number): Point => {
+    const { cw, ch, w, h } = sizeRef.current;
+    const limitX = Math.max(0, (w * atScale - cw) / 2) + cw * PAN_SLACK;
+    const limitY = Math.max(0, (h * atScale - ch) / 2) + ch * PAN_SLACK;
+    return {
+      x: clamp(next.x, -limitX, limitX),
+      y: clamp(next.y, -limitY, limitY),
+    };
+  }, []);
 
-  // Límites de escala calculados en función del encaje
-  const minScaleVal = Math.max(minScale, fitScale * 0.5);
-  const maxScaleVal = Math.max(maxScale, fitScale * 3.5);
+  const setView = useCallback((nextScale: number, nextPan: Point) => {
+    scaleRef.current = nextScale;
+    panRef.current = nextPan;
+    setScale(nextScale);
+    setPan(nextPan);
+  }, []);
 
-  // Funciones de navegación
-  const zoomIn = useCallback(() => {
-    setIsManual(true);
-    setScale((prev) => Math.min(maxScaleVal, prev * 1.25));
-  }, [maxScaleVal, setIsManual]);
+  /**
+   * Zoom manteniendo fijo el punto bajo el cursor.
+   * `anchor` va en píxeles relativos al centro del contenedor.
+   */
+  const applyZoom = useCallback(
+    (factor: number, anchor: Point = { x: 0, y: 0 }) => {
+      const prev = scaleRef.current;
+      const { min, max } = zoomBounds();
+      const next = clamp(prev * factor, min, max);
+      if (next === prev) return;
 
-  const zoomOut = useCallback(() => {
-    setIsManual(true);
-    setScale((prev) => Math.max(minScaleVal, prev / 1.25));
-  }, [minScaleVal, setIsManual]);
+      const ratio = next / prev;
+      const current = panRef.current;
+      const nextPan = {
+        x: anchor.x - (anchor.x - current.x) * ratio,
+        y: anchor.y - (anchor.y - current.y) * ratio,
+      };
+      setIsManual(true);
+      setView(next, clampPan(nextPan, next));
+    },
+    [clampPan, setIsManual, setView, zoomBounds],
+  );
+
+  const panBy = useCallback(
+    (dx: number, dy: number) => {
+      const current = panRef.current;
+      setIsManual(true);
+      setView(
+        scaleRef.current,
+        clampPan({ x: current.x + dx, y: current.y + dy }, scaleRef.current),
+      );
+    },
+    [clampPan, setIsManual, setView],
+  );
 
   const resetView = useCallback(() => {
     setIsManual(false);
-    setScale(fitScale);
-    setPan({ x: 0, y: 0 });
-  }, [fitScale, setIsManual]);
+    setView(fitRef.current, { x: 0, y: 0 });
+  }, [setIsManual, setView]);
 
-  // Cálculo inicial de ajuste a pantalla (Fit to View)
+  /** Encaje por ancho: útil cuando la arcada no se lee bien al encajar completa */
+  const fitToWidth = useCallback(() => {
+    const { cw, w } = sizeRef.current;
+    if (!cw || !w) return;
+    const { min, max } = zoomBounds();
+    const next = clamp((cw - CANVAS_PADDING * 2) / w, min, max);
+    setIsManual(true);
+    setView(next, clampPan({ x: 0, y: 0 }, next));
+  }, [clampPan, setIsManual, setView, zoomBounds]);
+
+  /** Convierte coordenadas de pantalla a offset respecto al centro del contenedor */
+  const anchorFromClient = useCallback((clientX: number, clientY: number): Point => {
+    const container = containerRef.current;
+    if (!container) return { x: 0, y: 0 };
+    const rect = container.getBoundingClientRect();
+    return {
+      x: clientX - (rect.left + rect.width / 2),
+      y: clientY - (rect.top + rect.height / 2),
+    };
+  }, []);
+
+  // Medición del contenedor y del contenido real (el tamaño del grid depende
+  // del tamaño de fuente raíz, así que no puede asumirse en píxeles fijos).
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    const content = contentRef.current;
+    if (!container || !content) return;
 
-    const updateScale = () => {
-      const rect = container.getBoundingClientRect();
-      const availableWidth = Math.max(100, rect.width - 24);
-      const availableHeight = Math.max(100, rect.height - 24);
+    const measure = () => {
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      const w = content.offsetWidth || fallbackWidth;
+      const h = content.offsetHeight || fallbackHeight;
+      sizeRef.current = { cw, ch, w, h };
 
-      const scaleX = availableWidth / baseWidth;
-      const scaleY = availableHeight / baseHeight;
+      const availableWidth = Math.max(100, cw - CANVAS_PADDING * 2);
+      const availableHeight = Math.max(100, ch - CANVAS_PADDING * 2);
+      const raw = Math.min(availableWidth / w, availableHeight / h);
+      const fit = Number(clamp(raw, minScale, maxFitScale).toFixed(3));
 
-      // Para el ajuste por defecto, aseguramos que la grilla entera quepa en pantalla sin scroll
-      let calculatedFit = Math.min(scaleX, scaleY);
-      calculatedFit = Math.max(0.35, Math.min(1.5, calculatedFit));
+      fitRef.current = fit;
+      setFitScale(fit);
 
-      const roundedFit = Number(calculatedFit.toFixed(3));
-      setFitScale(roundedFit);
-
-      // Si el usuario no ha hecho zoom manual, mantenemos la escala en el ajuste perfecto
-      if (!isManualRef.current) {
-        setScale(roundedFit);
-        setPan({ x: 0, y: 0 });
+      if (isManualRef.current) {
+        // Respetamos el zoom del usuario, pero reencuadramos si el resize dejó
+        // el contenido fuera de los límites de arrastre.
+        setView(scaleRef.current, clampPan(panRef.current, scaleRef.current));
+      } else {
+        setView(fit, { x: 0, y: 0 });
       }
       setIsReady(true);
     };
 
-    updateScale();
+    measure();
 
+    let frame = 0;
     const observer = new ResizeObserver(() => {
-      window.requestAnimationFrame(() => {
-        updateScale();
-      });
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
     });
-
     observer.observe(container);
-    return () => observer.disconnect();
-  }, [baseWidth, baseHeight]);
+    observer.observe(content);
 
-  // Rueda del mouse (Zoom y Pan con Trackpad)
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [clampPan, fallbackHeight, fallbackWidth, maxFitScale, minScale, setView]);
+
+  // Rueda: Ctrl/⌘ hace zoom; sin modificador solo navegamos si hay desborde,
+  // de lo contrario dejamos que la página scrollee (no secuestramos la rueda).
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
+    const handleWheel = (event: WheelEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.(UI_SELECTOR)) return;
 
-      if (e.ctrlKey || e.metaKey || !e.deltaX) {
-        // Zoom con rueda del mouse o gesto de pellizco en trackpad
-        const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-        setScale((prev) => {
-          const next = Math.max(minScaleVal, Math.min(maxScaleVal, prev * zoomFactor));
-          return next;
-        });
-        setIsManual(true);
-      } else {
-        // Desplazamiento horizontal/vertical con gestos de trackpad
-        setPan((prev) => ({
-          x: prev.x - e.deltaX * 0.8,
-          y: prev.y - e.deltaY * 0.8,
-        }));
-        setIsManual(true);
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        const factor = event.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
+        applyZoom(factor, anchorFromClient(event.clientX, event.clientY));
+        return;
       }
+
+      const { cw, ch, w, h } = sizeRef.current;
+      const current = scaleRef.current;
+      const overflowsX = w * current > cw + 1;
+      const overflowsY = h * current > ch + 1;
+      if (!overflowsX && !overflowsY) return;
+
+      event.preventDefault();
+      // deltaMode: 0 = píxeles, 1 = líneas, 2 = páginas
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? ch || 400 : 1;
+      panBy(-event.deltaX * unit, -event.deltaY * unit);
     };
 
     container.addEventListener("wheel", handleWheel, { passive: false });
     return () => container.removeEventListener("wheel", handleWheel);
-  }, [minScaleVal, maxScaleVal, setIsManual]);
+  }, [anchorFromClient, applyZoom, panBy]);
 
-  // Atajos de teclado cuando el cursor está sobre el lienzo
-  useEffect(() => {
-    if (!isHovered) return;
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest?.(UI_SELECTOR)) return;
+    if (event.pointerType === "mouse" && event.button !== 0 && event.button !== 1) {
+      return;
+    }
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignorar si el usuario está escribiendo en un input, select o textarea
-      if (
-        document.activeElement instanceof HTMLInputElement ||
-        document.activeElement instanceof HTMLTextAreaElement ||
-        document.activeElement instanceof HTMLSelectElement ||
-        (document.activeElement as HTMLElement)?.isContentEditable
-      ) {
-        return;
+    // Un arrastre interrumpido no debe descartar el siguiente clic sobre un diente.
+    hasDraggedRef.current = false;
+
+    const pointers = pointersRef.current;
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    // La captura se difiere al inicio real del arrastre: capturar aquí
+    // redirigiría el `click` al lienzo y el diente no se abriría.
+
+    if (pointers.size === 1) {
+      dragRef.current = {
+        start: { x: event.clientX, y: event.clientY },
+        startPan: { ...panRef.current },
+      };
+      pinchRef.current = null;
+    } else if (pointers.size === 2) {
+      dragRef.current = null;
+      const [a, b] = Array.from(pointers.values());
+      pinchRef.current = { distance: Math.hypot(b.x - a.x, b.y - a.y) };
+    }
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const pointers = pointersRef.current;
+    if (!pointers.has(event.pointerId)) return;
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (pointers.size >= 2 && pinchRef.current) {
+      const [a, b] = Array.from(pointers.values());
+      const distance = Math.hypot(b.x - a.x, b.y - a.y);
+      const previous = pinchRef.current.distance;
+      if (previous > 0 && distance > 0) {
+        hasDraggedRef.current = true;
+        applyZoom(
+          distance / previous,
+          anchorFromClient((a.x + b.x) / 2, (a.y + b.y) / 2),
+        );
       }
+      pinchRef.current = { distance };
+      return;
+    }
 
-      if (e.key === "+" || e.key === "=" || (e.ctrlKey && e.key === "+")) {
-        e.preventDefault();
-        zoomIn();
-      } else if (e.key === "-" || (e.ctrlKey && e.key === "-")) {
-        e.preventDefault();
-        zoomOut();
-      } else if (e.key === "0" || e.key === "r" || e.key === "R" || e.key === "Escape") {
-        e.preventDefault();
-        resetView();
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setPan((p) => ({ ...p, y: p.y + 50 }));
-        setIsManual(true);
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setPan((p) => ({ ...p, y: p.y - 50 }));
-        setIsManual(true);
-      } else if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        setPan((p) => ({ ...p, x: p.x + 50 }));
-        setIsManual(true);
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        setPan((p) => ({ ...p, x: p.x - 50 }));
-        setIsManual(true);
+    const drag = dragRef.current;
+    if (!drag) return;
+
+    const dx = event.clientX - drag.start.x;
+    const dy = event.clientY - drag.start.y;
+    if (
+      !hasDraggedRef.current &&
+      Math.abs(dx) < DRAG_THRESHOLD &&
+      Math.abs(dy) < DRAG_THRESHOLD
+    ) {
+      return;
+    }
+
+    // A partir de aquí es navegación: capturamos para no perder el puntero al
+    // salir del lienzo.
+    if (capturedRef.current === null) {
+      capturedRef.current = event.pointerId;
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    hasDraggedRef.current = true;
+    setIsDragging(true);
+    setIsManual(true);
+    setView(
+      scaleRef.current,
+      clampPan(
+        { x: drag.startPan.x + dx, y: drag.startPan.y + dy },
+        scaleRef.current,
+      ),
+    );
+  };
+
+  // El fin del gesto se escucha en `window`: si el usuario suelta fuera del
+  // lienzo (o el navegador cancela el gesto) el puntero no puede quedar vivo
+  // en el mapa, o el siguiente arrastre se interpretaría como pellizco.
+  useEffect(() => {
+    const finish = (event: PointerEvent) => {
+      const pointers = pointersRef.current;
+      if (!pointers.delete(event.pointerId)) return;
+
+      if (capturedRef.current === event.pointerId) {
+        capturedRef.current = null;
+        const container = containerRef.current;
+        if (container?.hasPointerCapture(event.pointerId)) {
+          container.releasePointerCapture(event.pointerId);
+        }
+      }
+      if (pointers.size < 2) pinchRef.current = null;
+      if (pointers.size === 0) {
+        dragRef.current = null;
+        setIsDragging(false);
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isHovered, zoomIn, zoomOut, resetView, setIsManual]);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+    return () => {
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+    };
+  }, []);
 
-  // Manejadores de arrastre con el mouse (Pan Drag)
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0 && e.button !== 1) return;
-    setIsMouseDown(true);
-    setStartMouse({ x: e.clientX, y: e.clientY });
-    setStartPan({ ...pan });
-    setIsDragging(false);
+  // El arrastre no debe abrir el diente que quedó bajo el cursor.
+  const handleClickCapture = (event: React.MouseEvent) => {
+    if (!hasDraggedRef.current) return;
+    hasDraggedRef.current = false;
+    event.stopPropagation();
+    event.preventDefault();
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isMouseDown) return;
-    const dx = e.clientX - startMouse.x;
-    const dy = e.clientY - startMouse.y;
-    // Si se mueve más de 3 píxeles, es un arrastre de navegación
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-      setIsDragging(true);
-      hasDraggedRef.current = true;
-      setIsManual(true);
-      setPan({
-        x: startPan.x + dx,
-        y: startPan.y + dy,
-      });
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const key = event.key;
+    if (key === "+" || key === "=") {
+      event.preventDefault();
+      applyZoom(BUTTON_ZOOM_STEP);
+    } else if (key === "-" || key === "_") {
+      event.preventDefault();
+      applyZoom(1 / BUTTON_ZOOM_STEP);
+    } else if (key === "0" || key.toLowerCase() === "r") {
+      event.preventDefault();
+      resetView();
+    } else if (key === "ArrowUp") {
+      event.preventDefault();
+      panBy(0, ARROW_STEP);
+    } else if (key === "ArrowDown") {
+      event.preventDefault();
+      panBy(0, -ARROW_STEP);
+    } else if (key === "ArrowLeft") {
+      event.preventDefault();
+      panBy(ARROW_STEP, 0);
+    } else if (key === "ArrowRight") {
+      event.preventDefault();
+      panBy(-ARROW_STEP, 0);
     }
   };
 
-  const handleMouseUpOrLeave = () => {
-    setIsMouseDown(false);
-    setTimeout(() => {
-      setIsDragging(false);
-    }, 50);
-  };
-
-  // Prevenir que un arrastre del lienzo dispare un clic en un diente
-  const handleClickCapture = (e: React.MouseEvent) => {
-    if (isDragging || hasDraggedRef.current) {
-      e.stopPropagation();
-      e.preventDefault();
-      hasDraggedRef.current = false;
-    }
-  };
-
-  const zoomPercentage = Math.round((scale / fitScale) * 100);
+  const bounds = zoomBounds();
+  const zoomPercentage = Math.round((scale / (fitScale || 1)) * 100);
 
   return (
     <div
       ref={containerRef}
       tabIndex={0}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        handleMouseUpOrLeave();
-      }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUpOrLeave}
+      role="group"
+      aria-label="Lienzo del odontograma. Use Ctrl y la rueda para acercar, arrastre para desplazar."
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
       onClickCapture={handleClickCapture}
+      onKeyDown={handleKeyDown}
       className={cn(
-        "w-full flex-1 min-h-0 relative flex items-center justify-center overflow-hidden select-none outline-none group",
-        isDragging ? "cursor-grabbing" : scale > fitScale * 1.02 ? "cursor-grab" : "cursor-default"
+        "group relative flex w-full min-h-0 flex-1 items-center justify-center overflow-hidden outline-none select-none",
+        "rounded-bento focus-visible:ring-2 focus-visible:ring-brand/40",
+        isDragging
+          ? "cursor-grabbing"
+          : scale > fitScale * 1.02
+            ? "cursor-grab"
+            : "cursor-default",
       )}
-      style={{ minHeight: isReady ? "280px" : "320px" }}
+      style={{ minHeight: "280px", touchAction: "none" }}
     >
-      {/* Botones Flotantes de Navegación (Bento UI) */}
-      <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 rounded-full bg-surface/90 px-3 py-1.5 shadow-lg backdrop-blur-md border border-border/70 text-xs text-ink transition-all hover:bg-surface hover:shadow-xl opacity-90 hover:opacity-100">
+      {/* Controles de navegación (fuera del zoom y del arrastre) */}
+      <div
+        data-canvas-ui
+        className="absolute bottom-4 right-4 z-20 flex items-center gap-1 rounded-full border border-border/70 bg-surface/90 px-3 py-1.5 text-xs text-ink shadow-lg backdrop-blur-md transition-all hover:bg-surface hover:shadow-xl"
+      >
         <button
-          onClick={zoomOut}
-          disabled={scale <= minScaleVal}
-          className="p-1.5 rounded-full hover:bg-subtle/80 disabled:opacity-40 transition-colors text-muted-foreground hover:text-ink"
-          title="Alejar (Atajo: tecla -)"
+          onClick={() => applyZoom(1 / BUTTON_ZOOM_STEP)}
+          disabled={scale <= bounds.min}
+          className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-subtle/80 hover:text-ink disabled:opacity-40"
+          title="Alejar (atajo: tecla −)"
           type="button"
         >
           <ZoomOut className="h-4 w-4" />
@@ -275,57 +448,63 @@ export function ResponsiveOdontogramWrapper({
         <button
           onClick={resetView}
           className={cn(
-            "px-2 py-0.5 rounded-md font-mono font-medium transition-colors min-w-[3.5rem] text-center",
-            isManual ? "bg-brand/10 text-brand font-bold hover:bg-brand/20" : "bg-subtle/60 hover:bg-subtle text-ink"
+            "min-w-[3.5rem] rounded-md px-2 py-0.5 text-center font-mono font-medium transition-colors",
+            isManual
+              ? "bg-brand/10 font-bold text-brand hover:bg-brand/20"
+              : "bg-subtle/60 text-ink hover:bg-subtle",
           )}
-          title="Ajustar a pantalla / Restablecer zoom (Atajo: tecla 0 o R)"
+          title="Ajustar a pantalla — 100% significa que el odontograma completo cabe en el área visible (atajo: tecla 0 o R)"
           type="button"
         >
           {zoomPercentage}%
         </button>
 
         <button
-          onClick={zoomIn}
-          disabled={scale >= maxScaleVal}
-          className="p-1.5 rounded-full hover:bg-subtle/80 disabled:opacity-40 transition-colors text-muted-foreground hover:text-ink"
-          title="Acercar (Atajo: tecla +)"
+          onClick={() => applyZoom(BUTTON_ZOOM_STEP)}
+          disabled={scale >= bounds.max}
+          className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-subtle/80 hover:text-ink disabled:opacity-40"
+          title="Acercar (atajo: tecla +)"
           type="button"
         >
           <ZoomIn className="h-4 w-4" />
         </button>
 
-        <div className="h-4 w-px bg-border/60 mx-1" />
+        <div className="mx-1 h-4 w-px bg-border/60" />
 
         <button
-          onClick={resetView}
-          className="p-1.5 rounded-full hover:bg-subtle/80 transition-colors text-muted-foreground hover:text-ink"
-          title="Ajustar a pantalla completa (Atajo: tecla R)"
+          onClick={fitToWidth}
+          className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-subtle/80 hover:text-ink"
+          title="Ajustar al ancho (amplía las arcadas y permite desplazarse en vertical)"
           type="button"
         >
-          <Maximize className="h-4 w-4" />
+          <MoveHorizontal className="h-4 w-4" />
         </button>
 
         <div
-          className="p-1.5 rounded-full text-muted-foreground hover:text-ink cursor-help transition-colors"
-          title="Navegación del lienzo:&#10;• Rueda del mouse: Acercar y alejar&#10;• Arrastrar con clic: Mover lienzo&#10;• Teclas +, -, 0, R: Zoom y ajuste&#10;• Flechas del teclado: Desplazar vista"
+          className="cursor-help rounded-full p-1.5 text-muted-foreground transition-colors hover:text-ink"
+          title="Navegación del lienzo:&#10;• Ctrl/⌘ + rueda: acercar y alejar&#10;• Pellizco: acercar y alejar en pantalla táctil&#10;• Arrastrar: mover el lienzo&#10;• Teclas + − 0 R y flechas (con el lienzo enfocado)"
         >
           <Keyboard className="h-4 w-4" />
         </div>
       </div>
 
-      {/* Elementos flotantes sobre el lienzo no afectados por escala (ej. Leyenda colapsable) */}
-      {floatingOverlay}
+      {/* Controles flotantes del anfitrión (leyenda), fuera del zoom */}
+      {overlay && (
+        <div data-canvas-ui className="absolute bottom-4 left-4 z-30">
+          {overlay}
+        </div>
+      )}
 
-      {/* Contenedor transformado (Escala y Traslación) */}
+      {/* Contenido transformado */}
       <div
+        ref={contentRef}
         className={cn(
-          "absolute top-1/2 left-1/2 origin-center",
-          !isDragging && "transition-transform duration-100 ease-out"
+          "absolute top-1/2 left-1/2 w-max origin-center",
+          !isDragging && "transition-transform duration-100 ease-out",
         )}
         style={{
-          width: `${baseWidth}px`,
-          height: `${baseHeight}px`,
           transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${scale})`,
+          willChange: "transform",
           visibility: isReady ? "visible" : "hidden",
         }}
       >

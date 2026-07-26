@@ -19,6 +19,12 @@ export interface OdontogramTabsProps {
   defaultActiveKey?: string;
   onChange?: (key: string) => void;
   className?: string;
+  /**
+   * Ocupa toda la altura disponible: la tab activa se vuelve una columna
+   * flexible que puede scrollear por dentro. Requiere un padre con altura
+   * definida. Sin esto las tabs conservan su altura natural (ToothModal).
+   */
+  fill?: boolean;
 }
 
 /** Clases de token semántico para el punto de estado por color */
@@ -52,15 +58,16 @@ export function OdontogramTabs({
   defaultActiveKey,
   onChange,
   className,
+  fill = false,
 }: OdontogramTabsProps) {
   return (
     <Tabs
       value={activeKey}
       defaultValue={defaultActiveKey ?? items[0]?.key}
       onValueChange={onChange}
-      className={cn("w-full flex flex-col", className)}
+      className={cn("w-full", fill && "flex min-h-0 flex-col", className)}
     >
-      <TabsList className="flex h-auto w-full items-center justify-start gap-0 rounded-none border-0 border-b border-hairline bg-transparent p-0 shrink-0">
+      <TabsList className="flex h-auto w-full shrink-0 items-center justify-start gap-0 rounded-none border-0 border-b border-hairline bg-transparent p-0">
         {items.map((item) => (
           <TabsTrigger
             key={item.key}
@@ -86,7 +93,10 @@ export function OdontogramTabs({
           key={item.key}
           value={item.key}
           forceMount
-          className="mt-3 flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden"
+          className={cn(
+            "mt-3 data-[state=inactive]:hidden",
+            fill && "flex min-h-0 flex-1 flex-col",
+          )}
         >
           {item.children}
         </TabsContent>

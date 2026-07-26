@@ -55,12 +55,9 @@ export function OdontogramGrid({
 
   return (
     <div className="w-full flex flex-col h-full flex-1 min-h-0">
-      <ResponsiveOdontogramWrapper
-        baseWidth={872}
-        baseHeight={520}
-        floatingOverlay={<OdontogramLegend />}
-      >
-        <div className="w-[872px] mx-auto flex flex-col justify-between h-full py-1">
+      <ResponsiveOdontogramWrapper overlay={<OdontogramLegend />}>
+        {/* Ancho intrínseco: el lienzo mide este bloque, no se asume en píxeles */}
+        <div className="flex w-max flex-col px-1 py-1">
           {/* Arcada Superior */}
           <div className="space-y-1.5">
             <div className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
