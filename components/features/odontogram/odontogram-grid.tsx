@@ -2,6 +2,7 @@
 
 import { OdontogramLegend } from "./odontogramLeyend";
 import { ToothSVGMultiView } from "./tooth-svg-multi-view";
+import { ResponsiveOdontogramWrapper } from "./responsive-odontogram-wrapper";
 import type { Tooth, ToothSurface } from "./types";
 
 interface OdontogramGridProps {
@@ -53,132 +54,110 @@ export function OdontogramGrid({
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-8">
-      <div className="space-y-2">
-        <div className="text-center text-sm font-medium text-muted-foreground mb-4">
-          Arcada Superior
-        </div>
+    <div className="w-full flex flex-col h-full flex-1 min-h-0">
+      <ResponsiveOdontogramWrapper
+        baseWidth={872}
+        baseHeight={520}
+        floatingOverlay={<OdontogramLegend />}
+      >
+        <div className="w-[872px] mx-auto flex flex-col justify-between h-full py-1">
+          {/* Arcada Superior */}
+          <div className="space-y-1.5">
+            <div className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              Arcada Superior
+            </div>
 
-        {/* Vista Frontal Superior */}
-        <div className="flex justify-center gap-4">
-          {renderToothRow(upperRight, "frontal")}
-          <div className="w-px bg-border" />
-          {renderToothRow(upperLeft, "frontal")}
-        </div>
+            {/* Vista Frontal Superior */}
+            <div className="flex justify-center gap-3">
+              {renderToothRow(upperRight, "frontal")}
+              <div className="w-px bg-border" />
+              {renderToothRow(upperLeft, "frontal")}
+            </div>
 
-        {/* Vista Oclusal Superior */}
-        <div className="flex justify-center gap-4">
-          {renderToothRow(upperRight, "oclusal")}
-          <div className="w-px bg-border" />
-          {renderToothRow(upperLeft, "oclusal")}
-        </div>
+            {/* Vista Oclusal Superior */}
+            <div className="flex justify-center gap-3">
+              {renderToothRow(upperRight, "oclusal")}
+              <div className="w-px bg-border" />
+              {renderToothRow(upperLeft, "oclusal")}
+            </div>
 
-        {/* Vista Lateral Superior */}
-        <div className="flex justify-center gap-4">
-          {renderToothRow(upperRight, "lateral")}
-          <div className="w-px bg-border" />
-          {renderToothRow(upperLeft, "lateral")}
-        </div>
+            {/* Vista Lateral Superior */}
+            <div className="flex justify-center gap-3">
+              {renderToothRow(upperRight, "lateral")}
+              <div className="w-px bg-border" />
+              {renderToothRow(upperLeft, "lateral")}
+            </div>
 
-        {/* Números de dientes — same width as tooth cells for alignment */}
-        <div className="flex justify-center gap-4 text-xs text-center font-mono text-muted-foreground">
-          <div className="flex gap-0.5">
-            {upperRight.map((num) => (
-              <div key={num} className="w-[3.2rem] text-center">
-                {num}
+            {/* Números de dientes */}
+            <div className="flex justify-center gap-3 text-xs text-center font-mono text-muted-foreground">
+              <div className="flex gap-0.5">
+                {upperRight.map((num) => (
+                  <div key={num} className="w-[3.2rem] text-center">
+                    {num}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="w-px" />
-          <div className="flex gap-0.5">
-            {upperLeft.map((num) => (
-              <div key={num} className="w-[3.2rem] text-center">
-                {num}
+              <div className="w-px" />
+              <div className="flex gap-0.5">
+                {upperLeft.map((num) => (
+                  <div key={num} className="w-[3.2rem] text-center">
+                    {num}
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="border-t-2 border-dashed border-border my-8" />
+          <div className="border-t-2 border-dashed border-border my-3" />
 
-      <div className="space-y-2">
-        <div className="text-center text-sm font-medium text-muted-foreground mb-4">
-          Arcada Inferior
-        </div>
+          {/* Arcada Inferior */}
+          <div className="space-y-1.5">
+            <div className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              Arcada Inferior
+            </div>
 
-        {/* Vista Lateral Inferior */}
-        <div className="flex justify-center gap-4">
-          {renderToothRow(lowerRight, "lateral")}
-          <div className="w-px bg-border" />
-          {renderToothRow(lowerLeft, "lateral")}
-        </div>
+            {/* Vista Lateral Inferior */}
+            <div className="flex justify-center gap-3">
+              {renderToothRow(lowerRight, "lateral")}
+              <div className="w-px bg-border" />
+              {renderToothRow(lowerLeft, "lateral")}
+            </div>
 
-        {/* Vista Oclusal Inferior */}
-        <div className="flex justify-center gap-4">
-          {renderToothRow(lowerRight, "oclusal")}
-          <div className="w-px bg-border" />
-          {renderToothRow(lowerLeft, "oclusal")}
-        </div>
+            {/* Vista Oclusal Inferior */}
+            <div className="flex justify-center gap-3">
+              {renderToothRow(lowerRight, "oclusal")}
+              <div className="w-px bg-border" />
+              {renderToothRow(lowerLeft, "oclusal")}
+            </div>
 
-        {/* Vista Frontal Inferior */}
-        <div className="flex justify-center gap-4">
-          {renderToothRow(lowerRight, "frontal")}
-          <div className="w-px bg-border" />
-          {renderToothRow(lowerLeft, "frontal")}
-        </div>
+            {/* Vista Frontal Inferior */}
+            <div className="flex justify-center gap-3">
+              {renderToothRow(lowerRight, "frontal")}
+              <div className="w-px bg-border" />
+              {renderToothRow(lowerLeft, "frontal")}
+            </div>
 
-        {/* Números de dientes — same width as tooth cells for alignment */}
-        <div className="flex justify-center gap-4 text-xs text-center font-mono text-muted-foreground">
-          <div className="flex gap-0.5">
-            {lowerRight.map((num) => (
-              <div key={num} className="w-[3.2rem] text-center">
-                {num}
+            {/* Números de dientes */}
+            <div className="flex justify-center gap-3 text-xs text-center font-mono text-muted-foreground">
+              <div className="flex gap-0.5">
+                {lowerRight.map((num) => (
+                  <div key={num} className="w-[3.2rem] text-center">
+                    {num}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="w-px" />
-          <div className="flex gap-0.5">
-            {lowerLeft.map((num) => (
-              <div key={num} className="w-[3.2rem] text-center">
-                {num}
+              <div className="w-px" />
+              <div className="flex gap-0.5">
+                {lowerLeft.map((num) => (
+                  <div key={num} className="w-[3.2rem] text-center">
+                    {num}
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* <div className="mt-8 flex flex-wrap justify-center gap-4 text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded" style={{ backgroundColor: "#F5F5DC" }} />
-          <span className="text-muted-foreground">Sano</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded" style={{ backgroundColor: "#3B82F6" }} />
-          <span className="text-muted-foreground">Obturación</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded" style={{ backgroundColor: "#EF4444" }} />
-          <span className="text-muted-foreground">Endodoncia</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded" style={{ backgroundColor: "#F59E0B" }} />
-          <span className="text-muted-foreground">Prótesis</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded" style={{ backgroundColor: "#10B981" }} />
-          <span className="text-muted-foreground">Periodoncia</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded" style={{ backgroundColor: "#6B7280" }} />
-          <span className="text-muted-foreground">Cirugía</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded" style={{ backgroundColor: "#DC2626" }} />
-          <span className="text-muted-foreground">Caries</span>
-        </div>
-      </div> */}
-      <OdontogramLegend />
+      </ResponsiveOdontogramWrapper>
     </div>
   );
 }

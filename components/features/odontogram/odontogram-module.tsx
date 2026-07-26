@@ -171,9 +171,9 @@ function OdontogramModuleContent({
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full flex-1 min-h-0 space-y-4">
       {showHeader && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between shrink-0">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Odontograma</h1>
             <p className="text-muted-foreground">
@@ -197,6 +197,7 @@ function OdontogramModuleContent({
         items={tabItems}
         defaultActiveKey={initialTab}
         onChange={(key) => setActiveTab(key as typeof initialTab)}
+        className="flex-1 min-h-0"
       />
 
       <ToothModal

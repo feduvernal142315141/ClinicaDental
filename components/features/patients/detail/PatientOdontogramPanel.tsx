@@ -162,7 +162,7 @@ export function PatientOdontogramPanel({
   const showSpinner = isTransitioning || (isHistoricMode && historicLoading);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0 flex-1">
       {/* US-03: Historical navigation timeline — moved to TOP for visibility */}
       {appointments && appointments.length > 1 && (
         <OdontogramHistoryTimeline
@@ -182,7 +182,7 @@ export function PatientOdontogramPanel({
       )}
 
       {/* Odontogram + conditional overlays — always mounted to avoid flash */}
-      <div className="flex-1 min-h-0 relative">
+      <div className="flex-1 min-h-0 relative flex flex-col">
         {showSpinner && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-canvas/60 backdrop-blur-sm">
             <Loader2 className="h-8 w-8 animate-spin text-brand" />

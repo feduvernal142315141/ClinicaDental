@@ -58,9 +58,9 @@ export function OdontogramTabs({
       value={activeKey}
       defaultValue={defaultActiveKey ?? items[0]?.key}
       onValueChange={onChange}
-      className={className}
+      className={cn("w-full flex flex-col", className)}
     >
-      <TabsList className="flex h-auto w-full items-center justify-start gap-0 rounded-none border-0 border-b border-hairline bg-transparent p-0">
+      <TabsList className="flex h-auto w-full items-center justify-start gap-0 rounded-none border-0 border-b border-hairline bg-transparent p-0 shrink-0">
         {items.map((item) => (
           <TabsTrigger
             key={item.key}
@@ -86,7 +86,7 @@ export function OdontogramTabs({
           key={item.key}
           value={item.key}
           forceMount
-          className="mt-3 data-[state=inactive]:hidden"
+          className="mt-3 flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden"
         >
           {item.children}
         </TabsContent>

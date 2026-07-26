@@ -139,9 +139,9 @@ export function ClinicalHistoryPage({
         {isCurrentlyActiveConsultation && (
           <TabsContent
             value="workspace"
-            className="flex-1 min-h-0 mt-2 overflow-hidden"
+            className="flex-1 min-h-0 mt-2 overflow-hidden flex flex-col"
           >
-            <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] lg:grid-rows-1 gap-6 h-full min-h-0">
+            <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] lg:grid-rows-1 gap-6 flex-1 min-h-0 h-full">
               <ActiveConsultationNotes
                 patientId={patientId}
                 activeAppointmentId={effectiveActiveAppointmentId!}
@@ -239,7 +239,7 @@ export function ClinicalHistoryPage({
         {!isCurrentlyActiveConsultation && (
           <TabsContent
             value="odontograma"
-            className="flex-1 min-h-0 mt-2 overflow-hidden"
+            className="flex-1 min-h-0 mt-2 overflow-hidden flex flex-col"
           >
             <PatientOdontogramPanel
               patient={patient}

@@ -130,7 +130,7 @@ function OdontogramModuleRuntime({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col h-full flex-1 min-h-0 space-y-4">
       {loadError ? (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {loadError}
