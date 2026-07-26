@@ -373,10 +373,18 @@ export function useClinicalHistoryPage({
     [patientId, updateMedicalHistory],
   );
 
-  const handleViewOdontogram = useCallback((appointmentId: string) => {
-    setHistoricAppointmentId(appointmentId);
-    setActiveTab("odontograma");
-  }, []);
+  // La pestaña "odontograma" SOLO se monta cuando no hay consulta activa
+  // (ClinicalHistoryPage la condiciona a `!isCurrentlyActiveConsultation`).
+  // Durante una consulta activa el odontograma vive dentro de "workspace":
+  // fijar "odontograma" dejaba el panel en blanco justo al entrar al historial
+  // desde el drawer de visitas.
+  const handleViewOdontogram = useCallback(
+    (appointmentId: string) => {
+      setHistoricAppointmentId(appointmentId);
+      setActiveTab(isCurrentlyActiveConsultation ? "workspace" : "odontograma");
+    },
+    [isCurrentlyActiveConsultation],
+  );
 
   const handleBackToCurrentOdontogram = useCallback(() => {
     setHistoricAppointmentId(undefined);

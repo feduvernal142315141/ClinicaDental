@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState, useCallback } from "react";
+import { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import { OdontogramModule, createApiOdontogramAdapter, createHistoricOdontogramAdapter } from "@/lib/odontogram";
 import { usePermission } from "@/lib/hooks/use-permission";
@@ -8,7 +8,15 @@ import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useOdontogramByVisit } from "@/lib/hooks/odontogram/useOdontogramByVisit";
 import { OdontogramReadOnlyOverlay } from "@/components/features/odontogram/ui/OdontogramReadOnlyOverlay";
-import { OdontogramHistoryTimeline } from "@/components/features/odontogram/ui/OdontogramHistoryTimeline";
+import { OdontogramVisitContextBar } from "@/components/features/odontogram/ui/OdontogramVisitContextBar";
+import { OdontogramHistoricFrame } from "@/components/features/odontogram/ui/OdontogramHistoricFrame";
+import { StatusBadge } from "@/components/ui";
+import {
+  findAppointmentDate,
+  formatVisitDate,
+  formatVisitDateLong,
+  getEligibleVisits,
+} from "@/lib/utils/visit-eligibility";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
 import { notify } from "@/lib/utils/notify";
 import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
@@ -56,8 +64,12 @@ export function PatientOdontogramPanel({
   // Local transitioning flag — set immediately on visit change for instant Spin
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  const { snapshot: historicSnapshot, loading: historicLoading, load: loadHistoric } =
-    useOdontogramByVisit(historicAppointmentId);
+  const {
+    snapshot: historicSnapshot,
+    loading: historicLoading,
+    load: loadHistoric,
+    loadedVisitId,
+  } = useOdontogramByVisit();
 
   useEffect(() => {
     if (historicAppointmentId) {
@@ -65,12 +77,19 @@ export function PatientOdontogramPanel({
     }
   }, [historicAppointmentId, loadHistoric]);
 
-  // Clear transitioning once the async load finishes
+  // El spinner se retira SOLO cuando lo cargado corresponde a la visita pedida.
+  // Antes se limpiaba con `!historicLoading` a secas, así que al encadenar dos
+  // visitas el spinner desaparecía descubriendo el snapshot de la anterior bajo
+  // la fecha de la nueva.
   useEffect(() => {
-    if (!historicLoading) {
+    if (!historicAppointmentId) {
+      setIsTransitioning(false);
+      return;
+    }
+    if (!historicLoading && loadedVisitId === historicAppointmentId) {
       setIsTransitioning(false);
     }
-  }, [historicLoading]);
+  }, [historicAppointmentId, historicLoading, loadedVisitId]);
 
   // Wrap onSelectHistoricVisit to activate Spin immediately
   const handleSelectVisit = useCallback(
@@ -106,6 +125,46 @@ export function PatientOdontogramPanel({
   }, [historicSnapshot]);
 
   const isHistoricMode = !!historicAppointmentId;
+
+  // Regla ÚNICA de elegibilidad, compartida con la barra de contexto: antes el
+  // anfitrión montaba la navegación con `appointments.length > 1` y el
+  // componente decidía por su cuenta, así que con citas canceladas se montaba
+  // una barra que no pintaba nada.
+  const eligibleVisits = useMemo(
+    () => getEligibleVisits(appointments, activeAppointmentId),
+    [appointments, activeAppointmentId],
+  );
+  const hasVisitHistory = eligibleVisits.length >= 2;
+
+  const historicVisitDate = useMemo(() => {
+    const visit = eligibleVisits.find(
+      (v) => v.appointmentId === historicAppointmentId,
+    );
+    // Fallback a la lista completa: el drawer de visitas puede abrir una cita
+    // que el filtro de elegibilidad no incluye, y la fecha es la identidad del
+    // registro que se está mostrando.
+    return (
+      visit?.parsedDate ??
+      findAppointmentDate(appointments, historicAppointmentId)
+    );
+  }, [appointments, eligibleVisits, historicAppointmentId]);
+
+  const historicShortLabel = formatVisitDate(historicVisitDate);
+  const historicLongLabel = formatVisitDateLong(historicVisitDate);
+
+  // Aviso UNA sola vez, al cruzar del presente al pasado. El cruce de frontera
+  // es el momento del riesgo; un toast por cada visita recorrida sería ruido
+  // justo donde vinimos a quitarlo.
+  const wasHistoricRef = useRef(false);
+  useEffect(() => {
+    if (isHistoricMode && !wasHistoricRef.current) {
+      notify.info(`Estás viendo el odontograma del ${historicShortLabel}`, {
+        description:
+          "Es un registro de solo lectura. Vuelve a hoy para editar.",
+      });
+    }
+    wasHistoricRef.current = isHistoricMode;
+  }, [isHistoricMode, historicShortLabel]);
 
   // El odontograma es editable durante una visita ACTIVA (in_progress/scheduled)
   // y solo-lectura si la visita EXISTE en la lista con status terminal
@@ -161,28 +220,9 @@ export function PatientOdontogramPanel({
   // Show spinner when transitioning OR when the hook is loading
   const showSpinner = isTransitioning || (isHistoricMode && historicLoading);
 
-  return (
-    <div className="flex flex-col h-full min-h-0 flex-1">
-      {/* US-03: Historical navigation timeline — moved to TOP for visibility */}
-      {appointments && appointments.length > 1 && (
-        <OdontogramHistoryTimeline
-          appointments={appointments}
-          historicAppointmentId={historicAppointmentId}
-          activeAppointmentId={activeAppointmentId}
-          onSelectVisit={handleSelectVisit}
-          onReturnToCurrent={handleReturnToCurrent}
-        />
-      )}
-
-      {/* Historic: "no data" notice — only if snapshot failed to load (timeline handles "Volver" action) */}
-      {isHistoricMode && !historicLoading && !isTransitioning && !historicSnapshot && (
-        <div className="mb-3 flex items-center justify-center rounded-md border border-yellow-300 bg-yellow-50 px-4 py-2 text-sm text-yellow-700">
-          Vista histórica — Sin datos disponibles para esta cita.
-        </div>
-      )}
-
-      {/* Odontogram + conditional overlays — always mounted to avoid flash */}
-      <div className="flex-1 min-h-0 relative flex flex-col">
+  // Bloque tabs + lienzo. En modo histórico se envuelve con el marco ámbar.
+  const odontogramBlock = (
+    <div className="flex-1 min-h-0 relative flex flex-col">
         {showSpinner && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-canvas/60 backdrop-blur-sm">
             <Loader2 className="h-8 w-8 animate-spin text-brand" />
@@ -227,7 +267,46 @@ export function PatientOdontogramPanel({
             onStartConsultation={onStartConsultation}
           />
         )}
-      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col h-full min-h-0 flex-1">
+      {/* Barra de contexto de visita — sustituye al carrusel del historial */}
+      {hasVisitHistory && appointments && (
+        <OdontogramVisitContextBar
+          appointments={appointments}
+          historicAppointmentId={historicAppointmentId}
+          activeAppointmentId={activeAppointmentId}
+          onSelectVisit={handleSelectVisit}
+          onReturnToCurrent={handleReturnToCurrent}
+          loading={showSpinner}
+        />
+      )}
+
+      {/* WCAG 4.1.3: el cambio de modo se anuncia al confirmar, no al navegar */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {isHistoricMode
+          ? `Viendo el registro del ${historicLongLabel}. Solo lectura.`
+          : "Viendo el estado actual. Edición habilitada."}
+      </p>
+
+      {/* Histórico sin datos: la barra de contexto ya ofrece "Volver a hoy" */}
+      {isHistoricMode && !historicLoading && !isTransitioning && !historicSnapshot && (
+        <div className="mb-3 flex items-center justify-center">
+          <StatusBadge tone="warning">
+            Vista histórica — sin datos disponibles para esta visita
+          </StatusBadge>
+        </div>
+      )}
+
+      {isHistoricMode ? (
+        <OdontogramHistoricFrame visitLabel={historicShortLabel}>
+          {odontogramBlock}
+        </OdontogramHistoricFrame>
+      ) : (
+        odontogramBlock
+      )}
     </div>
   );
 }
