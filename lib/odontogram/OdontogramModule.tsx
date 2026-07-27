@@ -81,7 +81,7 @@ function OdontogramModuleRuntime({
   useEffect(() => {
     const unsubscribe = storeApi.subscribe((state) => {
       // No autosave durante la hidratación, en solo-lectura (histórico / visita
-      // finalizada / sin cita) NI tras un fallo de carga: evita PUTs no deseados,
+      // finalizada / sin permiso) NI tras un fallo de carga: evita PUTs no deseados,
       // con visita stale, o que sobrescriban lo persistido con un estado vacío.
       if (hydratingRef.current || state.readOnly || loadFailedRef.current) return;
 

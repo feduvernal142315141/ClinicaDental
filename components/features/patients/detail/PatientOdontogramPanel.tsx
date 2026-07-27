@@ -36,8 +36,6 @@ interface PatientOdontogramPanelProps {
   appointmentsLoading?: boolean;
   /** Called when user selects a historic visit from the timeline */
   onSelectHistoricVisit?: (appointmentId: string) => void;
-  /** CTA del overlay solo-lectura cuando no hay consulta activa. */
-  onStartConsultation?: () => void;
   finalizeOpen?: boolean;
   onFinalizeClose?: () => void;
   onFinalizeSuccess?: (result: { followUpId?: string }) => void;
@@ -51,7 +49,6 @@ export function PatientOdontogramPanel({
   appointments,
   appointmentsLoading,
   onSelectHistoricVisit,
-  onStartConsultation,
   finalizeOpen,
   onFinalizeClose,
   onFinalizeSuccess,
@@ -197,12 +194,14 @@ export function PatientOdontogramPanel({
   const isActiveVisitStatus =
     activeAppointment?.status === "in_progress" ||
     activeAppointment?.status === "scheduled";
-  // Fail-CLOSED una vez cargada la lista: editable SOLO con la cita confirmada
-  // activa. Si tras cargar no está en la lista (el backend excluye canceladas, o
-  // falló la carga) NO se habilita edición — una visita no-activa queda bloqueada
-  // (integridad clínico-legal). Durante la carga (activeAppointment aún indefinido
-  // y appointmentsLoading) NO se bloquea, para no flashear "solo lectura".
-  const isNonEditableVisit = !appointmentsLoading && !isActiveVisitStatus;
+  // Fail-CLOSED una vez cargada la lista: si HAY una cita en contexto y tras cargar
+  // no está activa (finalizada/cancelada, o no aparece en la lista), la edición se
+  // bloquea — integridad clínico-legal de la visita. Durante la carga NO se bloquea,
+  // para no flashear "solo lectura".
+  // Sin cita en contexto NO aplica: el odontograma se puede llenar fuera de una
+  // consulta (volcar la ficha en papel de un paciente anterior al sistema).
+  const isNonEditableVisit =
+    !!activeAppointmentId && !appointmentsLoading && !isActiveVisitStatus;
 
   // El odontograma es documentación clínica: su edición se gatea con la
   // autoridad 'odontogram' (backend @PreAuthorize), no con clinical_history
@@ -212,26 +211,28 @@ export function PatientOdontogramPanel({
     can("odontogram", PermissionAction.EDIT) ||
     can("odontogram", PermissionAction.CREATE);
 
-  // US-03: odontogram is read-only when no active consultation, historic mode,
-  // a finalized visit, or insufficient clinical permission.
-  const readOnly =
-    isHistoricMode ||
-    !activeAppointmentId ||
-    isNonEditableVisit ||
-    !canEditClinical;
+  // Solo lectura por: modo histórico, visita finalizada o falta de permiso.
+  // "Sin consulta" ya NO bloquea: el permiso es lo único que manda.
+  const readOnly = isHistoricMode || isNonEditableVisit || !canEditClinical;
 
   // Motivo del modo solo-lectura → feedback coherente en el overlay.
-  // Precedencia: sin permiso (no accionable) > finalizada > sin consulta.
-  const readOnlyReason: "no-consultation" | "completed" | "no-permission" | null =
-    isHistoricMode
-      ? null
-      : !canEditClinical
-        ? "no-permission"
-        : isNonEditableVisit
-          ? "completed"
-          : !activeAppointmentId
-            ? "no-consultation"
-            : null;
+  // Precedencia: sin permiso (no accionable) > visita finalizada.
+  const readOnlyReason: "completed" | "no-permission" | null = isHistoricMode
+    ? null
+    : !canEditClinical
+      ? "no-permission"
+      : isNonEditableVisit
+        ? "completed"
+        : null;
+
+  // Edición fuera de consulta: se guarda el estado actual del paciente, pero no
+  // queda snapshot en el historial por visita (el backend no lo escribe sin cita).
+  const isOutOfConsultationEditing = !readOnly && !isHistoricMode && !activeAppointmentId;
+
+  // El estado de autoguardado lo pinta el banner de la consulta activa: fuera de
+  // una consulta no hay dónde mostrarlo, así que no se marca (evita dejar un
+  // "error al guardar" colgado que reaparezca en la siguiente consulta).
+  const tracksAutosaveStatus = !readOnly && !isHistoricMode && !!activeAppointmentId;
 
   const adapter = isHistoricMode && historicAdapter ? historicAdapter : apiAdapter;
 
@@ -254,19 +255,19 @@ export function PatientOdontogramPanel({
             showHeader={false}
             initialTab="odontogram"
             onSaveStart={
-              !readOnly && !isHistoricMode
+              tracksAutosaveStatus
                 ? () => useAutosaveStatus.getState().markSaving()
                 : undefined
             }
             onSaveSuccess={
-              !readOnly && !isHistoricMode
+              tracksAutosaveStatus
                 ? () => useAutosaveStatus.getState().markSaved()
                 : undefined
             }
             onError={() => {
               // Solo marca error de autosave en edición real (no en carga
               // histórica/solo-lectura, donde no hay sesión de guardado activa).
-              if (!readOnly && !isHistoricMode) {
+              if (tracksAutosaveStatus) {
                 useAutosaveStatus.getState().markError();
               }
               notify.error("No se pudo sincronizar el odontograma", {
@@ -280,10 +281,7 @@ export function PatientOdontogramPanel({
           />
         {/* Read-only overlay — coherente para todos los motivos (no histórico) */}
         {readOnly && !isHistoricMode && readOnlyReason && (
-          <OdontogramReadOnlyOverlay
-            reason={readOnlyReason}
-            onStartConsultation={onStartConsultation}
-          />
+          <OdontogramReadOnlyOverlay reason={readOnlyReason} />
         )}
     </div>
   );
@@ -308,6 +306,17 @@ export function PatientOdontogramPanel({
           ? `Viendo el registro del ${historicLongLabel}. Solo lectura.`
           : "Viendo el estado actual. Edición habilitada."}
       </p>
+
+      {/* Señal ÚNICA y discreta: el usuario debe saber que lo que escribe no
+          pertenece a ninguna visita. Sin banner ni modal. */}
+      {isOutOfConsultationEditing && (
+        <div className="mb-3 flex items-center justify-center">
+          <StatusBadge tone="neutral">
+            Editando fuera de una consulta — los cambios no quedan ligados a
+            ninguna visita
+          </StatusBadge>
+        </div>
+      )}
 
       {/* Histórico sin datos: la barra de contexto ya ofrece "Volver a hoy" */}
       {isHistoricMode && !historicLoading && !isTransitioning && !historicSnapshot && (

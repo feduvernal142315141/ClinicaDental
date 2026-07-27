@@ -7,7 +7,7 @@ import {
   type OdontogramSnapshot,
 } from "@/lib/odontogram/store";
 
-/** UUID v4 — el odontograma siempre debe guardarse ligado a una visita real. */
+/** UUID v4 — formato exigido cuando el guardado sí va ligado a una visita. */
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -82,13 +82,13 @@ export function createApiOdontogramAdapter(
     },
 
     async save(patientId, snapshot, clinicId) {
-      // Integridad: nunca persistir un odontograma sin una visita real. Evita
-      // snapshots huérfanos (visitId null) que el histórico no podría recuperar.
+      // Sin visita también se guarda: el odontograma se llena fuera de una consulta
+      // al volcar fichas en papel de pacientes anteriores al sistema (el backend
+      // actualiza el estado vivo y no escribe historial). Lo que sí se rechaza es
+      // una visita con formato inválido: ligaría el snapshot a un id inventado.
       const visitId = snapshot.metadata.visitId ?? options.visitId ?? null;
-      if (!visitId || !UUID_V4.test(visitId)) {
-        throw new Error(
-          "No se puede guardar el odontograma sin una visita activa.",
-        );
+      if (visitId && !UUID_V4.test(visitId)) {
+        throw new Error("El identificador de la visita no es válido.");
       }
 
       const state = JSON.stringify({

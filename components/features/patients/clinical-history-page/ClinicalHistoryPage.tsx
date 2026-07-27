@@ -249,7 +249,6 @@ export function ClinicalHistoryPage({
               appointments={appointments}
               appointmentsLoading={appointmentsLoading}
               onSelectHistoricVisit={handleSelectHistoricVisit}
-              onStartConsultation={openStartNow}
             />
           </TabsContent>
         )}
