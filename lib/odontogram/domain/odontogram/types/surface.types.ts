@@ -358,8 +358,19 @@ export function projectToCanonicalSurface(
  */
 export function toIcdasSurfaceFilter(surface: ToothSurface): IcdasSurfaceFilter {
   const zone = getSurfaceZone(surface);
-  if (zone === "mesial" || zone === "distal") return "proximal";
-  return zone;
+  if (zone !== "mesial" && zone !== "distal") return zone;
+
+  // "Proximal" es el punto de contacto, no la familia entera. Solo la celda
+  // vista desde OCLUSAL (reborde marginal) lo es; los ángulos línea
+  // mesio-vestibular y mesio-palatino son superficie LIBRE, y darles reglas
+  // proximales sugeriría infiltración interproximal donde no hay contacto.
+  // Misma regla que aplica `TreatmentSuggestionService`: si divergen, un
+  // hallazgo recibe dos recomendaciones distintas según quién pregunte.
+  // Los códigos legacy sin vista sí entran: en su día significaban "la proximal".
+  const view = getSurfaceView(surface);
+  if (view === "vestibular") return "facial";
+  if (view === "lateral") return "lingual";
+  return "proximal";
 }
 
 /**

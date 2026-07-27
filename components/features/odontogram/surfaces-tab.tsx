@@ -196,14 +196,16 @@ export function SurfacesTab({
         }
       );
     });
-    // Los códigos LEGACY que ya estuvieran seleccionados se conservan: si se
-    // perdieran aquí, el guardado posterior borraría el diagnóstico histórico
-    // (la barrida de huérfanos de tooth-modal elimina todo evento cuya cara ya
-    // no esté seleccionada). "Marcar todas" nunca debe destruir registro.
-    const legacyStates = selectedSurfaces.filter((s) =>
-      isLegacySurface(s.surface),
+    // Se conserva TODA cara ya seleccionada que la geometría actual no ofrece,
+    // no solo los códigos legacy: además de `mesial`/`distal`, un registro
+    // antiguo puede vivir en una celda que este diente ya no expone —p. ej.
+    // `cervicalLingual` en un incisivo, que sí existía antes del desdoble—.
+    // Si se perdiera aquí, la barrida de huérfanos de tooth-modal borraría el
+    // diagnóstico al guardar. "Marcar todas" nunca debe destruir registro.
+    const preservedStates = selectedSurfaces.filter(
+      (s) => !availableSurfaces.has(s.surface),
     );
-    setSelectedSurfaces([...legacyStates, ...newStates]);
+    setSelectedSurfaces([...preservedStates, ...newStates]);
   };
 
   const handleDeselectAll = () => {

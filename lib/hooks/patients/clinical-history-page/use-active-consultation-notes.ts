@@ -13,6 +13,10 @@
  */
 
 import { useEffect, useRef, useCallback, useState } from "react";
+import {
+  projectToCanonicalSurface,
+  type CanonicalSurface,
+} from "@/lib/odontogram/domain/odontogram/types/surface.types";
 import { useVisitRecord } from "@/lib/hooks/clinical-history";
 import type {
   VisitDiagnosis,
@@ -38,6 +42,18 @@ const PAIN_TYPE_OPTIONS = [
   { value: "intermitente", label: "Intermitente" },
   { value: "constante", label: "Constante" },
 ];
+
+/**
+ * Letras de superficie que usa la historia clínica (ver `FdiToothPicker`).
+ * Es su vocabulario, no el del odontograma: aquí se traduce una sola vez.
+ */
+const CANONICAL_SURFACE_LETTER: Record<CanonicalSurface, string> = {
+  mesial: "M",
+  distal: "D",
+  facial: "F",
+  lingual: "L",
+  oclusal: "O",
+};
 
 const PAIN_DEBOUNCE_MS = 800;
 const EXAM_DEBOUNCE_MS = 1200;
@@ -67,7 +83,15 @@ function computeIcdasSuggestions(events: ClinicalEvent[]): VisitDiagnosis[] {
     if (icdas == null || icdas === 0) continue;
 
     const fdi = String(ev.toothNumber);
-    const surface = ev.surfaces?.[0];
+    // La historia clínica NO habla el vocabulario interno del odontograma: su
+    // selector de dientes usa las letras M/D/F/L/O. Sin proyectar, el registro
+    // persistido guardaría la celda cruda ("#16-mesialVestibular") y en la misma
+    // pantalla convivirían dos vocabularios. Se proyecta a la cara canónica: la
+    // historia habla de "la mesial", no de la vista desde la que se miró.
+    const cell = ev.surfaces?.[0];
+    const surface = cell
+      ? CANONICAL_SURFACE_LETTER[projectToCanonicalSurface(cell)]
+      : undefined;
     const toothRef: ToothRef = surface ? { fdi, surface } : { fdi };
 
     const suggestions = suggestCie10FromIcdas(icdas, toothRef);
@@ -103,6 +127,7 @@ interface UseActiveConsultationNotesParams {
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
+
 
 export function useActiveConsultationNotes({
   patientId,
