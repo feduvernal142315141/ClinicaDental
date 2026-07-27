@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useEffect, useRef, useState, useCallback } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, RotateCcw } from "lucide-react";
 import { OdontogramModule, createApiOdontogramAdapter, createHistoricOdontogramAdapter } from "@/lib/odontogram";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
@@ -158,13 +158,31 @@ export function PatientOdontogramPanel({
   const wasHistoricRef = useRef(false);
   useEffect(() => {
     if (isHistoricMode && !wasHistoricRef.current) {
-      notify.info(`Estás viendo el odontograma del ${historicShortLabel}`, {
-        description:
-          "Es un registro de solo lectura. Vuelve a hoy para editar.",
+      // `warning` y no `info`: el aviso pertenece al mismo vocabulario ámbar que
+      // el resto del modo histórico (barra teñida, píldora con candado, marco).
+      // En azul se leía como una notificación cualquiera del sistema.
+      notify.warning(`Estás viendo el odontograma del ${historicShortLabel}`, {
+        description: (
+          <span className="flex items-center gap-1.5">
+            <RotateCcw
+              // Gira en sentido inverso: el gesto de "rebobinar" señala la
+              // salida antes de leer el texto. Se detiene con motion-reduce.
+              className="h-3.5 w-3.5 shrink-0 animate-spin [animation-direction:reverse] [animation-duration:3s] motion-reduce:animate-none"
+              aria-hidden
+            />
+            Es un registro de solo lectura. Vuelve a hoy para editar.
+          </span>
+        ),
+        // El aviso deja de ser un callejón sin salida: la vuelta al presente se
+        // resuelve desde el propio toast, sin ir a buscar el botón de la barra.
+        button: {
+          title: "Volver a hoy",
+          onClick: handleReturnToCurrent,
+        },
       });
     }
     wasHistoricRef.current = isHistoricMode;
-  }, [isHistoricMode, historicShortLabel]);
+  }, [isHistoricMode, historicShortLabel, handleReturnToCurrent]);
 
   // El odontograma es editable durante una visita ACTIVA (in_progress/scheduled)
   // y solo-lectura si la visita EXISTE en la lista con status terminal
