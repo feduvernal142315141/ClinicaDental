@@ -64,6 +64,7 @@ export function PatientOdontogramPanel({
   const {
     snapshot: historicSnapshot,
     loading: historicLoading,
+    error: historicError,
     load: loadHistoric,
     loadedVisitId,
   } = useOdontogramByVisit();
@@ -116,10 +117,14 @@ export function PatientOdontogramPanel({
     [user?.id, clinicId, activeAppointmentId],
   );
 
-  const historicAdapter = useMemo(() => {
-    if (!historicSnapshot) return null;
-    return createHistoricOdontogramAdapter(historicSnapshot.state);
-  }, [historicSnapshot]);
+  // Sin snapshot NO se cae al adapter en vivo: pintaría el odontograma de HOY
+  // bajo la fecha de una visita pasada, o sea una afirmación clínica falsa sobre
+  // el paciente. Con "" el adapter no puede parsear y devuelve null, y el módulo
+  // monta un odontograma vacío (nunca el del presente).
+  const historicAdapter = useMemo(
+    () => createHistoricOdontogramAdapter(historicSnapshot?.state ?? ""),
+    [historicSnapshot],
+  );
 
   const isHistoricMode = !!historicAppointmentId;
 
@@ -234,10 +239,18 @@ export function PatientOdontogramPanel({
   // "error al guardar" colgado que reaparezca en la siguiente consulta).
   const tracksAutosaveStatus = !readOnly && !isHistoricMode && !!activeAppointmentId;
 
-  const adapter = isHistoricMode && historicAdapter ? historicAdapter : apiAdapter;
+  const adapter = isHistoricMode ? historicAdapter : apiAdapter;
 
   // Show spinner when transitioning OR when the hook is loading
   const showSpinner = isTransitioning || (isHistoricMode && historicLoading);
+
+  // Histórico sin nada que mostrar. Se distingue el fallo de lectura del vacío
+  // real: un 500/timeout deja el snapshot en null igual que una visita sin
+  // registro, y afirmar "no se registró nada" cuando en realidad no se pudo leer
+  // es afirmar algo del paciente a partir de un error de red.
+  const historicUnavailable =
+    isHistoricMode && !historicLoading && !isTransitioning && !historicSnapshot;
+  const historicFailed = historicUnavailable && !!historicError;
 
   // Bloque tabs + lienzo. En modo histórico se envuelve con el marco ámbar.
   const odontogramBlock = (
@@ -302,9 +315,13 @@ export function PatientOdontogramPanel({
 
       {/* WCAG 4.1.3: el cambio de modo se anuncia al confirmar, no al navegar */}
       <p role="status" aria-live="polite" className="sr-only">
-        {isHistoricMode
-          ? `Viendo el registro del ${historicLongLabel}. Solo lectura.`
-          : "Viendo el estado actual. Edición habilitada."}
+        {!isHistoricMode
+          ? "Viendo el estado actual. Edición habilitada."
+          : historicFailed
+            ? `No se pudo cargar el registro del ${historicLongLabel}.`
+            : historicUnavailable
+              ? `La visita del ${historicLongLabel} no tiene registro de odontograma.`
+              : `Viendo el registro del ${historicLongLabel}. Solo lectura.`}
       </p>
 
       {/* Señal ÚNICA y discreta: el usuario debe saber que lo que escribe no
@@ -319,17 +336,30 @@ export function PatientOdontogramPanel({
       )}
 
       {/* Histórico sin datos: la barra de contexto ya ofrece "Volver a hoy" */}
-      {isHistoricMode && !historicLoading && !isTransitioning && !historicSnapshot && (
+      {historicUnavailable && (
         <div className="mb-3 flex items-center justify-center">
-          <StatusBadge tone="warning">
-            Vista histórica — sin datos disponibles para esta visita
+          <StatusBadge tone={historicFailed ? "danger" : "warning"}>
+            {historicFailed
+              ? "No se pudo cargar el odontograma de esta visita — vuelve a intentarlo"
+              : "Vista histórica — sin datos disponibles para esta visita"}
           </StatusBadge>
         </div>
       )}
 
       {isHistoricMode ? (
         <OdontogramHistoricFrame visitLabel={historicShortLabel}>
-          {odontogramBlock}
+          {/* Sin registro (o sin poder leerlo) no se monta el lienzo: un
+              odontograma vacío bajo la fecha de la visita se leería como "ese
+              día el paciente no tenía ningún hallazgo". */}
+          {historicUnavailable ? (
+            <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-subtle">
+              {historicFailed
+                ? "No se pudo leer el registro de esta visita. Revisa tu conexión y vuelve a intentarlo."
+                : "Esta visita no tiene un registro de odontograma guardado."}
+            </div>
+          ) : (
+            odontogramBlock
+          )}
         </OdontogramHistoricFrame>
       ) : (
         odontogramBlock

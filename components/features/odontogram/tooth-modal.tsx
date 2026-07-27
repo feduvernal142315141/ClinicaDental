@@ -1339,7 +1339,10 @@ export function ToothModal({
           <Lock className="w-3.5 h-3.5 shrink-0" />
           <span className="font-medium">Solo lectura</span>
           <span className="text-subtle">—</span>
-          <span>Inicia una consulta para editar este diente</span>
+          {/* No se instruye "inicia una consulta": el modo solo-lectura viene de
+              histórico, visita finalizada o falta de permiso, y en ninguno de
+              esos casos abrir una consulta desbloquea la edición. */}
+          <span>Este diente no admite cambios</span>
         </div>
       );
     }

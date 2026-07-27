@@ -716,8 +716,10 @@ export function PerformedTab({
 
               {readOnly && (
                 <p className="text-xs text-muted-foreground">
-                  La consulta esta en solo lectura. Inicia una consulta para
-                  registrar ejecucion.
+                  {/* Igual que en el modal del diente: el bloqueo puede venir de
+                      histórico, visita finalizada o falta de permiso, así que no
+                      se promete que iniciar una consulta lo resuelva. */}
+                  Solo lectura — no se puede registrar la ejecución aquí.
                 </p>
               )}
             </div>
