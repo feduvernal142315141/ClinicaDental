@@ -1,7 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import type { ToothSurface, SurfaceState } from "./types";
+import type {
+  ToothSurface,
+  SurfaceState,
+  SurfaceView,
+  SurfaceZone,
+} from "./types";
+import {
+  getSurfaceView,
+  getSurfaceZone,
+  projectToCanonicalSurface,
+} from "./types";
 import type { SurfacePath } from "./teeth-svg-types";
 import { cn } from "@/lib/odontogram/utils";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
@@ -25,16 +35,41 @@ const THEME = {
 
 type SelectorView = "frontal" | "oclusal" | "lateral";
 
-/* Orden canónico MODBL para la fila de abreviaturas (mesial, oclusal/incisal,
-   distal, vestibular, palatino/lingual). Rige el orden de lectura, no la geometría. */
-const SURFACE_RANK: Record<string, number> = {
+/* Orden canónico de lectura odontológica M · O/I · D · V · P/L · C. Rige el
+   orden de presentación, no la geometría. */
+const SURFACE_FAMILY_RANK: Record<SurfaceZone, number> = {
   mesial: 1,
   oclusal: 2,
   distal: 3,
   facial: 4,
   lingual: 5,
-  cervicalVestibular: 6,
-  cervicalLingual: 6,
+  cervical: 6,
+};
+
+const SURFACE_VIEW_RANK: Record<SurfaceView, number> = {
+  vestibular: 1,
+  oclusal: 2,
+  lateral: 3,
+};
+
+/**
+ * Rango = familia*10 + vista. Las celdas de una misma familia quedan juntas y
+ * ordenadas por vista (M·V, M·O, M·P), y los códigos sin sufijo (el cuerpo de
+ * una cara, la mesa oclusal y los legacy sin vista) encabezan su familia con
+ * decena redonda. Se calcula, no se tabula: una tabla literal se queda corta en
+ * cuanto aparece una celda nueva y la manda al final sin avisar.
+ *
+ * Se EXPORTA porque el resumen de selección de `surfaces-tab` tiene que leerse
+ * en el mismo orden canónico M · O/I · D · V · P/L · C que la fila de
+ * abreviaturas de cada vista. Con hasta 13 celdas por diente, mostrarlas en
+ * orden de clic convierte el resumen en ruido.
+ */
+export const getSurfaceRank = (surface: ToothSurface): number => {
+  const family = SURFACE_FAMILY_RANK[getSurfaceZone(surface)];
+  const view = getSurfaceView(surface);
+  // Sin sufijo (el código coincide con su familia) → decena redonda.
+  const hasViewSuffix = surface !== getSurfaceZone(surface);
+  return family * 10 + (hasViewSuffix && view ? SURFACE_VIEW_RANK[view] : 0);
 };
 
 export function SurfaceSelector({
@@ -65,6 +100,14 @@ export function SurfaceSelector({
       onSurfaceToggle(surface);
     }
   };
+
+  // El contador va PROYECTADO a superficies canónicas ADA/CDT: una MOD son 3
+  // superficies (M, O, D) aunque se hayan marcado 5 celdas. Contar celdas haría
+  // que una MOD se reportara/facturara como "5 superficies" y el número dejaría
+  // de ser utilizable fuera del producto. El granular vive en el `title`.
+  const canonicalSurfaceCount = new Set(
+    surfaces.map((s) => projectToCanonicalSurface(s.surface)),
+  ).size;
 
   // Determinar la última superficie interactuada (hover o la última seleccionada)
   const activeSurface =
@@ -122,16 +165,13 @@ export function SurfaceSelector({
       );
     }
 
+    // Separador " / ": el " · " chocaría con el punto medio INTERNO de las
+    // abreviaturas cualificadas (M·V), y la fila se volvería ilegible.
     const visibleSurfaceLabels = [...viewPaths.surfaces]
       .filter((surfacePath) => Boolean(surfacePath.d))
-      .sort(
-        (a, b) =>
-          (SURFACE_RANK[a.surface] ?? 99) - (SURFACE_RANK[b.surface] ?? 99),
-      )
-      .map(
-        (surfacePath) => surfaceLabel(surfacePath.surface as ToothSurface).short,
-      )
-      .join(" · ");
+      .sort((a, b) => getSurfaceRank(a.surface) - getSurfaceRank(b.surface))
+      .map((surfacePath) => surfaceLabel(surfacePath.surface).short)
+      .join(" / ");
 
     return (
       <div
@@ -188,7 +228,7 @@ export function SurfaceSelector({
               {viewPaths.surfaces.map((surfacePath: SurfacePath) => {
                 if (!surfacePath.d) return null;
 
-                const surface = surfacePath.surface as ToothSurface;
+                const surface = surfacePath.surface;
                 const selected = isSelected(surface);
                 const highlighted = activeSurface === surface;
                 const color = getSurfaceColor(surface);
@@ -280,8 +320,13 @@ export function SurfaceSelector({
             : "Esperando selección..."}
         </div>
 
-        <div className="rounded-full border border-hairline bg-elevated px-3 py-1.5 text-xs font-medium text-subtle shadow-sm tabular-nums">
-          {surfaces.length} superficie{surfaces.length === 1 ? "" : "s"} activas
+        <div
+          className="rounded-full border border-hairline bg-elevated px-3 py-1.5 text-xs font-medium text-subtle shadow-sm tabular-nums"
+          title={`${surfaces.length} celda${surfaces.length === 1 ? "" : "s"} marcada${surfaces.length === 1 ? "" : "s"}`}
+        >
+          {canonicalSurfaceCount} superficie
+          {canonicalSurfaceCount === 1 ? "" : "s"} activa
+          {canonicalSurfaceCount === 1 ? "" : "s"}
         </div>
       </div>
     </div>

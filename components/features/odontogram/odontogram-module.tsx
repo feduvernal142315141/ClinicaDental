@@ -22,6 +22,7 @@ import {
   useEventFormatting,
 } from "@/lib/odontogram/application/hooks";
 import { useOdontogramStore } from "@/lib/odontogram/store";
+import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
 import type { ClinicalEvent } from "@/components/odontogram/types";
 
 interface OdontogramModuleProps {
@@ -102,7 +103,16 @@ function OdontogramModuleContent({
               <OdontogramEventCard
                 key={event.id}
                 toothNumber={event.toothNumber}
-                surfaces={event.surfaces}
+                // La tarjeta pinta lo que le llegue, así que la traducción se
+                // hace aquí: sin ella el listado enseñaría el CÓDIGO interno
+                // ("mesialVestibular") en vez de la etiqueta clínica. La
+                // abreviatura decide además palatino vs lingual por arcada, y
+                // eso necesita el número de diente.
+                surfaces={event.surfaces.map(
+                  (surface) =>
+                    ToothTypeService.getSurfaceLabel(event.toothNumber, surface)
+                      .short,
+                )}
                 displayName={getEventDisplayName(event)}
                 typeLabel={getEventTypeLabel(event.type)}
                 tagColor={

@@ -1,4 +1,4 @@
-import type { ToothSurface } from "./surface.types"
+import type { CanonicalSurface, ToothSurface } from "./surface.types"
 import type { ClinicalEventStatus } from "./clinical-event.types"
 
 export type ProcedureCategory =
@@ -22,7 +22,14 @@ export interface ProcedureCatalogItem {
   aliases?: string[]
   code?: string
   description?: string
-  compatibleSurfaces?: ToothSurface[]
+  /**
+   * Caras en las que tiene sentido el procedimiento, en vocabulario CANÓNICO
+   * ADA/CDT (las 5 de toda la vida). El catálogo NO habla de celdas por vista:
+   * una obturación de amalgama vale para "la mesial", no para "la mesial vista
+   * desde oclusal". La comparación con lo que el clínico marcó se hace
+   * proyectando la celda con `projectToCanonicalSurface`.
+   */
+  compatibleSurfaces?: CanonicalSurface[]
   estimatedDuration: number
   baseCost: number
   materials?: string[]

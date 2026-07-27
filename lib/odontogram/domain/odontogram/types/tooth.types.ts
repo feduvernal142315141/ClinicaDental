@@ -1,4 +1,5 @@
 import type {
+  CanonicalSurface,
   ToothSurface,
   SurfaceDiagnosis,
   ICDASScore,
@@ -150,7 +151,14 @@ export interface ToothTemplate {
   id: string;
   name: string;
   description: string;
-  applicableSurfaces: ToothSurface[];
+  /**
+   * Caras a las que aplica la plantilla, en vocabulario CANÓNICO ADA/CDT. Una
+   * plantilla clínica ("Caries incipiente") habla de "la mesial", no de la
+   * celda concreta desde la que se mira. Al aplicarla se compara proyectando la
+   * celda marcada con `projectToCanonicalSurface`: sin esa proyección la
+   * plantilla dejaría de aplicar a `mesialVestibular` EN SILENCIO.
+   */
+  applicableSurfaces: CanonicalSurface[];
   status: SurfaceStatus;
   icdasScore?: ICDASScore;
   treatmentType?: string;

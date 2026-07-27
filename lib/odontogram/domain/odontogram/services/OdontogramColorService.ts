@@ -8,6 +8,7 @@ import {
   type ColorPriority,
 } from "../constants/odontogram-colors.constants";
 import { VISUAL_PRIORITY_TO_COLOR_PRIORITY } from "../constants/visual-priority.constants";
+import { getLegacySurfaceAliases } from "../types/surface.types";
 
 const VISUAL_COLOR_TO_HEX: Record<string, string> = {
   healthy: ODONTOGRAM_STATE_COLORS.HEALTHY,
@@ -30,6 +31,31 @@ const VISUAL_COLOR_TO_HEX: Record<string, string> = {
  */
 export class OdontogramColorService {
   /**
+   * ¿Este evento pinta esta celda? Coincidencia exacta o, si el evento guarda un
+   * código ANTIGUO, por alias de lectura.
+   *
+   * Un evento guardado como `surfaces: ["mesial"]` no dice de qué vista salió y
+   * no es deducible, así que enciende las tres celdas de su familia y el
+   * hallazgo histórico se sigue viendo igual que antes del desdoble. Se
+   * discrimina por el CÓDIGO, jamás por `schemaVersion` (que se re-sella sobre
+   * eventos existentes al guardar un diente).
+   *
+   * REGLA DURA: este fan-out es de RENDER y vive SOLO aquí. Replicarlo en los
+   * caminos de lectura/edición de eventos (tooth-modal, diagnosis-tab, plan-tab)
+   * duplicaría diagnósticos y crearía eventos fantasma.
+   */
+  private static paintsSurface(
+    event: ClinicalEvent,
+    surface: ToothSurface,
+    toothNumber: number,
+  ): boolean {
+    if (event.surfaces.includes(surface)) return true;
+    return event.surfaces.some((stored) =>
+      getLegacySurfaceAliases(stored, toothNumber).includes(surface),
+    );
+  }
+
+  /**
    * Determina el color de una superficie específica basado en todos los eventos clínicos
    *
    * LÓGICA:
@@ -49,7 +75,7 @@ export class OdontogramColorService {
       (e) =>
         e.toothNumber === toothNumber &&
         e.visualState?.affectsOdontogram !== false &&
-        e.surfaces.includes(surface),
+        this.paintsSurface(e, surface, toothNumber),
     );
 
     if (relevantEvents.length === 0) {

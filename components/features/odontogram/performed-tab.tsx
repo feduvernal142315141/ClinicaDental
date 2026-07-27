@@ -59,8 +59,14 @@ function getRiskColor(risk: PatientRiskLevel) {
   return "bg-rose-500/15 text-rose-600 ring-rose-400/25 dark:text-rose-300";
 }
 
-function formatSurfaceLabel(surface: ToothSurface) {
-  return surface.charAt(0).toUpperCase();
+/**
+ * Abreviatura clínica de una celda. La inicial del código NO sirve desde el
+ * desdoble por vista: `mesialVestibular` y `mesialOclusal` colapsarían ambas en
+ * "M" y el chip mostraría dos veces lo mismo para dos superficies distintas.
+ * `getSurfaceLabel` además decide palatino vs lingual por arcada.
+ */
+function formatSurfaceLabel(toothNumber: number, surface: ToothSurface) {
+  return ToothTypeService.getSurfaceLabel(toothNumber, surface).short;
 }
 
 function formatDateLabel(dateValue?: string) {
@@ -233,7 +239,9 @@ function PlanGroup({
                           variant="outline"
                           className="bg-elevated text-[11px]"
                         >
-                          {formatSurfaceLabel(surface)}
+                          {/* El diente sale del propio plan: PlanGroup es un
+                              componente suelto, sin el diente en scope. */}
+                          {formatSurfaceLabel(plan.toothNumber, surface)}
                         </Badge>
                       ))
                     ) : (
@@ -794,7 +802,7 @@ export function PerformedTab({
                                 variant="outline"
                                 className="bg-elevated text-[11px]"
                               >
-                                {formatSurfaceLabel(surface)}
+                                {formatSurfaceLabel(tooth.number, surface)}
                               </Badge>
                             ))
                           ) : (

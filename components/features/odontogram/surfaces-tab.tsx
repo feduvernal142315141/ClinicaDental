@@ -9,7 +9,7 @@ import {
   HoverCardTrigger,
   HoverCardContent,
 } from "@/components/ui";
-import { SurfaceSelector } from "./surface-selector";
+import { SurfaceSelector, getSurfaceRank } from "./surface-selector";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
 import {
@@ -28,9 +28,13 @@ import type {
   SurfaceStatus,
 } from "./types";
 import {
+  PAINTABLE_SURFACES,
   SURFACE_STATUS_COLORS,
   SURFACE_STATUS_LABELS,
   TOOTH_TEMPLATES,
+  getSurfaceZone,
+  isLegacySurface,
+  projectToCanonicalSurface,
 } from "./types";
 import { isToothPhysicallyAbsent } from "@/lib/odontogram/domain/odontogram/constants/tooth-status.constants";
 
@@ -88,7 +92,7 @@ export function SurfacesTab({
     (["frontal", "oclusal", "lateral"] as const).forEach((view) => {
       const paths = getDesignedToothPaths(tooth.number, view);
       paths?.surfaces.forEach((sp) => {
-        if (sp.d) set.add(sp.surface as ToothSurface);
+        if (sp.d) set.add(sp.surface);
       });
     });
     return set;
@@ -173,20 +177,13 @@ export function SurfacesTab({
   };
 
   const handleSelectAll = () => {
-    // Cervical (Clase V): existe en toda vista lateral y en la vestibular de
-    // anteriores. Solo se marcan las caras con geometría real en este diente
-    // (availableSurfaces) para evitar estados "fantasma" que nunca se pintan.
-    const allSurfaces = (
-      [
-        "mesial",
-        "distal",
-        "facial",
-        "lingual",
-        "oclusal",
-        "cervicalVestibular",
-        "cervicalLingual",
-      ] as ToothSurface[]
-    ).filter((surface) => availableSurfaces.has(surface));
+    // Siempre PAINTABLE_SURFACES ∩ availableSurfaces: la lista canónica marca
+    // QUÉ celdas existen y la geometría del diente cuáles tiene REALMENTE (un
+    // 26 no tiene cervical vestibular, un anterior no tiene cervical palatina).
+    // Así no se crean estados "fantasma" que nunca se pintan.
+    const allSurfaces = PAINTABLE_SURFACES.filter((surface) =>
+      availableSurfaces.has(surface),
+    );
     const newStates: SurfaceState[] = allSurfaces.map((surface) => {
       const existing = selectedSurfaces.find((s) => s.surface === surface);
       return (
@@ -199,7 +196,14 @@ export function SurfacesTab({
         }
       );
     });
-    setSelectedSurfaces(newStates);
+    // Los códigos LEGACY que ya estuvieran seleccionados se conservan: si se
+    // perdieran aquí, el guardado posterior borraría el diagnóstico histórico
+    // (la barrida de huérfanos de tooth-modal elimina todo evento cuya cara ya
+    // no esté seleccionada). "Marcar todas" nunca debe destruir registro.
+    const legacyStates = selectedSurfaces.filter((s) =>
+      isLegacySurface(s.surface),
+    );
+    setSelectedSurfaces([...legacyStates, ...newStates]);
   };
 
   const handleDeselectAll = () => {
@@ -237,16 +241,70 @@ export function SurfacesTab({
 
   /** Check if a zone group is fully selected */
   const isZoneSelected = (zoneSurfaces: ToothSurface[]): boolean =>
+    zoneSurfaces.length > 0 &&
     zoneSurfaces.every((s) => selectedSurfaces.some((ss) => ss.surface === s));
 
+  /**
+   * Celdas de una FAMILIA anatómica que este diente tiene de verdad. Es la
+   * mitigación del riesgo de infra-documentación: tras el desdoble por vista,
+   * una lesión mesial completa son 3 celdas, y sin este atajo el clínico
+   * tendería a marcar solo la vista que está mirando y el diente se leería "MO"
+   * cuando la lesión era proximal completa. Con esto, una MOD son 3 clics.
+   */
+  const zoneCells = (zone: ReturnType<typeof getSurfaceZone>): ToothSurface[] =>
+    PAINTABLE_SURFACES.filter(
+      (surface) =>
+        getSurfaceZone(surface) === zone && availableSurfaces.has(surface),
+    );
+
+  const canonicalSurfaceCount = new Set(
+    selectedSurfaces.map((s) => projectToCanonicalSurface(s.surface)),
+  ).size;
+
+  /**
+   * Los chips son el RESUMEN de lo seleccionado, no un selector (la selección
+   * primaria ocurre sobre las tres vistas del `SurfaceSelector`). Por eso van en
+   * orden canónico de lectura odontológica y no en orden de clic: así se leen
+   * como un `MOD` de toda la vida aunque sean 13 celdas. Se ordena una COPIA:
+   * el estado conserva el orden de inserción, del que depende el resaltado de
+   * "última cara interactuada" del selector.
+   */
+  const orderedSurfaces = useMemo(
+    () =>
+      [...selectedSurfaces].sort(
+        (a, b) => getSurfaceRank(a.surface) - getSurfaceRank(b.surface),
+      ),
+    [selectedSurfaces],
+  );
+
+  const mesialCells = zoneCells("mesial");
+  const distalCells = zoneCells("distal");
+  const facialCells = zoneCells("facial");
+  const lingualCells = zoneCells("lingual");
+
   const handleApplyTemplate = (template: ToothTemplate) => {
-    // Flash animation
-    setFlashedSurfaces(new Set(template.applicableSurfaces));
+    // Las plantillas hablan en vocabulario CANÓNICO ADA ("la mesial"), no de
+    // celdas por vista: hay que PROYECTAR la celda marcada antes de comparar. Sin
+    // esto, "Caries incipiente" dejaría de aplicar a `mesialVestibular` EN
+    // SILENCIO (el usuario pulsa y no pasa nada).
+    const applicable = new Set(template.applicableSurfaces);
+    const matches = (surface: ToothSurface) =>
+      applicable.has(projectToCanonicalSurface(surface));
+
+    // Flash animation: sobre las celdas realmente afectadas, no sobre el
+    // vocabulario canónico de la plantilla (que no son códigos de celda).
+    setFlashedSurfaces(
+      new Set(
+        selectedSurfaces
+          .filter((s) => matches(s.surface))
+          .map((s) => s.surface),
+      ),
+    );
     setTimeout(() => setFlashedSurfaces(new Set()), 600);
 
     setSelectedSurfaces((prev) => {
       const next = prev.map((surface) => {
-        if (template.applicableSurfaces.includes(surface.surface)) {
+        if (matches(surface.surface)) {
           return {
             ...surface,
             status: template.status,
@@ -339,8 +397,17 @@ export function SurfacesTab({
             <span className="text-xs font-medium text-muted-foreground">
               Superficies
             </span>
-            <span className="text-lg font-bold leading-none text-ink tabular-nums">
-              {selectedSurfaces.length}
+            {/* Contador PROYECTADO a superficies canónicas ADA: una MOD son 3
+                superficies aunque se hayan marcado 5 celdas. Contar celdas haría
+                que el número dejara de servir para reportar o facturar. El
+                granular vive en el título. */}
+            <span
+              className="text-lg font-bold leading-none text-ink tabular-nums"
+              title={`${selectedSurfaces.length} celda${
+                selectedSurfaces.length === 1 ? "" : "s"
+              } marcada${selectedSurfaces.length === 1 ? "" : "s"}`}
+            >
+              {canonicalSurfaceCount}
             </span>
           </div>
         </div>
@@ -383,9 +450,15 @@ export function SurfacesTab({
               </p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {selectedSurfaces.map((surface) => (
+                {orderedSurfaces.map((surface) => (
                   <Badge
                     key={surface.surface}
+                    title={
+                      ToothTypeService.getSurfaceLabel(
+                        tooth.number,
+                        surface.surface,
+                      ).full
+                    }
                     className="text-xs px-2 py-0.5 inline-flex items-center gap-1 transition-all"
                     style={{
                       backgroundColor: surface.color,
@@ -401,7 +474,15 @@ export function SurfacesTab({
                     {ToothTypeService.getSurfaceLabel(
                       tooth.number,
                       surface.surface,
-                    ).short}{" "}
+                    ).short}
+                    {/* Un código de registro anterior no se disfraza de dato
+                        preciso: se dice que no quedó registrada la vista. No hay
+                        casilla para marcarlo, pero SE SIGUE MOSTRANDO — si el
+                        chip desapareciera, el primer guardado del diente
+                        borraría el diagnóstico histórico. */}
+                    {isLegacySurface(surface.surface) && (
+                      <span className="opacity-80"> (sin vista)</span>
+                    )}{" "}
                     ·{" "}
                     {surface.status === "pathology" &&
                     (surface.icdasScore ?? 0) > 0
@@ -463,33 +544,63 @@ export function SurfacesTab({
               <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
                 Zonas derivadas
               </p>
+              {/* Atajos por FAMILIA anatómica: marcan de una vez las celdas de
+                  esa cara en las tres vistas (las que este diente tenga). */}
+              {mesialCells.length > 0 && (
+                <Button
+                  variant={isZoneSelected(mesialCells) ? "default" : "outline"}
+                  size="sm"
+                  className="w-full text-xs h-8 bg-transparent"
+                  onClick={() => handleToggleZone(mesialCells)}
+                  disabled={isDisabled}
+                >
+                  Mesial completa
+                </Button>
+              )}
+              {distalCells.length > 0 && (
+                <Button
+                  variant={isZoneSelected(distalCells) ? "default" : "outline"}
+                  size="sm"
+                  className="w-full text-xs h-8 bg-transparent"
+                  onClick={() => handleToggleZone(distalCells)}
+                  disabled={isDisabled}
+                >
+                  Distal completa
+                </Button>
+              )}
               <Button
                 variant={
-                  isZoneSelected(["mesial", "distal"]) ? "default" : "outline"
+                  isZoneSelected([...mesialCells, ...distalCells])
+                    ? "default"
+                    : "outline"
                 }
                 size="sm"
                 className="w-full text-xs h-8 bg-transparent"
-                onClick={() => handleToggleZone(["mesial", "distal"])}
+                onClick={() =>
+                  handleToggleZone([...mesialCells, ...distalCells])
+                }
                 disabled={isDisabled}
               >
                 <Columns2 className="w-3 h-3 mr-1" />
                 Proximales (M+D)
               </Button>
-              <Button
-                variant={isZoneSelected(["facial"]) ? "default" : "outline"}
-                size="sm"
-                className="w-full text-xs h-8 bg-transparent"
-                onClick={() => handleToggleZone(["facial"])}
-                disabled={isDisabled}
-              >
-                {ToothTypeService.getSurfaceLabel(tooth.number, "facial").full}
-              </Button>
-              {availableSurfaces.has("lingual") && (
+              {facialCells.length > 0 && (
                 <Button
-                  variant={isZoneSelected(["lingual"]) ? "default" : "outline"}
+                  variant={isZoneSelected(facialCells) ? "default" : "outline"}
                   size="sm"
                   className="w-full text-xs h-8 bg-transparent"
-                  onClick={() => handleToggleZone(["lingual"])}
+                  onClick={() => handleToggleZone(facialCells)}
+                  disabled={isDisabled}
+                >
+                  {ToothTypeService.getSurfaceLabel(tooth.number, "facial").full}
+                </Button>
+              )}
+              {lingualCells.length > 0 && (
+                <Button
+                  variant={isZoneSelected(lingualCells) ? "default" : "outline"}
+                  size="sm"
+                  className="w-full text-xs h-8 bg-transparent"
+                  onClick={() => handleToggleZone(lingualCells)}
                   disabled={isDisabled}
                 >
                   {ToothTypeService.getSurfaceLabel(tooth.number, "lingual").full}

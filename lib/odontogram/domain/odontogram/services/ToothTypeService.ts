@@ -62,9 +62,17 @@ export class ToothTypeService {
   }
 
   /**
-   * Etiqueta canónica FDI de una cara, decidida por ARCADA (palatino vs lingual)
-   * y por SECTOR (incisal vs oclusal, labial vs vestibular). Fuente única de
-   * verdad para el selector de caras y la pestaña de superficies.
+   * Etiqueta canónica FDI de una CELDA, decidida por ARCADA (palatino vs
+   * lingual) y por SECTOR (incisal vs oclusal, labial vs vestibular). Fuente
+   * única de verdad para el selector de caras y la pestaña de superficies.
+   *
+   * La abreviatura de las celdas cualificadas por vista usa punto medio (`M·V`)
+   * y NO se puede quitar: sin él, `MO` colisiona con la notación CDT de
+   * restauración mesio-oclusal y un odontólogo lo lee mal.
+   *
+   * El `switch` es EXHAUSTIVO a propósito (sin `default`): si mañana se añade un
+   * código de superficie, TS2366 obliga a decidir su etiqueta aquí en vez de
+   * dejar que se cuele un texto genérico.
    */
   static getSurfaceLabel(
     toothNumber: number,
@@ -72,33 +80,76 @@ export class ToothTypeService {
   ): { short: string; full: string } {
     const anterior = this.isAnterior(toothNumber)
     const maxillary = this.isMaxillary(toothNumber)
+    // La cara interna se nombra por ARCADA (FDI/ISO 3950), nunca por sector.
+    const inner = maxillary ? "palatino" : "lingual"
+    const innerLetter = maxillary ? "P" : "L"
+    // En anteriores la cara externa es labial; en posteriores, vestibular.
+    const outerFull = anterior ? "Labial" : "Vestibular"
 
     switch (surface) {
-      case "mesial":
-        return { short: "M", full: "Mesial" }
-      case "distal":
-        return { short: "D", full: "Distal" }
+      // ── Proximales: tres celdas por familia, una por vista ────────────────
+      case "mesialVestibular":
+        return {
+          short: "M·V",
+          full: anterior ? "Mesio-labial" : "Mesio-vestibular",
+        }
+      case "mesialOclusal":
+        // Celda proximal CANÓNICA: es la que un odontólogo llama "la mesial"
+        // (Clase II). Las reglas proximales se anclan aquí, no en la familia.
+        return {
+          short: "M·O",
+          full: "Mesial proximal — reborde marginal y punto de contacto",
+        }
+      case "mesialLingual":
+        return { short: `M·${innerLetter}`, full: `Mesio-${inner}` }
+      case "distalVestibular":
+        return {
+          short: "D·V",
+          full: anterior ? "Disto-labial" : "Disto-vestibular",
+        }
+      case "distalOclusal":
+        return {
+          short: "D·O",
+          full: "Distal proximal — reborde marginal y punto de contacto",
+        }
+      case "distalLingual":
+        return { short: `D·${innerLetter}`, full: `Disto-${inner}` }
+      // ── Cuerpos (la vista coincide con la cara → sin sufijo) ──────────────
       case "facial":
         return anterior
           ? { short: "Lab", full: "Labial" }
           : { short: "V", full: "Vestibular" }
+      case "facialOclusal":
+        return {
+          short: "V·O",
+          full: `${outerFull} desde oclusal (vertiente vestibular)`,
+        }
       case "lingual":
-        // Palatino SOLO depende de la arcada (maxilar), no de anterior/posterior.
         return maxillary
           ? { short: "P", full: "Palatino" }
           : { short: "L", full: "Lingual" }
+      case "lingualOclusal":
+        return {
+          short: `${innerLetter}·O`,
+          full: `${maxillary ? "Palatino" : "Lingual"} desde oclusal (vertiente)`,
+        }
+      // ── Mesa oclusal / borde incisal: celda ÚNICA, nunca cualificada ──────
       case "oclusal":
         return anterior
-          ? { short: "I", full: "Incisal" }
+          ? { short: "I", full: "Incisal — borde único, visible en las 3 vistas" }
           : { short: "O", full: "Oclusal" }
+      // ── Tercio cervical (Clase V): el precedente del desdoble por vista ───
       case "cervicalVestibular":
-        // Tercio cervical de la cara bucal (Clase V vestibular).
-        return { short: "Cerv", full: "Cervical vestibular" }
+        return { short: "C·V", full: "Cervical vestibular" }
       case "cervicalLingual":
-        // Tercio cervical de la cara interna (Clase V), por arcada.
         return maxillary
-          ? { short: "Cerv", full: "Cervical palatino" }
-          : { short: "Cerv", full: "Cervical lingual" }
+          ? { short: "C·P", full: "Cervical palatino" }
+          : { short: "C·L", full: "Cervical lingual" }
+      // ── LEGACY: registro anterior. No se disfraza de dato preciso ─────────
+      case "mesial":
+        return { short: "M", full: "Mesial (registro anterior, sin vista)" }
+      case "distal":
+        return { short: "D", full: "Distal (registro anterior, sin vista)" }
     }
   }
 

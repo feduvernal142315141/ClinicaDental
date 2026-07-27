@@ -5,6 +5,7 @@ import type {
   ProcedureCatalogItem,
   ProcedureCategory,
 } from "../types";
+import { getSurfaceZone, isLegacySurface } from "../types/surface.types";
 
 export interface TreatmentSuggestion {
   procedure: ProcedureCatalogItem;
@@ -108,7 +109,13 @@ export class TreatmentSuggestionService {
       (d) => d.icdasScore >= 1 && d.icdasScore <= 2,
     );
     if (incipient.length > 0) {
-      const oclusales = incipient.filter((d) => d.surface === "oclusal");
+      // El sellante va sobre la mesa oclusal/fosas. `oclusal` no se cualifica
+      // por vista (es una sola celda), así que preguntar por la familia da
+      // exactamente lo mismo que antes; se hace así para que siga siendo cierto
+      // si algún día la mesa se subdividiera.
+      const oclusales = incipient.filter(
+        (d) => getSurfaceZone(d.surface) === "oclusal",
+      );
       if (oclusales.length > 0) {
         const sellante = findByIntent(catalog, "preventivo", "sellante");
         if (sellante) {
@@ -121,8 +128,17 @@ export class TreatmentSuggestionService {
         }
       }
 
+      // OJO — la infiltración proximal se ancla en la CELDA PROXIMAL CANÓNICA
+      // (`mesialOclusal`/`distalOclusal`: reborde marginal y punto de contacto),
+      // NO en toda la familia mesial/distal. Una lesión `mesialVestibular` es un
+      // ángulo línea, o sea superficie LIBRE: proponerle infiltración proximal
+      // sería un error clínico. Los códigos legacy sin vista entran porque en su
+      // día significaban justamente "la proximal".
       const proximales = incipient.filter(
-        (d) => d.surface === "mesial" || d.surface === "distal",
+        (d) =>
+          d.surface === "mesialOclusal" ||
+          d.surface === "distalOclusal" ||
+          isLegacySurface(d.surface),
       );
       if (proximales.length > 0) {
         const infiltracion = findByIntent(

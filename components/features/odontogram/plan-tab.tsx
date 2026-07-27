@@ -50,6 +50,10 @@ import {
   PROCEDURE_TEMPLATES,
   TreatmentSuggestionService,
   ClinicalConsistencyService,
+  ToothTypeService,
+  projectToCanonicalSurface,
+  summarizeCanonicalSurfaces,
+  toIcdasSurfaceFilter,
 } from "./types";
 import { useOdontogramServices } from "@/lib/odontogram/application/hooks/useOdontogramServices";
 import { useIcdasTemplateSuggestions } from "@/lib/odontogram/application/hooks/useIcdasTemplateSuggestions";
@@ -95,22 +99,30 @@ export function PlanTab({
   const [icdasSectionOpen, setIcdasSectionOpen] = useState(true);
 
   // Derive the highest ICDAS score and primary surface from diagnoses
-  const { maxIcdasScore, primarySurface } = useMemo(() => {
+  const { maxIcdasScore, primarySurfaceFilter } = useMemo(() => {
     if (!diagnoses || diagnoses.size === 0)
-      return { maxIcdasScore: null, primarySurface: null };
+      return { maxIcdasScore: null, primarySurfaceFilter: null };
     let max = -1;
-    let surface: string | null = null;
+    let surface: ToothSurface | null = null;
     diagnoses.forEach((diag, surf) => {
       if (diag.icdasScore > max) {
         max = diag.icdasScore;
         surface = surf;
       }
     });
-    return { maxIcdasScore: max >= 0 ? max : null, primarySurface: surface };
+    // El backend filtra por FAMILIA (`proximal | oclusal | facial | lingual`),
+    // no por celda: mandarle el código crudo hacía que las reglas "proximal" no
+    // casaran NUNCA ("mesial" ≠ "proximal"), y tras el desdoble por vista
+    // fallarían también las demás ("mesialVestibular" ≠ nada). Esta traducción
+    // en el cliente es la garantía; el normalizador del handler es tolerancia.
+    return {
+      maxIcdasScore: max >= 0 ? max : null,
+      primarySurfaceFilter: surface ? toIcdasSurfaceFilter(surface) : null,
+    };
   }, [diagnoses]);
 
   const { suggestions: icdasTemplateSuggestions, loading: icdasLoading } =
-    useIcdasTemplateSuggestions(maxIcdasScore, primarySurface);
+    useIcdasTemplateSuggestions(maxIcdasScore, primarySurfaceFilter);
 
   useEffect(() => {
     setPlans(initialPlans ?? []);
@@ -173,11 +185,17 @@ export function PlanTab({
     procedure: ProcedureCatalogItem,
     suggestedSurfaces?: ToothSurface[],
   ) => {
+    // El catálogo declara compatibilidad en vocabulario CANÓNICO ADA ("mesial"),
+    // no por celda de vista: hay que PROYECTAR la celda marcada antes de
+    // comparar. Sin esto ningún procedimiento casaría con `mesialVestibular` y
+    // el plan se crearía sobre las caras equivocadas sin avisar.
     const applicableSurfaces =
       suggestedSurfaces ||
       (procedure.compatibleSurfaces
         ? selectedSurfaces.filter((s) =>
-            procedure.compatibleSurfaces?.includes(s),
+            procedure.compatibleSurfaces?.includes(
+              projectToCanonicalSurface(s),
+            ),
           )
         : []);
 
@@ -510,10 +528,27 @@ export function PlanTab({
                           </p>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             {plan.surfaces.length > 0 && (
-                              <span className="text-[10px] text-muted-foreground">
-                                {plan.surfaces
-                                  .map((s) => s.charAt(0).toUpperCase())
-                                  .join("·")}
+                              // El chip muestra el resumen CANÓNICO ("MOD"),
+                              // que es como un odontólogo lee una restauración
+                              // continua; el detalle por celda va en el título.
+                              // Listar las 5 celdas de una MOD aquí sería
+                              // ilegible y además diría "5 superficies".
+                              <span
+                                className="text-[10px] text-muted-foreground"
+                                title={plan.surfaces
+                                  .map(
+                                    (s) =>
+                                      ToothTypeService.getSurfaceLabel(
+                                        plan.toothNumber,
+                                        s,
+                                      ).short,
+                                  )
+                                  .join(", ")}
+                              >
+                                {summarizeCanonicalSurfaces(
+                                  plan.toothNumber,
+                                  plan.surfaces,
+                                )}
                               </span>
                             )}
                             {plan.status === "done" && (

@@ -45,6 +45,8 @@ import {
   NON_CARIOUS_LESION_LABELS,
   VITALITY_TEST_LABELS,
   GLOBAL_STATUS_LABELS,
+  getSurfaceZone,
+  projectToCanonicalSurface,
 } from "./types";
 import { ODONTOGRAM_STATE_COLORS } from "@/lib/odontogram/domain/odontogram/constants/odontogram-colors.constants";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
@@ -145,6 +147,12 @@ export function DiagnosisTab({
   const [painDescription, setPainDescription] = useState<string>("");
   const [generalNotes, setGeneralNotes] = useState("");
   const [evidenceExpanded, setEvidenceExpanded] = useState(false);
+
+  // Superficies canónicas ADA distintas cubiertas por las celdas marcadas: una
+  // MOD son 3 superficies (M, O, D) aunque el clínico haya marcado 5 celdas.
+  const canonicalSurfaceCount = new Set(
+    selectedSurfaces.map(projectToCanonicalSurface),
+  ).size;
 
   const buildToothDiagnosisRecord = (
     nextDiagnoses: Map<ToothSurface, SurfaceDiagnosis>,
@@ -304,9 +312,15 @@ export function DiagnosisTab({
     const diagnosis = surfaceDiagnoses.get(activeSurface);
     if (!diagnosis) return;
 
-    const adjacentSurfaces: ToothSurface[] = [];
-    if (selectedSurfaces.includes("mesial")) adjacentSurfaces.push("mesial");
-    if (selectedSurfaces.includes("distal")) adjacentSurfaces.push("distal");
+    // "Adyacentes" = todas las celdas PROXIMALES seleccionadas, sea cual sea la
+    // vista desde la que se marcaron (mesialVestibular, mesialOclusal, …) y
+    // también los códigos antiguos sin vista. Comparar contra los literales
+    // "mesial"/"distal" dejaría el botón inerte para todo registro nuevo.
+    const adjacentSurfaces: ToothSurface[] = selectedSurfaces.filter(
+      (surface) =>
+        getSurfaceZone(surface) === "mesial" ||
+        getSurfaceZone(surface) === "distal",
+    );
 
     const newMap = new Map(surfaceDiagnoses);
     adjacentSurfaces.forEach((surface) => {
@@ -375,10 +389,18 @@ export function DiagnosisTab({
           <h3 className="text-lg font-bold">
             Diagnóstico · Diente {tooth.number}
           </h3>
-          <p className="text-sm text-muted-foreground">
-            {ToothTypeService.getToothTypeName(tooth.number)} · {selectedSurfaces.length}{" "}
-            superficie
-            {selectedSurfaces.length !== 1 ? "s" : ""}
+          {/* Contador PROYECTADO a superficies canónicas ADA: una MOD son 3
+              superficies aunque se hayan marcado 5 celdas. El granular va en el
+              título, para que el número siga sirviendo fuera del producto. */}
+          <p
+            className="text-sm text-muted-foreground"
+            title={`${selectedSurfaces.length} celda${
+              selectedSurfaces.length === 1 ? "" : "s"
+            } marcada${selectedSurfaces.length === 1 ? "" : "s"}`}
+          >
+            {ToothTypeService.getToothTypeName(tooth.number)} ·{" "}
+            {canonicalSurfaceCount} superficie
+            {canonicalSurfaceCount !== 1 ? "s" : ""}
           </p>
         </div>
         <div className="flex gap-2">
@@ -480,9 +502,20 @@ export function DiagnosisTab({
                           }
                         : undefined
                     }
+                    title={
+                      ToothTypeService.getSurfaceLabel(tooth.number, surface)
+                        .full
+                    }
                     onClick={() => handleSurfaceChange(surface)}
                   >
-                    {surface.charAt(0).toUpperCase()}
+                    {/* La inicial del código NO distingue celdas desde el
+                        desdoble por vista: `mesialVestibular` y `mesialOclusal`
+                        colapsarían las dos en "M" y el clínico no sabría cuál
+                        está editando. */}
+                    {
+                      ToothTypeService.getSurfaceLabel(tooth.number, surface)
+                        .short
+                    }
                     {diagnosis &&
                       diagnosis.icdasScore > 0 &&
                       ` (${diagnosis.icdasScore})`}
@@ -949,8 +982,19 @@ export function DiagnosisTab({
                       <span
                         className={`text-sm font-bold ${color ? "" : "text-subtle"}`}
                         style={color ? { color } : undefined}
+                        title={
+                          ToothTypeService.getSurfaceLabel(
+                            tooth.number,
+                            surface,
+                          ).full
+                        }
                       >
-                        {surface.charAt(0).toUpperCase()}
+                        {
+                          ToothTypeService.getSurfaceLabel(
+                            tooth.number,
+                            surface,
+                          ).short
+                        }
                       </span>
                       <ArrowRight className="w-3 h-3 text-muted-foreground" />
                       <span className="text-sm">

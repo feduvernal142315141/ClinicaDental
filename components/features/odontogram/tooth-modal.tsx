@@ -36,7 +36,10 @@ import { PlanTab } from "./plan-tab";
 import { PerformedTab } from "./performed-tab";
 
 import { SchedulePlanModal } from "./schedule-plan-modal";
-import { useOdontogramStore } from "@/lib/odontogram/store";
+import {
+  ODONTOGRAM_SCHEMA_VERSION,
+  useOdontogramStore,
+} from "@/lib/odontogram/store";
 import {
   ToothTypeService,
   CariesRiskService,
@@ -596,10 +599,17 @@ export function ToothModal({
     }
 
     diagnosesToValidate.forEach((diagnosis) => {
+      // El mensaje va con la etiqueta clínica, no con el código interno: desde
+      // la cualificación por vista el código crudo se lee "mesialVestibular",
+      // que no es español ni le dice nada al odontólogo.
+      const surfaceLabel = ToothTypeService.getSurfaceLabel(
+        tooth.number,
+        diagnosis.surface,
+      ).full;
       if (diagnosis.icdasScore >= 5) {
         if (!diagnosis.cariesType) {
           errors.push(
-            `La superficie ${diagnosis.surface} con ICDAS ${diagnosis.icdasScore} requiere tipo de caries.`,
+            `La superficie ${surfaceLabel} con ICDAS ${diagnosis.icdasScore} requiere tipo de caries.`,
           );
         }
 
@@ -608,7 +618,7 @@ export function ToothModal({
           diagnosis.cariesActivity === "no-aplica"
         ) {
           errors.push(
-            `La superficie ${diagnosis.surface} con ICDAS ${diagnosis.icdasScore} requiere actividad de caries.`,
+            `La superficie ${surfaceLabel} con ICDAS ${diagnosis.icdasScore} requiere actividad de caries.`,
           );
         }
 
@@ -745,7 +755,7 @@ export function ToothModal({
 
           if (existingEvent) {
             updateClinicalEvent(existingEvent.id, {
-              schemaVersion: 2,
+              schemaVersion: ODONTOGRAM_SCHEMA_VERSION,
               diagnosisKind: "surface-finding",
               surfacesV2: [
                 createSurfaceRef(tooth.number, surface, diagnosis.cariesType),
@@ -790,7 +800,7 @@ export function ToothModal({
             });
           } else {
             addClinicalEvent({
-              schemaVersion: 2,
+              schemaVersion: ODONTOGRAM_SCHEMA_VERSION,
               toothNumber: tooth.number,
               surfaces: [surface],
               surfacesV2: [
@@ -865,7 +875,7 @@ export function ToothModal({
 
           if (existingEvent) {
             updateClinicalEvent(existingEvent.id, {
-              schemaVersion: 2,
+              schemaVersion: ODONTOGRAM_SCHEMA_VERSION,
               diagnosisKind: "surface-finding",
               surfacesV2: [createSurfaceRef(tooth.number, state.surface)],
               diagnosisPayload: {
@@ -882,7 +892,7 @@ export function ToothModal({
             });
           } else {
             addClinicalEvent({
-              schemaVersion: 2,
+              schemaVersion: ODONTOGRAM_SCHEMA_VERSION,
               toothNumber: tooth.number,
               surfaces: [state.surface],
               surfacesV2: [createSurfaceRef(tooth.number, state.surface)],
@@ -1057,7 +1067,7 @@ export function ToothModal({
     // Resolver diagnósticos de superficies cuyos planes están "done"
     const donePlans = currentPlans.filter((p) => p.status === "done");
     if (donePlans.length > 0) {
-      const doneSurfaces = new Set<string>();
+      const doneSurfaces = new Set<ToothSurface>();
       donePlans.forEach((plan) => {
         plan.surfaces.forEach((s) => doneSurfaces.add(s));
       });
@@ -1066,7 +1076,7 @@ export function ToothModal({
         const diagEvent = getToothEvents(tooth.number).find(
           (e) =>
             e.type === "diagnosis" &&
-            e.surfaces.includes(surface as ToothSurface) &&
+            e.surfaces.includes(surface) &&
             e.status !== "done",
         );
         if (diagEvent) {

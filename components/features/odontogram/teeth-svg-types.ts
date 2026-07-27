@@ -3,17 +3,17 @@
  * Extraídos de tooth-square-paths.ts al eliminar su data muerta.
  */
 
+import type { ToothSurface } from "@/lib/odontogram/domain/odontogram/types/surface.types";
+
 export interface SurfacePath {
   d: string;
-  /** Nombre de la superficie dental */
-  surface:
-    | "oclusal"
-    | "facial"
-    | "lingual"
-    | "mesial"
-    | "distal"
-    | "cervicalVestibular"
-    | "cervicalLingual";
+  /**
+   * Celda de superficie dental. Reutiliza el tipo del dominio en vez de
+   * redeclarar la unión: existir dos vocabularios de caras es cómo se cuelan
+   * códigos huérfanos (una lista que se queda corta pinta las superficies de
+   * NEGRO en silencio). `surface.types.ts` es la única fuente de verdad.
+   */
+  surface: ToothSurface;
 }
 
 export interface ToothViewPaths {

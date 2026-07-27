@@ -315,16 +315,74 @@ function classifyView(zones, viewBounds, fdi, viewCategory) {
     // la BANDA central MÁS GRANDE es el tercio 'cervicalLingual'; la otra central
     // es la cara palatina/lingual ('lingual') en posteriores o el filo incisal
     // ('oclusal') en anteriores. Con una sola central se conserva 'lingual'.
+    //
+    // EXCEPCIÓN ANTERIORES: en un anterior la vista lateral solo tiene DOS zonas
+    // centrales (filo incisal + cuerpo palatino) — no hay una tercera que sea el
+    // tercio cervical. Etiquetar el cuerpo como 'cervicalLingual' impedía
+    // registrar erosión palatina (GERD/bulimia) y caries de fosa palatina, que
+    // son EL hallazgo palatino frecuente en incisivos superiores. Por eso en
+    // anteriores la banda grande es 'lingual' (cuerpo palatino: cíngulo y fosa)
+    // y la pequeña es el filo ('oclusal').
     if (centers.length >= 2) {
-      let cervical = centers[0];
-      for (const e of centers) if (e.area > cervical.area) cervical = e;
+      let biggest = centers[0];
+      for (const e of centers) if (e.area > biggest.area) biggest = e;
       for (const e of centers) {
-        result[e.z] =
-          e === cervical ? "cervicalLingual" : anterior ? "oclusal" : "lingual";
+        if (e === biggest) result[e.z] = anterior ? "lingual" : "cervicalLingual";
+        else result[e.z] = anterior ? "oclusal" : "lingual";
       }
     } else {
       for (const e of centers) result[e.z] = "lingual";
     }
+  }
+
+  // ── Cualificación por VISTA (único punto de emisión) ───────────────────────
+  // El código de superficie lleva la VISTA incrustada: la mesial vista desde
+  // vestibular NO es la mesial vista desde oclusal (ángulo línea mesio-vestibular
+  // = superficie libre, vs reborde marginal + punto de contacto = Clase II). Son
+  // tres estructuras distintas mal nombradas igual, y por eso marcar una marcaba
+  // las tres. Mismo patrón que el precedente cervicalVestibular/cervicalLingual.
+  //
+  // Regla de nombrado: el sufijo nombra la vista desde la que se observa la
+  // superficie, y se OMITE cuando la vista coincide con el nombre de la cara
+  // (la vista vestibular es la cara vestibular → 'facial'; la lateral es la
+  // palatina/lingual → 'lingual'; la oclusal es la mesa → 'oclusal').
+  //
+  // 'oclusal' NO se cualifica a propósito: el borde incisal es UNA lámina de
+  // esmalte vista desde tres ángulos, no tres sitios. Desdoblarlo produciría
+  // falsos negativos en atrición/fractura incisal.
+  const VIEW_SCOPED = {
+    vestibular: {
+      mesial: "mesialVestibular",
+      distal: "distalVestibular",
+      oclusal: "oclusal",
+      facial: "facial",
+      cervicalVestibular: "cervicalVestibular",
+    },
+    occlusal: {
+      mesial: "mesialOclusal",
+      distal: "distalOclusal",
+      oclusal: "oclusal",
+      facial: "facialOclusal",
+      lingual: "lingualOclusal",
+    },
+    lateral: {
+      mesial: "mesialLingual",
+      distal: "distalLingual",
+      oclusal: "oclusal",
+      lingual: "lingual",
+      cervicalLingual: "cervicalLingual",
+    },
+  };
+  for (const z of Object.keys(result)) {
+    const mapped = VIEW_SCOPED[viewCategory][result[z]];
+    // Sin fallback silencioso: un código sin mapa es un bug del clasificador y
+    // debe reventar la generación, no colarse en los datos clínicos.
+    if (!mapped) {
+      throw new Error(
+        `classifyView: código sin mapa de vista → ${fdi}/${viewCategory} zona ${z} = "${result[z]}"`,
+      );
+    }
+    result[z] = mapped;
   }
 
   return result;
@@ -461,8 +519,10 @@ for (const fdi of FDI_NUMBERS) {
       const seen = new Set();
       const dups = [];
       for (const s of surfVals) {
-        // facial/lingual pueden venir de 2 zonas (cuerpo + cervical) → no es dup.
-        if (s === "facial" || s === "lingual") continue;
+        // Validación ESTRICTA: la excepción facial/lingual existía porque cuerpo
+        // y tercio cervical compartían código. Con los códigos cualificados por
+        // vista ya no lo comparten, así que dentro de una vista ningún código
+        // puede repetirse: si se repite, es arte degenerado.
         if (seen.has(s)) dups.push(s);
         seen.add(s);
       }
@@ -475,10 +535,11 @@ for (const fdi of FDI_NUMBERS) {
       if (
         viewCategory === "occlusal" &&
         pos >= 4 &&
-        (!surfVals.includes("facial") || !surfVals.includes("lingual"))
+        (!surfVals.includes("facialOclusal") ||
+          !surfVals.includes("lingualOclusal"))
       ) {
         console.warn(
-          `  ⚠ ${fdi}${view}: oclusal posterior sin facial/lingual → ${JSON.stringify(zoneSurfaces)} (revisar arte)`,
+          `  ⚠ ${fdi}${view}: oclusal posterior sin facialOclusal/lingualOclusal → ${JSON.stringify(zoneSurfaces)} (revisar arte)`,
         );
       }
 
@@ -547,9 +608,24 @@ export interface ToothViewData {
   /** SVG paths for each interactive zone (typically 4-5 zones per view) */
   zones: Record<string, string[]>;
   /**
-   * Surface assigned to each zone by geometric classification (centroid-based,
-   * not by zone id which is just Illustrator draw order). Values:
-   * "oclusal" | "facial" | "lingual" | "mesial" | "distal".
+   * Superficie asignada a cada zona por clasificación GEOMÉTRICA (centroide),
+   * nunca por el id de zona (que es solo orden de dibujo de Illustrator).
+   *
+   * Los códigos van CUALIFICADOS POR VISTA: la mesial vista desde vestibular no
+   * es la mesial vista desde oclusal, así que marcar una no marca la otra.
+   * Los 13 valores posibles (= PAINTABLE_SURFACES en
+   * lib/odontogram/domain/odontogram/types/surface.types.ts):
+   *
+   *   "mesialVestibular" | "mesialOclusal" | "mesialLingual"
+   *   "distalVestibular" | "distalOclusal" | "distalLingual"
+   *   "facial"  | "facialOclusal"
+   *   "lingual" | "lingualOclusal"
+   *   "oclusal"            (mesa oclusal / borde incisal — celda ÚNICA
+   *                         compartida por las tres vistas, a propósito)
+   *   "cervicalVestibular" | "cervicalLingual"
+   *
+   * Nunca se emiten los códigos pelados "mesial"/"distal": son legacy de solo
+   * lectura del registro clínico anterior.
    */
   zoneSurfaces: Record<string, string>;
   /** Center of the CROWN (zones bbox, excludes root) — anchor for the symbol. */

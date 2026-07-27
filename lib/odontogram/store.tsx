@@ -165,7 +165,27 @@ const legacyVisualStateToGlobalStatus = (
   }
 };
 
-export const ODONTOGRAM_SCHEMA_VERSION = 2;
+/**
+ * Versión del vocabulario con el que se ESCRIBE un evento clínico.
+ *
+ * v3 = superficies cualificadas por vista (`mesialVestibular`, `mesialOclusal`,
+ * `mesialLingual`…). v2 y anteriores = códigos pelados `mesial`/`distal`.
+ *
+ * OJO — es un SELLO INFORMATIVO: ningún comportamiento depende de él. La
+ * compatibilidad con el registro antiguo se decide siempre por el CÓDIGO de la
+ * superficie (`getLegacySurfaceAliases`), nunca por esta versión. El motivo es
+ * concreto: `tooth-modal` re-sella la versión sobre eventos que ya existían sin
+ * tocar su array `surfaces`, así que un fan-out por versión haría desaparecer
+ * hallazgos antiguos en el primer guardado.
+ */
+export const ODONTOGRAM_SCHEMA_VERSION = 3;
+
+/**
+ * Versión que se atribuye a un evento SIN campo `schemaVersion`: si no lo trae,
+ * se escribió antes de que existiera el sello, o sea, con el vocabulario viejo.
+ * Atribuirle la versión actual sería mentir sobre el registro clínico.
+ */
+export const LEGACY_SURFACE_SCHEMA_VERSION = 2;
 
 export interface OdontogramSnapshotMetadata {
   version: number;
@@ -496,7 +516,12 @@ const normalizeToothDiagnosis = (
 const normalizeClinicalEvent = (event: ClinicalEvent): ClinicalEvent => {
   const normalizedEvent: ClinicalEvent = {
     ...event,
-    schemaVersion: event.schemaVersion ?? ODONTOGRAM_SCHEMA_VERSION,
+    // Un evento sin sello es antiguo POR DEFINICIÓN: se le atribuye la versión
+    // legacy, no la actual. Aquí NO se reescriben sus `surfaces`: la vista de la
+    // que salió un `mesial` no quedó registrada y no es deducible, así que
+    // repartirlo sería inventar registro clínico. La compatibilidad se resuelve
+    // en RENDER (OdontogramColorService, vía getLegacySurfaceAliases).
+    schemaVersion: event.schemaVersion ?? LEGACY_SURFACE_SCHEMA_VERSION,
   };
 
   // Re-derivar SIEMPRE el visualState de los eventos de ESTADO DE DIENTE desde
@@ -950,7 +975,11 @@ const createOdontogramStore = ({
             }),
             serviceSymbolText: symbolSource?.serviceSymbolText,
             serviceSymbolUrl: symbolSource?.serviceSymbolUrl,
-            schemaVersion: ODONTOGRAM_SCHEMA_VERSION,
+            // Solo se sella la versión actual cuando el evento se CREA aquí. Un
+            // evento que ya existía conserva la suya: re-sellarlo diría que sus
+            // superficies se escribieron con el vocabulario nuevo cuando no es
+            // cierto (el array `surfaces` no se toca en esta rama).
+            schemaVersion: existingEvent?.schemaVersion ?? ODONTOGRAM_SCHEMA_VERSION,
             visitId: item.visitId ?? state.metadata.visitId,
             toothNumber,
             surfaces: item.surfaces,

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useOdontogramStore } from "@/lib/odontogram/store";
-import type { ToothSurface } from "./types";
+import { PAINTABLE_SURFACES, type ToothSurface } from "./types";
 import { useEffect, useMemo, useState } from "react";
 import { ToothSymbolService } from "@/lib/odontogram/domain/odontogram/services/ToothSymbolService";
 import { OdontogramColorService } from "@/lib/odontogram/domain/odontogram/services/OdontogramColorService";
@@ -50,16 +50,11 @@ function _ToothSVGMultiView({
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
   const surfaceColors = useMemo(() => {
-    const surfaces: ToothSurface[] = [
-      "oclusal",
-      "facial",
-      "lingual",
-      "mesial",
-      "distal",
-      "cervicalVestibular",
-      "cervicalLingual",
-    ];
-    return surfaces.reduce(
+    // SIEMPRE PAINTABLE_SURFACES, nunca una lista literal. Si falta una celda,
+    // `surfaceColors[x]` es `undefined` (que NO es "transparent") →
+    // `hasSurfaceTreatment` da true → `fill` queda undefined → la superficie se
+    // pinta de NEGRO. Es el peor síntoma posible y es silencioso.
+    return PAINTABLE_SURFACES.reduce(
       (acc, surface) => {
         acc[surface] = getSurfaceColor(toothNumber, surface);
         return acc;
@@ -194,7 +189,9 @@ function DesignedToothView({
       {/* Superficies clickeables (zonas del diseño) */}
       {surfaces.map((sp: SurfacePath) => {
         if (!sp.d) return null; // Skip empty paths (non-visible surface)
-        const surfaceColor = surfaceColors[sp.surface];
+        // El `??` no es defensivo por gusto: una celda ausente del mapa daría
+        // `undefined`, que no es "transparent", y la pintaría de NEGRO.
+        const surfaceColor = surfaceColors[sp.surface] ?? "transparent";
         const hasSurfaceTreatment = surfaceColor !== "transparent";
         // Precedencia: color por superficie (caries) > color a nivel diente
         // (ausente/implante/corona/endo) > color natural del diente.

@@ -11,31 +11,51 @@
  * 4. Include roots in vestibular view (always visible per user decision)
  */
 
+import {
+  PAINTABLE_SURFACES,
+  type PaintableSurface,
+  type ToothSurface,
+} from "@/lib/odontogram/domain/odontogram/types/surface.types";
 import { getToothView, type ToothViewData } from "./teeth-svg-data";
 import type { ToothViewPaths, SurfacePath } from "./teeth-svg-types";
-
-type DentalSurface =
-  | "oclusal"
-  | "facial"
-  | "lingual"
-  | "mesial"
-  | "distal"
-  | "cervicalVestibular"
-  | "cervicalLingual";
 
 /**
  * La asignación zona→superficie ya NO es una tabla fija por número de zona: el
  * número de zona del SVG es orden de dibujo de Illustrator, no anatomía (la misma
  * etiqueta significa caras distintas según diente/cuadrante/vista). El extractor
- * la calcula por GEOMETRÍA (centroide) y la emite en `viewData.zoneSurfaces`.
+ * la calcula por GEOMETRÍA (centroide) y la emite en `viewData.zoneSurfaces`,
+ * ya CUALIFICADA POR VISTA (`mesialVestibular`, `mesialOclusal`, …).
  * Aquí solo la leemos. Ver scripts/extract-teeth-svg.mjs (classifyView).
  */
 
-/** Espejo M↔D usado cuando una vista se toma del diente contralateral. */
-const MIRROR_SURFACE: Partial<Record<DentalSurface, DentalSurface>> = {
-  mesial: "distal",
-  distal: "mesial",
+/**
+ * Espejo M↔D usado cuando una vista se toma del diente contralateral (el 18 es
+ * el único caso: no tiene vista lateral propia y toma la del 28). Hay que
+ * invertir los TRES pares proximales, uno por vista: desde que cada vista tiene
+ * su propio código, quedarse solo con `mesial`/`distal` dejaría las caras
+ * proximales cruzadas en silencio. Los códigos pelados ya no aparecen en los
+ * datos generados, así que no tienen entrada aquí.
+ */
+const MIRROR_SURFACE: Partial<Record<ToothSurface, ToothSurface>> = {
+  mesialVestibular: "distalVestibular",
+  distalVestibular: "mesialVestibular",
+  mesialOclusal: "distalOclusal",
+  distalOclusal: "mesialOclusal",
+  mesialLingual: "distalLingual",
+  distalLingual: "mesialLingual",
 };
+
+/**
+ * `zoneSurfaces` viene del generador tipado como `Record<string, string>`, así
+ * que se valida contra la lista canónica en vez de castear: un código que el
+ * generador emitiera y el dominio no conociera se descarta aquí y no llega al
+ * render (donde un código desconocido se pintaría de negro sin avisar).
+ */
+const PAINTABLE_SURFACE_SET: ReadonlySet<string> = new Set(PAINTABLE_SURFACES);
+
+function isPaintableSurface(value: string): value is PaintableSurface {
+  return PAINTABLE_SURFACE_SET.has(value);
+}
 
 /**
  * Merge an array of SVG path strings into a single path string.
@@ -58,13 +78,15 @@ function adaptToothView(
   // by the extractor. `mirrored` swaps mesial↔distal when the view was borrowed
   // from the contralateral tooth (opposite side → proximal faces inverted).
   const surfaces: SurfacePath[] = [];
-  const usedSurfaces = new Set<DentalSurface>();
+  const usedSurfaces = new Set<ToothSurface>();
 
   for (const [zoneId, paths] of Object.entries(viewData.zones)) {
-    let surface = zoneSurfaces[zoneId] as DentalSurface | undefined;
-    if (!surface) continue;
-    if (mirrored && MIRROR_SURFACE[surface]) {
-      surface = MIRROR_SURFACE[surface] as DentalSurface;
+    const rawSurface = zoneSurfaces[zoneId];
+    if (!rawSurface || !isPaintableSurface(rawSurface)) continue;
+    let surface: ToothSurface = rawSurface;
+    const mirroredSurface = MIRROR_SURFACE[surface];
+    if (mirrored && mirroredSurface) {
+      surface = mirroredSurface;
     }
 
     if (!usedSurfaces.has(surface)) {
@@ -82,17 +104,11 @@ function adaptToothView(
     }
   }
 
-  // Add empty path for the missing 5th surface (the one not visible from this angle)
-  const allSurfaces: DentalSurface[] = [
-    "oclusal",
-    "facial",
-    "lingual",
-    "mesial",
-    "distal",
-    "cervicalVestibular",
-    "cervicalLingual",
-  ];
-  for (const s of allSurfaces) {
+  // Toda celda marcable que esta vista no dibuja entra con path vacío: el
+  // renderer necesita la entrada para no tratarla como "superficie desconocida".
+  // Siempre PAINTABLE_SURFACES — una lista literal que se quede corta pinta esa
+  // superficie de negro sin avisar.
+  for (const s of PAINTABLE_SURFACES) {
     if (!usedSurfaces.has(s)) {
       surfaces.push({ surface: s, d: "" });
     }
