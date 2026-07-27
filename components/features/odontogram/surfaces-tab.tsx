@@ -82,7 +82,13 @@ export function SurfacesTab({
   const anterior = isAnterior(tooth.number);
   // Una exodoncia INDICADA no bloquea: la pieza sigue en boca y normalmente es
   // justo la que hay que diagnosticar para justificar la extracción.
-  const isDisabled = readOnly || isToothPhysicallyAbsent(tooth.globalStatus);
+  // Dos motivos DISTINTOS para no poder marcar caras, y no se pueden mezclar:
+  // que la pieza no esté en boca (hecho clínico) o que la ficha sea de solo
+  // lectura (permiso o visita cerrada). Colapsarlos hacía que TODO diente
+  // abierto sin consulta activa anunciara "marcado como Ausente", que es un
+  // dato clínico falso sobre el paciente.
+  const isAbsentOrImplant = isToothPhysicallyAbsent(tooth.globalStatus);
+  const isDisabled = readOnly || isAbsentOrImplant;
 
   // Caras que este diente REALMENTE tiene geometría para marcar (unión de las 3
   // vistas). Evita crear estados "fantasma" que nunca se pintan — p.ej. 'lingual'
@@ -415,7 +421,7 @@ export function SurfacesTab({
         </div>
       </div>
 
-      {isDisabled && (
+      {isAbsentOrImplant && (
         <Card className="p-3 bg-amber-500/15 border-amber-400/25">
           <p className="text-sm text-amber-600 dark:text-amber-300">
             ⚠️ Las superficies están deshabilitadas porque el diente está
