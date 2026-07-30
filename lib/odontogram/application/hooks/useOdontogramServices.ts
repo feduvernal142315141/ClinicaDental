@@ -46,6 +46,9 @@ function serviceToCatalogItem(service: ServiceListItem): ProcedureCatalogItem {
     category: mapCategory(service.category),
     // Duración real del servicio; 0 si no está configurada (sin inventar 30 min).
     estimatedDuration: service.duration ?? 0,
+    // El precio del servicio YA viene denominado en la moneda de la clínica
+    // (`settings.currency`): se toma tal cual. El odontograma NUNCA convierte
+    // importes — solo los formatea con esa misma moneda.
     baseCost: service.cost ?? 0,
     isFavorite: false,
     // Símbolo personalizado del servicio (la presencia codifica el modo):

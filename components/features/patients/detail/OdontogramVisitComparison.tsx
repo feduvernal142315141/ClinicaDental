@@ -3,6 +3,8 @@
 import { ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { OdontogramSnapshotView } from "./OdontogramSnapshotView";
+import { useClinicGeneralSettings } from "@/lib/hooks/settings";
+import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
 import type { OdontogramVisitSnapshots } from "@/lib/entity/odontogram";
 
 interface OdontogramVisitComparisonProps {
@@ -58,6 +60,13 @@ export function OdontogramVisitComparison({
   snapshots,
 }: OdontogramVisitComparisonProps) {
   const { start, finalSnapshot } = snapshots;
+  // Se resuelve UNA vez aquí y se propaga a los paneles: los importes del
+  // snapshot histórico deben leerse en la misma moneda que el odontograma
+  // vivo, o el mismo diente muestra dos símbolos distintos según por dónde
+  // se entre.
+  const { settings } = useClinicGeneralSettings();
+  const currency =
+    settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency;
 
   if (!start && !finalSnapshot) {
     return (
@@ -87,6 +96,7 @@ export function OdontogramVisitComparison({
         <OdontogramSnapshotView
           patientId={patientId}
           clinicId={clinicId}
+          currency={currency}
           state={single.state}
         />
       </Panel>
@@ -103,6 +113,7 @@ export function OdontogramVisitComparison({
         <OdontogramSnapshotView
           patientId={patientId}
           clinicId={clinicId}
+          currency={currency}
           state={start.state}
         />
       </Panel>
@@ -119,6 +130,7 @@ export function OdontogramVisitComparison({
         <OdontogramSnapshotView
           patientId={patientId}
           clinicId={clinicId}
+          currency={currency}
           state={finalSnapshot.state}
         />
       </Panel>

@@ -19,10 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/atomic/forms/select";
-// Select buscable (combobox) para el catálogo completo de monedas: 162
-// opciones exceden lo usable en el Select shadcn (sin búsqueda) del resto de
-// la pantalla. Mismo control que usa Opciones Generales para la moneda.
-import { Select as SearchableSelect } from "@/components/ui/controls/select";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import {
   Tabs,
@@ -48,7 +44,6 @@ import {
   integrationsList,
   type IntegrationSettings,
 } from "@/lib/integrations";
-import { CURRENCY_SELECT_OPTIONS } from "@/components/features/settings/regional-select-options";
 
 export function IntegrationsSettings() {
   const [settings, setSettings] = useState<IntegrationSettings | null>(null);
@@ -231,21 +226,6 @@ export function IntegrationsSettings() {
                           })
                         }
                         placeholder="whsec_..."
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="stripe-currency">Moneda</Label>
-                      <SearchableSelect
-                        id="stripe-currency"
-                        value={settings.stripe.currency}
-                        onChange={(currency) =>
-                          handleSave("stripe", { currency })
-                        }
-                        options={CURRENCY_SELECT_OPTIONS}
-                        searchable
-                        searchPlaceholder="Buscar moneda…"
-                        placeholder="Seleccione moneda…"
-                        aria-label="Moneda"
                       />
                     </div>
                   </div>

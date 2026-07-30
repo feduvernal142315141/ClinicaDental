@@ -51,7 +51,7 @@ export const serviceFormSchema = z
         invalid_type_error: "El costo es obligatorio",
       })
       .min(0, "El costo no puede ser negativo")
-      .max(999999.99, "El costo no puede superar $999,999.99")
+      .max(999999.99, "El costo no puede superar 999,999.99")
       .refine(
         (v) => Math.round(v * 100) / 100 === v,
         "El costo admite máximo 2 decimales",

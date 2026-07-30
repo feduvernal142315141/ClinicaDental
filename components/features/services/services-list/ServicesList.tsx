@@ -25,7 +25,7 @@ export function ServicesList({
 }: ServicesListProps) {
   const { handleEditService } = useServicesPage({ basePath });
   const { can, isAdmin } = usePermission();
-  const { settings } = useClinicGeneralSettings();
+  const { settings, loading: loadingSettings } = useClinicGeneralSettings();
   const currency = settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency;
 
   const { services, loading, pagination, fetchServices, toggleServiceStatus } =
@@ -128,7 +128,10 @@ export function ServicesList({
       <DataTable
         columns={columns}
         data={services}
-        loading={loading}
+        // La columna Costo depende de la moneda de la clínica: mientras esa
+        // configuración no ha llegado, la tabla sigue en estado de carga para
+        // no pintar los importes con la moneda de respaldo y corregirlos luego.
+        loading={loading || (loadingSettings && !settings)}
         rowKey="id"
         page={pagination.page + 1}
         pageSize={pagination.pageSize}

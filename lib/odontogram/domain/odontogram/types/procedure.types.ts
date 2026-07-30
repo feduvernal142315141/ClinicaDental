@@ -13,8 +13,6 @@ export type ProcedureCategory =
 
 export type ProcedurePriority = "alta" | "media" | "baja"
 
-export type Currency = "USD" | "NIO"
-
 export interface ProcedureCatalogItem {
   id: string
   name: string

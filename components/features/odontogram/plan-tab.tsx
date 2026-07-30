@@ -3,10 +3,13 @@
 import { useState, useMemo, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui";
 import {
+  ODONTOGRAM_FIELD_LABEL_CLASS,
   OdontogramButton,
+  OdontogramField,
   OdontogramInput,
   OdontogramSelect,
 } from "@/components/odontogram/ui";
@@ -17,7 +20,6 @@ import {
   Copy,
   Calendar,
   Clock,
-  DollarSign,
   AlertCircle,
   Star,
   Package,
@@ -35,7 +37,6 @@ import type {
   ProcedurePlan,
   ProcedureCategory,
   ProcedurePriority,
-  Currency,
   PatientRiskLevel,
   PulpalStatus,
 } from "./types";
@@ -55,6 +56,11 @@ import {
   summarizeCanonicalSurfaces,
   toIcdasSurfaceFilter,
 } from "./types";
+import { useOdontogramStore } from "@/lib/odontogram/store";
+import {
+  formatClinicCurrencyExact,
+  getClinicCurrencySymbol,
+} from "@/lib/utils/clinic-regional-format";
 import { useOdontogramServices } from "@/lib/odontogram/application/hooks/useOdontogramServices";
 import { useIcdasTemplateSuggestions } from "@/lib/odontogram/application/hooks/useIcdasTemplateSuggestions";
 import { isToothPhysicallyAbsent } from "@/lib/odontogram/domain/odontogram/constants/tooth-status.constants";
@@ -94,9 +100,13 @@ export function PlanTab({
     ProcedureCategory | "all"
   >("all");
   const [plans, setPlans] = useState<ProcedurePlan[]>([]);
-  const [currency, setCurrency] = useState<Currency>("USD");
-  const [exchangeRate] = useState(36.5);
   const [icdasSectionOpen, setIcdasSectionOpen] = useState(true);
+  // Fichas de plan desplegadas para edición. Vive aquí, con el resto de hooks:
+  // declararlo tras el return temprano de "sin superficies" lo convertía en un
+  // hook condicional y rompía React al alternar entre ambos estados.
+  const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
+  // Moneda de la clínica inyectada por el host en el store (solo presentación).
+  const currency = useOdontogramStore((state) => state.currency);
 
   // Derive the highest ICDAS score and primary surface from diagnoses
   const { maxIcdasScore, primarySurfaceFilter } = useMemo(() => {
@@ -324,12 +334,8 @@ export function PlanTab({
     handlePlansUpdate([...plans, ...newPlans]);
   };
 
-  const formatCurrency = (amount: number) => {
-    if (currency === "USD") {
-      return `$${amount.toFixed(2)}`;
-    }
-    return `C$${(amount * exchangeRate).toFixed(2)}`;
-  };
+  const formatCurrency = (amount: number) =>
+    formatClinicCurrencyExact(amount, currency);
 
   const getRiskColor = (risk: PatientRiskLevel) => {
     if (risk === "bajo")
@@ -378,9 +384,6 @@ export function PlanTab({
     );
   }
 
-  // Track which plan cards are expanded for editing
-  const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
-
   return (
     <div className="space-y-3 h-full">
       {/* Compact inline header - only risk + status since tooth info is in modal header */}
@@ -395,70 +398,44 @@ export function PlanTab({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className={getRiskColor(patientRisk)}
-            title={patientRiskReasons?.join(" · ")}
-          >
-            Riesgo: {patientRisk.charAt(0).toUpperCase() + patientRisk.slice(1)}
-          </Badge>
-          <OdontogramSelect
-            value={currency}
-            onChange={(v) => setCurrency(v as Currency)}
-            options={[
-              { value: "USD", label: "USD" },
-              { value: "NIO", label: "NIO" },
-            ]}
-            style={{ width: 80 }}
-          />
-        </div>
+        <Badge
+          variant="outline"
+          className={getRiskColor(patientRisk)}
+          title={patientRiskReasons?.join(" · ")}
+        >
+          Riesgo: {patientRisk.charAt(0).toUpperCase() + patientRisk.slice(1)}
+        </Badge>
       </div>
 
       {hasCoherenceIssue && (
-        <Card className="p-2.5 bg-rose-500/15 border-rose-400/25">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-300 shrink-0" />
-            <p className="text-xs text-rose-700 dark:text-rose-300">
-              El diente está marcado como{" "}
-              {GLOBAL_STATUS_LABELS[tooth.globalStatus]} pero tienes
-              procedimientos restauradores planificados.
-            </p>
-          </div>
-        </Card>
+        <Alert variant="destructive">
+          <AlertCircle />
+          <AlertDescription>
+            El diente está marcado como{" "}
+            {GLOBAL_STATUS_LABELS[tooth.globalStatus]} pero tienes procedimientos
+            restauradores planificados.
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Avisos de coherencia diagnóstico↔plan (ICCMS/ICDAS), no bloqueantes */}
       {consistencyWarnings.length > 0 && (
         <div className="space-y-1.5">
-          {consistencyWarnings.map((w, i) => (
-            <Card
-              key={i}
-              className={
-                w.level === "warn"
-                  ? "p-2.5 bg-amber-500/15 border-amber-400/25"
-                  : "p-2.5 bg-sky-500/15 border-sky-400/25"
-              }
+          {/* Clave por mensaje y NO `live`: son contenido derivado permanente
+              del par diagnóstico↔plan, no eventos. Con `key={i}` y región live,
+              al resolverse un aviso del medio React reutiliza el nodo y le
+              cambia el texto, y el lector de pantalla anuncia de forma
+              assertive un aviso que el usuario ya tenía delante mientras el que
+              de verdad se resolvió desaparece en silencio. */}
+          {consistencyWarnings.map((w) => (
+            <Alert
+              key={w.message}
+              live={false}
+              variant={w.level === "warn" ? "warning" : "info"}
             >
-              <div className="flex items-center gap-2">
-                <AlertCircle
-                  className={
-                    w.level === "warn"
-                      ? "w-4 h-4 shrink-0 text-amber-600 dark:text-amber-300"
-                      : "w-4 h-4 shrink-0 text-sky-600 dark:text-sky-300"
-                  }
-                />
-                <p
-                  className={
-                    w.level === "warn"
-                      ? "text-xs text-amber-700 dark:text-amber-200"
-                      : "text-xs text-sky-700 dark:text-sky-200"
-                  }
-                >
-                  {w.message}
-                </p>
-              </div>
-            </Card>
+              <AlertCircle />
+              <AlertDescription>{w.message}</AlertDescription>
+            </Alert>
           ))}
         </div>
       )}
@@ -596,54 +573,55 @@ export function PlanTab({
                       {isExpanded && (
                         <div className="px-3 pb-3 pt-1 border-t bg-muted/10 space-y-2">
                           <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <Label className="text-[10px] font-medium text-muted-foreground uppercase">
-                                Estado
-                              </Label>
-                              <OdontogramSelect
-                                value={plan.status}
-                                onChange={(v) =>
-                                  handleUpdatePlan(plan.id, {
-                                    status: v as ClinicalEventStatus,
-                                  })
-                                }
-                                options={(
-                                  Object.entries(PLAN_STATUS_LABELS) as [
-                                    ClinicalEventStatus,
-                                    string,
-                                  ][]
-                                ).map(([status, label]) => ({
-                                  value: status,
-                                  label,
-                                }))}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-[10px] font-medium text-muted-foreground uppercase">
-                                Prioridad
-                              </Label>
-                              <OdontogramSelect
-                                value={plan.priority}
-                                onChange={(v) =>
-                                  handleUpdatePlan(plan.id, {
-                                    priority: v as ProcedurePriority,
-                                  })
-                                }
-                                options={[
-                                  { value: "alta", label: "Alta" },
-                                  { value: "media", label: "Media" },
-                                  { value: "baja", label: "Baja" },
-                                ]}
-                              />
-                            </div>
+                            <OdontogramField label="Estado">
+                              {(control) => (
+                                <OdontogramSelect
+                                  {...control}
+                                  value={plan.status}
+                                  onChange={(v) =>
+                                    handleUpdatePlan(plan.id, {
+                                      status: v as ClinicalEventStatus,
+                                    })
+                                  }
+                                  options={(
+                                    Object.entries(PLAN_STATUS_LABELS) as [
+                                      ClinicalEventStatus,
+                                      string,
+                                    ][]
+                                  ).map(([status, label]) => ({
+                                    value: status,
+                                    label,
+                                  }))}
+                                />
+                              )}
+                            </OdontogramField>
+                            <OdontogramField label="Prioridad">
+                              {(control) => (
+                                <OdontogramSelect
+                                  {...control}
+                                  value={plan.priority}
+                                  onChange={(v) =>
+                                    handleUpdatePlan(plan.id, {
+                                      priority: v as ProcedurePriority,
+                                    })
+                                  }
+                                  options={[
+                                    { value: "alta", label: "Alta" },
+                                    { value: "media", label: "Media" },
+                                    { value: "baja", label: "Baja" },
+                                  ]}
+                                />
+                              )}
+                            </OdontogramField>
                           </div>
 
                           <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <Label className="text-[10px] font-medium text-muted-foreground uppercase">
-                                Tiempo (min)
-                              </Label>
+                            <OdontogramField
+                              label="Tiempo (min)"
+                              htmlFor={`${plan.id}-duration`}
+                            >
                               <OdontogramInput
+                                id={`${plan.id}-duration`}
                                 type="number"
                                 value={String(plan.durationMin)}
                                 onChange={(e) =>
@@ -653,12 +631,13 @@ export function PlanTab({
                                 }
                                 className="h-7 text-xs"
                               />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-[10px] font-medium text-muted-foreground uppercase">
-                                Costo ({currency})
-                              </Label>
+                            </OdontogramField>
+                            <OdontogramField
+                              label={`Costo (${getClinicCurrencySymbol(currency)})`}
+                              htmlFor={`${plan.id}-cost`}
+                            >
                               <OdontogramInput
+                                id={`${plan.id}-cost`}
                                 type="number"
                                 value={String(plan.cost)}
                                 onChange={(e) =>
@@ -668,15 +647,16 @@ export function PlanTab({
                                 }
                                 className="h-7 text-xs"
                               />
-                            </div>
+                            </OdontogramField>
                           </div>
 
                           {plan.material && (
-                            <div className="space-y-1">
-                              <Label className="text-[10px] font-medium text-muted-foreground uppercase">
-                                Material
-                              </Label>
+                            <OdontogramField
+                              label="Material"
+                              htmlFor={`${plan.id}-material`}
+                            >
                               <OdontogramInput
+                                id={`${plan.id}-material`}
                                 value={plan.material}
                                 onChange={(e) =>
                                   handleUpdatePlan(plan.id, {
@@ -685,14 +665,15 @@ export function PlanTab({
                                 }
                                 className="h-7 text-xs"
                               />
-                            </div>
+                            </OdontogramField>
                           )}
 
-                          <div className="space-y-1">
-                            <Label className="text-[10px] font-medium text-muted-foreground uppercase">
-                              Notas
-                            </Label>
+                          <OdontogramField
+                            label="Notas"
+                            htmlFor={`${plan.id}-notes`}
+                          >
                             <OdontogramInput
+                              id={`${plan.id}-notes`}
                               value={plan.notes || ""}
                               onChange={(e) =>
                                 handleUpdatePlan(plan.id, {
@@ -702,7 +683,7 @@ export function PlanTab({
                               placeholder="Observaciones..."
                               className="h-7 text-xs"
                             />
-                          </div>
+                          </OdontogramField>
                         </div>
                       )}
                     </div>
@@ -792,7 +773,7 @@ export function PlanTab({
           {/* Smart suggestions */}
           {suggestions.length > 0 && (
             <Card className="p-3 shadow-sm">
-              <Label className="text-xs font-semibold mb-2 block uppercase tracking-wide text-muted-foreground">
+              <Label className={`${ODONTOGRAM_FIELD_LABEL_CLASS} mb-2 block`}>
                 <Sparkles className="w-3 h-3 inline mr-1" />
                 Sugerencias inteligentes
               </Label>
@@ -840,7 +821,9 @@ export function PlanTab({
                 className="w-full flex items-center justify-between text-left"
                 onClick={() => setIcdasSectionOpen(!icdasSectionOpen)}
               >
-                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer">
+                <Label
+                  className={`${ODONTOGRAM_FIELD_LABEL_CLASS} cursor-pointer`}
+                >
                   <Sparkles className="w-3 h-3 inline mr-1 text-amber-600 dark:text-amber-300" />
                   Plantillas ICDAS · {maxIcdasScore}
                 </Label>
@@ -864,13 +847,6 @@ export function PlanTab({
                     </p>
                   )}
                   {icdasTemplateSuggestions.map((suggestion) => {
-                    const totalCost = suggestion.items.reduce((sum, item) => {
-                      const svc = serviceCatalog.find(
-                        (s) => s.id === item.serviceId,
-                      );
-                      return sum + (svc?.baseCost ?? 0);
-                    }, 0);
-
                     return (
                       <div
                         key={suggestion.templateId}
@@ -938,7 +914,7 @@ export function PlanTab({
           {/* Pre-built templates */}
           {PROCEDURE_TEMPLATES.length > 0 && (
             <Card className="p-3 shadow-sm">
-              <Label className="text-xs font-semibold mb-2 block uppercase tracking-wide text-muted-foreground">
+              <Label className={`${ODONTOGRAM_FIELD_LABEL_CLASS} mb-2 block`}>
                 <Package className="w-3 h-3 inline mr-1" />
                 Plantillas
               </Label>
@@ -966,7 +942,7 @@ export function PlanTab({
 
           {/* Catalog search */}
           <Card className="p-3 shadow-sm">
-            <Label className="text-xs font-semibold mb-2 block uppercase tracking-wide text-muted-foreground">
+            <Label className={`${ODONTOGRAM_FIELD_LABEL_CLASS} mb-2 block`}>
               <Search className="w-3 h-3 inline mr-1" />
               Catálogo
             </Label>

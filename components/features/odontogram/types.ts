@@ -1,6 +1,5 @@
 export * from "@/lib/odontogram/domain/odontogram/types"
 export * from "@/lib/odontogram/domain/odontogram/constants"
-export { TREATMENT_CATALOG_MOCK as TREATMENT_CATALOG } from "@/lib/odontogram/infrastructure/data/mock/treatment-catalog.mock"
 export { PROCEDURE_CATALOG_MOCK as PROCEDURE_CATALOG } from "@/lib/odontogram/infrastructure/data/mock/procedure-catalog.mock"
 export { PROCEDURE_TEMPLATES_MOCK as PROCEDURE_TEMPLATES } from "@/lib/odontogram/infrastructure/data/mock/procedure-templates.mock"
 export { TOOTH_TEMPLATES_MOCK as TOOTH_TEMPLATES } from "@/lib/odontogram/infrastructure/data/mock/tooth-templates.mock"

@@ -22,6 +22,7 @@ import {
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
 import { doctorsService } from "@/lib/services/doctors/doctors.service";
 import { notifyApiError } from "@/lib/utils/notify-error";
+import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
 import {
   useOdontogramStore,
   type OdontogramAdapter,
@@ -67,6 +68,8 @@ export function FinalizarCitaModal({
   onSuccess,
 }: FinalizarCitaModalProps) {
   const clinicalEvents = useOdontogramStore((state) => state.clinicalEvents);
+  // Moneda de la clínica inyectada por el host en el store (solo presentación).
+  const currency = useOdontogramStore((state) => state.currency);
 
   const performedEvents = useMemo(
     () =>
@@ -284,7 +287,7 @@ export function FinalizarCitaModal({
                   </span>
                   {ev.cost ? (
                     <Badge variant="outline" className="text-xs">
-                      ${ev.cost.toFixed(2)}
+                      {formatClinicCurrencyExact(ev.cost, currency)}
                     </Badge>
                   ) : null}
                 </div>

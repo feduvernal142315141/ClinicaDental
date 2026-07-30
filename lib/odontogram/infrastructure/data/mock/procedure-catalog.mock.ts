@@ -1,5 +1,11 @@
 import type { ProcedureCatalogItem } from "@/lib/odontogram/domain/odontogram/types"
 
+/**
+ * Catálogo de respaldo cuando el backend de servicios no responde. Los importes
+ * de `baseCost` son valores de DEMOSTRACIÓN: NO tienen moneda propia. Se pintan
+ * con el símbolo de la moneda real de la clínica (`settings.currency`), igual
+ * que los precios reales — el módulo nunca convierte importes.
+ */
 export const PROCEDURE_CATALOG_MOCK: ProcedureCatalogItem[] = [
   {
     id: "resina-simple",

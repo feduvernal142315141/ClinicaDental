@@ -96,12 +96,19 @@ export interface ClinicalEvent {
   procedureName?: string;
   category?: ProcedureCategory;
   durationMin?: number;
+  /**
+   * Importe en la moneda vigente de la clínica (`settings.currency`). NO hay
+   * moneda por evento: el odontograma no almacena ni convierte divisas.
+   */
   cost?: number;
   /** Service catalog reference for pricing and traceability */
   serviceId?: string;
   serviceCode?: string;
   serviceName?: string;
-  /** Cost snapshot from the service catalog at event creation time */
+  /**
+   * Cost snapshot from the service catalog at event creation time.
+   * Misma moneda que `cost`: la vigente de la clínica.
+   */
   serviceCost?: number;
   /** Per-service custom odontogram symbol (TEXT mode): short text drawn on the tooth */
   serviceSymbolText?: string;

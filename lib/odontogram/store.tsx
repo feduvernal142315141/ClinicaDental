@@ -223,6 +223,13 @@ export interface OdontogramModuleProps {
   clinicId?: string;
   adapter: OdontogramAdapter;
   readOnly?: boolean;
+  /**
+   * Código ISO de la moneda de la clínica (`settings.currency`). Lo inyecta el
+   * host: el módulo no conoce ajustes ni servicios. Es SOLO presentación —
+   * formatea los importes que ya vienen denominados en esa moneda; NO entra en
+   * el snapshot ni convierte nada.
+   */
+  currency?: string;
   /** Muestra el header del módulo (título + acciones). Default: true. Usar false en modo embebido. */
   showHeader?: boolean;
   initialTab?:
@@ -244,8 +251,10 @@ export interface OdontogramModuleProps {
 
 interface OdontogramState extends OdontogramSnapshot {
   readOnly: boolean;
+  currency: string;
   replaceSnapshot: (snapshot: OdontogramSnapshot) => void;
   setReadOnly: (readOnly: boolean) => void;
+  setCurrency: (currency: string) => void;
   updateToothGlobalStatus: (
     toothNumber: number,
     status: ToothGlobalStatus,
@@ -719,16 +728,19 @@ const createOdontogramStore = ({
   patientId,
   clinicId,
   readOnly = false,
+  currency = "USD",
 }: {
   patientId: string;
   clinicId?: string;
   readOnly?: boolean;
+  currency?: string;
 }) => {
   const initialSnapshot = createEmptySnapshot({ patientId, clinicId });
 
   return createStore<OdontogramState>((set, get) => ({
     ...initialSnapshot,
     readOnly,
+    currency,
     replaceSnapshot: (snapshot) => {
       set(() => ({
         ...normalizeSnapshot(
@@ -737,10 +749,14 @@ const createOdontogramStore = ({
           get().metadata.clinicId,
         ),
         readOnly: get().readOnly,
+        currency: get().currency,
       }));
     },
     setReadOnly: (nextReadOnly) => {
       set({ readOnly: nextReadOnly });
+    },
+    setCurrency: (next) => {
+      set({ currency: next });
     },
     updateToothDiagnosis: (toothNumber, diagnosis) => {
       if (get().readOnly) return;
@@ -1186,6 +1202,7 @@ const createOdontogramStore = ({
           clinicId: state.metadata.clinicId,
         }),
         readOnly: state.readOnly,
+        currency: state.currency,
       }));
     },
     getTooth: (toothNumber) =>
@@ -1206,11 +1223,13 @@ export function OdontogramStoreProvider({
   patientId,
   clinicId,
   readOnly = false,
+  currency = "USD",
   children,
 }: {
   patientId: string;
   clinicId?: string;
   readOnly?: boolean;
+  currency?: string;
   children: React.ReactNode;
 }) {
   const storeRef = useRef<OdontogramStoreApi | null>(null);
@@ -1224,14 +1243,19 @@ export function OdontogramStoreProvider({
       patientId,
       clinicId,
       readOnly,
+      currency,
     });
   }
 
+  // El store se crea UNA sola vez, pero el host lee la moneda de un hook de
+  // ajustes que arranca en null: el valor real llega DESPUÉS del primer render.
+  // Sin esta sincronización la moneda se quedaría congelada en el default.
   useEffect(() => {
     if (!storeRef.current) return;
     storeRef.current.getState().setReadOnly(readOnly);
+    storeRef.current.getState().setCurrency(currency);
     activeStoreApi = storeRef.current;
-  }, [readOnly, storeKey]);
+  }, [currency, readOnly, storeKey]);
 
   activeStoreApi = storeRef.current;
 

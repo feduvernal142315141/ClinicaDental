@@ -43,19 +43,4 @@ export class PlanCalculationService {
     if (mins === 0) return `${hours}h`
     return `${hours}h ${mins}min`
   }
-
-  static formatCurrency(amount: number, currency: "USD" | "NIO", exchangeRate?: number): string {
-    if (currency === "USD") {
-      return `$${amount.toFixed(2)}`
-    }
-    
-    const converted = exchangeRate ? amount * exchangeRate : amount
-    return `C$${converted.toFixed(2)}`
-  }
-
-  static convertCurrency(amount: number, fromCurrency: "USD" | "NIO", toCurrency: "USD" | "NIO", exchangeRate: number): number {
-    if (fromCurrency === toCurrency) return amount
-    if (fromCurrency === "USD") return amount * exchangeRate
-    return amount / exchangeRate
-  }
 }

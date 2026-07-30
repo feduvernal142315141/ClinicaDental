@@ -10,6 +10,7 @@ import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import {
   CLINIC_SCHEDULE_DAYS,
+  DEFAULT_CLINIC_GENERAL_SETTINGS,
   DEFAULT_CLINIC_SCHEDULE,
   type ClinicSchedule,
   type UpdateClinicGeneralSettingsRequest,
@@ -82,8 +83,8 @@ export function useGeneralSettingsForm() {
       name: "",
       address: null,
       phone: null,
-      timezone: "America/La_Paz",
-      currency: "USD",
+      timezone: DEFAULT_CLINIC_GENERAL_SETTINGS.timezone,
+      currency: DEFAULT_CLINIC_GENERAL_SETTINGS.currency,
       logoUrl: null,
       schedule: scheduleToFormValues(DEFAULT_CLINIC_SCHEDULE),
       minimumAdvanceNoticePeriod: 120,

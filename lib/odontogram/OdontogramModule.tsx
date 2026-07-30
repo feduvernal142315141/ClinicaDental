@@ -24,7 +24,7 @@ function OdontogramModuleRuntime({
   finalizeOpen,
   onFinalizeClose,
   onFinalizeSuccess,
-}: Omit<OdontogramModuleProps, "readOnly">) {
+}: Omit<OdontogramModuleProps, "readOnly" | "currency">) {
   const storeApi = useOdontogramStoreApi();
   const visitId = useOdontogramStore((state) => state.metadata.visitId);
   const [isLoading, setIsLoading] = useState(true);
@@ -159,6 +159,7 @@ export function OdontogramModule({
   clinicId,
   adapter,
   readOnly = false,
+  currency,
   showHeader = true,
   initialTab = "odontogram",
   onChange,
@@ -175,6 +176,7 @@ export function OdontogramModule({
       patientId={patientId}
       clinicId={clinicId}
       readOnly={readOnly}
+      currency={currency}
     >
       <OdontogramModuleRuntime
         patientId={patientId}

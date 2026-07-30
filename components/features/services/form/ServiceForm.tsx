@@ -117,10 +117,15 @@ export function ServiceForm({
     serviceId,
     basePath,
   });
-  const { settings } = useClinicGeneralSettings();
+  const { settings, loading: loadingSettings } = useClinicGeneralSettings();
   const currencySymbol = getClinicCurrencySymbol(
     settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency,
   );
+  // El costo es un campo que el usuario TECLEA: mostrar el símbolo de respaldo
+  // mientras llega la moneda de la clínica le haría escribir la cifra en la
+  // moneda equivocada. Hasta entonces se reserva el hueco (el `paddingLeft` de
+  // abajo no cambia) pero no se pinta ningún glifo.
+  const showCurrencySymbol = !!settings || !loadingSettings;
 
   const { isDirty } = form.formState;
 
@@ -220,7 +225,7 @@ export function ServiceForm({
                   <FormControl>
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-subtle">
-                        {currencySymbol}
+                        {showCurrencySymbol ? currencySymbol : ""}
                       </span>
                       <Input
                         type="number"

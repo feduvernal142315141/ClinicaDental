@@ -1,4 +1,3 @@
-export { TREATMENT_CATALOG_MOCK } from "./treatment-catalog.mock"
 export { PROCEDURE_CATALOG_MOCK } from "./procedure-catalog.mock"
 export { PROCEDURE_TEMPLATES_MOCK } from "./procedure-templates.mock"
 export { TOOTH_TEMPLATES_MOCK } from "./tooth-templates.mock"

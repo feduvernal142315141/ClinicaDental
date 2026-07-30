@@ -7,6 +7,8 @@ import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useOdontogramByVisit } from "@/lib/hooks/odontogram/useOdontogramByVisit";
+import { useClinicGeneralSettings } from "@/lib/hooks/settings";
+import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
 import { OdontogramReadOnlyOverlay } from "@/components/features/odontogram/ui/OdontogramReadOnlyOverlay";
 import { OdontogramVisitContextBar } from "@/components/features/odontogram/ui/OdontogramVisitContextBar";
 import { OdontogramHistoricFrame } from "@/components/features/odontogram/ui/OdontogramHistoricFrame";
@@ -55,6 +57,10 @@ export function PatientOdontogramPanel({
 }: PatientOdontogramPanelProps) {
   const { can, isAdmin } = usePermission();
   const { user } = useAuth();
+  // Moneda de la clínica: el módulo del odontograma no puede leer ajustes
+  // (frontera), así que el host se la inyecta para que los importes se pinten
+  // con el símbolo real configurado en Opciones Generales.
+  const { settings } = useClinicGeneralSettings();
 
   const clinicId = patient.clinicId ?? "";
 
@@ -265,6 +271,9 @@ export function PatientOdontogramPanel({
             clinicId={clinicId}
             adapter={adapter}
             readOnly={readOnly}
+            currency={
+              settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency
+            }
             showHeader={false}
             initialTab="odontogram"
             onSaveStart={
