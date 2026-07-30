@@ -45,6 +45,7 @@ import {
   CariesRiskService,
 } from "@/lib/odontogram/domain/odontogram/services";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui";
 import {
   AlertTriangle,
   Lock,
@@ -1334,26 +1335,31 @@ export function ToothModal({
   // --- Top banner ---
   const topBanner = (() => {
     if (readOnly) {
+      // Aviso PERMANENTE (ya está en pantalla al montar el modal en modo
+      // lectura), por eso `live={false}` → role="note" en vez de anunciarse
+      // como alerta. Severidad neutra → variante `default`.
       return (
-        <div className="flex items-center gap-2 rounded-lg bg-hover border border-hairline px-4 py-2.5 text-xs text-subtle">
-          <Lock className="w-3.5 h-3.5 shrink-0" />
-          <span className="font-medium">Solo lectura</span>
-          <span className="text-subtle">—</span>
+        <Alert live={false}>
+          <Lock />
+          <AlertTitle>Solo lectura</AlertTitle>
           {/* No se instruye "inicia una consulta": el modo solo-lectura viene de
               histórico, visita finalizada o falta de permiso, y en ninguno de
               esos casos abrir una consulta desbloquea la edición. */}
-          <span>Este diente no admite cambios</span>
-        </div>
+          <AlertDescription>Este diente no admite cambios</AlertDescription>
+        </Alert>
       );
     }
     if (hasUnsavedChanges) {
+      // Aparece por una acción del usuario (primera edición) → `live` por
+      // defecto (role="alert").
       return (
-        <div className="flex items-center gap-2 rounded-lg bg-amber-500/15 border border-amber-400/25 px-4 py-2.5 text-xs text-amber-600 dark:text-amber-300">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          <span className="font-semibold">Cambios sin guardar</span>
-          <span className="text-amber-600 dark:text-amber-300">—</span>
-          <span>Guarda antes de cerrar para no perder tu trabajo</span>
-        </div>
+        <Alert variant="warning">
+          <AlertTriangle />
+          <AlertTitle>Cambios sin guardar</AlertTitle>
+          <AlertDescription>
+            Guarda antes de cerrar para no perder tu trabajo
+          </AlertDescription>
+        </Alert>
       );
     }
     return null;

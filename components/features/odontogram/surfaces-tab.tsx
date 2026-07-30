@@ -5,10 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
+  Alert,
+  AlertDescription,
   HoverCard,
   HoverCardTrigger,
   HoverCardContent,
 } from "@/components/ui";
+import { ODONTOGRAM_FIELD_LABEL_CLASS } from "@/components/features/odontogram/ui";
+import { cn } from "@/lib/odontogram/utils";
 import { SurfaceSelector, getSurfaceRank } from "./surface-selector";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
@@ -421,14 +425,18 @@ export function SurfacesTab({
         </div>
       </div>
 
+      {/* Texto informativo PERMANENTE: cuando la pieza no está en boca, este
+          aviso ya está en pantalla al abrir el diente y solo explica por qué
+          las caras no se pueden marcar. Por eso `live={false}` (role="note"):
+          no es un anuncio que deba interrumpir al lector de pantalla. */}
       {isAbsentOrImplant && (
-        <Card className="p-3 bg-amber-500/15 border-amber-400/25">
-          <p className="text-sm text-amber-600 dark:text-amber-300">
+        <Alert variant="warning" live={false}>
+          <AlertDescription>
             ⚠️ Las superficies están deshabilitadas porque el diente está
             marcado como{" "}
             {tooth.globalStatus === "implant" ? "Implante" : "Ausente"}.
-          </p>
-        </Card>
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Main 2-column layout */}
@@ -448,7 +456,7 @@ export function SurfacesTab({
           {/* Selection chips */}
           <Card className="p-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <span className={ODONTOGRAM_FIELD_LABEL_CLASS}>
                 Selección actual
               </span>
             </div>
@@ -515,11 +523,11 @@ export function SurfacesTab({
 
           {/* Quick actions - grouped */}
           <Card className="p-3">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
+            <span className={cn(ODONTOGRAM_FIELD_LABEL_CLASS, "mb-2 block")}>
               Atajos secundarios
             </span>
             <p className="mb-3 text-xs leading-5 text-muted-foreground">
-              La seleccion principal ocurre sobre las tres vistas del diente.
+              La selección principal ocurre sobre las tres vistas del diente.
               Usa estos atajos solo para acelerar acciones repetidas.
             </p>
 
@@ -549,9 +557,7 @@ export function SurfacesTab({
 
             {/* Zone selection */}
             <div className="space-y-1.5">
-              <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-                Zonas derivadas
-              </p>
+              <p className={ODONTOGRAM_FIELD_LABEL_CLASS}>Zonas derivadas</p>
               {/* Atajos por FAMILIA anatómica: marcan de una vez las celdas de
                   esa cara en las tres vistas (las que este diente tenga). */}
               {mesialCells.length > 0 && (
@@ -656,13 +662,18 @@ export function SurfacesTab({
           {/* Templates - always visible */}
           <Card className="p-3">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+              <span
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-1 whitespace-nowrap",
+                  ODONTOGRAM_FIELD_LABEL_CLASS,
+                )}
+              >
                 <Zap className="h-3.5 w-3.5 shrink-0" />
                 Plantillas
               </span>
               {selectedSurfaces.length > 0 && !isDisabled && (
                 <nav
-                  aria-label="Navegacion rapida"
+                  aria-label="Navegación rápida"
                   className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs"
                 >
                   <button

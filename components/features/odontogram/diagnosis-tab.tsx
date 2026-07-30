@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui";
 import {
   OdontogramCheckbox,
+  OdontogramField,
   OdontogramInput,
 } from "@/components/odontogram/ui";
 import {
@@ -418,38 +420,26 @@ export function DiagnosisTab({
       </div>
 
       {hasCoherenceIssue && (
-        <Card className="p-3 bg-rose-500/15 border-rose-400/25">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-300 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-rose-700 dark:text-rose-300">
-                Revisa el estado del diente
-              </p>
-              <p className="text-xs text-rose-600 dark:text-rose-300">
-                El diente está marcado como{" "}
-                {GLOBAL_STATUS_LABELS[tooth.globalStatus]} pero tiene
-                diagnóstico de caries
-              </p>
-            </div>
-          </div>
-        </Card>
+        <Alert variant="destructive">
+          <AlertCircle />
+          <AlertTitle>Revisa el estado del diente</AlertTitle>
+          <AlertDescription>
+            El diente está marcado como{" "}
+            {GLOBAL_STATUS_LABELS[tooth.globalStatus]} pero tiene diagnóstico de
+            caries
+          </AlertDescription>
+        </Alert>
       )}
 
       {hasMixedState && (
-        <Card className="p-3 bg-amber-500/15 border-amber-400/25">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-300 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                Estado mixto detectado
-              </p>
-              <p className="text-xs text-amber-600 dark:text-amber-300">
-                Restauración existente con caries secundaria - considerar
-                retiro/recambio
-              </p>
-            </div>
-          </div>
-        </Card>
+        <Alert variant="warning">
+          <AlertTriangle />
+          <AlertTitle>Estado mixto detectado</AlertTitle>
+          <AlertDescription>
+            Restauración existente con caries secundaria - considerar
+            retiro/recambio
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Panel principal: dos columnas */}
@@ -576,10 +566,7 @@ export function DiagnosisTab({
               {icdasScore >= 3 && (
                 <>
                   <div className="flex gap-4">
-                    <div className="flex-1">
-                      <Label className="text-xs mb-2 block">
-                        Tipo de caries
-                      </Label>
+                    <OdontogramField label="Tipo de caries" className="flex-1">
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -608,9 +595,8 @@ export function DiagnosisTab({
                           Radicular
                         </Button>
                       </div>
-                    </div>
-                    <div className="flex-1">
-                      <Label className="text-xs mb-2 block">Actividad</Label>
+                    </OdontogramField>
+                    <OdontogramField label="Actividad" className="flex-1">
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -641,7 +627,7 @@ export function DiagnosisTab({
                           Inactiva
                         </Button>
                       </div>
-                    </div>
+                    </OdontogramField>
                   </div>
                 </>
               )}
@@ -679,10 +665,7 @@ export function DiagnosisTab({
                 </div>
               ))}
             </div>
-            <div>
-              <Label htmlFor="surface-notes" className="text-xs mb-1 block">
-                Notas breves
-              </Label>
+            <OdontogramField label="Notas breves" htmlFor="surface-notes">
               <OdontogramInput
                 id="surface-notes"
                 value={surfaceNotes}
@@ -691,7 +674,7 @@ export function DiagnosisTab({
                 placeholder="Observaciones adicionales..."
                 className="text-sm"
               />
-            </div>
+            </OdontogramField>
           </Card>
 
           {/* 2.4 Estado pulpar/periapical — Segmented controls */}
@@ -703,8 +686,7 @@ export function DiagnosisTab({
             </Label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Pulpar — Segmented */}
-              <div>
-                <Label className="text-xs mb-2 block text-muted-foreground">Estado pulpar</Label>
+              <OdontogramField label="Estado pulpar">
                 <div className="flex flex-wrap gap-1">
                   {(
                     Object.entries(PULPAL_STATUS_LABELS) as [
@@ -729,10 +711,9 @@ export function DiagnosisTab({
                     );
                   })}
                 </div>
-              </div>
+              </OdontogramField>
               {/* Periapical — Segmented */}
-              <div>
-                <Label className="text-xs mb-2 block text-muted-foreground">Estado periapical</Label>
+              <OdontogramField label="Estado periapical">
                 <div className="flex flex-wrap gap-1">
                   {(
                     Object.entries(PERIAPICAL_STATUS_LABELS) as [
@@ -763,7 +744,7 @@ export function DiagnosisTab({
                     );
                   })}
                 </div>
-              </div>
+              </OdontogramField>
             </div>
           </Card>
 
@@ -842,49 +823,48 @@ export function DiagnosisTab({
 
               {/* Pain scale — Wong-Baker FACES */}
               <div>
-                <Label className="text-xs mb-2 block">
-                  Dolor
-                </Label>
-                <div className="flex items-center gap-1">
-                  {([
-                    { score: 0,  emoji: "😊", label: "Sin dolor",    bg: "#dcfce7", border: "#86efac", text: "#166534" },
-                    { score: 2,  emoji: "🙂", label: "Leve",         bg: "#fef9c3", border: "#fde047", text: "#854d0e" },
-                    { score: 4,  emoji: "😐", label: "Moderado",     bg: "#fed7aa", border: "#fdba74", text: "#9a3412" },
-                    { score: 6,  emoji: "😟", label: "Considerable", bg: "#fecaca", border: "#fca5a5", text: "#991b1b" },
-                    { score: 8,  emoji: "😢", label: "Severo",       bg: "#fda4af", border: "#fb7185", text: "#881337" },
-                    { score: 10, emoji: "😭", label: "Insoportable", bg: "#f87171", border: "#ef4444", text: "#fff" },
-                  ] as const).map(({ score, emoji, label, bg, border, text }) => {
-                    const isSelected = painScore === score;
-                    return (
-                      <button
-                        key={score}
-                        type="button"
-                        onClick={() => {
-                          setPainScore(score);
-                          emitToothDiagnosisChange(surfaceDiagnoses, {
-                            painScore: score,
-                          });
-                        }}
-                        className="flex flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 transition-all cursor-pointer"
-                        style={{
-                          backgroundColor: isSelected ? bg : "transparent",
-                          border: isSelected ? `2px solid ${border}` : "2px solid transparent",
-                          transform: isSelected ? "scale(1.12)" : "scale(1)",
-                          opacity: isSelected ? 1 : 0.6,
-                        }}
-                        title={`${score} — ${label}`}
-                      >
-                        <span className="text-xl leading-none">{emoji}</span>
-                        <span
-                          className="text-[9px] font-medium leading-tight"
-                          style={{ color: isSelected ? text : "#6b7280" }}
+                <OdontogramField label="Dolor">
+                  <div className="flex items-center gap-1">
+                    {([
+                      { score: 0,  emoji: "😊", label: "Sin dolor",    bg: "#dcfce7", border: "#86efac", text: "#166534" },
+                      { score: 2,  emoji: "🙂", label: "Leve",         bg: "#fef9c3", border: "#fde047", text: "#854d0e" },
+                      { score: 4,  emoji: "😐", label: "Moderado",     bg: "#fed7aa", border: "#fdba74", text: "#9a3412" },
+                      { score: 6,  emoji: "😟", label: "Considerable", bg: "#fecaca", border: "#fca5a5", text: "#991b1b" },
+                      { score: 8,  emoji: "😢", label: "Severo",       bg: "#fda4af", border: "#fb7185", text: "#881337" },
+                      { score: 10, emoji: "😭", label: "Insoportable", bg: "#f87171", border: "#ef4444", text: "#fff" },
+                    ] as const).map(({ score, emoji, label, bg, border, text }) => {
+                      const isSelected = painScore === score;
+                      return (
+                        <button
+                          key={score}
+                          type="button"
+                          onClick={() => {
+                            setPainScore(score);
+                            emitToothDiagnosisChange(surfaceDiagnoses, {
+                              painScore: score,
+                            });
+                          }}
+                          className="flex flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 transition-all cursor-pointer"
+                          style={{
+                            backgroundColor: isSelected ? bg : "transparent",
+                            border: isSelected ? `2px solid ${border}` : "2px solid transparent",
+                            transform: isSelected ? "scale(1.12)" : "scale(1)",
+                            opacity: isSelected ? 1 : 0.6,
+                          }}
+                          title={`${score} — ${label}`}
                         >
-                          {score}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                          <span className="text-xl leading-none">{emoji}</span>
+                          <span
+                            className="text-[9px] font-medium leading-tight"
+                            style={{ color: isSelected ? text : "#6b7280" }}
+                          >
+                            {score}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </OdontogramField>
                 {painScore > 0 && (
                   <p className="text-[10px] text-muted-foreground mt-1">
                     {painScore === 2 && "Dolor leve — molestia menor"}
@@ -895,11 +875,13 @@ export function DiagnosisTab({
                   </p>
                 )}
                 {/* Descripción libre del dolor */}
-                <div className="mt-2">
-                  <Label className="text-xs mb-1 block text-muted-foreground">
-                    Descripción del dolor
-                  </Label>
+                <OdontogramField
+                  label="Descripción del dolor"
+                  htmlFor="pain-description"
+                  className="mt-2"
+                >
                   <textarea
+                    id="pain-description"
                     value={painDescription}
                     onChange={(e) => {
                       const next = e.target.value;
@@ -912,7 +894,7 @@ export function DiagnosisTab({
                     rows={2}
                     className="w-full resize-none rounded-lg border border-hairline bg-elevated px-3 py-2 text-xs text-ink placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand/30"
                   />
-                </div>
+                </OdontogramField>
               </div>
             </div>
           </Card>
@@ -1037,98 +1019,73 @@ export function DiagnosisTab({
               Sugerencias de plan
             </Label>
             <div className="space-y-2">
+              {/* Panel de contenido derivado, no anuncios: al menos una de estas
+                  sugerencias está siempre en pantalla (la de "Superficies sanas"
+                  ya en el montaje inicial) y se recalculan con cada movimiento
+                  del ICDAS. Van con `live={false}` (role="note") para no
+                  interrumpir al lector de pantalla en cada cambio. La severidad
+                  de cada una se conserva intacta. */}
               {(pulpalStatus === "irreversible" ||
                 pulpalStatus === "necrosis") && (
-                <div className="p-3 bg-rose-500/15 border border-rose-400/25 rounded-lg shadow-sm">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-300 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-rose-700 dark:text-rose-300">
-                        Endodoncia requerida
-                      </p>
-                      <p className="text-xs text-rose-600 dark:text-rose-300 mt-1">
-                        Estado pulpar{" "}
-                        {PULPAL_STATUS_LABELS[pulpalStatus].toLowerCase()}{" "}
-                        detectado
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <Alert variant="destructive" live={false}>
+                  <AlertCircle />
+                  <AlertTitle>Endodoncia requerida</AlertTitle>
+                  <AlertDescription>
+                    Estado pulpar{" "}
+                    {PULPAL_STATUS_LABELS[pulpalStatus].toLowerCase()} detectado
+                  </AlertDescription>
+                </Alert>
               )}
 
               {Array.from(surfaceDiagnoses.values()).some(
                 (d) => d.icdasScore >= 5,
               ) && (
-                <div className="p-3 bg-rose-500/15 border border-rose-400/25 rounded-lg shadow-sm">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-300 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-rose-700 dark:text-rose-300">
-                        Restauración extensa / Onlay / Endo
-                      </p>
-                      <p className="text-xs text-rose-600 dark:text-rose-300 mt-1">
-                        Caries con cavitación extensa - evaluar endodoncia si
-                        hay síntomas
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <Alert variant="destructive" live={false}>
+                  <AlertCircle />
+                  <AlertTitle>Restauración extensa / Onlay / Endo</AlertTitle>
+                  <AlertDescription>
+                    Caries con cavitación extensa - evaluar endodoncia si hay
+                    síntomas
+                  </AlertDescription>
+                </Alert>
               )}
 
               {Array.from(surfaceDiagnoses.values()).some(
                 (d) => d.icdasScore >= 3 && d.icdasScore <= 4,
               ) && (
-                <div className="p-3 bg-amber-500/15 border border-amber-400/25 rounded-lg shadow-sm">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-300 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                        Resina (Plan)
-                      </p>
-                      <p className="text-xs text-amber-600 dark:text-amber-300 mt-1">
-                        Caries con microcavitación - restauración con resina
-                        compuesta
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <Alert variant="warning" live={false}>
+                  <AlertTriangle />
+                  <AlertTitle>Resina (Plan)</AlertTitle>
+                  <AlertDescription>
+                    Caries con microcavitación - restauración con resina
+                    compuesta
+                  </AlertDescription>
+                </Alert>
               )}
 
               {Array.from(surfaceDiagnoses.values()).some(
                 (d) => d.icdasScore >= 1 && d.icdasScore <= 2,
               ) && (
-                <div className="p-3 bg-amber-500/15 border border-amber-400/25 rounded-lg shadow-sm">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 text-amber-600 dark:text-amber-300 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                        Infiltración / Sellante
-                      </p>
-                      <p className="text-xs text-amber-600 dark:text-amber-300 mt-1">
-                        Caries incipiente - tratamiento preventivo con sellantes
-                        o flúor
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <Alert variant="warning" live={false}>
+                  <Info />
+                  <AlertTitle>Infiltración / Sellante</AlertTitle>
+                  <AlertDescription>
+                    Caries incipiente - tratamiento preventivo con sellantes o
+                    flúor
+                  </AlertDescription>
+                </Alert>
               )}
 
               {Array.from(surfaceDiagnoses.values()).every(
                 (d) => d.icdasScore === 0,
               ) && (
-                <div className="p-3 bg-emerald-500/15 border border-emerald-400/25 rounded-lg shadow-sm">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-300 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                        Superficies sanas
-                      </p>
-                      <p className="text-xs text-emerald-600 dark:text-emerald-300 mt-1">
-                        Mantener higiene y controles periódicos
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <Alert variant="success" live={false}>
+                  <CheckCircle2 />
+                  <AlertTitle>Superficies sanas</AlertTitle>
+                  <AlertDescription>
+                    Mantener higiene y controles periódicos
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
 

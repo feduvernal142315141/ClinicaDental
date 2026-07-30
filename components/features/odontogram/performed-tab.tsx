@@ -22,7 +22,11 @@ import type {
   PerformedProcedure,
   PatientRiskLevel,
 } from "./types";
-import { GLOBAL_STATUS_LABELS, PLAN_STATUS_LABELS } from "./types";
+import {
+  GLOBAL_STATUS_LABELS,
+  PLAN_STATUS_LABELS,
+  projectToCanonicalSurface,
+} from "./types";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services";
 
 interface PerformedTabProps {
@@ -53,10 +57,10 @@ const PERFORMED_ID_PREFIX = "performed:";
 
 function getRiskColor(risk: PatientRiskLevel) {
   if (risk === "bajo")
-    return "bg-emerald-500/15 text-emerald-600 ring-emerald-400/25 dark:text-emerald-300";
+    return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300";
   if (risk === "medio")
-    return "bg-amber-500/15 text-amber-600 ring-amber-400/25 dark:text-amber-300";
-  return "bg-rose-500/15 text-rose-600 ring-rose-400/25 dark:text-rose-300";
+    return "bg-amber-500/15 text-amber-600 dark:text-amber-300";
+  return "bg-rose-500/15 text-rose-600 dark:text-rose-300";
 }
 
 /**
@@ -72,7 +76,7 @@ function formatSurfaceLabel(toothNumber: number, surface: ToothSurface) {
 function formatDateLabel(dateValue?: string) {
   if (!dateValue) return "Sin fecha";
 
-  return new Intl.DateTimeFormat("es-NI", {
+  return new Intl.DateTimeFormat("es-419", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -172,7 +176,7 @@ function PlanGroup({
             {plans.length}
           </Badge>
         </div>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-xs text-subtle">{description}</p>
       </div>
 
       <div className="space-y-2">
@@ -194,7 +198,7 @@ function PlanGroup({
                   onToggle(plan.id);
                 }
               }}
-              className={`w-full rounded-xl border p-3 text-left transition ${
+              className={`w-full rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45 ${
                 isSelected
                   ? "border-emerald-400/25 bg-emerald-500/15 shadow-sm"
                   : "border-hairline bg-elevated hover:border-hairline hover:bg-hover"
@@ -222,7 +226,7 @@ function PlanGroup({
                       <p className="truncate text-sm font-semibold text-ink">
                         {plan.displayName}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-subtle">
                         {PLAN_STATUS_LABELS[plan.status]}
                       </p>
                     </div>
@@ -251,7 +255,7 @@ function PlanGroup({
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-subtle">
                     <span className="inline-flex items-center gap-1">
                       <Clock3 className="h-3.5 w-3.5" />
                       {plan.durationMin} min
@@ -287,6 +291,15 @@ export function PerformedTab({
 }: PerformedTabProps) {
   const [selectedPlanIds, setSelectedPlanIds] = useState<Set<string>>(
     new Set(),
+  );
+
+  // Mismo conteo PROYECTADO a superficies canónicas ADA que Superficies y
+  // Diagnóstico: una MOD son 3 superficies aunque se hayan marcado 5 celdas.
+  // Contar celdas crudas hacía que el mismo modal diera dos números distintos
+  // para el mismo diente según la pestaña.
+  const canonicalSurfaceCount = useMemo(
+    () => new Set(selectedSurfaces.map(projectToCanonicalSurface)).size,
+    [selectedSurfaces],
   );
 
   const plansForTooth = useMemo(
@@ -516,9 +529,9 @@ export function PerformedTab({
       <Card className="border-dashed p-8 text-center">
         <div className="mx-auto max-w-md space-y-3">
           <p className="text-base font-semibold text-ink">
-            Aun no hay trabajo listo para registrar
+            Aún no hay trabajo listo para registrar
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-subtle">
             Define superficies y crea al menos un plan para convertir esta tab
             en el cierre operativo del diente.
           </p>
@@ -540,20 +553,20 @@ export function PerformedTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-2xl border border-emerald-400/25 bg-linear-to-r from-emerald-50 via-white to-teal-50 p-4 shadow-sm lg:flex-row lg:items-start lg:justify-between">
+      {/* Header PLANO, con el mismo patrón que Diagnóstico (h3 + subtítulo):
+          sin banda de color, que no sobrevivía al tema oscuro. El h3 no es
+          decorativo — sostiene la jerarquía de encabezados de la pestaña, cuyos
+          h4 quedarían huérfanos (el título del modal no emite encabezado). */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-300">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Realizado
-          </div>
-          <h3 className="text-lg font-bold text-ink">
-            Cierre clínico del diente {tooth.number}
+          <h3 className="flex items-center gap-2 text-lg font-bold text-ink">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
+            Realizado · Diente {tooth.number}
           </h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-subtle">
             {ToothTypeService.getToothTypeName(tooth.number)} ·{" "}
-            {selectedSurfaces.length}{" "}
-            superficie
-            {selectedSurfaces.length !== 1 ? "s" : ""} activas
+            {canonicalSurfaceCount} superficie
+            {canonicalSurfaceCount !== 1 ? "s" : ""}
           </p>
         </div>
 
@@ -572,7 +585,8 @@ export function PerformedTab({
             variant="outline"
             className="bg-elevated text-xs text-emerald-600 dark:text-emerald-300"
           >
-            {timelineItems.length} registrados
+            {timelineItems.length} registrado
+            {timelineItems.length === 1 ? "" : "s"}
           </Badge>
         </div>
       </div>
@@ -589,13 +603,14 @@ export function PerformedTab({
                       Pendientes por ejecutar
                     </h4>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Selecciona uno o varios planes para convertirlos en
-                    procedimientos realizados con trazabilidad real en el store.
+                  <p className="mt-1 text-xs text-subtle">
+                    Selecciona uno o varios planes para registrarlos como
+                    procedimientos realizados.
                   </p>
                 </div>
                 <Badge variant="outline" className="w-fit bg-elevated text-xs">
-                  {pendingPlans.length} pendientes
+                  {pendingPlans.length} pendiente
+                  {pendingPlans.length === 1 ? "" : "s"}
                 </Badge>
               </div>
             </div>
@@ -603,7 +618,7 @@ export function PerformedTab({
             <div className="space-y-4 bg-hover p-4">
               <PlanGroup
                 title="Programados hoy"
-                description="Tratamientos ya agendados para esta cita o para el mismo dia."
+                description="Tratamientos ya agendados para esta cita o para el mismo día."
                 plans={scheduledToday}
                 selectedPlanIds={selectedPlanIds}
                 readOnly={readOnly}
@@ -645,20 +660,20 @@ export function PerformedTab({
         </div>
 
         <div className="space-y-4 lg:sticky lg:top-0">
-          <Card className="border-emerald-400/25 bg-surface shadow-sm">
+          <Card className="border-hairline bg-surface shadow-sm">
             <div className="space-y-4 p-4">
               <div>
                 <h4 className="text-sm font-semibold text-ink">
-                  Resumen de ejecucion
+                  Resumen de ejecución
                 </h4>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-xs text-subtle">
                   Realizado funciona como el paso terminal del flujo del modal.
                 </p>
               </div>
 
               <div className="grid grid-cols-3 items-stretch gap-2">
                 <div className="flex min-h-24 flex-col items-center justify-center rounded-xl border border-hairline bg-hover px-2 py-3 text-center">
-                  <p className="flex min-h-10 items-center justify-center text-[10px] font-medium uppercase leading-tight text-muted-foreground sm:text-[11px]">
+                  <p className="flex min-h-10 items-center justify-center text-[10px] font-medium uppercase leading-tight text-subtle sm:text-[11px]">
                     Pendientes
                   </p>
                   <p className="mt-1 text-xl font-bold leading-none text-ink tabular-nums sm:text-2xl">
@@ -674,7 +689,7 @@ export function PerformedTab({
                   </p>
                 </div>
                 <div className="flex min-h-24 flex-col items-center justify-center rounded-xl border border-hairline bg-hover px-2 py-3 text-center">
-                  <p className="flex min-h-10 items-center justify-center text-[10px] font-medium uppercase leading-tight text-muted-foreground sm:text-[11px]">
+                  <p className="flex min-h-10 items-center justify-center text-[10px] font-medium uppercase leading-tight text-subtle sm:text-[11px]">
                     Hechos
                   </p>
                   <p className="mt-1 text-xl font-bold leading-none text-ink tabular-nums sm:text-2xl">
@@ -685,22 +700,29 @@ export function PerformedTab({
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-medium">
-                  <span className="text-muted-foreground">Progreso</span>
+                  <span className="text-subtle">Progreso</span>
                   <span className="text-ink tabular-nums">
                     {totalPlannedCount > 0
                       ? `${completedPlanCount} de ${totalPlannedCount}`
                       : `${timelineItems.length} realizados`}
                   </span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  role="progressbar"
+                  aria-valuenow={progressPercent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label="Progreso de procedimientos realizados"
+                  className="h-2 overflow-hidden rounded-full bg-hover"
+                >
                   <div
                     className="h-full rounded-full bg-linear-to-r from-emerald-500 to-teal-500 transition-all"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-subtle">
                   {selectedPlans.length > 0
-                    ? `${selectedPlans.length} plan${selectedPlans.length === 1 ? "" : "es"} seleccionados · ${selectedPlanDuration} min estimados`
+                    ? `${selectedPlans.length} plan${selectedPlans.length === 1 ? " seleccionado" : "es seleccionados"} · ${selectedPlanDuration} min estimados`
                     : "Selecciona tratamientos pendientes para registrarlos en bloque."}
                 </p>
               </div>
@@ -715,7 +737,7 @@ export function PerformedTab({
               </Button>
 
               {readOnly && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-subtle">
                   {/* Igual que en el modal del diente: el bloqueo puede venir de
                       histórico, visita finalizada o falta de permiso, así que no
                       se promete que iniciar una consulta lo resuelva. */}
@@ -732,8 +754,8 @@ export function PerformedTab({
                   <h4 className="text-sm font-semibold text-ink">
                     Timeline de realizados
                   </h4>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Registro cronologico de lo ya ejecutado sobre este diente.
+                  <p className="mt-1 text-xs text-subtle">
+                    Registro cronológico de lo ya ejecutado sobre este diente.
                   </p>
                 </div>
                 <Badge
@@ -745,7 +767,7 @@ export function PerformedTab({
               </div>
 
               {timelineItems.length === 0 ? (
-                <OdontogramEmptyState description="Aun no hay procedimientos realizados registrados." />
+                <OdontogramEmptyState description="Aún no hay procedimientos realizados registrados." />
               ) : (
                 <div className="space-y-3">
                   {timelineItems.map((item) => (
@@ -761,7 +783,7 @@ export function PerformedTab({
                             <p className="truncate text-sm font-semibold text-ink">
                               {item.label}
                             </p>
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-subtle">
                               <span className="inline-flex items-center gap-1">
                                 <CalendarClock className="h-3.5 w-3.5" />
                                 {formatDateLabel(item.updatedAt)}
@@ -779,7 +801,7 @@ export function PerformedTab({
                                 variant="outline"
                                 className="bg-elevated text-[11px]"
                               >
-                                Legacy
+                                Histórico
                               </Badge>
                             )}
                             {!readOnly && item.fromPlanId && (
@@ -818,7 +840,7 @@ export function PerformedTab({
                         </div>
 
                         {item.notes && (
-                          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                          <p className="mt-2 text-xs leading-5 text-subtle">
                             {item.notes}
                           </p>
                         )}
@@ -837,9 +859,9 @@ export function PerformedTab({
                   <p className="font-semibold text-ink">
                     Si algo sigue faltando, vuelve al plan
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Ajusta prioridad, sesion o agenda antes de registrar la
-                    ejecucion.
+                  <p className="mt-1 text-xs text-subtle">
+                    Ajusta prioridad, sesión o agenda antes de registrar la
+                    ejecución.
                   </p>
                 </div>
                 <Button
