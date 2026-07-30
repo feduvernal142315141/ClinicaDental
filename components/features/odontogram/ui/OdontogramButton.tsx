@@ -23,7 +23,11 @@ export interface OdontogramButtonProps
 }
 
 const VARIANT_CLASSES: Record<OdontogramButtonVariant, string> = {
-  primary: "bg-brand text-white hover:bg-brand/90",
+  // `bg-brand-strong` (no `bg-brand`) para que el texto blanco cumpla WCAG AA
+  // (>=4.5:1) también en tema OSCURO, donde `--brand` se aclara a blue-500
+  // (3.68:1, falla) mientras `--brand-strong` = blue-600 (5.17:1, pasa). Es la
+  // misma receta del botón canónico del proyecto (`components/ui/.../button.tsx`).
+  primary: "bg-brand-strong text-white hover:bg-brand-strong/90",
   outline: "border border-hairline bg-surface hover:bg-hover text-ink",
   ghost: "hover:bg-hover text-ink",
   destructive: "bg-rose-600 text-white hover:bg-rose-700",

@@ -25,12 +25,27 @@ export interface OdontogramSelectProps {
   disabled?: boolean;
   className?: string;
   style?: React.CSSProperties;
+  /** Id del trigger. Necesario para que un `<label>` externo lo referencie. */
+  id?: string;
+  /**
+   * Id del elemento que etiqueta el control. Es la vía CORRECTA de etiquetar
+   * este Select: el trigger es un `<button>` de Radix y `htmlFor` no le da
+   * nombre accesible de forma fiable.
+   */
+  "aria-labelledby"?: string;
+  /** Nombre accesible literal, si no hay un `<label>` visible al que apuntar. */
+  "aria-label"?: string;
+  /** Id del texto de ayuda/error asociado. */
+  "aria-describedby"?: string;
 }
 
 /**
  * Wrapper de Select para el módulo odontograma sobre el Select Radix
  * del barrel `@/components/ui`. Mantiene la API pública original
  * (value / onChange / options) para que los consumidores no cambien.
+ *
+ * Para etiquetarlo, envuélvelo en `OdontogramField` y reparte sus ids:
+ * `<OdontogramField label="Estado">{(control) => <OdontogramSelect {...control} … />}</OdontogramField>`
  */
 export function OdontogramSelect({
   value,
@@ -40,6 +55,10 @@ export function OdontogramSelect({
   disabled,
   className,
   style,
+  id,
+  "aria-labelledby": ariaLabelledBy,
+  "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
 }: OdontogramSelectProps) {
   // Radix Select no soporta value="": con "" no muestra el placeholder
   // de forma fiable y un SelectItem con value="" lanza un error.
@@ -52,7 +71,14 @@ export function OdontogramSelect({
       onValueChange={onChange}
       disabled={disabled}
     >
-      <SelectTrigger className={cn("w-full", className)} style={style}>
+      <SelectTrigger
+        id={id}
+        aria-labelledby={ariaLabelledBy}
+        aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
+        className={cn("w-full", className)}
+        style={style}
+      >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

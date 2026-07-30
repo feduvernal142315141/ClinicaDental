@@ -16,6 +16,10 @@ export interface OdontogramInputProps {
   type?: string;
   id?: string;
   style?: React.CSSProperties;
+  /** Id del elemento que etiqueta el control (alternativa a `<label for>`). */
+  "aria-labelledby"?: string;
+  /** Id del texto de ayuda/error asociado. */
+  "aria-describedby"?: string;
 }
 
 /**
@@ -34,6 +38,8 @@ export function OdontogramInput({
   type,
   id,
   style,
+  "aria-labelledby": ariaLabelledBy,
+  "aria-describedby": ariaDescribedBy,
 }: OdontogramInputProps) {
   return (
     <Input
@@ -47,6 +53,8 @@ export function OdontogramInput({
       type={type}
       id={id}
       style={style}
+      aria-labelledby={ariaLabelledBy}
+      aria-describedby={ariaDescribedBy}
     />
   );
 }
@@ -60,6 +68,10 @@ export interface OdontogramTextAreaProps {
   className?: string;
   rows?: number;
   id?: string;
+  /** Id del elemento que etiqueta el control (alternativa a `<label for>`). */
+  "aria-labelledby"?: string;
+  /** Id del texto de ayuda/error asociado. */
+  "aria-describedby"?: string;
 }
 
 /**
@@ -75,6 +87,8 @@ export function OdontogramTextArea({
   className,
   rows = 3,
   id,
+  "aria-labelledby": ariaLabelledBy,
+  "aria-describedby": ariaDescribedBy,
 }: OdontogramTextAreaProps) {
   return (
     <Textarea
@@ -86,6 +100,8 @@ export function OdontogramTextArea({
       className={className}
       rows={rows}
       id={id}
+      aria-labelledby={ariaLabelledBy}
+      aria-describedby={ariaDescribedBy}
     />
   );
 }

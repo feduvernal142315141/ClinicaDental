@@ -29,6 +29,15 @@ export type {
 export { OdontogramCheckbox } from "./OdontogramCheckbox";
 export type { OdontogramCheckboxProps } from "./OdontogramCheckbox";
 
+export {
+  OdontogramField,
+  ODONTOGRAM_FIELD_LABEL_CLASS,
+} from "./OdontogramField";
+export type {
+  OdontogramFieldProps,
+  OdontogramFieldControlProps,
+} from "./OdontogramField";
+
 export { OdontogramInput, OdontogramTextArea } from "./OdontogramInput";
 export type {
   OdontogramInputProps,
