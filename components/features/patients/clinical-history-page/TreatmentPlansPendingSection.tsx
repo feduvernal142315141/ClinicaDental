@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, Stethoscope, ArrowUpRight } from "lucide-react";
-import { Badge } from "@/components/ui/atomic/data-display/badge";
+import { StatusBadge, type StatusBadgeTone } from "@/components/ui";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import type {
   DerivedPlanStatus,
@@ -15,30 +15,15 @@ interface TreatmentPlansPendingSectionProps {
   onViewOdontogram?: () => void;
 }
 
+/** Etiqueta y tono del pill de estado de cada plan. */
 const STATUS_META: Record<
   DerivedPlanStatus,
-  { label: string; className: string }
+  { label: string; tone: StatusBadgeTone }
 > = {
-  pendiente: {
-    label: "Pendiente",
-    className:
-      "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-700/60 dark:bg-amber-900/25 dark:text-amber-300",
-  },
-  "en-curso": {
-    label: "En curso",
-    className:
-      "border-sky-300 bg-sky-100 text-sky-700 dark:border-sky-700/60 dark:bg-sky-900/25 dark:text-sky-300",
-  },
-  completado: {
-    label: "Completado",
-    className:
-      "border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-900/25 dark:text-emerald-300",
-  },
-  cancelado: {
-    label: "Cancelado",
-    className:
-      "border-slate-300 bg-slate-100 text-slate-600 dark:border-slate-700/60 dark:bg-slate-900/25 dark:text-slate-300",
-  },
+  pendiente: { label: "Pendiente", tone: "warning" },
+  "en-curso": { label: "En curso", tone: "progress" },
+  completado: { label: "Completado", tone: "success" },
+  cancelado: { label: "Cancelado", tone: "neutral" },
 };
 
 export function TreatmentPlansPendingSection({
@@ -74,9 +59,9 @@ export function TreatmentPlansPendingSection({
           >
             <div className="flex items-center justify-between gap-2">
               <span className="font-medium text-ink truncate">{plan.name}</span>
-              <Badge variant="outline" className={`shrink-0 ${meta.className}`}>
+              <StatusBadge tone={meta.tone} className="shrink-0">
                 {meta.label}
-              </Badge>
+              </StatusBadge>
             </div>
 
             {plan.description && (

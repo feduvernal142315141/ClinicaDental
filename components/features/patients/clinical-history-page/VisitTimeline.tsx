@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Activity,
 } from "lucide-react";
+import { StatusBadge, type StatusBadgeTone } from "@/components/ui";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { CancelModal } from "@/components/features/appointments/scheduler/CancelModal";
 import { RescheduleModal } from "@/components/features/appointments/scheduler/RescheduleModal";
@@ -17,6 +18,7 @@ import type {
   Appointment,
   AppointmentStatus,
 } from "@/lib/entity/appointment/appointments";
+import { SECTION_LABEL_CLASS } from "./section-label";
 
 export interface VisitTimelineProps {
   appointments: Appointment[];
@@ -29,20 +31,27 @@ export interface VisitTimelineProps {
 
 interface StatusConfig {
   dotClass: string;
-  badgeClass: string;
+  /** Tono del `StatusBadge` del pill de estado. */
+  tone: StatusBadgeTone;
   lineClass: string;
   label: string;
   icon: React.ReactNode;
 }
 
+/**
+ * OJO — divergencia de color **conservada a propósito**: en esta cronología
+ * "En curso" es VERDE (`success`) y "Completada" es AZUL (`progress`), al revés
+ * que en `TreatmentStatusOverview` / `TreatmentPlansPendingSection`. Unificarlo
+ * cambiaría lo que se comunica (verde = visita activa aquí), así que es una
+ * decisión de producto, no de este pase visual.
+ */
 function getStatusConfig(status: AppointmentStatus): StatusConfig {
   switch (status) {
     case "in_progress":
       return {
         dotClass:
           "bg-emerald-500 ring-2 ring-emerald-300/60 dark:ring-emerald-700/60",
-        badgeClass:
-          "bg-emerald-500/15 text-emerald-700 border-emerald-300 dark:text-emerald-300 dark:border-emerald-700/60",
+        tone: "success",
         lineClass: "bg-emerald-300/50",
         label: "En curso",
         icon: <Activity className="h-3 w-3" />,
@@ -50,8 +59,7 @@ function getStatusConfig(status: AppointmentStatus): StatusConfig {
     case "completed":
       return {
         dotClass: "bg-sky-500",
-        badgeClass:
-          "bg-sky-500/10 text-sky-700 border-sky-300 dark:text-sky-300 dark:border-sky-700/60",
+        tone: "progress",
         lineClass: "bg-hairline",
         label: "Completada",
         icon: <CheckCircle2 className="h-3 w-3" />,
@@ -59,8 +67,7 @@ function getStatusConfig(status: AppointmentStatus): StatusConfig {
     case "scheduled":
       return {
         dotClass: "bg-amber-400",
-        badgeClass:
-          "bg-amber-500/10 text-amber-700 border-amber-300 dark:text-amber-300 dark:border-amber-700/60",
+        tone: "warning",
         lineClass: "bg-hairline",
         label: "Agendada",
         icon: <Clock className="h-3 w-3" />,
@@ -70,8 +77,7 @@ function getStatusConfig(status: AppointmentStatus): StatusConfig {
     case "no_show":
       return {
         dotClass: "bg-rose-400 opacity-70",
-        badgeClass:
-          "bg-rose-500/10 text-rose-600 border-rose-300 dark:text-rose-300 dark:border-rose-700/60",
+        tone: "danger",
         lineClass: "bg-hairline",
         label: status === "cancelled" ? "Cancelada" : "No asistió",
         icon: <XCircle className="h-3 w-3" />,
@@ -79,7 +85,7 @@ function getStatusConfig(status: AppointmentStatus): StatusConfig {
     default:
       return {
         dotClass: "bg-muted-foreground/40",
-        badgeClass: "bg-muted text-muted-foreground border-border",
+        tone: "neutral",
         lineClass: "bg-hairline",
         label: "Desconocido",
         icon: <AlertCircle className="h-3 w-3" />,
@@ -182,9 +188,7 @@ export function VisitTimeline({
       {/* ── Cronología ──────────────────────────────────────────────────── */}
       <section className="bento overflow-hidden flex-1 min-h-0 flex flex-col">
         <div className="px-5 py-3 border-b border-hairline shrink-0">
-          <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-            Cronología de visitas
-          </h3>
+          <h3 className={SECTION_LABEL_CLASS}>Cronología de visitas</h3>
         </div>
 
         {loading ? (
@@ -194,11 +198,9 @@ export function VisitTimeline({
         ) : sorted.length === 0 ? (
           <div className="p-8 flex flex-col items-center text-center">
             <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center mb-3">
-              <Clock className="h-5 w-5 text-muted-foreground" />
+              <Clock className="h-5 w-5 text-subtle" />
             </div>
-            <p className="text-sm text-muted-foreground">
-              Sin visitas registradas
-            </p>
+            <p className="text-sm text-subtle">Sin visitas registradas</p>
           </div>
         ) : (
           <div className="overflow-y-auto flex-1 px-5 py-4">
@@ -238,18 +240,19 @@ export function VisitTimeline({
                         <p className="text-xs font-semibold text-foreground leading-snug">
                           {formatVisitDate(appt.date)}
                           {appt.time ? (
-                            <span className="font-normal text-muted-foreground">
+                            <span className="font-normal text-subtle">
                               {" · "}
                               {appt.time}
                             </span>
                           ) : null}
                         </p>
-                        <span
-                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-semibold shrink-0 ${cfg.badgeClass}`}
+                        <StatusBadge
+                          tone={cfg.tone}
+                          className="shrink-0 gap-1 px-1.5 text-[10px]"
                         >
                           {cfg.icon}
                           {cfg.label}
-                        </span>
+                        </StatusBadge>
                       </div>
 
                       {/* Descriptor */}

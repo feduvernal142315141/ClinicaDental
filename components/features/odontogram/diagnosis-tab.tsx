@@ -6,11 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  StatusBadge,
+} from "@/components/ui";
 import {
   OdontogramCheckbox,
   OdontogramField,
   OdontogramInput,
+  RISK_TONE,
 } from "@/components/odontogram/ui";
 import {
   AlertCircle,
@@ -352,12 +358,6 @@ export function DiagnosisTab({
     emitToothDiagnosisChange(surfaceDiagnoses, { vitalityTests: nextTests });
   };
 
-  const getRiskColor = (risk: PatientRiskLevel) => {
-    if (risk === "bajo") return "bg-emerald-500/15 text-emerald-600 ring-emerald-400/25 dark:text-emerald-300";
-    if (risk === "medio") return "bg-amber-500/15 text-amber-600 ring-amber-400/25 dark:text-amber-300";
-    return "bg-rose-500/15 text-rose-600 ring-rose-400/25 dark:text-rose-300";
-  };
-
   const hasCoherenceIssue =
     isToothPhysicallyAbsent(tooth.globalStatus) &&
     Array.from(surfaceDiagnoses.values()).some((d) => d.icdasScore > 0);
@@ -406,13 +406,12 @@ export function DiagnosisTab({
           </p>
         </div>
         <div className="flex gap-2">
-          <Badge
-            variant="outline"
-            className={getRiskColor(patientRisk)}
+          <StatusBadge
+            tone={RISK_TONE[patientRisk]}
             title={patientRiskReasons?.join(" · ")}
           >
             Riesgo: {patientRisk.charAt(0).toUpperCase() + patientRisk.slice(1)}
-          </Badge>
+          </StatusBadge>
           <Badge variant="outline" className="bg-muted">
             {GLOBAL_STATUS_LABELS[tooth.globalStatus]}
           </Badge>

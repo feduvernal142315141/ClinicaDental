@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { OdontogramVisitComparison } from "@/components/features/patients/detail/OdontogramVisitComparison";
 import { useVisitHistoryDrawer } from "@/lib/hooks/patients/clinical-history-page/use-visit-history-drawer";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
+import { cn } from "@/lib/utils/utils";
+import { SECTION_LABEL_CLASS } from "./section-label";
 
 interface VisitHistoryDrawerProps {
   open: boolean;
@@ -24,7 +26,7 @@ interface VisitHistoryDrawerProps {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+    <h4 className={cn(SECTION_LABEL_CLASS, "mb-2")}>
       {children}
     </h4>
   );
@@ -89,7 +91,7 @@ export function VisitHistoryDrawer({
               <section className="bg-hover rounded-lg p-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                    <span className={cn(SECTION_LABEL_CLASS, "mb-1 block")}>
                       Doctor
                     </span>
                     <span>
@@ -99,7 +101,7 @@ export function VisitHistoryDrawer({
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                    <span className={cn(SECTION_LABEL_CLASS, "mb-1 block")}>
                       Servicio
                     </span>
                     <span>

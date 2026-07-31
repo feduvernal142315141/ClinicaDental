@@ -8,6 +8,7 @@ import {
   NotebookPen,
 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import { StatusBadge } from "@/components/ui";
 import TextArea from "@/components/ui/atomic/forms/textarea";
 import { Input } from "@/components/ui/atomic/forms";
 import { Slider } from "@/components/ui/atomic/forms/slider";
@@ -135,10 +136,10 @@ export function ActiveConsultationNotes({
         title="Datos de esta consulta"
         meta={
           <>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+            <StatusBadge tone="success" className="gap-1.5">
               <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
               En curso
-            </span>
+            </StatusBadge>
             <span
               aria-live="polite"
               aria-atomic="true"
@@ -150,8 +151,9 @@ export function ActiveConsultationNotes({
                     "text-[11px] tabular-nums transition-colors",
                     autosaveStatus === "saving" && "animate-pulse text-subtle",
                     autosaveStatus === "saved" &&
-                      "text-emerald-600 dark:text-emerald-400",
-                    autosaveStatus === "error" && "text-rose-500",
+                      "text-emerald-600 dark:text-emerald-300",
+                    autosaveStatus === "error" &&
+                      "text-rose-600 dark:text-rose-300",
                   )}
                 >
                   {autosaveStatus === "saved" ? "Guardado ✓" : autosaveLabel}

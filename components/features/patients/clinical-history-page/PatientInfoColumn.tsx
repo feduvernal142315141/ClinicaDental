@@ -2,8 +2,10 @@
 
 import { useMemo } from "react";
 import { Button } from "@/components/ui/primitives/shadcn/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui";
 import { User, Edit, AlertTriangle, ChevronRight } from "lucide-react";
 import { PatientAttachmentsSection } from "@/components/features/patients/attachments/PatientAttachmentsSection";
+import { SECTION_LABEL_CLASS } from "./section-label";
 import type { Patient } from "@/lib/entity/patients";
 import type {
   ClinicalHistoryMedicalHistory,
@@ -38,8 +40,8 @@ function InfoRow({
   if (!value) return null;
   return (
     <li className="flex items-start gap-3">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-      <span className="text-sm text-muted-foreground break-all">{value}</span>
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-subtle" />
+      <span className="text-sm text-subtle break-all">{value}</span>
     </li>
   );
 }
@@ -53,9 +55,7 @@ function SectionCard({
 }) {
   return (
     <section className="bento p-5 space-y-3">
-      <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-        {title}
-      </h3>
+      <h3 className={SECTION_LABEL_CLASS}>{title}</h3>
       {children}
     </section>
   );
@@ -105,7 +105,7 @@ export function PatientInfoColumn({
         </div>
         <h2 className="text-lg font-bold leading-tight">{patient.name}</h2>
         {profileMeta && (
-          <p className="text-sm text-muted-foreground mt-0.5">{profileMeta}</p>
+          <p className="text-sm text-subtle mt-0.5">{profileMeta}</p>
         )}
         {canEdit && (
           <Button
@@ -122,34 +122,37 @@ export function PatientInfoColumn({
 
       {/* ── Alerta: antecedentes sin revisar ──────────────────────────── */}
       {isReviewNeeded && (
-        <section
-          role="alert"
-          className="rounded-xl border border-amber-300/70 bg-amber-50 dark:border-amber-700/40 dark:bg-amber-900/15 p-4"
-        >
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-                Antecedentes médicos sin revisar
-              </p>
-              <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80 mt-0.5">
-                {medicalHistory?.validatedAt
-                  ? "Última revisión hace más de 24 meses"
-                  : "Sin revisión registrada"}
-              </p>
-              {onEditMedicalHistory && (
-                <button
-                  type="button"
-                  onClick={onEditMedicalHistory}
-                  className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded"
-                >
-                  Revisar ahora
-                  <ChevronRight className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
+        <Alert variant="warning">
+          <AlertTriangle />
+          {/* `line-clamp-none`: la columna es de 280px fijos y el título ocupa
+              dos líneas; el recorte por defecto de AlertTitle lo dejaría en
+              "Antecedentes médicos sin…". */}
+          <AlertTitle className="line-clamp-none">
+            Antecedentes médicos sin revisar
+          </AlertTitle>
+          <AlertDescription>
+            <p>
+              {medicalHistory?.validatedAt
+                ? "Última revisión hace más de 24 meses"
+                : "Sin revisión registrada"}
+            </p>
+            {/* `ring-current`: el anillo de foco hereda el ámbar OPACO del
+                propio Alert (`text-amber-700 dark:text-amber-300`). Un anillo
+                de marca translúcido (`ring-brand/40`) sobre el tinte ámbar se
+                quedaba en ~1,7:1 en ambos temas, muy por debajo del 3:1 que
+                exige WCAG 2.2 SC 1.4.11 para el indicador de foco. */}
+            {onEditMedicalHistory && (
+              <button
+                type="button"
+                onClick={onEditMedicalHistory}
+                className="mt-1 flex items-center gap-1 rounded font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
+              >
+                Revisar ahora
+                <ChevronRight className="h-3 w-3" />
+              </button>
+            )}
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Contacto */}

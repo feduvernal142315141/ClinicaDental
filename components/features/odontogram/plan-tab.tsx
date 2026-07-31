@@ -1,18 +1,25 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
+import {
+  Alert,
+  AlertDescription,
+  Badge,
+  Button,
+  Card,
+  Label,
+  StatusBadge,
+} from "@/components/ui";
 import {
   ODONTOGRAM_FIELD_LABEL_CLASS,
   OdontogramButton,
+  OdontogramEmptyState,
   OdontogramField,
   OdontogramInput,
   OdontogramSelect,
+  RISK_TONE,
 } from "@/components/odontogram/ui";
+import { cn } from "@/lib/utils/utils";
 import {
   Search,
   Plus,
@@ -45,7 +52,6 @@ import {
   PROCEDURE_CATALOG,
   PROCEDURE_CATEGORIES,
   PROCEDURE_CATEGORY_COLORS,
-  PLAN_STATUS_COLORS,
   PLAN_STATUS_LABELS,
   GLOBAL_STATUS_LABELS,
   PROCEDURE_TEMPLATES,
@@ -80,6 +86,152 @@ interface PlanTabProps {
 
 function generateId(): string {
   return `plan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Estado del plan → borde y tinte de la ficha, en clases del sistema.
+ *
+ * Sustituye al hex crudo de `PLAN_STATUS_COLORS` pintado por `style`: aquel
+ * borde era un color pensado para tema claro y su relleno al 2,4% (`…06`) era
+ * literalmente invisible sobre el lienzo oscuro. El hex sigue siendo dato de
+ * dominio (lo usa el renderizado del diente), pero ya no pinta esta tarjeta.
+ * Los tonos son la traducción 1:1 de aquellos hex a la paleta Tailwind
+ * (`#F59E0B`→amber, `#F97316`→orange, `#8B5CF6`→violet, `#3B82F6`→sky,
+ * `#94A3B8`/`#6B7280`→neutro), con la receta dual-tema del proyecto.
+ */
+const PLAN_STATUS_CARD_CLASS: Record<ClinicalEventStatus, string> = {
+  open: "border-hairline bg-elevated",
+  plan: "border-amber-400/25 bg-amber-500/5",
+  scheduled: "border-orange-400/25 bg-orange-500/5",
+  in_progress: "border-violet-400/25 bg-violet-500/5",
+  done: "border-sky-400/25 bg-sky-500/5",
+  canceled: "border-hairline bg-hover",
+  observation: "border-orange-400/25 bg-orange-500/5",
+};
+
+interface SidebarPanelProps {
+  /** Icono del encabezado (`lucide-react`, ya con sus clases). */
+  icon: ReactNode;
+  title: ReactNode;
+  /** Si se pasa, el encabezado es plegable (botón + chevron). */
+  collapsible?: { open: boolean; onToggle: () => void };
+  children: ReactNode;
+}
+
+/**
+ * Panel de la barra lateral: tarjeta + micro-label con icono.
+ *
+ * LOCAL a propósito: sus cuatro consumidores (sugerencias, plantillas ICDAS,
+ * plantillas y catálogo) viven en este mismo fichero. No lo saques a
+ * `components/ui` mientras no exista un quinto consumidor fuera de aquí.
+ */
+function SidebarPanel({
+  icon,
+  title,
+  collapsible,
+  children,
+}: SidebarPanelProps) {
+  const label = (
+    <Label
+      className={cn(
+        ODONTOGRAM_FIELD_LABEL_CLASS,
+        collapsible ? "cursor-pointer" : "mb-2 block",
+      )}
+    >
+      {icon}
+      {title}
+    </Label>
+  );
+
+  return (
+    <Card className="p-3 shadow-sm">
+      {collapsible ? (
+        <button
+          type="button"
+          className="w-full flex items-center justify-between text-left"
+          onClick={collapsible.onToggle}
+        >
+          {label}
+          {collapsible.open ? (
+            <ChevronUp className="w-4 h-4 text-subtle" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-subtle" />
+          )}
+        </button>
+      ) : (
+        label
+      )}
+      {children}
+    </Card>
+  );
+}
+
+interface PickerRowProps {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  subtitleClassName?: string;
+  /** Punto de identidad de categoría (el hex SÍ es información aquí). */
+  accentColor?: string;
+  /** Adorno tras el título (p. ej. la estrella de favorito). */
+  titleAdornment?: ReactNode;
+  /** Valor alineado a la derecha (p. ej. el costo). */
+  trailing?: ReactNode;
+  onClick: () => void;
+}
+
+/**
+ * Fila pulsable de la barra lateral: icono «+», título, subtítulo y valor.
+ *
+ * LOCAL a propósito: unifica las tres copias que había en este fichero
+ * (sugerencias, plantillas y catálogo), que solo se diferenciaban en el borde
+ * y el hover. Mismo criterio que `SidebarPanel`: sin consumidor externo, no
+ * es un átomo del sistema.
+ */
+function PickerRow({
+  title,
+  subtitle,
+  subtitleClassName,
+  accentColor,
+  titleAdornment,
+  trailing,
+  onClick,
+}: PickerRowProps) {
+  return (
+    <div
+      className="flex items-center gap-2 p-2 rounded-md border border-hairline bg-elevated hover:bg-hover transition-colors cursor-pointer"
+      onClick={onClick}
+    >
+      <Plus className="w-3.5 h-3.5 shrink-0 text-subtle" />
+      {accentColor && (
+        <span
+          aria-hidden
+          className="w-1.5 h-1.5 rounded-full shrink-0"
+          style={{ backgroundColor: accentColor }}
+        />
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs font-medium truncate">{title}</p>
+          {titleAdornment}
+        </div>
+        {subtitle != null && (
+          <p
+            className={cn(
+              "text-[10px] text-subtle truncate",
+              subtitleClassName,
+            )}
+          >
+            {subtitle}
+          </p>
+        )}
+      </div>
+      {trailing != null && (
+        <span className="text-xs font-semibold whitespace-nowrap tabular-nums">
+          {trailing}
+        </span>
+      )}
+    </div>
+  );
 }
 
 export function PlanTab({
@@ -337,14 +489,6 @@ export function PlanTab({
   const formatCurrency = (amount: number) =>
     formatClinicCurrencyExact(amount, currency);
 
-  const getRiskColor = (risk: PatientRiskLevel) => {
-    if (risk === "bajo")
-      return "bg-emerald-500/15 text-emerald-600 border-emerald-400/25 dark:text-emerald-300";
-    if (risk === "medio")
-      return "bg-amber-500/15 text-amber-600 border-amber-400/25 dark:text-amber-300";
-    return "bg-rose-500/15 text-rose-600 border-rose-400/25 dark:text-rose-300";
-  };
-
   const hasCoherenceIssue =
     isToothPhysicallyAbsent(tooth.globalStatus) &&
     plans.some((p) => p.category === "restaurador");
@@ -363,7 +507,7 @@ export function PlanTab({
   if (selectedSurfaces.length === 0 && !diagnoses) {
     return (
       <Card className="p-8 text-center">
-        <p className="text-muted-foreground mb-4">
+        <p className="text-subtle mb-4">
           Selecciona superficies o completa el diagnóstico primero
         </p>
         <div className="flex gap-3 justify-center">
@@ -389,22 +533,21 @@ export function PlanTab({
       {/* Compact inline header - only risk + status since tooth info is in modal header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-muted-foreground">
+          <span className="text-sm font-semibold text-subtle">
             {plans.length} procedimiento{plans.length !== 1 ? "s" : ""}
           </span>
           {plans.length > 0 && (
-            <span className="text-xs text-muted-foreground tabular-nums">
+            <span className="text-xs text-subtle tabular-nums">
               · {totals.totalDuration} min · {formatCurrency(totals.totalCost)}
             </span>
           )}
         </div>
-        <Badge
-          variant="outline"
-          className={getRiskColor(patientRisk)}
+        <StatusBadge
+          tone={RISK_TONE[patientRisk]}
           title={patientRiskReasons?.join(" · ")}
         >
           Riesgo: {patientRisk.charAt(0).toUpperCase() + patientRisk.slice(1)}
-        </Badge>
+        </StatusBadge>
       </div>
 
       {hasCoherenceIssue && (
@@ -463,13 +606,11 @@ export function PlanTab({
             </div>
 
             {plans.length === 0 ? (
-              <div className="py-6 text-center text-muted-foreground border-2 border-dashed rounded-lg">
-                <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Sin procedimientos</p>
-                <p className="text-xs mt-1">
-                  Añade desde las sugerencias o el catálogo →
-                </p>
-              </div>
+              <OdontogramEmptyState
+                icon={Package}
+                description="Sin procedimientos"
+                hint="Añade desde las sugerencias o el catálogo →"
+              />
             ) : (
               <div className="space-y-2">
                 {plans.map((plan) => {
@@ -477,15 +618,14 @@ export function PlanTab({
                   return (
                     <div
                       key={plan.id}
-                      className="rounded-lg border-2 overflow-hidden transition-all"
-                      style={{
-                        borderColor: PLAN_STATUS_COLORS[plan.status],
-                        backgroundColor: `${PLAN_STATUS_COLORS[plan.status]}06`,
-                      }}
+                      className={cn(
+                        "rounded-lg border overflow-hidden transition-all",
+                        PLAN_STATUS_CARD_CLASS[plan.status],
+                      )}
                     >
                       {/* Compact row — always visible */}
                       <div
-                        className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-muted/20 transition-colors"
+                        className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-hover transition-colors"
                         onClick={() =>
                           setExpandedPlanId(isExpanded ? null : plan.id)
                         }
@@ -511,7 +651,7 @@ export function PlanTab({
                               // Listar las 5 celdas de una MOD aquí sería
                               // ilegible y además diría "5 superficies".
                               <span
-                                className="text-[10px] text-muted-foreground"
+                                className="text-[10px] text-subtle"
                                 title={plan.surfaces
                                   .map(
                                     (s) =>
@@ -542,7 +682,7 @@ export function PlanTab({
                         </span>
                         <div className="flex gap-1 shrink-0">
                           <button
-                            className="p-1 rounded hover:bg-muted transition-colors"
+                            className="p-1 rounded hover:bg-hover transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDuplicatePlan(plan.id);
@@ -559,11 +699,11 @@ export function PlanTab({
                             }}
                             title="Eliminar"
                           >
-                            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                            <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-300" />
                           </button>
                         </div>
                         <ChevronDown
-                          className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${
+                          className={`w-4 h-4 text-subtle shrink-0 transition-transform ${
                             isExpanded ? "rotate-180" : ""
                           }`}
                         />
@@ -571,7 +711,7 @@ export function PlanTab({
 
                       {/* Expanded details — edit fields */}
                       {isExpanded && (
-                        <div className="px-3 pb-3 pt-1 border-t bg-muted/10 space-y-2">
+                        <div className="px-3 pb-3 pt-1 border-t border-hairline bg-hover space-y-2">
                           <div className="grid grid-cols-2 gap-2">
                             <OdontogramField label="Estado">
                               {(control) => (
@@ -699,7 +839,7 @@ export function PlanTab({
               <Card className="p-3 shadow-lg bg-surface/95 backdrop-blur-sm border-t-2 border-brand/20">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
+                    <span className="flex items-center gap-1.5 text-sm text-subtle tabular-nums">
                       <Clock className="w-3.5 h-3.5" />
                       {totals.totalDuration} min
                     </span>
@@ -713,7 +853,7 @@ export function PlanTab({
                         ).map(([cat, cost]) => (
                           <span
                             key={cat}
-                            className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums"
+                            className="flex items-center gap-1 text-xs text-subtle tabular-nums"
                           >
                             <div
                               className="w-2 h-2 rounded-full"
@@ -772,77 +912,51 @@ export function PlanTab({
         <div className="space-y-3 lg:max-h-[min(500px,calc(100vh-340px))] lg:overflow-y-auto lg:pr-1.5">
           {/* Smart suggestions */}
           {suggestions.length > 0 && (
-            <Card className="p-3 shadow-sm">
-              <Label className={`${ODONTOGRAM_FIELD_LABEL_CLASS} mb-2 block`}>
-                <Sparkles className="w-3 h-3 inline mr-1" />
-                Sugerencias inteligentes
-              </Label>
+            <SidebarPanel
+              icon={<Sparkles className="w-3 h-3 inline mr-1" />}
+              title="Sugerencias inteligentes"
+            >
               <div className="space-y-1.5">
                 {suggestions.map((suggestion, idx) => (
-                  <div
+                  <PickerRow
                     key={idx}
-                    className="flex items-center gap-2 p-2 rounded-md border hover:shadow-sm transition-shadow cursor-pointer"
-                    style={{
-                      borderColor:
-                        PROCEDURE_CATEGORY_COLORS[
-                          suggestion.procedure.category
-                        ],
-                      backgroundColor: `${PROCEDURE_CATEGORY_COLORS[suggestion.procedure.category]}08`,
-                    }}
+                    accentColor={
+                      PROCEDURE_CATEGORY_COLORS[suggestion.procedure.category]
+                    }
+                    title={suggestion.procedure.name}
+                    subtitle={suggestion.reason}
+                    trailing={formatCurrency(suggestion.procedure.baseCost)}
                     onClick={() =>
                       handleAddProcedure(
                         suggestion.procedure,
                         suggestion.surfaces,
                       )
                     }
-                  >
-                    <Plus className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">
-                        {suggestion.procedure.name}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {suggestion.reason}
-                      </p>
-                    </div>
-                    <span className="text-xs font-semibold whitespace-nowrap tabular-nums">
-                      {formatCurrency(suggestion.procedure.baseCost)}
-                    </span>
-                  </div>
+                  />
                 ))}
               </div>
-            </Card>
+            </SidebarPanel>
           )}
 
           {/* ICDAS template suggestions */}
           {maxIcdasScore !== null && (
-            <Card className="p-3 shadow-sm">
-              <button
-                className="w-full flex items-center justify-between text-left"
-                onClick={() => setIcdasSectionOpen(!icdasSectionOpen)}
-              >
-                <Label
-                  className={`${ODONTOGRAM_FIELD_LABEL_CLASS} cursor-pointer`}
-                >
-                  <Sparkles className="w-3 h-3 inline mr-1 text-amber-600 dark:text-amber-300" />
-                  Plantillas ICDAS · {maxIcdasScore}
-                </Label>
-                {icdasSectionOpen ? (
-                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                )}
-              </button>
-
+            <SidebarPanel
+              icon={
+                <Sparkles className="w-3 h-3 inline mr-1 text-amber-700 dark:text-amber-300" />
+              }
+              title={`Plantillas ICDAS · ${maxIcdasScore}`}
+              collapsible={{
+                open: icdasSectionOpen,
+                onToggle: () => setIcdasSectionOpen(!icdasSectionOpen),
+              }}
+            >
               {icdasSectionOpen && (
                 <div className="space-y-1.5 mt-2">
                   {icdasLoading && (
-                    <p className="text-xs text-muted-foreground py-2">
-                      Cargando…
-                    </p>
+                    <p className="text-xs text-subtle py-2">Cargando…</p>
                   )}
                   {!icdasLoading && icdasTemplateSuggestions.length === 0 && (
-                    <p className="text-xs text-muted-foreground py-1">
+                    <p className="text-xs text-subtle py-1">
                       Sin plantillas para ICDAS {maxIcdasScore}.
                     </p>
                   )}
@@ -858,13 +972,13 @@ export function PlanTab({
                           </p>
                           <Badge
                             variant="outline"
-                            className="text-[10px] border-amber-400/25 text-amber-600 dark:text-amber-300"
+                            className="text-[10px] border-amber-400/25 text-amber-700 dark:text-amber-300"
                           >
                             P{suggestion.priority}
                           </Badge>
                         </div>
                         {suggestion.templateDescription && (
-                          <p className="text-[10px] text-muted-foreground mb-1.5">
+                          <p className="text-[10px] text-subtle mb-1.5">
                             {suggestion.templateDescription}
                           </p>
                         )}
@@ -890,7 +1004,7 @@ export function PlanTab({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="w-full text-xs h-7 border-amber-400/25 text-amber-600 dark:text-amber-300 hover:bg-amber-500/10 bg-transparent"
+                          className="w-full text-xs h-7 border-amber-400/25 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 bg-transparent"
                           onClick={() =>
                             handleApplyIcdasTemplate(
                               suggestion.templateName,
@@ -908,48 +1022,36 @@ export function PlanTab({
                   })}
                 </div>
               )}
-            </Card>
+            </SidebarPanel>
           )}
 
           {/* Pre-built templates */}
           {PROCEDURE_TEMPLATES.length > 0 && (
-            <Card className="p-3 shadow-sm">
-              <Label className={`${ODONTOGRAM_FIELD_LABEL_CLASS} mb-2 block`}>
-                <Package className="w-3 h-3 inline mr-1" />
-                Plantillas
-              </Label>
+            <SidebarPanel
+              icon={<Package className="w-3 h-3 inline mr-1" />}
+              title="Plantillas"
+            >
               <div className="space-y-1.5">
                 {PROCEDURE_TEMPLATES.map((template) => (
-                  <div
+                  <PickerRow
                     key={template.id}
-                    className="flex items-center gap-2 p-2 rounded-md border bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                    title={template.name}
+                    subtitle={template.description}
                     onClick={() => handleAddTemplate(template.id)}
-                  >
-                    <Plus className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">
-                        {template.name}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {template.description}
-                      </p>
-                    </div>
-                  </div>
+                  />
                 ))}
               </div>
-            </Card>
+            </SidebarPanel>
           )}
 
           {/* Catalog search */}
-          <Card className="p-3 shadow-sm">
-            <Label className={`${ODONTOGRAM_FIELD_LABEL_CLASS} mb-2 block`}>
-              <Search className="w-3 h-3 inline mr-1" />
-              Catálogo
-            </Label>
-
+          <SidebarPanel
+            icon={<Search className="w-3 h-3 inline mr-1" />}
+            title="Catálogo"
+          >
             {/* Search */}
             <div className="relative mb-2">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-subtle" />
               <OdontogramInput
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -977,19 +1079,16 @@ export function PlanTab({
                   key={cat}
                   variant={selectedCategory === cat ? "default" : "outline"}
                   className="cursor-pointer text-[10px] px-2 py-0.5"
-                  style={
-                    selectedCategory === cat
-                      ? {
-                          backgroundColor: PROCEDURE_CATEGORY_COLORS[cat],
-                          borderColor: PROCEDURE_CATEGORY_COLORS[cat],
-                        }
-                      : {
-                          borderColor: PROCEDURE_CATEGORY_COLORS[cat],
-                          color: PROCEDURE_CATEGORY_COLORS[cat],
-                        }
-                  }
                   onClick={() => setSelectedCategory(cat)}
                 >
+                  {/* El hex de categoría se queda como PUNTO de identidad: teñir
+                      el chip entero (fondo, borde y texto) daba un contraste no
+                      verificable y sin variante oscura. */}
+                  <span
+                    aria-hidden
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: PROCEDURE_CATEGORY_COLORS[cat] }}
+                  />
                   {label}
                 </Badge>
               ))}
@@ -998,30 +1097,21 @@ export function PlanTab({
             {/* Procedure list */}
             <div className="space-y-1 max-h-[220px] overflow-y-auto">
               {filteredCatalog.map((procedure) => (
-                <div
+                <PickerRow
                   key={procedure.id}
-                  className="flex items-center gap-2 p-2 rounded-md border hover:bg-muted/30 transition-colors cursor-pointer"
+                  title={procedure.name}
+                  titleAdornment={
+                    procedure.isFavorite ? (
+                      <Star className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
+                    ) : undefined
+                  }
+                  subtitle={`${procedure.estimatedDuration} min · ${formatCurrency(procedure.baseCost)}`}
+                  subtitleClassName="tabular-nums"
                   onClick={() => handleAddProcedure(procedure)}
-                >
-                  <Plus className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-xs font-medium truncate">
-                        {procedure.name}
-                      </p>
-                      {procedure.isFavorite && (
-                        <Star className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
-                      )}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground tabular-nums">
-                      {procedure.estimatedDuration} min ·{" "}
-                      {formatCurrency(procedure.baseCost)}
-                    </p>
-                  </div>
-                </div>
+                />
               ))}
             </div>
-          </Card>
+          </SidebarPanel>
         </div>
       </div>
     </div>

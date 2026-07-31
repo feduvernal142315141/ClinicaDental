@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { OdontogramCheckbox } from "@/components/odontogram/ui";
+import { StatusBadge } from "@/components/ui";
+import { OdontogramCheckbox, RISK_TONE } from "@/components/odontogram/ui";
 import { OdontogramEmptyState } from "./ui/OdontogramEmptyState";
 import {
   ArrowRight,
@@ -55,13 +56,6 @@ interface TimelineItem {
 
 const PERFORMED_ID_PREFIX = "performed:";
 
-function getRiskColor(risk: PatientRiskLevel) {
-  if (risk === "bajo")
-    return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300";
-  if (risk === "medio")
-    return "bg-amber-500/15 text-amber-600 dark:text-amber-300";
-  return "bg-rose-500/15 text-rose-600 dark:text-rose-300";
-}
 
 /**
  * Abreviatura clínica de una celda. La inicial del código NO sirve desde el
@@ -571,13 +565,12 @@ export function PerformedTab({
         </div>
 
         <div className="flex flex-wrap gap-2 lg:justify-end">
-          <Badge
-            variant="outline"
-            className={getRiskColor(patientRisk)}
+          <StatusBadge
+            tone={RISK_TONE[patientRisk]}
             title={patientRiskReasons?.join(" · ")}
           >
             Riesgo: {patientRisk.charAt(0).toUpperCase() + patientRisk.slice(1)}
-          </Badge>
+          </StatusBadge>
           <Badge variant="outline" className="bg-elevated text-xs">
             {GLOBAL_STATUS_LABELS[tooth.globalStatus]}
           </Badge>
