@@ -616,7 +616,16 @@ export function SurfacesTab({
                   onClick={() => handleToggleZone(facialCells)}
                   disabled={isDisabled}
                 >
-                  {ToothTypeService.getSurfaceLabel(tooth.number, "facial").full}
+                  {/* "completa" NO es decorativo: como sus hermanos Mesial y
+                      Distal, este atajo marca la cara en TODAS las vistas que
+                      el diente tenga. En un posterior eso incluye la vertiente
+                      bucal de la mesa oclusal, así que el botón etiquetado solo
+                      "Vestibular" pintaba también el cuadro Oclusal y parecía
+                      que la marca se cruzaba de cara. Marcar una superficie que
+                      no se ha explorado es una afirmación clínica falsa: el
+                      atajo tiene que anunciar su alcance. */}
+                  {ToothTypeService.getSurfaceLabel(tooth.number, "facial").full}{" "}
+                  completa
                 </Button>
               )}
               {lingualCells.length > 0 && (
