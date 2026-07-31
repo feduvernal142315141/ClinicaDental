@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils/utils";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/contexts/auth-context";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
 import { useSidebarNavigation } from "@/lib/hooks/use-sidebar-navigation";
 import { SidebarSection } from "@/components/ui/atomic/navigation/sidebar-section";
@@ -25,11 +24,10 @@ export function Sidebar({
   isCollapsed = false,
   onToggleCollapse,
 }: SidebarProps) {
-  const { user } = useAuth();
   const { name: clinicName, logoUrl } = useClinicBranding();
   const router = useRouter();
   const { mainMenuItems, secondaryMenuItems, isActiveRoute } =
-    useSidebarNavigation(user?.roleName);
+    useSidebarNavigation();
   const [openGroups, setOpenGroups] = useState<string[]>([]);
 
   const handleNavigation = (path: string) => {
@@ -49,6 +47,9 @@ export function Sidebar({
 
   const renderItem = (item: (typeof mainMenuItems)[number]) => {
     if (item.children?.length) {
+      // En una constante local: el estrechamiento de `item.children?.length` se
+      // pierde dentro de los closures de los handlers.
+      const children = item.children;
       const open = isGroupOpen(item);
       const parentActive = isActiveRoute(currentPath, item.path);
       const submenuId = `submenu-${item.path}`;
@@ -62,7 +63,14 @@ export function Sidebar({
             isActive={parentActive && (isCollapsed || !open)}
             isCollapsed={isCollapsed}
             onClick={() =>
-              isCollapsed ? handleNavigation(item.path) : toggleGroup(item.path)
+              isCollapsed
+                ? // Colapsada, el grupo navega. Se va al PRIMER HIJO VISIBLE, no
+                  // a `item.path`: ese path solo existe para resaltar el grupo
+                  // activo y no está respaldado por ningún permiso — "/settings"
+                  // redirige a "/settings/general", que un rol con acceso
+                  // limitado a Configuración no tiene por qué poder ver.
+                  handleNavigation(children[0].path)
+                : toggleGroup(item.path)
             }
           />
           {/* Submenú siempre montado: colapsa con el truco grid 0fr → 1fr

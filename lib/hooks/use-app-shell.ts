@@ -24,13 +24,15 @@ export function useAppShell() {
   // Check if current route is public (no shell needed)
   const isPublic = isPublicRoute(pathname);
 
-  // Get user information with fallbacks
-  const userRole = user?.roleName || "admin";
+  // Get user information with fallbacks.
+  // `userRole` NO lleva fallback a "admin": mientras la sesión hidrata el shell
+  // no debe asumir el rol con más privilegios.
+  const userRole = user?.roleName ?? "";
   const userName = user?.email?.split("@")[0] || "Usuario";
   const userEmail = user?.email || "";
 
-  // Get navigation items based on user role
-  const { mainMenuItems, secondaryMenuItems } = useSidebarNavigation(userRole);
+  // Navegación derivada de permisos (no del nombre del rol).
+  const { mainMenuItems, secondaryMenuItems } = useSidebarNavigation();
 
   /**
    * Navigate to a specific path

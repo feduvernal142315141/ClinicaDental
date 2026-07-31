@@ -1,10 +1,10 @@
+"use client";
+
+import { useMemo } from "react";
 import {
   Calendar,
   Users,
   Settings,
-  Stethoscope,
-  UserCheck,
-  ClipboardList,
   LayoutDashboard,
   Sliders,
   UserCog,
@@ -14,6 +14,8 @@ import {
   IdCard,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
+import { usePermission } from "./use-permission";
+import { PermissionAction } from "@/lib/permissions/permission-actions";
 
 export interface MenuItem {
   path: string;
@@ -27,81 +29,94 @@ export interface MenuGroups {
   secondary: MenuItem[];
 }
 
-type UserRole = "admin" | "doctor" | "patient";
+/**
+ * Navegación lateral derivada de PERMISOS, no del nombre del rol.
+ *
+ * Antes el menú se armaba con un `switch` sobre "admin" | "doctor" | "patient".
+ * Como `normalizeRoleName` (auth-context) colapsa cualquier rol desconocido a
+ * "doctor", a un rol a medida (asistente, recepción…) se le pintaba el menú de
+ * doctor — Dashboard incluido — y al abrirlo el backend respondía 403 porque su
+ * rol no tiene `reports`. Ahora cada entrada declara el módulo de permiso que
+ * exige su pantalla, tomado de los `@PreAuthorize` del backend:
+ *
+ * | Ruta                  | Permiso backend                                    |
+ * |-----------------------|----------------------------------------------------|
+ * | /dashboard            | `reports`         (DashboardController)             |
+ * | /patients             | `patients`        (PatientController)               |
+ * | /appointments         | `appointments`    (AppointmentController)           |
+ * | /settings/general     | `general_option`  (ClinicGeneralSettingsController)  |
+ * | /settings/doctors     | `doctor`          (DoctorController)                |
+ * | /settings/user-types  | `doctor`          (UserTypeController)               |
+ * | /settings/roles       | `role`            (RoleController)                  |
+ * | /settings/services    | `service`         (ServiceController)               |
+ * | /settings/labels      | `appointments`    (LabelController)                 |
+ *
+ * Esto solo OCULTA opciones: quien decide sigue siendo el backend.
+ */
+export function useSidebarNavigation() {
+  const { can, isAdmin } = usePermission();
 
-export function useSidebarNavigation(userRole?: string) {
-  const normalizedRole = (userRole ?? "").trim().toLowerCase();
+  return useMemo(() => {
+    /**
+     * El backend concede la autoridad del módulo (p. ej. `patients`) cuando el
+     * rol tiene ese módulo con CUALQUIER acción, sin mirar el bitmask. Aquí se
+     * replica con el mismo OR de las cuatro acciones que ya usa la página de
+     * citas.
+     */
+    const hasModule = (moduleKey: string): boolean =>
+      isAdmin ||
+      can(moduleKey, PermissionAction.CREATE) ||
+      can(moduleKey, PermissionAction.EDIT) ||
+      can(moduleKey, PermissionAction.DELETE) ||
+      can(moduleKey, PermissionAction.BLOCK);
 
-  const getMenuGroups = (): MenuGroups => {
-    const secondaryItems: MenuItem[] = [];
+    const settingsChildren: MenuItem[] = (
+      [
+        { path: "/settings/general", label: "Opciones Generales", icon: Sliders, module: "general_option" },
+        { path: "/settings/doctors", label: "Usuarios", icon: UserCog, module: "doctor" },
+        { path: "/settings/user-types", label: "Tipos de usuario", icon: IdCard, module: "doctor" },
+        { path: "/settings/roles", label: "Roles", icon: Shield, module: "role" },
+        // MVP: notificaciones e integraciones ocultas hasta post-MVP
+        { path: "/settings/services", label: "Servicios", icon: Briefcase, module: "service" },
+        { path: "/settings/labels", label: "Etiquetas", icon: Tag, module: "appointments" },
+      ] satisfies (MenuItem & { module: string })[]
+    )
+      .filter((item) => hasModule(item.module))
+      .map(({ path, label, icon }) => ({ path, label, icon }));
 
-    const settingsChildren: MenuItem[] = [
-      { path: "/settings/general", label: "Opciones Generales", icon: Sliders },
-      { path: "/settings/doctors", label: "Usuarios", icon: UserCog },
-      { path: "/settings/user-types", label: "Tipos de usuario", icon: IdCard },
-      { path: "/settings/roles", label: "Roles", icon: Shield },
-      // MVP: notifications and integrations hidden until post-MVP
-      // { path: "/settings/notifications", label: "Notificaciones", icon: Bell },
-      // { path: "/settings/integrations", label: "Integraciones", icon: Link },
-      { path: "/settings/services", label: "Servicios", icon: Briefcase },
-      { path: "/settings/labels", label: "Etiquetas", icon: Tag },
-    ];
+    const main: MenuItem[] = [];
 
-    switch (normalizedRole as UserRole) {
-      case "admin":
-        return {
-          main: [
-            { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-            { path: "/patients", label: "Pacientes", icon: Users },
-            { path: "/appointments", label: "Citas", icon: Calendar },
-            // MVP: campaigns and templates hidden until post-MVP
-            // { path: "/campaigns", label: "Campañas", icon: BookImage },
-            // { path: "/template-demo", label: "Templates", icon: FileText },
-            {
-              path: "/settings",
-              label: "Configuración",
-              icon: Settings,
-              children: settingsChildren,
-            },
-          ],
-          secondary: secondaryItems,
-        };
-      case "doctor":
-        return {
-          main: [
-            { path: "/dashboard", label: "Dashboard", icon: Stethoscope },
-            { path: "/appointments", label: "Mis Citas", icon: Calendar },
-            { path: "/patients", label: "Pacientes", icon: UserCheck },
-          ],
-          secondary: secondaryItems,
-        };
-      case "patient":
-        return {
-          main: [
-            { path: "/dashboard", label: "Dashboard", icon: UserCheck },
-            { path: "/my-appointments", label: "Mis Citas", icon: Calendar },
-            { path: "/history", label: "Historial", icon: ClipboardList },
-          ],
-          secondary: secondaryItems,
-        };
-      default:
-        return { main: [], secondary: [] };
+    if (hasModule("reports")) {
+      main.push({ path: "/dashboard", label: "Dashboard", icon: LayoutDashboard });
     }
-  };
-
-  const isActiveRoute = (currentPath: string, itemPath: string): boolean => {
-    if (!currentPath) return false;
-    if (itemPath === "/") {
-      return currentPath === "/";
+    if (hasModule("patients")) {
+      main.push({ path: "/patients", label: "Pacientes", icon: Users });
     }
-    return currentPath.startsWith(itemPath);
-  };
+    if (hasModule("appointments")) {
+      main.push({ path: "/appointments", label: "Citas", icon: Calendar });
+    }
+    // El grupo Configuración solo aparece si le queda algún hijo visible.
+    if (settingsChildren.length > 0) {
+      main.push({
+        path: "/settings",
+        label: "Configuración",
+        icon: Settings,
+        children: settingsChildren,
+      });
+    }
 
-  const menuGroups = getMenuGroups();
+    const isActiveRoute = (currentPath: string, itemPath: string): boolean => {
+      if (!currentPath) return false;
+      if (itemPath === "/") {
+        return currentPath === "/";
+      }
+      return currentPath.startsWith(itemPath);
+    };
 
-  return {
-    mainMenuItems: menuGroups.main,
-    secondaryMenuItems: menuGroups.secondary,
-    isActiveRoute,
-  };
+    return {
+      mainMenuItems: main,
+      secondaryMenuItems: [] as MenuItem[],
+      isActiveRoute,
+    };
+  }, [can, isAdmin]);
 }

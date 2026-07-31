@@ -11,7 +11,6 @@ import {
   CommandGroup,
   CommandItem,
 } from "@/components/ui/primitives/shadcn/command";
-import { useAuth } from "@/lib/contexts/auth-context";
 import {
   useSidebarNavigation,
   type MenuItem,
@@ -21,14 +20,13 @@ import { useTheme } from "@/lib/hooks/use-theme";
 /**
  * Command Palette global (⌘K / Ctrl+K).
  *
- * Navegación (respeta permisos vía `useSidebarNavigation(role)`), acciones
- * rápidas y cambio de tema. Tendencia 2026: flujos orientados al teclado.
+ * Navegación (respeta permisos vía `useSidebarNavigation()`), acciones rápidas
+ * y cambio de tema. Tendencia 2026: flujos orientados al teclado.
  */
 export function CommandPalette() {
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
-  const { user } = useAuth();
-  const { mainMenuItems } = useSidebarNavigation(user?.roleName);
+  const { mainMenuItems } = useSidebarNavigation();
   const { resolvedTheme, setTheme } = useTheme();
 
   React.useEffect(() => {
@@ -61,6 +59,13 @@ export function CommandPalette() {
 
   const isDark = resolvedTheme === "dark";
 
+  // Las acciones rápidas siguen al menú: si la sección no está disponible para
+  // el rol, tampoco se ofrece el atajo para crear dentro de ella.
+  const canReach = (path: string) =>
+    mainMenuItems.some((item) => item.path === path);
+  const showNewAppointment = canReach("/appointments");
+  const showNewPatient = canReach("/patients");
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput placeholder="Buscar o ejecutar una acción…" />
@@ -80,22 +85,28 @@ export function CommandPalette() {
           ))}
         </CommandGroup>
 
-        <CommandGroup heading="Acciones rápidas">
-          <CommandItem
-            value="Nueva cita"
-            onSelect={() => go("/appointments/new")}
-          >
-            <CalendarPlus className="mr-2 h-4 w-4" />
-            Nueva cita
-          </CommandItem>
-          <CommandItem
-            value="Nuevo paciente"
-            onSelect={() => go("/patients/new")}
-          >
-            <UserPlus className="mr-2 h-4 w-4" />
-            Nuevo paciente
-          </CommandItem>
-        </CommandGroup>
+        {(showNewAppointment || showNewPatient) && (
+          <CommandGroup heading="Acciones rápidas">
+            {showNewAppointment && (
+              <CommandItem
+                value="Nueva cita"
+                onSelect={() => go("/appointments/new")}
+              >
+                <CalendarPlus className="mr-2 h-4 w-4" />
+                Nueva cita
+              </CommandItem>
+            )}
+            {showNewPatient && (
+              <CommandItem
+                value="Nuevo paciente"
+                onSelect={() => go("/patients/new")}
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Nuevo paciente
+              </CommandItem>
+            )}
+          </CommandGroup>
+        )}
 
         <CommandGroup heading="Apariencia">
           <CommandItem

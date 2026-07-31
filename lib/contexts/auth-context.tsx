@@ -40,7 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof rawRole !== "string") return "doctor";
     const normalized = rawRole.trim().toLowerCase();
 
-    if (normalized.includes("admin")) return "admin";
+    // Coincidencia EXACTA con los dos nombres que el backend reconoce como
+    // administrador (PermissionAuthorizationFilter / JwtAuthorizationFilter).
+    // Con `includes("admin")` un rol a medida como "Administrativo" se colaba
+    // como admin y `usePermission` le concedía TODO en la UI, aunque el backend
+    // luego respondiera 403 en cada pantalla.
+    if (normalized === "admin" || normalized === "administrador") return "admin";
     if (normalized.includes("doctor")) return "doctor";
     if (normalized.includes("patient")) return "patient";
 
