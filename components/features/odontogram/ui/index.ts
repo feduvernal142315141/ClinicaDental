@@ -58,3 +58,5 @@ export { ToothStatusChips } from "./ToothStatusChips";
 export { OdontogramVisitContextBar } from "./OdontogramVisitContextBar";
 export { OdontogramHistoricFrame } from "./OdontogramHistoricFrame";
 export { VisitPickerRow } from "./VisitPickerRow";
+
+export { RISK_TONE } from "./risk-tone";

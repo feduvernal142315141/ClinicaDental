@@ -50,6 +50,7 @@ export {
 } from "./atomic/data-display/status-badge";
 export type {
   StatusBadgeProps,
+  StatusBadgeTone,
   ActiveBadgeProps,
 } from "./atomic/data-display/status-badge";
 export {
