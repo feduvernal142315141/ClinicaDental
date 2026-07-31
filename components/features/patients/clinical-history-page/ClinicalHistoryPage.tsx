@@ -8,6 +8,8 @@ import {
   TabsContent,
 } from "@/components/ui/primitives/shadcn/tabs";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
+import { cn } from "@/lib/utils/utils";
+import { SECTION_LABEL_CLASS } from "./section-label";
 import { PatientInfoColumn } from "./PatientInfoColumn";
 import { MedicalAntecedentsColumn } from "./MedicalAntecedentsColumn";
 import { VisitTimeline } from "./VisitTimeline";
@@ -167,21 +169,32 @@ export function ClinicalHistoryPage({
           value="historia-clinica"
           className="flex-1 min-h-0 mt-2 overflow-auto"
         >
-          {/* ── Etiquetas de sección — ayudan a escanear el layout ────── */}
-          <div className="grid grid-cols-[280px_1fr_300px] gap-6 pb-2 shrink-0 px-0.5">
-            <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest select-none">
+          {/* ── Etiquetas de sección — ayudan a escanear el layout ──────
+              Solo desde `lg`: son cabeceras DE COLUMNA, y en una sola columna
+              quedarían separadas del bloque que rotulan. Cada columna trae sus
+              propios títulos. */}
+          <div className="hidden lg:grid grid-cols-[280px_1fr_300px] gap-6 pb-2 shrink-0 px-0.5">
+            <p className={cn(SECTION_LABEL_CLASS, "select-none")}>
               Perfil · Adjuntos
             </p>
-            <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest select-none pl-4">
+            <p className={cn(SECTION_LABEL_CLASS, "select-none pl-4")}>
               Anamnesis · Plan de Tratamiento · Evolución / Notas
             </p>
-            <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest select-none pl-3">
+            <p className={cn(SECTION_LABEL_CLASS, "select-none pl-3")}>
               Cronología de visitas
             </p>
           </div>
 
-          {/* ── Layout de 3 columnas ─────────────────────────────────── */}
-          <div className="overflow-x-auto grid gap-6 h-full min-h-0 grid-cols-[280px_1fr_300px]">
+          {/* ── Layout de 3 columnas ─────────────────────────────────────
+              Las tres columnas son FIJAS (280 / 1fr / 300) solo desde `lg`.
+              Sin ese corte, en pantallas estrechas la del medio se estrujaba a
+              unos pocos píxeles y el navegador partía el texto letra por letra
+              en vertical. Mismo patrón que ya usa la pestaña Workspace de este
+              archivo (`grid-cols-1 lg:grid-cols-[350px_1fr]`).
+              `h-full`/`min-h-0`/`overflow-x-auto` también se acotan a `lg`: en
+              apilado el alto lo manda el contenido y el scroll es el vertical
+              del propio TabsContent. */}
+          <div className="grid grid-cols-1 gap-6 lg:h-full lg:min-h-0 lg:grid-cols-[280px_1fr_300px] lg:overflow-x-auto">
             {/* Columna 1: Perfil + Adjuntos */}
             {snapshotLoading ? (
               <div className="flex h-40 items-center justify-center">

@@ -1,8 +1,17 @@
 "use client";
 
 import { AlertTriangle, Edit } from "lucide-react";
-import { Badge } from "@/components/ui/atomic/data-display/badge";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  StatusBadge,
+  type StatusBadgeTone,
+} from "@/components/ui";
 import { ClinicalNotesEditor } from "@/components/features/clinical-history/notes/ClinicalNotesEditor";
+import { cn } from "@/lib/utils/utils";
+import { SECTION_LABEL_CLASS } from "./section-label";
 import { TreatmentPlansPendingSection } from "./TreatmentPlansPendingSection";
 import type {
   ClinicalHistoryMedicalHistory,
@@ -31,62 +40,52 @@ function TreatmentStatusOverview({
 }: {
   counts: TreatmentStatusCounts;
 }) {
-  const items: { label: string; value: number; className: string }[] = [
-    {
-      label: "Pendientes",
-      value: counts.pendiente,
-      className:
-        "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-700/60 dark:bg-amber-900/25 dark:text-amber-300",
-    },
-    {
-      label: "En curso",
-      value: counts.enCurso,
-      className:
-        "border-sky-300 bg-sky-100 text-sky-700 dark:border-sky-700/60 dark:bg-sky-900/25 dark:text-sky-300",
-    },
-    {
-      label: "Completados",
-      value: counts.completado,
-      className:
-        "border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-900/25 dark:text-emerald-300",
-    },
+  const items: { label: string; value: number; tone: StatusBadgeTone }[] = [
+    { label: "Pendientes", value: counts.pendiente, tone: "warning" },
+    { label: "En curso", value: counts.enCurso, tone: "progress" },
+    { label: "Completados", value: counts.completado, tone: "success" },
   ];
+
+  // Los cancelados solo se listan cuando los hay (mismo criterio que antes).
+  if (counts.cancelado > 0) {
+    items.push({
+      label: "Cancelados",
+      value: counts.cancelado,
+      tone: "neutral",
+    });
+  }
 
   if (counts.total === 0) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-5 pt-4">
       {items.map((item) => (
-        <Badge
-          key={item.label}
-          variant="outline"
-          className={`gap-1 ${item.className}`}
-        >
+        <StatusBadge key={item.label} tone={item.tone} className="gap-1">
           <span className="font-bold tabular-nums">{item.value}</span>
           {item.label}
-        </Badge>
+        </StatusBadge>
       ))}
-      {counts.cancelado > 0 && (
-        <Badge
-          variant="outline"
-          className="gap-1 border-slate-300 bg-slate-100 text-slate-600 dark:border-slate-700/60 dark:bg-slate-900/25 dark:text-slate-300"
-        >
-          <span className="font-bold tabular-nums">{counts.cancelado}</span>
-          Cancelados
-        </Badge>
-      )}
     </div>
   );
 }
 
-/** Mapea el color semántico de una alerta clínica a clases Tailwind con contraste WCAG AA. */
-function alertBadgeClass(color: string): string {
-  if (color === "red")
-    return "border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-700/60 dark:bg-rose-900/25 dark:text-rose-300";
-  if (color === "orange")
-    return "border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-700/60 dark:bg-amber-900/25 dark:text-amber-300";
-  return "border-sky-300 bg-sky-100 text-sky-700 dark:border-sky-700/60 dark:bg-sky-900/25 dark:text-sky-300";
-}
+/**
+ * Color de la alerta clínica → tono del pill del sistema.
+ *
+ * Las claves siguen siendo el vocabulario antd (`red`/`orange`/`blue`) porque
+ * es lo que emite `ALERT_SEVERITY_COLORS`, todavía consumido por el cluster
+ * antd heredado. Aquí se traduce una sola vez a los tonos del sistema en lugar
+ * de reescribir la paleta a mano.
+ */
+const ALERT_TONE: Record<string, StatusBadgeTone> = {
+  red: "danger",
+  orange: "warning",
+  // `progress` (sky) y NO `info`: `info` es el color de MARCA, se lee como
+  // elemento pulsable y es el único tono sin rampa `dark:` propia (depende de
+  // que `--brand` invierta, y en oscuro se queda en ~4,1:1). `progress`
+  // conserva la familia cromática original (sky) y sí trae `dark:text-sky-300`.
+  blue: "progress",
+};
 
 function AntecedentItem({
   label,
@@ -99,9 +98,7 @@ function AntecedentItem({
 }) {
   return (
     <div>
-      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
-        {label}
-      </label>
+      <label className={cn(SECTION_LABEL_CLASS, "block mb-1")}>{label}</label>
       <p className="text-sm text-foreground">
         {items?.length ? items.join(", ") : empty}
       </p>
@@ -135,45 +132,43 @@ export function MedicalAntecedentsColumn({
     <div className="flex flex-col h-full overflow-y-auto px-4 gap-4">
       {/* Alertas — banner al tope */}
       {alertBadges.length > 0 && (
-        <div className="py-3 rounded-md bg-rose-500/15 border border-rose-400/25 px-3 mt-3">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-            <p className="text-xs font-semibold text-destructive uppercase tracking-wide">
-              Alertas
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+        // Contenedor NEUTRO a propósito: la severidad la lleva cada pill, que
+        // ya viene en rojo/ámbar/azul. Un `variant="destructive"` sumaría su
+        // tinte al del pill (dos capas al 15% sobre el mismo fondo) y hundiría
+        // el texto ámbar a ~2,2:1, muy por debajo del mínimo AA — además de
+        // pintar de rojo alertas que son informativas.
+        <Alert live={false} className="mt-3">
+          <AlertTriangle />
+          <AlertTitle>Alertas</AlertTitle>
+          <AlertDescription className="flex flex-row flex-wrap gap-2">
             {alertBadges.map((alert) => (
-              <Badge
+              <StatusBadge
                 key={alert.id}
-                className={alertBadgeClass(alert.color)}
+                tone={ALERT_TONE[alert.color] ?? "neutral"}
               >
                 {alert.message}
-              </Badge>
+              </StatusBadge>
             ))}
-          </div>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Antecedentes */}
-      <section className="bento p-6">
+      <section className="bento shrink-0 p-6">
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+            <h3 className={cn(SECTION_LABEL_CLASS, "mb-1")}>
               Antecedentes Médicos
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-subtle">
               Información general y clínica del paciente
             </p>
           </div>
           {canEdit && (
-            <button
-              onClick={() => onEditClick?.()}
-              className="flex items-center gap-2 px-4 py-2 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-strong transition-colors whitespace-nowrap"
-            >
+            <Button onClick={() => onEditClick?.()}>
               <Edit className="h-4 w-4" />
               Editar historia clínica
-            </button>
+            </Button>
           )}
         </div>
 
@@ -190,11 +185,16 @@ export function MedicalAntecedentsColumn({
       </section>
 
       {/* Planes de tratamiento */}
-      <section className="bento overflow-hidden">
+      {/* `shrink-0` en las tres secciones: el contenedor de la columna es
+          `flex flex-col h-full overflow-y-auto`, así que por defecto sus hijos
+          se COMPRIMEN cuando el contenido no cabe. En esta sección, además,
+          `overflow-hidden` convertía esa compresión en un RECORTE: la tarjeta
+          del plan se cortaba por abajo y "3 tratamientos" quedaba a medias.
+          Con `shrink-0` cada bloque conserva su alto natural y el scroll lo
+          hace la columna, que es lo que ya estaba preparado para ello. */}
+      <section className="bento shrink-0 overflow-hidden">
         <div className="px-5 py-4 border-b border-hairline">
-          <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-            Planes de Tratamiento
-          </h3>
+          <h3 className={SECTION_LABEL_CLASS}>Planes de Tratamiento</h3>
         </div>
         {/* Resumen de estados (conteos por estado de avance) */}
         <TreatmentStatusOverview counts={planCounts} />
@@ -208,8 +208,8 @@ export function MedicalAntecedentsColumn({
       </section>
 
       {/* Notas de historial */}
-      <section className="bento p-6">
-        <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
+      <section className="bento shrink-0 p-6">
+        <h3 className={cn(SECTION_LABEL_CLASS, "mb-4")}>
           Notas permanentes del paciente
         </h3>
         <ClinicalNotesEditor
