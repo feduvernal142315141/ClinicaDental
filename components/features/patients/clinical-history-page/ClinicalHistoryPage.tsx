@@ -191,10 +191,12 @@ export function ClinicalHistoryPage({
               unos pocos píxeles y el navegador partía el texto letra por letra
               en vertical. Mismo patrón que ya usa la pestaña Workspace de este
               archivo (`grid-cols-1 lg:grid-cols-[350px_1fr]`).
-              `h-full`/`min-h-0`/`overflow-x-auto` también se acotan a `lg`: en
-              apilado el alto lo manda el contenido y el scroll es el vertical
-              del propio TabsContent. */}
-          <div className="grid grid-cols-1 gap-6 lg:h-full lg:min-h-0 lg:grid-cols-[280px_1fr_300px] lg:overflow-x-auto">
+              El grid NO impone alto: antes cada columna era `h-full` con su
+              propio `overflow-y-auto` y la vista mostraba TRES barras de scroll
+              a la vez. Ahora las columnas crecen con su contenido, `items-start`
+              evita que se estiren a la altura de la más larga, y la ÚNICA
+              superficie que scrollea es este TabsContent. */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr_300px] lg:items-start">
             {/* Columna 1: Perfil + Adjuntos */}
             {snapshotLoading ? (
               <div className="flex h-40 items-center justify-center">

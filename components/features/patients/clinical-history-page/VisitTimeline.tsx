@@ -163,7 +163,7 @@ export function VisitTimeline({
   const canNewConsultation = !!onNewConsultation;
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto gap-3">
+    <div className="flex flex-col gap-3">
       {/* ── CTA: continuar o nueva consulta ─────────────────────────────── */}
       <button
         type="button"
@@ -186,7 +186,7 @@ export function VisitTimeline({
       </button>
 
       {/* ── Cronología ──────────────────────────────────────────────────── */}
-      <section className="bento overflow-hidden flex-1 min-h-0 flex flex-col">
+      <section className="bento overflow-hidden">
         <div className="px-5 py-3 border-b border-hairline shrink-0">
           <h3 className={SECTION_LABEL_CLASS}>Cronología de visitas</h3>
         </div>
@@ -203,7 +203,7 @@ export function VisitTimeline({
             <p className="text-sm text-subtle">Sin visitas registradas</p>
           </div>
         ) : (
-          <div className="overflow-y-auto flex-1 px-5 py-4">
+          <div className="px-5 py-4">
             <ul className="relative space-y-0" role="list">
               {sorted.map((appt, idx) => {
                 const cfg = getStatusConfig(appt.status);

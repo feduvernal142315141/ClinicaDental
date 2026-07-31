@@ -129,7 +129,7 @@ export function MedicalAntecedentsColumn({
   } = useTreatmentPlansPendingSection(patientId);
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto px-4 gap-4">
+    <div className="flex flex-col px-4 gap-4">
       {/* Alertas — banner al tope */}
       {alertBadges.length > 0 && (
         // Contenedor NEUTRO a propósito: la severidad la lleva cada pill, que
@@ -185,13 +185,11 @@ export function MedicalAntecedentsColumn({
       </section>
 
       {/* Planes de tratamiento */}
-      {/* `shrink-0` en las tres secciones: el contenedor de la columna es
-          `flex flex-col h-full overflow-y-auto`, así que por defecto sus hijos
-          se COMPRIMEN cuando el contenido no cabe. En esta sección, además,
-          `overflow-hidden` convertía esa compresión en un RECORTE: la tarjeta
-          del plan se cortaba por abajo y "3 tratamientos" quedaba a medias.
-          Con `shrink-0` cada bloque conserva su alto natural y el scroll lo
-          hace la columna, que es lo que ya estaba preparado para ello. */}
+      {/* `shrink-0` es defensivo: si algún día se vuelve a acotar el alto de
+          esta columna, sus hijos se comprimirían, y aquí `overflow-hidden`
+          convertiría esa compresión en un RECORTE — que es como se cortaba la
+          tarjeta del plan por abajo. Hoy la columna ya no limita el alto: la
+          página entera es la única superficie que scrollea. */}
       <section className="bento shrink-0 overflow-hidden">
         <div className="px-5 py-4 border-b border-hairline">
           <h3 className={SECTION_LABEL_CLASS}>Planes de Tratamiento</h3>
