@@ -275,6 +275,11 @@ export function useClinicalHistoryPage({
   useEffect(() => {
     if (!openFinalizeOnLoad || !isCurrentlyActiveConsultation) return;
 
+    // Mismo motivo que en `openFinalizeModal`: el modal solo existe dentro del
+    // Workspace. Al entrar por enlace con `openFinalizeOnLoad` la pestaña
+    // inicial por defecto es Historia Clínica, así que sin esto el modal se
+    // "abría" sobre una pestaña que no lo monta.
+    setActiveTab("workspace");
     setIsFinalizeModalOpen(true);
   }, [openFinalizeOnLoad, isCurrentlyActiveConsultation]);
 
@@ -399,6 +404,14 @@ export function useClinicalHistoryPage({
   }, []);
 
   const openFinalizeModal = useCallback(() => {
+    // El banner de consulta activa es de PÁGINA y su botón "Finalizar consulta"
+    // se ve desde cualquier pestaña, pero el modal de cierre se renderiza dentro
+    // del módulo del odontograma, que solo vive en el Workspace. Radix desmonta
+    // las pestañas inactivas, así que pulsarlo desde Historia Clínica encendía
+    // el estado y no pintaba nada: el botón parecía roto.
+    // Volver al Workspace además es lo coherente: el modal resume lo ejecutado
+    // en el odontograma, que es justo lo que esa pestaña muestra.
+    setActiveTab("workspace");
     setIsFinalizeModalOpen(true);
   }, []);
 
