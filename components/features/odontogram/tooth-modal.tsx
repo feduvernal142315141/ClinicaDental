@@ -188,6 +188,7 @@ export function ToothModal({
     updateToothDiagnosis,
     deleteClinicalEvent,
     clinicalEvents,
+    metadata,
     readOnly,
   } = useOdontogramStore();
   const odontogramConfirm = useOdontogramConfirm();
@@ -214,6 +215,10 @@ export function ToothModal({
   const [toothDiagnosis, setToothDiagnosis] = useState<ToothDiagnosis>();
   const [plans, setPlans] = useState<ProcedurePlan[]>([]);
   const [saveErrors, setSaveErrors] = useState<string[]>([]);
+  // Remonta la pestaña Superficies tras limpiar el diente: `SurfacesTab` solo se
+  // inicializa una vez por diente, así que vaciar el estado del padre no basta
+  // para que suelte su selección (y su barrida al guardar recrearía lo borrado).
+  const [surfacesResetKey, setSurfacesResetKey] = useState(0);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [schedulePlans, setSchedulePlans] = useState<ProcedurePlan[]>([]);
   const performedProcedures = useMemo(() => {
@@ -254,8 +259,34 @@ export function ToothModal({
       );
   }, [tooth, getToothEvents]);
   const surfaceStatesRef = useRef<SurfaceState[]>([]);
+  /**
+   * Caras marcadas EN CURSO en la pestaña Superficies: una plantilla recién
+   * aplicada solo vive en el estado del tab (y en `surfaceStatesRef`) hasta que
+   * se guarda. La ref no dispara render, así que sin este espejo en estado
+   * `markedSurfaces` solo veía lo persistido más `diagnoses`/`plans` —que solo
+   * escriben las pestañas Diagnóstico y Plan— y el camino principal de marcado
+   * no apagaba el chip «Sano» hasta pulsar Guardar.
+   */
+  const [pendingMarkedSurfaces, setPendingMarkedSurfaces] = useState<
+    Set<ToothSurface>
+  >(() => new Set());
   const handleSurfaceStatesChange = useCallback((states: SurfaceState[]) => {
     surfaceStatesRef.current = states;
+    // `healthy` no es una marca: es el estado por defecto de una cara recién
+    // seleccionada sobre la que aún no se ha dicho nada.
+    const next = new Set(
+      states
+        .filter((state) => state.status !== "healthy")
+        .map((state) => state.surface),
+    );
+    // Comparación por contenido: el tab reemite en cada cambio de selección y un
+    // Set nuevo por llamada provocaría renders en balde.
+    setPendingMarkedSurfaces((prev) =>
+      prev.size === next.size &&
+      Array.from(next).every((surface) => prev.has(surface))
+        ? prev
+        : next,
+    );
   }, []);
 
   const filterDiagnosesForSelectedSurfaces = useCallback(
@@ -322,6 +353,10 @@ export function ToothModal({
       setHasUnsavedChanges(false);
       setSaveErrors([]);
       setActiveTab("superficies");
+      // Las marcas en curso son de un diente concreto: al cambiar de pieza el
+      // tab reemite las suyas un commit después, y hasta entonces las anteriores
+      // apagarían el chip «Sano» de un diente que no las tiene.
+      setPendingMarkedSurfaces(new Set());
     }
 
     {
@@ -549,9 +584,135 @@ export function ToothModal({
     return getDesignedToothPaths(tooth.number, "frontal");
   }, [tooth]);
 
+  /**
+   * Caras del diente con una MARCA real: hallazgo con ICDAS > 0, plan o
+   * tratamiento. Se cuentan caras (no eventos) para no decirle al clínico que
+   * hay "3 marcas" cuando lo que hay es una lesión y su plan sobre la misma cara.
+   *
+   * Une lo persistido con lo que aún está en edición (`diagnoses`, `plans` y las
+   * caras marcadas en Superficies): "Sano" debe dejar de estar activo en el
+   * instante en que se marca algo, no al guardar. Es la señal de coherencia que
+   * faltaba — hasta ahora las únicas comprobaciones cubrían `absent`/`implant`,
+   * nunca `healthy`.
+   */
+  const markedSurfaces = useMemo(() => {
+    const marked = new Set<ToothSurface>();
+    if (!tooth) return marked;
+
+    getToothEvents(tooth.number).forEach((event) => {
+      if (event.status === "canceled") return;
+      if (event.surfaces.length === 0) return;
+      const isMark =
+        event.type === "performed" ||
+        event.type === "plan" ||
+        (event.type === "diagnosis" && (event.icdasScore ?? 0) > 0);
+      if (!isMark) return;
+      event.surfaces.forEach((surface) => marked.add(surface));
+    });
+
+    diagnoses.forEach((diagnosis, surface) => {
+      if (diagnosis.icdasScore > 0) marked.add(surface);
+    });
+    plans.forEach((plan) => plan.surfaces.forEach((s) => marked.add(s)));
+    pendingMarkedSurfaces.forEach((surface) => marked.add(surface));
+
+    return marked;
+    // `getToothEvents` es un closure estable del store (su identidad nunca
+    // cambia), así que la dependencia REAL de lo persistido es `clinicalEvents`:
+    // sin ella el conjunto quedaría obsoleto al borrar o añadir un evento.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    tooth,
+    getToothEvents,
+    clinicalEvents,
+    diagnoses,
+    plans,
+    pendingMarkedSurfaces,
+  ]);
+
   if (!tooth) return null;
 
+  /** Eventos del diente que constituyen una MARCA viva sobre una cara. */
+  const collectToothMarkEvents = () =>
+    getToothEvents(tooth.number).filter((event) => {
+      if (event.status === "canceled") return false;
+      if (event.surfaces.length === 0) return false;
+      return (
+        event.type === "performed" ||
+        event.type === "plan" ||
+        (event.type === "diagnosis" && (event.icdasScore ?? 0) > 0)
+      );
+    });
+
+  /**
+   * Marcas escritas en VISITAS ANTERIORES. No son borrables desde aquí: son el
+   * registro de otro acto clínico (a menudo de otro odontólogo) y el modelo ni
+   * siquiera permite retirarlas en blando — `ClinicalEventStateMachine` bloquea
+   * salir de `done`/`canceled`, y la enmienda es otra capa. Declarar la pieza
+   * sana no puede destruirlas.
+   */
+  const collectHistoricMarkEvents = () =>
+    collectToothMarkEvents().filter(
+      (event) => event.visitId !== metadata.visitId,
+    );
+
+  /**
+   * Deja el diente sin marcas de superficie. Es DESTRUCTIVO e irreversible
+   * dentro de la sesión, así que solo se invoca desde el `confirm` de "marcar
+   * como sana" y SOLO cuando todas las marcas son de la visita activa (ver
+   * `collectHistoricMarkEvents`): lo que se borra es trabajo de esta sesión.
+   */
+  const clearToothMarks = () => {
+    // El filtro por visita es redundante con la guarda del llamador, pero el
+    // borrado es la parte irreversible: se acota también aquí.
+    collectToothMarkEvents()
+      .filter((event) => event.visitId === metadata.visitId)
+      .forEach((event) => deleteClinicalEvent(event.id));
+
+    // La barrida de plantillas al guardar lee esta ref: si no se vacía, el
+    // siguiente guardado volvería a materializar lo que se acaba de borrar.
+    surfaceStatesRef.current = [];
+    setPendingMarkedSurfaces(new Set());
+    setSelectedSurfaces([]);
+    setInitialSurfaceStates([]);
+    setDiagnoses(new Map());
+    setPlans([]);
+    setSurfacesResetKey((key) => key + 1);
+    setTempGlobalStatus("healthy");
+    setHasUnsavedChanges(true);
+    setSaveErrors([]);
+  };
+
   const handleStatusClick = (status: ToothGlobalStatus) => {
+    // "Sano" y cualquier marca son excluyentes. Se comprueba ANTES del atajo de
+    // "no ha cambiado nada": con marcas el chip se pinta apagado aunque el
+    // estado guardado ya sea `healthy`, así que volver a pulsarlo tiene que
+    // hacer algo — es justo la acción con la que el clínico afirma la sanidad.
+    if (status === "healthy" && markedSurfaces.size > 0) {
+      if (collectHistoricMarkEvents().length > 0) {
+        // Nada que confirmar: no hay una acción honesta que ofrecer. Antes se
+        // borraban en duro y el autosave lo persistía 300 ms después, sin
+        // pantalla que lo restaurase.
+        notify.info("Marcas de visitas anteriores", {
+          description: `El diente ${tooth.number} tiene marcas registradas en visitas anteriores. No se eliminan desde aquí: son el registro clínico de otra visita.`,
+        });
+        return;
+      }
+
+      const count = markedSurfaces.size;
+      odontogramConfirm({
+        title: "¿Marcar la pieza como sana?",
+        description: `El diente ${tooth.number} tiene ${count} cara${
+          count === 1 ? "" : "s"
+        } con marcas registradas en esta visita (hallazgos, planes o tratamientos). «Sano» significa que la pieza no tiene nada: si continúas, esas marcas se eliminarán.`,
+        okText: "Sí, marcar como sana",
+        cancelText: "Volver",
+        danger: true,
+        onOk: clearToothMarks,
+      });
+      return;
+    }
+
     if (status !== tempGlobalStatus) {
       setTempGlobalStatus(status);
       setHasUnsavedChanges(true);
@@ -957,6 +1118,51 @@ export function ToothModal({
           });
           if (newPlanId) materializedPlanIds.push(newPlanId);
         }
+      } else if (state.status === "completed") {
+        // Restauración PREEXISTENTE: trabajo ya hecho que el clínico DOCUMENTA
+        // al explorar. Antes esta rama no existía y el estado `completed` se
+        // descartaba en silencio al guardar (la cara volvía a salir sin nada).
+        // Se comprueba con el mismo criterio con el que se rehidrata la cara
+        // como `completed`: si ya hay un tratamiento hecho en ella —propio o
+        // un plan cerrado— manda ese y aquí no se crea nada.
+        const alreadyDone = getToothEvents(tooth.number).some(
+          (event) =>
+            (event.type === "performed" ||
+              (event.type === "plan" && event.status === "done")) &&
+            event.surfaces.includes(state.surface),
+        );
+        if (!alreadyDone) {
+          const material = state.treatmentType?.trim();
+          addClinicalEvent({
+            schemaVersion: ODONTOGRAM_SCHEMA_VERSION,
+            toothNumber: tooth.number,
+            surfaces: [state.surface],
+            surfacesV2: [createSurfaceRef(tooth.number, state.surface)],
+            level: "surface",
+            type: "performed",
+            status: "done",
+            category: "restaurador",
+            procedureName: material
+              ? `Obturación previa (${material})`
+              : "Obturación previa",
+            material,
+            // Sin autor: no lo hizo nadie de esta clínica (ver `preexisting`).
+            preexisting: true,
+            visualState: {
+              affectsOdontogram: true,
+              priorityKey: "completed",
+              // `colorKey` NO es decorativo: sin él, la rama `completed` del
+              // servicio de color elige el azul de "realizado en los últimos 30
+              // días" mirando `updatedAt`, y el diente afirmaría que un trabajo
+              // ajeno y de fecha desconocida es reciente. Con él sale el azul
+              // plano de "hecho" (ADR-28).
+              colorKey: "completed",
+            },
+            // Deliberadamente SIN `symbolKey`: la marca se queda en la cara. Un
+            // símbolo rotularía la PIEZA entera como restaurada, que es un
+            // estado global que nadie ha declarado.
+          });
+        }
       }
     });
 
@@ -1228,6 +1434,7 @@ export function ToothModal({
       statusDot: surfacesDot,
       children: (
         <SurfacesTab
+          key={surfacesResetKey}
           tooth={tooth}
           initialSurfaces={selectedSurfaces}
           initialSurfaceStates={initialSurfaceStates}
@@ -1466,8 +1673,16 @@ export function ToothModal({
           <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
             Estado:
           </span>
+          {/* Con marcas en el diente, "Sano" no se pinta activo: el estado
+              guardado sigue siendo `healthy` (no hay a dónde moverlo — el enum
+              no tiene un valor "sin estado global"), pero el selector deja de
+              afirmar una sanidad que los hallazgos contradicen. */}
           <ToothStatusChips
-            value={tempGlobalStatus}
+            value={
+              tempGlobalStatus === "healthy" && markedSurfaces.size > 0
+                ? null
+                : tempGlobalStatus
+            }
             onChange={handleStatusClick}
             readOnly={readOnly}
           />

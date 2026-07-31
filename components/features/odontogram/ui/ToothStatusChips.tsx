@@ -50,7 +50,13 @@ const STATUS_ICONS: Record<ToothGlobalStatus, ReactNode> = {
 };
 
 interface ToothStatusChipsProps {
-  value: ToothGlobalStatus;
+  /**
+   * `null` = la pieza NO tiene un estado global declarado: ningún chip se pinta
+   * activo y el `radiogroup` queda sin selección. `ToothGlobalStatus` no tiene
+   * un séptimo valor "sin estado", así que esta es la única forma honesta de
+   * representar un diente con marcas al que nadie ha declarado sano.
+   */
+  value: ToothGlobalStatus | null;
   onChange: (status: ToothGlobalStatus) => void;
   readOnly?: boolean;
 }

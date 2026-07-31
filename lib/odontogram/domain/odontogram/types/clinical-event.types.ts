@@ -89,6 +89,20 @@ export interface ClinicalEvent {
   severity?: ICDASScore;
   icdasScore?: ICDASScore;
   material?: string;
+  /**
+   * Trabajo restaurador YA HECHO **fuera de esta clínica**, que el odontólogo
+   * DOCUMENTA al explorar (no lo ejecutó). Es lo que lo distingue de un
+   * "Realizado" propio: no lleva autor (`authorId`) ni fecha real de ejecución,
+   * y su `visitId` es la visita en la que se DOCUMENTÓ, no aquella en la que se
+   * hizo (el store asocia todo evento a la visita activa; ver
+   * `addClinicalEvent`). Su `createdAt` es, por lo mismo, la fecha de registro.
+   *
+   * Por eso `CariesRiskService` lo EXCLUYE del recuento de experiencia
+   * restauradora reciente: una obturación de procedencia y fecha desconocidas no
+   * cumple la ventana temporal de CAMBRA, y contarla por su `createdAt` (hoy)
+   * inflaría el riesgo de caries del paciente.
+   */
+  preexisting?: boolean;
   priority?: ProcedurePriority;
   notes?: string;
   attachments?: string[];

@@ -62,6 +62,33 @@ export const TOOTH_TEMPLATES_MOCK: ToothTemplate[] = [
     color: SURFACE_STATUS_COLORS.planned,
     category: "treatment",
   },
+  // Restauraciones YA PRESENTES en boca, hechas fuera de esta clínica. No son
+  // planes (`resin-o`/`amalgam-o` siguen siendo el plan a ejecutar): son
+  // hallazgos de exploración, por eso nacen en estado `completed` (azul = hecho,
+  // ADR-28) y no llevan autor ni fecha real de ejecución.
+  // El MATERIAL va delante: el botón de plantilla trunca el texto a ~15
+  // caracteres, así que con "Obturación previa (…)" las dos salían idénticas en
+  // pantalla —y con el mismo punto de color— hasta después de aplicarlas.
+  {
+    id: "existing-resin",
+    name: "Resina previa",
+    description: "Restauración de resina ya presente, hecha en otra clínica",
+    applicableSurfaces: ["mesial", "distal", "facial", "lingual", "oclusal"],
+    status: "completed",
+    treatmentType: "Resina",
+    color: SURFACE_STATUS_COLORS.completed,
+    category: "treatment",
+  },
+  {
+    id: "existing-amalgam",
+    name: "Amalgama previa",
+    description: "Restauración de amalgama ya presente, hecha en otra clínica",
+    applicableSurfaces: ["mesial", "distal", "facial", "lingual", "oclusal"],
+    status: "completed",
+    treatmentType: "Amalgama",
+    color: SURFACE_STATUS_COLORS.completed,
+    category: "treatment",
+  },
   {
     id: "veneer",
     name: "Carilla (plan)",

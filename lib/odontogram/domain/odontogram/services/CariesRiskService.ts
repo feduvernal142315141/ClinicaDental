@@ -99,6 +99,12 @@ export class CariesRiskService {
         name.includes("corona") ||
         name.includes("endodon");
       if (!restorative) continue;
+      // Una restauración PREEXISTENTE (hecha en otra clínica, documentada aquí
+      // al explorar) no es experiencia de caries RECIENTE: su fecha real de
+      // ejecución se desconoce y su `createdAt` es el día en que se registró,
+      // así que la ventana temporal la daría siempre por reciente e inflaría el
+      // riesgo CAMBRA del paciente por el mero hecho de documentar la boca.
+      if (ev.preexisting) continue;
       if (!isRecent(ev.createdAt)) continue;
       restorativeKeys.add(`${ev.toothNumber}:${ev.procedureId ?? ev.id}`);
     }

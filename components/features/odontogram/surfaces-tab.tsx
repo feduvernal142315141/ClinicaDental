@@ -354,7 +354,11 @@ export function SurfacesTab({
       });
     }
 
-    return templates.slice(0, 6);
+    // El corte debe acompañar al catálogo: el filtro anterior/posterior deja
+    // exactamente 8 de las 10 plantillas, así que un corte en 6 expulsaría dos
+    // plantillas de la UI EN SILENCIO (no da error, simplemente no se ven).
+    // La rejilla es de 2 columnas: 8 = 4 filas, cabe sin desbordar.
+    return templates.slice(0, 8);
   };
 
   // Legend popover content
@@ -500,10 +504,16 @@ export function SurfacesTab({
                       <span className="opacity-80"> (sin vista)</span>
                     )}{" "}
                     ·{" "}
+                    {/* Una cara restaurada dice QUÉ tiene, no la etiqueta
+                        genérica: "Realizado/Existente" no distingue el trabajo
+                        hecho aquí del que ya venía puesto. Con el material, el
+                        chip se lee "O · Obturación previa (Resina)". */}
                     {surface.status === "pathology" &&
                     (surface.icdasScore ?? 0) > 0
                       ? `ICDAS ${surface.icdasScore}`
-                      : SURFACE_STATUS_LABELS[surface.status]}
+                      : surface.status === "completed" && surface.treatmentType
+                        ? surface.treatmentType
+                        : SURFACE_STATUS_LABELS[surface.status]}
                     {!isDisabled && (
                       <button
                         onClick={(e) => {

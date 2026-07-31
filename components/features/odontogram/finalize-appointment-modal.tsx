@@ -74,7 +74,10 @@ export function FinalizarCitaModal({
   const performedEvents = useMemo(
     () =>
       clinicalEvents.filter(
-        (ev) => ev.type === "performed" || ev.status === "done",
+        (ev) =>
+          // Una restauración PREEXISTENTE se documentó aquí, pero la ejecutó otra
+          // clínica: contarla diría que esta cita hizo un trabajo que no hizo.
+          !ev.preexisting && (ev.type === "performed" || ev.status === "done"),
       ),
     [clinicalEvents],
   );

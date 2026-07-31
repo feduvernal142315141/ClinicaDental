@@ -1022,12 +1022,23 @@ const createOdontogramStore = ({
             attachments: item.attachments,
             notes: item.notes,
             authorId: item.operatorId,
-            visualState: {
-              affectsOdontogram: true,
-              priorityKey: "completed",
-              symbolKey: performedSymbolKey,
-            },
-            updatedAt: now,
+            // Un evento PREEXISTENTE (restauración hecha en otra clínica y
+            // documentada aquí) conserva su sello visual y su fecha. Re-sellarlo
+            // le pondría `symbolKey` —y `ToothSymbolService` no filtra por
+            // `level`, así que el símbolo de una cara rotularía la PIEZA entera
+            // como restaurada por nosotros— y, al perder su `colorKey`, el color
+            // caería en "realizado en los últimos 30 días" con `updatedAt` = ahora.
+            // Ni el autor ni la fecha real de ejecución se conocen.
+            visualState: existingEvent?.preexisting
+              ? existingEvent.visualState
+              : {
+                  affectsOdontogram: true,
+                  priorityKey: "completed",
+                  symbolKey: performedSymbolKey,
+                },
+            updatedAt: existingEvent?.preexisting
+              ? existingEvent.updatedAt
+              : now,
           } as ClinicalEvent;
         });
 

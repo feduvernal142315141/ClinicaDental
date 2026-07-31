@@ -114,7 +114,12 @@ function OdontogramModuleContent({
                       .short,
                 )}
                 displayName={getEventDisplayName(event)}
-                typeLabel={getEventTypeLabel(event.type)}
+                // Un preexistente no se "realizó" hoy: se DOCUMENTÓ. La fecha de
+                // la tarjeta es su `createdAt` —el día del registro—, así que sin
+                // este distintivo la lista afirmaría que lo hicimos nosotros.
+                typeLabel={
+                  event.preexisting ? "Previo" : getEventTypeLabel(event.type)
+                }
                 tagColor={
                   getEventTagColor(
                     event.type,
