@@ -18,8 +18,6 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogOverlay,
-  AlertDialogPortal,
   AlertDialogTitle,
 } from "@/components/ui";
 import { cn } from "@/lib/odontogram/utils";
@@ -95,7 +93,14 @@ export function OdontogramConfirmProvider({
     if (!current) return;
     pendingRef.current = null;
     setPending(null);
-    current.onOk();
+    // `onOk` se aplaza un frame A PROPÓSITO. Los consumidores suelen cerrar el
+    // modal padre desde aquí (ver `handleClose` de ToothModal), y eso desmontaba
+    // DOS capas modales de Radix —este AlertDialog y el Dialog del modal— en el
+    // mismo commit. Cuando eso pasa, el `pointer-events: none` que Radix pone en
+    // `<body>` mientras hay una capa modal puede no restaurarse: la aplicación
+    // entera deja de responder al clic y solo se recupera recargando.
+    // Separando los desmontajes en frames distintos, cada capa limpia lo suyo.
+    requestAnimationFrame(() => current.onOk());
   }, []);
 
   const handleOpenChange = useCallback(
@@ -112,18 +117,16 @@ export function OdontogramConfirmProvider({
       {children}
       <AlertDialog open={pending !== null} onOpenChange={handleOpenChange}>
         {/*
-          Radix AlertDialog no cierra al hacer click fuera y su Content
-          embebe el overlay sin permitir estilarlo, así que añadimos un
-          overlay propio transparente por encima (z-60) que captura el
-          click en el fondo y lo trata como cancelación. El Content va
-          también a z-60 para quedar sobre el Dialog del ToothModal (z-50).
+          NO añadir aquí un `AlertDialogPortal` con un `AlertDialogOverlay`
+          propio: `AlertDialogContent` (shadcn) YA monta su portal y su overlay.
+          Hacerlo duplicaba las capas de Radix —dos overlays y dos bloqueos de
+          scroll sobre `<body>` para un solo diálogo— y dejaba el `<body>` con
+          `pointer-events: none` al cerrar, congelando toda la aplicación hasta
+          recargar. El overlay extra existía solo para cancelar al clicar fuera;
+          un confirm destructivo NO debe cerrarse así (Radix lo impide a
+          propósito). Escape y el botón de cancelar siguen cancelando.
+          El Content va a z-60 para quedar sobre el Dialog del ToothModal (z-50).
         */}
-        <AlertDialogPortal>
-          <AlertDialogOverlay
-            className="z-[60] bg-transparent"
-            onClick={resolveCancel}
-          />
-        </AlertDialogPortal>
         <AlertDialogContent className="z-[60] max-w-md rounded-2xl border-hairline bg-surface shadow-bento">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-ink">
