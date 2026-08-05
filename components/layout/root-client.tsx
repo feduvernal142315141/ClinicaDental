@@ -16,6 +16,7 @@ import { AntdCompatProvider } from "@/components/layout/antd-compat-provider";
 import { AppChrome } from "@/components/layout/app-chrome";
 import { CommandPalette } from "@/components/ui/navigation/command-palette";
 import { GlobalErrorListeners } from "@/components/layout/global-error-listeners";
+import { PointerEventsGuard } from "@/components/layout/pointer-events-guard";
 import { FeedbackFAB } from "@/components/features/feedback/FeedbackFAB";
 
 interface RootClientProps {
@@ -44,6 +45,7 @@ export function RootClient({ children }: RootClientProps) {
                   <AuthProvider>
                     <AlertProvider>
                       <GlobalErrorListeners />
+                      <PointerEventsGuard />
                       <InterceptorsInitializer />
                       <GlobalLoadingBar />
                       <GlobalAlertDialog />
