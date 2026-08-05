@@ -40,10 +40,15 @@ export function AppointmentEventCard({
   onClick,
 }: AppointmentEventCardProps) {
   const { appointment, doctorColor, height } = event;
-  const displayTime =
-    appointment.status === "in_progress" && appointment.actualStartAt
+  // La tarjeta se dibuja en el hueco AGENDADO (`time`), así que rotula ese mismo
+  // horario: poner aquí la hora real de inicio hacía que un bloque situado a las
+  // 09:00 dijera "09:40". El inicio real va al tooltip, que sí puede matizar.
+  const displayTime = appointment.time;
+  const actualStart =
+    appointment.actualStartAt &&
+    dayjs(appointment.actualStartAt).format("HH:mm") !== appointment.time
       ? dayjs(appointment.actualStartAt).format("HH:mm")
-      : appointment.time;
+      : null;
   const isCompact = height < 40;
 
   const accent = STATUS_ACCENT[appointment.status] ?? STATUS_ACCENT.scheduled;
@@ -72,6 +77,7 @@ export function AppointmentEventCard({
   const tooltip = [
     appointment.patientName ?? "Paciente",
     `${displayTime} — ${appointment.duration} min`,
+    actualStart ? `Se atendió a las ${actualStart}` : null,
     appointment.doctorName ? `Dr. ${appointment.doctorName}` : null,
     servicesLabel || null,
     appointment.labels && appointment.labels.length > 0
