@@ -106,7 +106,7 @@ export function PatientInfoColumn({
           <AvatarField
             value={patient.photoUrl ?? ""}
             onChange={onPhotoChange}
-            size={80}
+            size={112}
             className="mb-3"
             alt={`Foto de ${patient.name}`}
             label="Añadir foto"

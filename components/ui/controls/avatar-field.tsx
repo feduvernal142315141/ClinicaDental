@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, X, Loader2 } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { notify } from "@/lib/utils/notify";
 
@@ -180,26 +180,34 @@ export function AvatarField({
           </div>
         )}
 
-        {value && !disabled && !loading && (
-          <button
-            type="button"
-            aria-label="Quitar foto"
-            onClick={() => onChange("")}
-            className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-surface/90 text-subtle shadow-bento transition-colors hover:text-rose-600"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
       </div>
 
+      {/* Acciones DEBAJO de la imagen, nunca encima.
+          Antes "Quitar" era una X flotante sobre la foto: con `size` pequeño
+          (p.ej. el avatar de 112px de la ficha del paciente) sus 28px fijos se
+          comían un tercio del círculo y tapaban justo la cara. Como texto no
+          estorba a ningún tamaño y además es alcanzable en táctil, donde un
+          control que dependa de :hover no existe. */}
       {value && !disabled && (
-        <button
-          type="button"
-          onClick={pick}
-          className="text-xs text-brand hover:underline"
-        >
-          {changeLabel}
-        </button>
+        <div className="flex items-center gap-2 text-xs">
+          <button
+            type="button"
+            onClick={pick}
+            className="rounded text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+          >
+            {changeLabel}
+          </button>
+          <span aria-hidden="true" className="text-hairline">
+            ·
+          </span>
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="rounded text-subtle transition-colors hover:text-rose-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40"
+          >
+            Quitar
+          </button>
+        </div>
       )}
 
       <input
