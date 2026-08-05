@@ -2,6 +2,8 @@
 
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { User, Edit } from "lucide-react";
+import { AvatarField } from "@/components/ui/controls/avatar-field";
+import { imageUploadService } from "@/lib/services/cloudinary/cloudinary.service";
 import { PatientAttachmentsSection } from "@/components/features/patients/attachments/PatientAttachmentsSection";
 import { SECTION_LABEL_CLASS } from "./section-label";
 import type { Patient } from "@/lib/entity/patients";
@@ -20,6 +22,11 @@ interface PatientInfoColumnProps {
   canEdit?: boolean;
   activeAppointmentId?: string;
   onEditPatient?: () => void;
+  /**
+   * Persiste la nueva URL de la foto (o "" al quitarla). Cuando se pasa —y hay
+   * permiso de edición— el avatar de la tarjeta se vuelve editable en sitio.
+   */
+  onPhotoChange?: (photoUrl: string) => void;
 }
 
 function InfoRow({
@@ -62,6 +69,7 @@ export function PatientInfoColumn({
   canEdit = true,
   activeAppointmentId,
   onEditPatient,
+  onPhotoChange,
 }: PatientInfoColumnProps) {
   const { profileMeta, contactItems, personalItems, clinicalItems } =
     usePatientInfoColumn({
@@ -91,20 +99,35 @@ export function PatientInfoColumn({
     <div className="flex flex-col pr-3 gap-5 py-2">
       {/* Profile card */}
       <section className="bento p-6 flex flex-col items-center text-center">
-        <div className="mb-3 h-20 w-20 overflow-hidden rounded-full border border-brand/25 bg-brand/15">
-          {patient.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- URL externa (Cloudinary), sin loader de next/image
-            <img
-              src={patient.photoUrl}
-              alt={`Foto de ${patient.name}`}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <User className="h-10 w-10 text-brand" aria-hidden="true" />
-            </div>
-          )}
-        </div>
+        {/* Foto: editable en sitio cuando hay permiso, con el MISMO AvatarField
+            del formulario (y del avatar de doctor). Sin permiso, o sin handler,
+            se degrada a la imagen de solo lectura de siempre. */}
+        {canEdit && onPhotoChange ? (
+          <AvatarField
+            value={patient.photoUrl ?? ""}
+            onChange={onPhotoChange}
+            size={80}
+            className="mb-3"
+            alt={`Foto de ${patient.name}`}
+            label="Añadir foto"
+            uploader={(file) => imageUploadService.uploadImage(file, "patients")}
+          />
+        ) : (
+          <div className="mb-3 h-20 w-20 overflow-hidden rounded-full border border-brand/25 bg-brand/15">
+            {patient.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- URL externa (Cloudinary), sin loader de next/image
+              <img
+                src={patient.photoUrl}
+                alt={`Foto de ${patient.name}`}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <User className="h-10 w-10 text-brand" aria-hidden="true" />
+              </div>
+            )}
+          </div>
+        )}
         <h2 className="text-lg font-bold leading-tight">{patient.name}</h2>
         {profileMeta && (
           <p className="text-sm text-subtle mt-0.5">{profileMeta}</p>

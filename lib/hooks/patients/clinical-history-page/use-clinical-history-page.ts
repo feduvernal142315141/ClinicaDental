@@ -444,6 +444,45 @@ export function useClinicalHistoryPage({
     setEditPatientOpen(false);
   }, []);
 
+  /**
+   * Cambia la foto del paciente desde la tarjeta de perfil, sin abrir el modal.
+   *
+   * Manda la ficha COMPLETA a propósito: `PUT /patients/{id}` sobrescribe TODOS
+   * los campos que recibe, así que un payload parcial (solo la foto) dejaría
+   * nombre, teléfono, nacimiento y género en null. Es exactamente el fallo que
+   * tenía `togglePatientStatus` cuando mandaba `{id, active}` a secas.
+   */
+  const handlePatientPhotoChange = useCallback(
+    async (photoUrl: string) => {
+      if (!patient) return;
+      const next = photoUrl || undefined;
+      try {
+        await patientsService.updatePatient({
+          id: patient.id,
+          name: patient.name,
+          email: patient.email,
+          phone: patient.phone,
+          dateOfBirth: patient.dateOfBirth?.slice(0, 10),
+          address: patient.address,
+          gender: patient.gender,
+          agreement: patient.agreement,
+          active: patient.active,
+          photoUrl: next,
+        });
+        // Refresco optimista: la tarjeta ya muestra la imagen que acaba de subir
+        // el AvatarField, así que no hace falta releer la ficha entera.
+        setPatient({ ...patient, photoUrl: next });
+      } catch (error) {
+        notifyApiError(
+          next ? "No se pudo guardar la foto" : "No se pudo quitar la foto",
+          error,
+          "La imagen se subió pero no quedó asociada al paciente. Inténtalo de nuevo.",
+        );
+      }
+    },
+    [patient],
+  );
+
   const handleEditPatientSuccess = useCallback(() => {
     setEditPatientOpen(false);
     patientsService
@@ -508,6 +547,7 @@ export function useClinicalHistoryPage({
     handleBackToCurrentOdontogram,
     handleFinalizeSuccess,
     handleEditPatientSuccess,
+    handlePatientPhotoChange,
     handleViewVisitOdontogram,
     handleSelectHistoricVisit,
   };

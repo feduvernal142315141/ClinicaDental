@@ -70,6 +70,7 @@ export function ClinicalHistoryPage({
     handleBackToCurrentOdontogram,
     handleFinalizeSuccess,
     handleEditPatientSuccess,
+    handlePatientPhotoChange,
     handleViewVisitOdontogram,
     handleSelectHistoricVisit,
   } = useClinicalHistoryPage({
@@ -212,6 +213,9 @@ export function ClinicalHistoryPage({
                 canEdit={canEditPatient}
                 activeAppointmentId={effectiveActiveAppointmentId}
                 onEditPatient={openEditPatient}
+                onPhotoChange={
+                  canEditPatient ? handlePatientPhotoChange : undefined
+                }
               />
             )}
 
