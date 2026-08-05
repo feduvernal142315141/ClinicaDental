@@ -212,9 +212,6 @@ export function ClinicalHistoryPage({
                 canEdit={canEditPatient}
                 activeAppointmentId={effectiveActiveAppointmentId}
                 onEditPatient={openEditPatient}
-                onEditMedicalHistory={
-                  canEditMedicalHistory ? openMedicalHistoryDrawer : undefined
-                }
               />
             )}
 

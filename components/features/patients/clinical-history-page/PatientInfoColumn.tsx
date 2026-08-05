@@ -1,9 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
 import { Button } from "@/components/ui/primitives/shadcn/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui";
-import { User, Edit, AlertTriangle, ChevronRight } from "lucide-react";
+import { User, Edit } from "lucide-react";
 import { PatientAttachmentsSection } from "@/components/features/patients/attachments/PatientAttachmentsSection";
 import { SECTION_LABEL_CLASS } from "./section-label";
 import type { Patient } from "@/lib/entity/patients";
@@ -22,12 +20,6 @@ interface PatientInfoColumnProps {
   canEdit?: boolean;
   activeAppointmentId?: string;
   onEditPatient?: () => void;
-  /**
-   * Abre el flujo de edición de antecedentes médicos.
-   * Cuando está definido, se muestra el botón "Revisar ahora" en el badge de alerta.
-   * El padre sólo pasa esto cuando el usuario tiene permiso de edición.
-   */
-  onEditMedicalHistory?: () => void;
 }
 
 function InfoRow({
@@ -70,7 +62,6 @@ export function PatientInfoColumn({
   canEdit = true,
   activeAppointmentId,
   onEditPatient,
-  onEditMedicalHistory,
 }: PatientInfoColumnProps) {
   const { profileMeta, contactItems, personalItems, clinicalItems } =
     usePatientInfoColumn({
@@ -79,22 +70,22 @@ export function PatientInfoColumn({
       patientHeader,
     });
 
-  /**
-   * Alerta de revisión de antecedentes:
-   * Se muestra si no hay historia médica, si nunca fue validada, o si la última
-   * validación/revisión supera los 24 meses.
-   */
-  const isReviewNeeded = useMemo<boolean>(() => {
-    if (!medicalHistory) return true;
-    const reviewDateStr = medicalHistory.validatedAt;
-    if (!reviewDateStr) return true;
-    const reviewDate = new Date(reviewDateStr);
-    if (isNaN(reviewDate.getTime())) return true;
-    const diffMs = Date.now() - reviewDate.getTime();
-    // 24 meses ≈ 730.5 días
-    const diffDays = diffMs / (1000 * 60 * 60 * 24);
-    return diffDays >= 730;
-  }, [medicalHistory]);
+  // NOTA: aquí vivía la alerta "Antecedentes médicos sin revisar", retirada a
+  // propósito. Dependía de `medicalHistory.validatedAt`, cuyo ÚNICO escritor es
+  // `PATCH /clinical-history/patients/{id}/medical-history/validate`, y el único
+  // llamador de ese endpoint en el front es `ClinicalHistoryPanel`, un componente
+  // antd que quedó huérfano al borrarse su host. Guardar antecedentes no escribe
+  // el flag, así que el aviso salía en la ficha de TODOS los pacientes y no había
+  // forma de cerrarlo, tuvieran los antecedentes completos o no.
+  //
+  // No se cablea un botón de "confirmar revisión" porque la atestación clínica
+  // (quién revisó y cuándo, congelada por visita) pertenece a la capa legal que
+  // está diferida junto con el consentimiento y la auditoría Envers. El aviso
+  // vuelve cuando esa capa se retome de verdad; hasta entonces prometía una
+  // revisión que el sistema no sabe registrar.
+  //
+  // Editar antecedentes NO se pierde: sigue disponible desde la propia columna de
+  // antecedentes (`MedicalAntecedentsColumn`, con su `onEditClick`).
 
   return (
     <div className="flex flex-col pr-3 gap-5 py-2">
@@ -114,46 +105,15 @@ export function PatientInfoColumn({
             className="mt-4"
             onClick={() => onEditPatient?.()}
           >
+            {/* "Editar datos" y no "Editar Perfil": el botón abre la ficha de
+                datos, y "Perfil" hacía esperar una foto del paciente que el
+                sistema no soporta. Es además el texto que especificaba la HU
+                original (HU-CLIN-001), así que esto revierte una deriva. */}
             <Edit className="h-3.5 w-3.5 mr-1" />
-            Editar Perfil
+            Editar datos
           </Button>
         )}
       </section>
-
-      {/* ── Alerta: antecedentes sin revisar ──────────────────────────── */}
-      {isReviewNeeded && (
-        <Alert variant="warning">
-          <AlertTriangle />
-          {/* `line-clamp-none`: la columna es de 280px fijos y el título ocupa
-              dos líneas; el recorte por defecto de AlertTitle lo dejaría en
-              "Antecedentes médicos sin…". */}
-          <AlertTitle className="line-clamp-none">
-            Antecedentes médicos sin revisar
-          </AlertTitle>
-          <AlertDescription>
-            <p>
-              {medicalHistory?.validatedAt
-                ? "Última revisión hace más de 24 meses"
-                : "Sin revisión registrada"}
-            </p>
-            {/* `ring-current`: el anillo de foco hereda el ámbar OPACO del
-                propio Alert (`text-amber-700 dark:text-amber-300`). Un anillo
-                de marca translúcido (`ring-brand/40`) sobre el tinte ámbar se
-                quedaba en ~1,7:1 en ambos temas, muy por debajo del 3:1 que
-                exige WCAG 2.2 SC 1.4.11 para el indicador de foco. */}
-            {onEditMedicalHistory && (
-              <button
-                type="button"
-                onClick={onEditMedicalHistory}
-                className="mt-1 flex items-center gap-1 rounded font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
-              >
-                Revisar ahora
-                <ChevronRight className="h-3 w-3" />
-              </button>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Contacto */}
       <SectionCard title="Contacto">
