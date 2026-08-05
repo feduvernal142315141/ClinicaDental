@@ -91,8 +91,19 @@ export function PatientInfoColumn({
     <div className="flex flex-col pr-3 gap-5 py-2">
       {/* Profile card */}
       <section className="bento p-6 flex flex-col items-center text-center">
-        <div className="h-20 w-20 rounded-full bg-brand/15 border border-brand/25 flex items-center justify-center mb-3">
-          <User className="h-10 w-10 text-brand" />
+        <div className="mb-3 h-20 w-20 overflow-hidden rounded-full border border-brand/25 bg-brand/15">
+          {patient.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- URL externa (Cloudinary), sin loader de next/image
+            <img
+              src={patient.photoUrl}
+              alt={`Foto de ${patient.name}`}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <User className="h-10 w-10 text-brand" aria-hidden="true" />
+            </div>
+          )}
         </div>
         <h2 className="text-lg font-bold leading-tight">{patient.name}</h2>
         {profileMeta && (

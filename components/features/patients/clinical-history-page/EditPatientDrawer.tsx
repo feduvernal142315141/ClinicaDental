@@ -2,13 +2,13 @@
 
 import { X, Save, Loader2 } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from "@/components/ui/primitives/shadcn/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/primitives/shadcn/dialog";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { PatientForm } from "@/components/features/patients/form/PatientForm";
 import type { Patient } from "@/lib/entity/patients";
@@ -21,6 +21,16 @@ interface EditPatientDrawerProps {
   onSuccess: () => void;
 }
 
+/**
+ * EditPatientDrawer — edición del paciente sin salir de la historia clínica.
+ *
+ * Modal CENTRADO (antes era un panel lateral). El contenido es el
+ * `PatientForm` compartido, el mismo que usa la página `/patients/{id}/edit`:
+ * no hay un segundo formulario de paciente y los campos nuevos (foto, estado)
+ * aparecen aquí sin tocar este archivo. Lo único propio del modal es el pie,
+ * porque `PatientForm` se monta con `hideActions` y el envío se dispara desde
+ * fuera por ref.
+ */
 export function EditPatientDrawer({
   open,
   patient,
@@ -40,24 +50,24 @@ export function EditPatientDrawer({
   });
 
   return (
-    <Sheet
+    <Dialog
       open={open}
       onOpenChange={(value) => {
         if (!value) handleClose();
       }}
     >
-      <SheetContent
-        side="right"
-        className="w-full gap-0 border-hairline bg-surface p-0 sm:max-w-xl"
+      <DialogContent
+        showCloseButton={false}
+        className="max-h-[85vh] gap-0 overflow-hidden border-hairline bg-surface p-0 sm:max-w-2xl"
       >
-        <SheetHeader className="border-b border-hairline px-6 py-4">
-          <SheetTitle className="text-ink">Editar paciente</SheetTitle>
-          <SheetDescription className="text-subtle">
+        <DialogHeader className="border-b border-hairline px-6 py-4 text-left">
+          <DialogTitle className="text-ink">Editar paciente</DialogTitle>
+          <DialogDescription className="text-subtle">
             Actualiza la información del paciente.
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="max-h-[60vh] overflow-y-auto px-6 py-4">
           <PatientForm
             ref={formRef}
             patientId={patient.id}
@@ -70,7 +80,7 @@ export function EditPatientDrawer({
           />
         </div>
 
-        <SheetFooter className="flex-row justify-end gap-2 border-t border-hairline px-6 py-4">
+        <DialogFooter className="flex-row justify-end gap-2 border-t border-hairline px-6 py-4">
           <Button
             type="button"
             variant="outline"
@@ -95,8 +105,8 @@ export function EditPatientDrawer({
           >
             Guardar
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

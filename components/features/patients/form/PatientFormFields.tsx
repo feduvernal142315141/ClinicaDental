@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/atomic/forms";
 import { Select } from "@/components/ui/controls/select";
 import { DateTimePicker } from "@/components/ui/controls/date-time-picker";
+import { AvatarField } from "@/components/ui/controls/avatar-field";
+import { imageUploadService } from "@/lib/services/cloudinary/cloudinary.service";
 import type { PatientFormValues } from "@/lib/entity/patients";
 
 const GENDER_OPTIONS = [
@@ -46,6 +48,29 @@ export function PatientFormFields({
 
   return (
     <div className="space-y-5">
+      {/* Foto del paciente — MISMO control y MISMO servicio que el avatar del
+          doctor (DoctorForm), sólo cambia la carpeta de Cloudinary.
+          `size` reducido respecto al de doctores (180): allí ocupa una columna
+          propia de 200px, mientras que aquí el formulario también se muestra
+          dentro del modal de la historia clínica, donde 180 se comía la ficha. */}
+      <div className="flex justify-center sm:justify-start">
+        <FormField
+          control={form.control}
+          name="photoUrl"
+          render={({ field }) => (
+            <AvatarField
+              value={field.value ?? ""}
+              onChange={field.onChange}
+              disabled={disabled}
+              size={112}
+              uploader={(file) =>
+                imageUploadService.uploadImage(file, "patients")
+              }
+            />
+          )}
+        />
+      </div>
+
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {/* Nombre */}
         <FormField

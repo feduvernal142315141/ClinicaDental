@@ -54,6 +54,7 @@ export function usePatientForm({
       address: "",
       agreement: true,
       active: true,
+      photoUrl: "",
     },
   });
 
@@ -69,6 +70,7 @@ export function usePatientForm({
         gender: initialData.gender,
         agreement: initialData.agreement ?? true,
         active: initialData.active ?? true,
+        photoUrl: initialData.photoUrl ?? "",
       });
     }
   }, [initialData, form]);
@@ -87,6 +89,7 @@ export function usePatientForm({
             gender: patient.gender,
             agreement: patient.agreement ?? true,
             active: patient.active ?? true,
+            photoUrl: patient.photoUrl ?? "",
           });
         }
       });
@@ -114,6 +117,7 @@ export function usePatientForm({
             // EXPLÍCITO a propósito: el backend solo respeta el estado que recibe.
             // Omitirlo era lo que desactivaba al paciente en cada edición.
             active: values.active ?? true,
+            photoUrl: values.photoUrl || undefined,
           });
           if (success) {
             if (onSuccess) onSuccess();
@@ -128,6 +132,7 @@ export function usePatientForm({
             address: values.address,
             gender: values.gender,
             agreement: values.agreement ?? true,
+            photoUrl: values.photoUrl || undefined,
           });
           if (newPatientId) {
             if (onSuccess) onSuccess();

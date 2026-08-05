@@ -29,6 +29,8 @@ export interface Patient {
   address?: string;
   agreement?: boolean;
   gender?: "M" | "F";
+  /** URL (Cloudinary) de la foto del paciente. Opcional. */
+  photoUrl?: string;
   active: boolean;
   createAt: string; // ISO 8601
   updateAt?: string; // ISO 8601
@@ -45,6 +47,8 @@ export interface PatientListItem {
   phone?: string;
   dateOfBirth?: string;
   gender?: "M" | "F";
+  /** URL (Cloudinary) de la foto del paciente. Opcional. */
+  photoUrl?: string;
   active: boolean;
   createAt: string;
 }
@@ -60,6 +64,8 @@ export interface CreatePatientRequest {
   phone: string;
   dateOfBirth: string; // ISO 8601 YYYY-MM-DD
   gender: "M" | "F";
+  /** URL (Cloudinary) de la foto del paciente. Opcional. */
+  photoUrl?: string;
   address?: string;
   agreement?: boolean;
 }
@@ -76,6 +82,8 @@ export interface UpdatePatientRequest {
   address?: string;
   agreement?: boolean;
   gender?: "M" | "F";
+  /** URL (Cloudinary) de la foto del paciente. Opcional. */
+  photoUrl?: string;
   active?: boolean;
 }
 

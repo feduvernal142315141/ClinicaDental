@@ -41,6 +41,11 @@ export const patientFormSchema = z.object({
   // Estado del paciente. Solo se edita (y se envía) desde el formulario de EDICIÓN;
   // en el alta el backend siempre crea activo y el campo ni siquiera viaja.
   active: z.boolean().optional().default(true),
+
+  // Foto del paciente: la URL que devuelve Cloudinary tras subir el archivo.
+  // No se valida como URL estricta porque el valor lo produce el propio
+  // `imageUploadService`, no el usuario; cadena vacía = sin foto.
+  photoUrl: z.string().optional(),
 });
 
 export type PatientFormValues = z.infer<typeof patientFormSchema>;
