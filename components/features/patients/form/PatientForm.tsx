@@ -92,7 +92,9 @@ export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
       submit: () => form.handleSubmit(handleSubmit)(),
     }));
 
-    const fields = <PatientFormFields disabled={formDisabled} />;
+    const fields = (
+      <PatientFormFields disabled={formDisabled} showStatus={isEdit} />
+    );
 
     const actions = !hideActions && !readOnly && (
       <FormActionBar

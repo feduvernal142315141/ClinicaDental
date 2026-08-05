@@ -223,36 +223,12 @@ export function usePatients() {
     [],
   );
 
-  /**
-   * Toggle patient active status
-   */
-  const togglePatientStatus = useCallback(
-    async (id: string, active: boolean) => {
-      setLoading(true);
-      try {
-        await patientsService.updatePatient({ id, active });
-        notify.success(
-          `Paciente ${active ? "activado" : "desactivado"}`,
-          {
-            description: active
-              ? "Ya está activo y disponible para agendar citas y gestionar su atención."
-              : "Quedó inactivo y no aparecerá para agendar; puedes reactivarlo cuando quieras.",
-          },
-        );
-        return true;
-      } catch (error: unknown) {
-        notifyApiError(
-          "No se pudo cambiar el estado del paciente",
-          error,
-          "El estado no se actualizó. Inténtalo de nuevo y, si persiste, contacta a soporte.",
-        );
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  // NOTA: aquí vivía `togglePatientStatus`, que mandaba un PUT con solo
+  // `{ id, active }`. El backend interpreta el resto del cuerpo como valores
+  // nuevos, así que nombre, teléfono, fecha de nacimiento y género llegaban
+  // `null` y se escribían encima de la ficha. No tenía ningún consumidor.
+  // Para cambiar el estado usa `activatePatient` (PATCH /activate),
+  // `deletePatient` (DELETE, baja lógica) o el switch del formulario.
 
   return {
     loading,
@@ -266,6 +242,5 @@ export function usePatients() {
     deletePatient,
     activatePatient,
     restorePatient,
-    togglePatientStatus,
   };
 }

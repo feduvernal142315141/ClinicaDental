@@ -23,6 +23,11 @@ const GENDER_OPTIONS = [
 interface PatientFormFieldsProps {
   /** Deshabilita todos los campos (cargando o modo readOnly). */
   disabled?: boolean;
+  /**
+   * Muestra el control de estado activo/inactivo. Solo en EDICIÓN: en el alta
+   * el paciente siempre nace activo y el campo no viaja al backend.
+   */
+  showStatus?: boolean;
 }
 
 /**
@@ -32,7 +37,10 @@ interface PatientFormFieldsProps {
  * de un `<Form {...form}>` que proporcione el contexto de react-hook-form.
  * No tiene lógica de submit ni chrome (Card, acciones). Bento puro.
  */
-export function PatientFormFields({ disabled = false }: PatientFormFieldsProps) {
+export function PatientFormFields({
+  disabled = false,
+  showStatus = false,
+}: PatientFormFieldsProps) {
   const form = useFormContext<PatientFormValues>();
   const { errors } = form.formState;
 
@@ -192,6 +200,34 @@ export function PatientFormFields({ disabled = false }: PatientFormFieldsProps) 
           </FormItem>
         )}
       />
+
+      {/* Estado — solo en edición */}
+      {showStatus && (
+        <FormField
+          control={form.control}
+          name="active"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-xl border border-hairline bg-elevated px-4 py-3">
+              <div className="space-y-0.5">
+                <FormLabel>Paciente activo</FormLabel>
+                <p className="text-xs text-subtle">
+                  {field.value
+                    ? "Aparece en el listado y se le pueden agendar citas."
+                    : "Queda inactivo: seguirá en el listado y conserva su historia clínica, pero se marca como no vigente."}
+                </p>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={!!field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={disabled}
+                  aria-label="Paciente activo"
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+      )}
     </div>
   );
 }

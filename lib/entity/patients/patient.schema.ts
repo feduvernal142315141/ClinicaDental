@@ -37,6 +37,10 @@ export const patientFormSchema = z.object({
   address,
 
   agreement: z.boolean().optional().default(true),
+
+  // Estado del paciente. Solo se edita (y se envía) desde el formulario de EDICIÓN;
+  // en el alta el backend siempre crea activo y el campo ni siquiera viaja.
+  active: z.boolean().optional().default(true),
 });
 
 export type PatientFormValues = z.infer<typeof patientFormSchema>;
