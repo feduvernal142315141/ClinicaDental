@@ -64,20 +64,35 @@ async function getIcdasSuggestions(
 async function getServiceTemplates(
   params?: PaginatedQueryParams,
 ): Promise<PaginatedServiceTemplatesResponse | null> {
-  try {
-    const qp = new URLSearchParams();
-    if (params?.page !== undefined) qp.append("page", params.page.toString());
-    if (params?.pageSize !== undefined)
-      qp.append("pageSize", params.pageSize.toString());
+  const qp = new URLSearchParams();
+  if (params?.page !== undefined) qp.append("page", params.page.toString());
+  if (params?.pageSize !== undefined)
+    qp.append("pageSize", params.pageSize.toString());
 
-    const qs = qp.toString();
-    return await serviceGet<PaginatedServiceTemplatesResponse>(
-      qs ? `${endpoint}?${qs}` : endpoint,
-    );
-  } catch (err) {
-    handleServiceError(err, "getServiceTemplates");
-    return null;
+  const qs = qp.toString();
+  const result = await serviceGet<PaginatedServiceTemplatesResponse>(
+    qs ? `${endpoint}?${qs}` : endpoint,
+  );
+
+  // `serviceGet` devuelve la AxiosResponse COMPLETA y nunca rechaza: un 403 o
+  // un 500 llegan como respuesta resuelta con `.data` = cuerpo de error. Antes
+  // esta función devolvía `result` tal cual, así que quien la llamara leería
+  // `result.entities` = undefined y vería "no hay plantillas" tanto si no las
+  // hay como si el backend está caído. Lo delataba `tsc`, pero el error vivía
+  // en la baseline porque la función no tenía consumidores.
+  if (
+    result &&
+    typeof result.status === "number" &&
+    result.status >= 200 &&
+    result.status < 300
+  ) {
+    return result.data ?? null;
   }
+
+  handleServiceError(
+    result ?? null,
+    "No se pudieron cargar las plantillas de tratamiento",
+  );
 }
 
 /**
@@ -87,15 +102,23 @@ async function getServiceTemplates(
 async function getServiceTemplateById(
   id: string,
 ): Promise<ServiceTemplateDetailResponse | null> {
-  try {
-    const result = await serviceGet<ServiceTemplateDetailResponse>(
-      `${endpoint}/${id}`,
-    );
-    return result?.data ?? null;
-  } catch (err) {
-    handleServiceError(err, "getServiceTemplateById");
-    return null;
+  const result = await serviceGet<ServiceTemplateDetailResponse>(
+    `${endpoint}/${id}`,
+  );
+
+  // Mismo motivo que en getServiceTemplates: sin comprobar el status, un 403
+  // devolvía un cuerpo de error cuyo `.items` es undefined, y aplicar la
+  // plantilla se convertía en un no-op absolutamente silencioso.
+  if (
+    result &&
+    typeof result.status === "number" &&
+    result.status >= 200 &&
+    result.status < 300
+  ) {
+    return result.data ?? null;
   }
+
+  handleServiceError(result ?? null, "No se pudo cargar la plantilla");
 }
 
 export const ServiceTemplateService = {

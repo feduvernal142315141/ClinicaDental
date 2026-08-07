@@ -1,113 +1,62 @@
-import { useState, useEffect, useRef } from "react";
-import { servicesService } from "@/lib/services/services/services.service";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { notifyApiError } from "@/lib/utils/notify-error";
-import type { ServiceListItem, ServiceCategory } from "@/lib/entity/services";
-import type {
-  ProcedureCatalogItem,
-  ProcedureCategory,
-} from "../../domain/odontogram/types";
-import { PROCEDURE_CATALOG_MOCK } from "../../infrastructure/data/mock/procedure-catalog.mock";
-
-/**
- * Maps backend ServiceCategory (uppercase) to frontend ProcedureCategory (lowercase).
- */
-function mapCategory(
-  backendCategory?: ServiceCategory | null,
-): ProcedureCategory {
-  if (!backendCategory) return "restaurador";
-  const map: Record<string, ProcedureCategory> = {
-    RESTAURADOR: "restaurador",
-    ENDODONCIA: "endodoncia",
-    PROTESIS: "protesis",
-    IMPLANTE: "implante",
-    PREVENTIVO: "preventivo",
-    PERIODONCIA: "periodoncia",
-    ESTETICO: "estetico",
-    CIRUGIA: "cirugia",
-    // ProcedureCategory (taxonomía del odontograma) aún no tiene diagnóstico/
-    // ortodoncia/general; mapeamos a la más cercana para el color/agrupación.
-    // (Expandir ProcedureCategory 1:1 es roadmap del módulo odontograma.)
-    DIAGNOSTICO: "preventivo",
-    GENERAL: "preventivo",
-    ORTODONCIA: "estetico",
-  };
-  return map[backendCategory] ?? "restaurador";
-}
-
-/**
- * Converts a backend Service into a ProcedureCatalogItem for the odontogram PlanTab.
- */
-function serviceToCatalogItem(service: ServiceListItem): ProcedureCatalogItem {
-  const enabled = service.odontogramEnabled;
-  return {
-    id: service.id,
-    name: service.name,
-    code: service.code,
-    category: mapCategory(service.category),
-    // Duración real del servicio; 0 si no está configurada (sin inventar 30 min).
-    estimatedDuration: service.duration ?? 0,
-    // El precio del servicio YA viene denominado en la moneda de la clínica
-    // (`settings.currency`): se toma tal cual. El odontograma NUNCA convierte
-    // importes — solo los formatea con esa misma moneda.
-    baseCost: service.cost ?? 0,
-    isFavorite: false,
-    // Símbolo personalizado del servicio (la presencia codifica el modo):
-    // TEXT → serviceSymbolText ; ASSET → serviceSymbolUrl. Solo si está habilitado.
-    serviceSymbolText:
-      enabled && service.odontogramSymbolMode === "TEXT"
-        ? service.symbolText
-        : undefined,
-    serviceSymbolUrl:
-      enabled && service.odontogramSymbolMode === "ASSET"
-        ? service.symbolUrl
-        : undefined,
-  };
-}
+import { fetchServiceCatalog } from "../../adapters/service-catalog";
+import type { ProcedureCatalogItem } from "../../domain/odontogram/types";
 
 export interface UseOdontogramServicesResult {
   catalog: ProcedureCatalogItem[];
   loading: boolean;
   error: string | null;
+  /** Reintento manual, para el estado de error del panel. */
+  reload: () => void;
 }
 
 /**
- * Fetches active odontogram-enabled services from the backend and maps them
- * to ProcedureCatalogItem[]. Falls back to the mock catalog on failure.
+ * Catálogo de procedimientos del odontograma: los servicios de la clínica
+ * marcados como visibles en el odontograma.
+ *
+ * SIN CATÁLOGO DE RESERVA. La versión anterior arrancaba con
+ * `PROCEDURE_CATALOG_MOCK` y se quedaba con él si la petición fallaba o si el
+ * backend devolvía cero servicios ("keep mock fallback"). Eso presentaba
+ * procedimientos y precios inventados como si fueran los de la clínica, sin
+ * ninguna señal, y el odontólogo podía presupuestar con ellos. Ahora un fallo
+ * es un fallo (`error`) y un catálogo vacío es un catálogo vacío: el panel debe
+ * decirlo, no rellenarlo.
  */
 export function useOdontogramServices(): UseOdontogramServicesResult {
-  const [catalog, setCatalog] = useState<ProcedureCatalogItem[]>(
-    PROCEDURE_CATALOG_MOCK,
-  );
+  const [catalog, setCatalog] = useState<ProcedureCatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Evita re-disparar la carga en cada render; `reload` la fuerza a propósito.
   const fetched = useRef(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setCatalog(await fetchServiceCatalog());
+    } catch (err) {
+      notifyApiError("No se pudieron cargar los servicios del odontograma", err);
+      setError(
+        err instanceof Error ? err.message : "Error al cargar los servicios",
+      );
+      // El catálogo se deja vacío a propósito: mejor no poder planificar que
+      // planificar sobre datos que no son de esta clínica.
+      setCatalog([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (fetched.current) return;
     fetched.current = true;
+    void load();
+  }, [load]);
 
-    setLoading(true);
-    servicesService
-      .getActiveOdontogramServices()
-      .then((services) => {
-        if (services.length > 0) {
-          setCatalog(services.map(serviceToCatalogItem));
-        }
-        // If no services from backend, keep mock fallback
-        setError(null);
-      })
-      .catch((err) => {
-        console.warn("[useOdontogramServices] Fallback to mock catalog:", err);
-        notifyApiError(
-          "No se pudieron cargar los servicios del odontograma",
-          err,
-          "Se muestra un catálogo de referencia: los servicios y precios pueden no ser los reales de la clínica.",
-        );
-        setError(err?.message ?? "Error loading services");
-        // catalog stays as PROCEDURE_CATALOG_MOCK
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const reload = useCallback(() => {
+    void load();
+  }, [load]);
 
-  return { catalog, loading, error };
+  return { catalog, loading, error, reload };
 }
