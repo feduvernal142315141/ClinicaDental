@@ -139,14 +139,30 @@ async function getTreatmentPlansByPatient(
   const qs = buildQueryString(params);
   const url = `${endpoint}/patient/${patientId}${qs ? `?${qs}` : ""}`;
 
-  const response =
-    await serviceGet<PaginatedTreatmentPlansResponse>(url);
+  const response = await serviceGet<PaginatedTreatmentPlansResponse>(url);
 
-  if (response?.data) {
+  // `serviceGet` devuelve la AxiosResponse COMPLETA y NUNCA rechaza: un 403 o un
+  // 500 llegan como respuesta RESUELTA cuyo `.data` es el CUERPO DE ERROR.
+  // Comprobar solo `response?.data` (lo que hacía antes esta función) daba ese
+  // cuerpo por bueno, `entities` salía `undefined` y la pantalla concluía "este
+  // paciente no tiene planes" ante un fallo de permisos o del servidor.
+  // Es especialmente grave para el get-or-create del borrador activo
+  // (`usePatientTreatmentPlan`): leer un 500 como "no hay plan" habría creado un
+  // plan nuevo en CADA fallo.
+  if (
+    response &&
+    typeof response.status === "number" &&
+    response.status >= 200 &&
+    response.status < 300 &&
+    Array.isArray(response.data?.entities)
+  ) {
     return response.data;
   }
 
-  handleServiceError(typeof response !== "undefined" ? response : null, "Error al cargar los planes de tratamiento");
+  handleServiceError(
+    response ?? null,
+    "Error al cargar los planes de tratamiento",
+  );
 }
 
 export const treatmentPlanService = {
