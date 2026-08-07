@@ -2,7 +2,12 @@
 
 import { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
-import { OdontogramModule, createApiOdontogramAdapter, createHistoricOdontogramAdapter } from "@/lib/odontogram";
+import {
+  OdontogramModule,
+  createApiOdontogramAdapter,
+  createApiOdontogramDictationAdapter,
+  createHistoricOdontogramAdapter,
+} from "@/lib/odontogram";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useAuth } from "@/lib/contexts/auth-context";
@@ -123,6 +128,11 @@ export function PatientOdontogramPanel({
     [user?.id, clinicId, activeAppointmentId],
   );
 
+  const dictationAdapter = useMemo(
+    () => createApiOdontogramDictationAdapter(),
+    [],
+  );
+
   // Sin snapshot NO se cae al adapter en vivo: pintaría el odontograma de HOY
   // bajo la fecha de una visita pasada, o sea una afirmación clínica falsa sobre
   // el paciente. Con "" el adapter no puede parsear y devuelve null, y el módulo
@@ -222,6 +232,14 @@ export function PatientOdontogramPanel({
     can("odontogram", PermissionAction.EDIT) ||
     can("odontogram", PermissionAction.CREATE);
 
+  // El endpoint de voz conserva la autoridad de historia clínica. La acción se
+  // ofrece solo cuando el usuario puede editar el odontograma Y llamar al
+  // endpoint; así evitamos mostrar un botón que terminaría necesariamente en 403.
+  const canUseClinicalDictation =
+    isAdmin ||
+    can("clinical_history", PermissionAction.EDIT) ||
+    can("clinical_history", PermissionAction.CREATE);
+
   // Solo lectura por: modo histórico, visita finalizada o falta de permiso.
   // "Sin consulta" ya NO bloquea: el permiso es lo único que manda.
   const readOnly = isHistoricMode || isNonEditableVisit || !canEditClinical;
@@ -270,6 +288,11 @@ export function PatientOdontogramPanel({
             patientId={patient.id}
             clinicId={clinicId}
             adapter={adapter}
+            dictationAdapter={
+              !isHistoricMode && canUseClinicalDictation
+                ? dictationAdapter
+                : undefined
+            }
             readOnly={readOnly}
             currency={
               settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency

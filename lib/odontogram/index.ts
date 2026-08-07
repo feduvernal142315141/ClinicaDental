@@ -3,6 +3,7 @@ export {
   createLocalStorageOdontogramAdapter,
   createApiOdontogramAdapter,
   createHistoricOdontogramAdapter,
+  createApiOdontogramDictationAdapter,
 } from "./adapters";
 export { clearOdontogram } from "./store";
 export type { ApiOdontogramAdapterOptions } from "./adapters";
@@ -12,3 +13,4 @@ export type {
   OdontogramSnapshot,
   OdontogramSnapshotMetadata,
 } from "./store";
+export type { OdontogramDictationAdapter } from "./application/dictation";

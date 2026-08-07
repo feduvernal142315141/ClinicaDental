@@ -1,15 +1,12 @@
 import apiInstance from "@/lib/services/apiConfig";
+import type {
+  OdontogramDictationPatchResponse,
+  ResolveOdontogramInconsistenciesRequest,
+  ResolveOdontogramInconsistenciesResponse,
+  TranscribeResponse,
+} from "@/lib/entity/speech";
 
-export interface TranscribeResponse {
-  /** Transcripción literal del audio (Groq Whisper). Siempre presente. */
-  rawTranscript: string;
-  /**
-   * Transcripción estructurada en SOAP por IA (Gemini).
-   * Solo se popula cuando el cliente envió `useSoapStructuring=true`.
-   * Puede ser `null` si Gemini falló — nunca bloquea el guardado.
-   */
-  formattedTranscript: string | null;
-}
+export type { TranscribeResponse } from "@/lib/entity/speech";
 
 export const speechService = {
   /**
@@ -38,6 +35,53 @@ export const speechService = {
           "Content-Type": "multipart/form-data",
         },
       }
+    );
+
+    return response.data;
+  },
+
+  /**
+   * Transcribe el examen dental y devuelve un parche validado. El endpoint no
+   * persiste: el módulo decide cuándo aplicar las operaciones al store actual.
+   */
+  async transcribeOdontogram(
+    audioBlob: Blob,
+    currentOdontogramContext?: Record<string, unknown>,
+  ): Promise<OdontogramDictationPatchResponse> {
+    const formData = new FormData();
+    formData.append("file", audioBlob, "odontogram-dictation.webm");
+
+    if (currentOdontogramContext) {
+      formData.append(
+        "currentOdontogramContext",
+        JSON.stringify(currentOdontogramContext),
+      );
+    }
+
+    const response = await apiInstance.post<OdontogramDictationPatchResponse>(
+      "/speech/transcribe/odontogram",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+
+    return response.data;
+  },
+
+  /**
+   * Registra la selección ya aplicada localmente. El backend solo aprende la
+   * coincidencia para la clínica y devuelve un acuse breve e idempotente.
+   */
+  async resolveOdontogramInconsistencies(
+    dictationId: string,
+    request: ResolveOdontogramInconsistenciesRequest,
+  ): Promise<ResolveOdontogramInconsistenciesResponse> {
+    const response = await apiInstance.post<ResolveOdontogramInconsistenciesResponse>(
+      `/speech/odontogram-dictations/${dictationId}/resolve-inconsistencies`,
+      request,
     );
 
     return response.data;

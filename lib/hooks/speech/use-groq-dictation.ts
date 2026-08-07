@@ -15,6 +15,10 @@ export interface UseGroqDictationOptions {
    * Si la IA falla, el fallback es siempre la transcripción cruda.
    */
   useSoapStructuring?: boolean;
+  /** Procesador alternativo para reutilizar la captura en otros flujos clínicos. */
+  processAudio?: (audioBlob: Blob) => Promise<void>;
+  processingErrorTitle?: string;
+  processingErrorDescription?: string;
 }
 
 /**
@@ -167,6 +171,11 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
       try {
         const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
         if (audioBlob.size > 100) {
+          if (optionsRef.current.processAudio) {
+            await optionsRef.current.processAudio(audioBlob);
+            return;
+          }
+
           const soapMode = optionsRef.current.useSoapStructuring ?? false;
           const result = await speechService.transcribeAudio(audioBlob, soapMode);
 
@@ -196,10 +205,15 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
         }
       } catch (error) {
         console.error("[useGroqDictation] Groq transcription error:", error);
-        notify.error("No se pudo procesar el dictado por voz", {
-          description:
-            "Revisa tu conexión e inténtalo de nuevo; si el problema persiste, escribe la nota a mano.",
-        });
+        notify.error(
+          optionsRef.current.processingErrorTitle ??
+            "No se pudo procesar el dictado por voz",
+          {
+            description:
+              optionsRef.current.processingErrorDescription ??
+              "Revisa tu conexión e inténtalo de nuevo; si el problema persiste, escribe la nota a mano.",
+          },
+        );
         if (optionsRef.current.onError && error instanceof Error) {
           optionsRef.current.onError(error);
         }
@@ -236,6 +250,10 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
   }, []);
 
   return {
+    isSupported:
+      typeof window !== "undefined" &&
+      typeof window.MediaRecorder !== "undefined" &&
+      !!navigator.mediaDevices?.getUserMedia,
     isRecording,
     isProcessing,
     /** Texto provisional en vivo desde el SpeechRecognition del navegador (preview). */

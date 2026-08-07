@@ -24,6 +24,8 @@ import {
 import { useOdontogramStore } from "@/lib/odontogram/store";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
 import type { ClinicalEvent } from "@/components/odontogram/types";
+import type { OdontogramDictationAdapter } from "@/lib/odontogram/application/dictation";
+import { OdontogramDictationControl } from "./odontogram-dictation-control";
 
 interface OdontogramModuleProps {
   initialTab?:
@@ -33,6 +35,7 @@ interface OdontogramModuleProps {
     | "plans"
     | "performed";
   showHeader?: boolean;
+  dictationAdapter?: OdontogramDictationAdapter;
 }
 
 export function OdontogramModule(props: OdontogramModuleProps) {
@@ -48,6 +51,7 @@ export function OdontogramModule(props: OdontogramModuleProps) {
 function OdontogramModuleContent({
   initialTab = "odontogram",
   showHeader = true,
+  dictationAdapter,
 }: OdontogramModuleProps) {
   const {
     teeth,
@@ -210,6 +214,10 @@ function OdontogramModuleContent({
           )}
         </div>
       )}
+
+      {activeTab === "odontogram" && dictationAdapter ? (
+        <OdontogramDictationControl adapter={dictationAdapter} />
+      ) : null}
 
       <OdontogramTabs
         items={tabItems}

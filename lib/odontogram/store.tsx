@@ -18,6 +18,7 @@ import type {
 import { OdontogramColorService } from "@/lib/odontogram/domain/odontogram/services/OdontogramColorService";
 import { ClinicalEventStateMachine } from "@/lib/odontogram/domain/odontogram/services/ClinicalEventStateMachine";
 import { SYMBOL_COLORS } from "@/lib/odontogram/domain/odontogram/constants/odontogram-colors.constants";
+import type { OdontogramDictationAdapter } from "@/lib/odontogram/application/dictation";
 
 /**
  * Estado visual (relleno/símbolo) por estado global de diente.
@@ -222,6 +223,8 @@ export interface OdontogramModuleProps {
   patientId: string;
   clinicId?: string;
   adapter: OdontogramAdapter;
+  /** Intérprete de audio opcional, inyectado por el host mediante un adapter. */
+  dictationAdapter?: OdontogramDictationAdapter;
   readOnly?: boolean;
   /**
    * Código ISO de la moneda de la clínica (`settings.currency`). Lo inyecta el
