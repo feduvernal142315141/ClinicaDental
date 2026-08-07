@@ -2,8 +2,8 @@
 
 import { useCallback, useMemo, useState } from "react";
 import {
-  PLAN_ITEM_DISPLAY_STATUSES,
-  type PlanItemDisplayStatus,
+  PLAN_ITEM_STATUSES,
+  type PlanItemStatus,
 } from "@/lib/entity/odontogram";
 import type { PlanItemRow } from "./useTreatmentPlanBoard";
 
@@ -24,7 +24,7 @@ export interface PlanBoardFilters {
   scope: PlanScopeFilter;
   /** {@link ALL_FILTER_VALUE}, {@link NO_PHASE_VALUE} o la fase en texto ("2"). */
   phase: string;
-  /** {@link ALL_FILTER_VALUE} o un `PlanItemDisplayStatus`. */
+  /** {@link ALL_FILTER_VALUE} o un `PlanItemStatus`. */
   status: string;
 }
 
@@ -166,16 +166,16 @@ export function useTreatmentPlanFilters(
   const statusOptions = useMemo(() => {
     const counts = new Map<string, number>();
     for (const row of rows) {
-      const key: string = row.item.displayStatus;
+      const key: string = row.item.status;
       counts.set(key, (counts.get(key) ?? 0) + 1);
     }
     const order = (value: string) => {
-      const index = PLAN_ITEM_DISPLAY_STATUSES.indexOf(
-        value as PlanItemDisplayStatus,
+      const index = PLAN_ITEM_STATUSES.indexOf(
+        value as PlanItemStatus,
       );
       // Un estado que este front todavía no conoce va al final en vez de
       // colarse el primero (`indexOf` devuelve -1).
-      return index === -1 ? PLAN_ITEM_DISPLAY_STATUSES.length : index;
+      return index === -1 ? PLAN_ITEM_STATUSES.length : index;
     };
     return buildOptions(counts, filters.status, (a, b) => order(a) - order(b));
   }, [rows, filters.status]);
@@ -192,7 +192,7 @@ export function useTreatmentPlanFilters(
       }
       if (
         filters.status !== ALL_FILTER_VALUE &&
-        row.item.displayStatus !== filters.status
+        row.item.status !== filters.status
       ) {
         return false;
       }

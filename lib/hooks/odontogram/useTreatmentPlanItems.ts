@@ -29,7 +29,6 @@ export type TreatmentPlanItemsTotals = Omit<
 const EMPTY_TOTALS: TreatmentPlanItemsTotals = {
   planId: "",
   total: 0,
-  acceptedTotal: 0,
   currencyCode: null,
   totalCount: 0,
   toothCount: 0,
@@ -105,7 +104,7 @@ export interface UseTreatmentPlanItemsResult {
  *
  * Reglas que este hook hace cumplir:
  * - Tras cada mutación con éxito RECARGA. Los totales, `lineTotal` y
- *   `displayStatus` los calcula el servidor: parchear el estado local a mano
+ *   `status` los calcula el servidor: parchear el estado local a mano
  *   los haría divergir del presupuesto guardado.
  * - Los errores de mutación se avisan con `notifyApiError` (título contextual +
  *   mensaje real del backend: "plan no activo", "mezcla de monedas", el 422 del
@@ -243,7 +242,6 @@ export function useTreatmentPlanItems(
         setTotals({
           planId: data.planId ?? target,
           total: data.total ?? 0,
-          acceptedTotal: data.acceptedTotal ?? 0,
           currencyCode: data.currencyCode ?? null,
           totalCount: data.totalCount ?? 0,
           toothCount: data.toothCount ?? 0,

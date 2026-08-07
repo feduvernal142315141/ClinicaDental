@@ -148,57 +148,48 @@ export interface PaginatedTreatmentPlansResponse {
 // ─── Treatment Plan Items (líneas del plan) ─────────────────────────
 
 /**
- * Eje COMERCIAL de una línea: qué decidió el paciente.
- * Espejo de `PlanItemDecision` en el backend.
+ * Estado de una línea del plan.
+ *
+ * Es EXACTAMENTE el vocabulario de `ClinicalEventStatus` del modal del diente.
+ * Una línea del plan y un procedimiento planificado sobre una pieza son la misma
+ * cosa vista desde dos pantallas: dos listas de estados obligaban a traducir en
+ * el medio y acababan divergiendo.
+ *
+ * Ojo: `canceled` con UNA ele, como el resto del odontograma.
  */
-export type PlanItemDecision =
-  | "proposed"
-  | "accepted"
-  | "postponed"
-  | "rejected";
-
-/**
- * Eje CLÍNICO de una línea: qué se ha hecho con ella.
- * Espejo de `PlanItemStatus` en el backend. Ojo: "en curso" NO se persiste
- * aquí, se deriva (ver `inProgress` / `displayStatus`).
- */
-export type PlanItemStatus = "planned" | "scheduled" | "done" | "cancelled";
-
-/**
- * Etiqueta ÚNICA que el servidor deriva de los dos ejes aplicando su propia
- * precedencia (hecho consumado > anulación > decisión comercial). Es la que se
- * pinta: reimplementar la precedencia en el cliente la haría divergir.
- */
-export type PlanItemDisplayStatus =
-  | "proposed"
-  | "accepted"
-  | "postponed"
-  | "rejected"
+export type PlanItemStatus =
+  | "open"
+  | "plan"
   | "scheduled"
   | "in_progress"
   | "done"
-  | "cancelled";
+  | "canceled"
+  | "observation";
+
+/** Prioridad clínica. Mismo vocabulario que `ProcedurePriority` del modal. */
+export type PlanItemPriority = "alta" | "media" | "baja";
 
 /**
- * Los ocho `displayStatus` en el ORDEN DEL CICLO DE VIDA de una línea:
- * primero la negociación con el paciente (propuesto → aceptado / pospuesto /
- * rechazado), después la ejecución clínica (agendado → en curso → hecho) y por
- * último la anulación.
- *
- * Existe para que cualquier lista de estados (filtros, leyendas, informes) salga
- * SIEMPRE en el mismo orden. Ordenarlos por orden de aparición en los datos
- * haría que el desplegable de estados se recolocara solo en cada recarga y que
- * dos pacientes lo enseñaran distinto.
+ * Los estados en el ORDEN DEL CICLO DE VIDA de una línea, no en orden
+ * alfabético ni de aparición en los datos: si se ordenaran por los datos, el
+ * desplegable de estados se recolocaría solo en cada recarga y dos pacientes lo
+ * enseñarían distinto.
  */
-export const PLAN_ITEM_DISPLAY_STATUSES: readonly PlanItemDisplayStatus[] = [
-  "proposed",
-  "accepted",
-  "postponed",
-  "rejected",
+export const PLAN_ITEM_STATUSES: readonly PlanItemStatus[] = [
+  "open",
+  "plan",
   "scheduled",
   "in_progress",
   "done",
-  "cancelled",
+  "canceled",
+  "observation",
+];
+
+/** Prioridades de mayor a menor urgencia. */
+export const PLAN_ITEM_PRIORITIES: readonly PlanItemPriority[] = [
+  "alta",
+  "media",
+  "baja",
 ];
 
 /**
@@ -226,16 +217,7 @@ export interface TreatmentPlanItem {
    * importe queda sin explicación en un documento que el paciente acepta.
    */
   quantity: number;
-  /**
-   * Descuento ya descontado de `lineTotal`. Cuando es > 0 la fila TIENE que
-   * mostrarlo junto a `discountReason`: el servidor exige el motivo justamente
-   * por trazabilidad (422 si falta), así que esconderlo en pantalla tira ese
-   * rastro a la basura y deja un importe menor que el catálogo sin justificar.
-   */
-  discountAmount?: number | null;
-  /** Obligatorio en el servidor cuando `discountAmount` > 0 (si no, 422). */
-  discountReason?: string | null;
-  /** Calculado en el servidor: cantidad × precio − descuento. NO recalcular. */
+  /** Calculado en el servidor: cantidad × precio unitario. NO recalcular. */
   lineTotal: number;
 
   /** JSON string con array de FDI, p. ej. `"[16,17]"`. Vacío/`"[]"` = general. */
@@ -250,11 +232,11 @@ export interface TreatmentPlanItem {
   /** Clave de idempotencia del puente odontograma → plan. */
   syncKey?: string | null;
 
-  decision?: PlanItemDecision | null;
-  status?: PlanItemStatus | null;
-  /** Etiqueta única ya derivada por el servidor. */
-  displayStatus: PlanItemDisplayStatus;
+  status: PlanItemStatus;
+  priority: PlanItemPriority;
   phase?: number | null;
+  /** Minutos estimados. Copiados del catálogo al añadir, editables después. */
+  durationMinutes?: number | null;
 
   sessionsPlanned: number;
   sessionsDone: number;
@@ -278,13 +260,10 @@ export interface TreatmentPlanItemsResponse {
   planId: string;
   items: TreatmentPlanItem[];
   /**
-   * Suma de las líneas que cuentan para el presupuesto: excluye las canceladas
-   * (`status === "cancelled"`) y las rechazadas (`decision === "rejected"`).
-   * El predicado exacto está en {@link countsTowardsPlanTotal}.
+   * Suma de las líneas que cuentan para el presupuesto: todas menos las
+   * canceladas. El predicado exacto está en {@link countsTowardsPlanTotal}.
    */
   total: number;
-  /** Suma de lo que el paciente aceptó explícitamente. */
-  acceptedTotal: number;
   /**
    * Moneda CONGELADA de los importes (la de la primera línea). `null` cuando el
    * plan aún no tiene líneas.
@@ -315,28 +294,21 @@ export interface TreatmentPlanItemsResponse {
 
 /**
  * ¿Esta línea suma en `total`? Espejo LITERAL de
- * `TreatmentPlanPricingService.countsTowardsTotal` del backend.
- *
- * Va sobre los DOS EJES CRUDOS (`status` / `decision`), **no** sobre
- * `displayStatus`, porque no son equivalentes: la precedencia de
- * `displayStatus` pone el hecho consumado por delante del rechazo, así que una
- * línea ejecutada y rechazada (`status: "done"`, `decision: "rejected"`) llega
- * como `displayStatus: "done"` y aun así NO cuenta para el total. Filtrar por
- * `displayStatus` la sumaría y el pie de la tabla dejaría de cuadrar con el
- * presupuesto que guarda el servidor.
+ * `TreatmentPlanPricingService.countsTowardsTotal` del backend: cuenta todo
+ * salvo lo cancelado.
  *
  * Para qué existe: el servidor manda `total` pero NO subtotales por grupo, y la
  * pantalla necesita "POR PIEZA — N líneas · importe" y "SERVICIOS GENERALES —
  * N líneas · importe". Esos subtotales son una PARTICIÓN de `total`, no un
  * cálculo nuevo: con este predicado se cumple la invariante
- * `subtotal(por pieza) + subtotal(generales) === total`. Las líneas anuladas se
+ * `subtotal(por pieza) + subtotal(generales) === total`. Las líneas canceladas se
  * siguen mostrando en su grupo —con el importe tachado y fuera de la suma—, ni
  * ocultas ni sumadas.
  */
 export function countsTowardsPlanTotal(
-  item: Pick<TreatmentPlanItem, "status" | "decision">,
+  item: Pick<TreatmentPlanItem, "status">,
 ): boolean {
-  return item.status !== "cancelled" && item.decision !== "rejected";
+  return item.status !== "canceled";
 }
 
 /**
@@ -370,17 +342,23 @@ export interface AddPlanItemsRequest {
 /**
  * Body de PATCH /treatment-plans/items/{itemId}.
  *
+ * Mismos campos que la ficha del modal del diente: estado, prioridad, tiempo,
+ * costo y notas. No hay decisión del paciente ni descuento: la clínica no
+ * gestiona eso.
+ *
  * NULL-AWARE: manda SOLO lo que cambia. Un campo ausente no se toca; enviarlo
- * en vacío/0 SÍ lo sobrescribe. No se puede cambiar aquí el servicio, el
- * precio, la moneda, la pieza ni las superficies (congelados por diseño).
+ * en vacío/0 SÍ lo sobrescribe. No se puede cambiar aquí el servicio, la moneda,
+ * la pieza ni las superficies.
  */
 export interface UpdatePlanItemRequest {
-  decision?: PlanItemDecision;
+  status?: PlanItemStatus;
+  priority?: PlanItemPriority;
   phase?: number;
   quantity?: number;
-  /** Si es > 0, `discountReason` es obligatorio o el servidor responde 422. */
-  discountAmount?: number;
-  discountReason?: string;
+  /** Minutos estimados. */
+  durationMinutes?: number;
+  /** Precio unitario. Editable por línea, como en la ficha del modal. */
+  unitCost?: number;
   notes?: string;
 }
 

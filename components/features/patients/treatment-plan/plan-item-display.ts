@@ -1,45 +1,44 @@
 import type { StatusBadgeTone } from "@/components/ui";
 import type {
-  PlanItemDecision,
-  PlanItemDisplayStatus,
+  PlanItemPriority,
+  PlanItemStatus,
   TreatmentPlanItem,
 } from "@/lib/entity/odontogram";
 
 /**
  * Vocabulario visual de las líneas del plan: etiqueta en español y tono del
- * pill para cada `displayStatus`.
+ * pill para cada estado.
  *
- * `displayStatus` lo deriva el SERVIDOR aplicando su propia precedencia (hecho
- * consumado > anulación > decisión comercial). Aquí solo se traduce: recalcular
- * la precedencia en el cliente la haría divergir del presupuesto guardado.
+ * Son EXACTAMENTE los estados del modal del diente, y las etiquetas son las
+ * mismas que su desplegable: una línea del plan y un procedimiento planificado
+ * sobre una pieza son la misma cosa vista desde dos pantallas, así que llamarlas
+ * distinto obligaba al odontólogo a traducir de cabeza.
  *
- * Sobre los tonos: hay 8 estados y 6 tonos, así que "Agendado" y "En curso"
- * comparten el sky de `progress` — ambos son "en marcha" y la ETIQUETA los
- * distingue. Ningún estado se comunica solo con color (WCAG 2.2 — 1.4.1).
+ * Sobre los tonos: hay 7 estados y menos tonos, así que "Programado" y "En
+ * curso" comparten el sky de `progress` — ambos son "en marcha" y la ETIQUETA
+ * los distingue. Ningún estado se comunica solo con color (WCAG 2.2 — 1.4.1).
  */
 export const PLAN_ITEM_STATUS_META: Record<
-  PlanItemDisplayStatus,
+  PlanItemStatus,
   { label: string; tone: StatusBadgeTone }
 > = {
-  proposed: { label: "Propuesto", tone: "neutral" },
-  accepted: { label: "Aceptado", tone: "info" },
-  postponed: { label: "Pospuesto", tone: "warning" },
-  rejected: { label: "Rechazado", tone: "danger" },
-  scheduled: { label: "Agendado", tone: "progress" },
+  open: { label: "Abierto", tone: "neutral" },
+  plan: { label: "Planificado", tone: "info" },
+  scheduled: { label: "Programado", tone: "progress" },
   in_progress: { label: "En curso", tone: "progress" },
-  done: { label: "Hecho", tone: "success" },
-  cancelled: { label: "Anulado", tone: "neutral" },
+  done: { label: "Realizado", tone: "success" },
+  canceled: { label: "Cancelado", tone: "neutral" },
+  observation: { label: "Observación", tone: "warning" },
 };
 
 /**
- * Etiqueta y tono de un `displayStatus`, con salida segura si el backend
- * estrena un valor que este front todavía no conoce: se pinta el código crudo
- * en vez de dejar la celda vacía (una celda vacía se lee como "sin estado").
+ * Etiqueta y tono de un estado. Tolera nulo y desconocido: un estado que el
+ * cliente no conozca se pinta con su valor crudo en tono neutro en vez de
+ * romper la fila — el servidor puede crecer el enum antes que el front.
  */
-export function getPlanItemStatusMeta(status: PlanItemDisplayStatus | null | undefined): {
-  label: string;
-  tone: StatusBadgeTone;
-} {
+export function getPlanItemStatusMeta(
+  status: PlanItemStatus | null | undefined,
+): { label: string; tone: StatusBadgeTone } {
   if (status && status in PLAN_ITEM_STATUS_META) {
     return PLAN_ITEM_STATUS_META[status];
   }
@@ -47,24 +46,23 @@ export function getPlanItemStatusMeta(status: PlanItemDisplayStatus | null | und
 }
 
 /**
- * Las decisiones que el menú de la fila ofrece, en el orden en que se toman.
- *
- * `proposed` NO está: es el estado de partida de toda línea, no algo que se
- * elija. "Des-aceptar" tampoco existe como gesto — lo que hay es posponer o
- * rechazar, y cada uno significa una cosa distinta para el paciente.
- *
- * `verb` es lo que se pulsa ("Aceptar") y `label` cómo queda ("Aceptado"): el
- * menú marca la decisión vigente, así que las dos formas se ven a la vez.
+ * Prioridad de la línea, con el mismo vocabulario y el mismo orden que el
+ * desplegable del modal del diente.
  */
-export const PLAN_ITEM_DECISION_ACTIONS: ReadonlyArray<{
-  decision: Exclude<PlanItemDecision, "proposed">;
-  verb: string;
-  label: string;
-}> = [
-  { decision: "accepted", verb: "Aceptar", label: "Aceptado" },
-  { decision: "postponed", verb: "Posponer", label: "Pospuesto" },
-  { decision: "rejected", verb: "Rechazar", label: "Rechazado" },
-];
+export const PLAN_ITEM_PRIORITY_META: Record<
+  PlanItemPriority,
+  { label: string; tone: StatusBadgeTone }
+> = {
+  alta: { label: "Alta", tone: "danger" },
+  media: { label: "Media", tone: "neutral" },
+  baja: { label: "Baja", tone: "neutral" },
+};
+
+export function getPlanItemPriorityLabel(
+  priority: PlanItemPriority | null | undefined,
+): string {
+  return priority ? PLAN_ITEM_PRIORITY_META[priority].label : "Media";
+}
 
 /** "Fase 2" / "Sin fase". El plan puede no estar faseado todavía. */
 export function formatPhase(phase: number | null | undefined): string {
@@ -91,25 +89,19 @@ export function formatSessionsProgress(
 
 /**
  * Por qué el servidor rechazaría una sesión sobre esta línea, en texto y `null`
- * si la aceptaría. Espejo de las tres guardas de
+ * si la aceptaría. Espejo de las guardas de
  * `RegisterPlanItemSessionCommandHandler`.
  *
  * Se comprueba ANTES de llamar para poder decir el motivo junto a la acción, en
  * vez de dejar que el usuario descubra con un toast rojo que la línea que acaba
- * de tratar estaba rechazada. El servidor sigue siendo quien decide: esto solo
+ * de tratar estaba cancelada. El servidor sigue siendo quien decide: esto solo
  * evita el viaje perdido, y si las dos versiones divergen manda su respuesta.
  */
 export function getSessionBlockReason(
-  item: Pick<
-    TreatmentPlanItem,
-    "status" | "decision" | "sessionsDone" | "sessionsPlanned"
-  >,
+  item: Pick<TreatmentPlanItem, "status" | "sessionsDone" | "sessionsPlanned">,
 ): string | null {
-  if (item.status === "cancelled") {
-    return "La línea está anulada.";
-  }
-  if (item.decision === "rejected") {
-    return "El paciente la rechazó: acéptala primero.";
+  if (item.status === "canceled") {
+    return "La línea está cancelada.";
   }
   if ((item.sessionsDone ?? 0) >= (item.sessionsPlanned ?? 0)) {
     return "Ya tiene todas sus sesiones registradas.";

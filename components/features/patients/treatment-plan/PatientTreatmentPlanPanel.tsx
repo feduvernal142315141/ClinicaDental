@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useId,
-  useMemo,
   useRef,
   useState,
   type RefObject,
@@ -31,34 +30,31 @@ import {
 } from "@/components/ui";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import {
-  NO_PHASE_VALUE,
   useAddToPlanCatalog,
   useTreatmentPlanBoard,
   type PlanItemRow,
 } from "@/lib/hooks/odontogram";
-import { usePermission } from "@/lib/hooks/use-permission";
-import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
 import { AddToPlanPanel } from "./AddToPlanPanel";
 import { PlanItemRowActions } from "./PlanItemRowActions";
+import {
+  PlanItemPrioritySelect,
+  PlanItemStatusSelect,
+} from "./PlanItemPropertySelects";
 import { TreatmentPlanFiltersBar } from "./TreatmentPlanFiltersBar";
 import { TreatmentPlanItemsTable } from "./TreatmentPlanItemsTable";
-
-interface PatientTreatmentPlanPanelProps {
-  patientId: string;
-  /** Solo para la cabecera y el `<caption>`; los datos los trae el hook. */
-  patientName: string;
-}
 
 /** `min-w-[50rem]` de {@link TreatmentPlanItemsTable} (creció con el menú). */
 const TABLE_MIN_WIDTH_PX = 800;
 /** `w-[24rem]` del `<aside>` de más abajo. */
 const ADD_PANEL_WIDTH_PX = 384;
 /** `gap-4` de la fila que reparte tabla y panel. */
+/** `gap-4` de la fila que reparte tabla y panel. */
 const COLUMN_GAP_PX = 16;
 /** Ancho a partir del cual caben LOS DOS sin estrujar la tabla. */
 const SIDE_BY_SIDE_MIN_WIDTH_PX =
   TABLE_MIN_WIDTH_PX + COLUMN_GAP_PX + ADD_PANEL_WIDTH_PX;
+
 
 /**
  * ¿Cabe el panel de "Añadir" como columna al lado de la tabla?
@@ -124,26 +120,11 @@ function useFrozenWhileOpen(value: boolean, open: boolean): boolean {
   return frozen.current;
 }
 
-/** "3 líneas · 2 por pieza, 1 general". */
-function buildCountsSubtitle(
-  totalCount: number,
-  toothCount: number,
-  generalCount: number,
-  excludedCount: number,
-): string {
-  const parts = [
-    `${totalCount} ${totalCount === 1 ? "línea" : "líneas"}`,
-    `${toothCount} por pieza, ${generalCount} ${
-      generalCount === 1 ? "general" : "generales"
-    }`,
-  ];
-  // Los recuentos INCLUYEN canceladas y rechazadas, pero el importe de al lado
-  // las excluye. Sin este aviso, "8 líneas · 4.300" no le cuadra a nadie que
-  // intente sumar las filas.
-  if (excludedCount > 0) {
-    parts.push(`${excludedCount} fuera del total`);
-  }
-  return parts.join(" · ");
+
+interface PatientTreatmentPlanPanelProps {
+  patientId: string;
+  /** Solo para el `<caption>` de la tabla; los datos los trae el hook. */
+  patientName: string;
 }
 
 /**
@@ -174,68 +155,51 @@ export function PatientTreatmentPlanPanel({
     loadedCount,
     totals,
     currency,
-    excludedCount,
     loading,
     pendingItemIds,
     error,
     retry,
     addItems,
     updateItem,
-    registerSession,
     removeItem,
   } = useTreatmentPlanBoard(patientId);
 
-  const { isAdmin, can } = usePermission();
-  /**
-   * `PATCH /items/{id}/session` exige `hasAuthority('odontogram')`. Esa autoridad
-   * de MÓDULO se concede en cuanto el rol tiene el módulo con cualquier acción,
-   * sin mirar bits, así que se replica con el OR de las cuatro — el mismo idioma
-   * que `useSidebarNavigation` (el enum es una máscara y no tiene READ).
-   *
-   * Hoy la pestaña entera ya se gatea con `odontogram`, así que este permiso
-   * está de más en la práctica; se comprueba igual porque el endpoint de LECTURA
-   * admite además el módulo `service` (`hasAnyAuthority('odontogram','service')`)
-   * y en cuanto la pestaña se abra a ese rol —que puede leer el plan y editar
-   * líneas— registrar sesiones seguiría siendo suyo y solo suyo.
-   */
-  const canRegisterSession =
-    isAdmin ||
-    can("odontogram", PermissionAction.CREATE) ||
-    can("odontogram", PermissionAction.EDIT) ||
-    can("odontogram", PermissionAction.DELETE) ||
-    can("odontogram", PermissionAction.BLOCK);
 
-  /** Fases ya presentes en el plan: el diálogo numera a partir de ellas. */
-  const usedPhases = useMemo(
-    () =>
-      filters.phaseOptions
-        .filter((option) => option.value !== NO_PHASE_VALUE)
-        .map((option) => Number(option.value))
-        .filter((phase) => Number.isFinite(phase)),
-    [filters.phaseOptions],
+  // Estado y prioridad se editan SOBRE su valor en la fila (skill
+  // `ui-interacciones`), no desde el menú ⋯, que queda solo para quitar.
+  const renderStatus = useCallback(
+    (row: PlanItemRow) => (
+      <PlanItemStatusSelect
+        row={row}
+        pending={pendingItemIds.has(row.item.id)}
+        onUpdate={updateItem}
+      />
+    ),
+    [pendingItemIds, updateItem],
+  );
+
+  const renderPriority = useCallback(
+    (row: PlanItemRow) => (
+      <PlanItemPrioritySelect
+        row={row}
+        pending={pendingItemIds.has(row.item.id)}
+        onUpdate={updateItem}
+      />
+    ),
+    [pendingItemIds, updateItem],
   );
 
   const renderRowActions = useCallback(
     (row: PlanItemRow) => (
       <PlanItemRowActions
         row={row}
-        currency={currency}
-        usedPhases={usedPhases}
         pending={pendingItemIds.has(row.item.id)}
-        canRegisterSession={canRegisterSession}
-        onUpdate={updateItem}
-        onRegisterSession={registerSession}
         onRemove={removeItem}
       />
     ),
     [
-      canRegisterSession,
-      currency,
       pendingItemIds,
-      registerSession,
       removeItem,
-      updateItem,
-      usedPhases,
     ],
   );
 
@@ -317,38 +281,16 @@ export function PatientTreatmentPlanPanel({
 
           {!loading && !error && (
             <>
-              <header className="flex shrink-0 flex-wrap items-start justify-between gap-x-6 gap-y-2">
-                <div className="min-w-0">
-                  <h2 className="truncate text-lg font-semibold text-ink">
-                    Plan de tratamiento · {patientName}
-                  </h2>
-                  <p className="mt-0.5 text-sm text-subtle">
-                    {buildCountsSubtitle(
-                      totals.totalCount,
-                      totals.toothCount,
-                      totals.generalCount,
-                      excludedCount,
-                    )}
-                  </p>
-                </div>
+              {/*
+                Barra: filtros a la izquierda, importe y acción a la derecha.
 
-                {hasItems && (
-                  <div className="shrink-0 text-right">
-                    <p className="text-2xl font-semibold tabular-nums text-ink">
-                      {formatClinicCurrencyExact(totals.total, currency)}
-                    </p>
-                    <p className="text-xs tabular-nums text-subtle">
-                      {formatClinicCurrencyExact(
-                        totals.acceptedTotal,
-                        currency,
-                      )}{" "}
-                      aceptados
-                    </p>
-                  </div>
-                )}
-              </header>
-
-              {/* Barra: filtros a la izquierda, acción primaria a la derecha. */}
+                NO hay cabecera con "Plan de tratamiento · <paciente>": el nombre
+                del paciente ya preside la página y los recuentos por grupo los
+                dan literalmente los chips de esta misma barra ("Todos 3 · Por
+                pieza 2 · Generales 1"), así que ese bloque repetía dos veces lo
+                mismo y empujaba la tabla hacia abajo. El importe, que sí era
+                información nueva, se conserva aquí.
+              */}
               <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 {hasItems ? (
                   <TreatmentPlanFiltersBar
@@ -367,7 +309,20 @@ export function PatientTreatmentPlanPanel({
                 {/* Vive en la barra y no dentro del estado vacío: hoy NINGÚN
                     plan tiene líneas, así que si el botón solo apareciera con la
                     tabla llena no habría forma de estrenar ninguno. */}
-                <Button
+                <div className="flex shrink-0 items-center gap-4">
+                  {hasItems && (
+                    <p className="text-right leading-tight">
+                      <span className="block text-xl font-semibold tabular-nums text-ink">
+                        {formatClinicCurrencyExact(totals.total, currency)}
+                      </span>
+                      {/* Sin "aceptados": la clínica no registra la decisión del
+                          paciente, así que no hay subtotal que declarar. */}
+                      <span className="block text-xs text-subtle">
+                        Importe estimado
+                      </span>
+                    </p>
+                  )}
+                  <Button
                   type="button"
                   onClick={() => setAddOpen(true)}
                   // Solo cuando el panel es columna: allí despliega una región
@@ -378,7 +333,8 @@ export function PatientTreatmentPlanPanel({
                 >
                   <Plus aria-hidden="true" className="h-4 w-4" />
                   Añadir al plan
-                </Button>
+                  </Button>
+                </div>
               </div>
 
               {!hasItems && (
@@ -456,6 +412,8 @@ export function PatientTreatmentPlanPanel({
                       currency={currency}
                       hiddenCount={filters.hiddenCount}
                       renderActions={renderRowActions}
+                      renderStatus={renderStatus}
+                      renderPriority={renderPriority}
                       pendingItemIds={pendingItemIds}
                     />
                   </div>

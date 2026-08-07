@@ -1,20 +1,19 @@
 "use client";
 
 import { Fragment, type ReactNode } from "react";
-import { Layers } from "lucide-react";
+import { Layers, Stethoscope, type LucideIcon } from "lucide-react";
 import { StatusBadge } from "@/components/ui";
 import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
 import { cn } from "@/lib/utils/utils";
 import type { PlanItemGroup, PlanItemRow } from "@/lib/hooks/odontogram";
 import {
   formatGroupCount,
-  formatPhase,
   formatSessionsProgress,
   getPlanItemStatusMeta,
 } from "./plan-item-display";
 
 /** Columnas de la tabla. Lo usan las cabeceras de grupo y el pie. */
-const COLUMN_COUNT = 6;
+const COLUMN_COUNT = 5;
 
 interface TreatmentPlanItemsTableProps {
   patientName: string;
@@ -31,19 +30,26 @@ interface TreatmentPlanItemsTableProps {
   hiddenCount: number;
   /** Menú de la fila. La tabla no conoce las mutaciones: solo hace su hueco. */
   renderActions: (row: PlanItemRow) => ReactNode;
+  /**
+   * Estado y prioridad como PROPIEDADES INLINE (skill `ui-interacciones`): el
+   * host inyecta los disparadores y la tabla solo los coloca. Sin ellos cae a
+   * la pill estática — la vista de solo lectura del futuro no necesita más.
+   */
+  renderStatus?: (row: PlanItemRow) => ReactNode;
+  renderPriority?: (row: PlanItemRow) => ReactNode;
   /** Líneas con una mutación en vuelo: la fila se atenúa mientras dura. */
   pendingItemIds: ReadonlySet<string>;
 }
 
 /** Cabecera de columna: pegada arriba DENTRO del único contenedor con scroll. */
 const HEAD_CELL =
-  "sticky top-0 z-20 border-b border-hairline bg-surface px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle";
+  "sticky top-0 z-20 border-b border-hairline bg-canvas px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle";
 
 /** Celda del pie: pegada abajo, mismo contenedor. */
 const FOOT_CELL =
-  "sticky bottom-0 z-20 border-t border-hairline bg-surface px-3 py-3";
+  "sticky bottom-0 z-20 border-t border-hairline bg-canvas px-3 py-3";
 
-const BODY_CELL = "border-b border-hairline px-3 py-2.5 align-top";
+const BODY_CELL = "border-b border-hairline px-3 py-2.5 align-middle";
 
 /**
  * Columna del menú, ANCLADA a la derecha.
@@ -111,33 +117,50 @@ function ToothScopeCell({ row }: { row: PlanItemRow }) {
         )}
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-medium text-ink">{label}</span>
-        {surfacesLabel && (
-          <span
-            className="block truncate text-xs text-subtle"
-            title={surfacesLabel}
-          >
-            Superficies: {surfacesLabel}
-          </span>
-        )}
+        {/* Secundario a propósito: el texto fuerte de la fila es el SERVICIO.
+            El ancla visual de esta celda es el cuadro del FDI. */}
+        <span className="block text-sm text-subtle">{label}</span>
+        {/* Siempre presente: sin superficies el diseño pone "Pieza completa".
+            Ocultarlo dejaba un hueco y hacía que la fila cambiara de alto según
+            tuviera superficies o no. */}
+        <span
+          className="block truncate text-xs text-subtle"
+          title={surfacesLabel || undefined}
+        >
+          {surfacesLabel ? `Superficies: ${surfacesLabel}` : "Pieza completa"}
+        </span>
       </span>
     </div>
   );
 }
 
-function GeneralScopeCell() {
+function GeneralScopeCell({ sessionsPlanned }: { sessionsPlanned: number }) {
   return (
     <div className="flex items-start gap-2.5">
-      {/* `bg-canvas`: en claro `elevated` === `surface` (blanco sobre blanco). */}
+      {/* Acento CIAN, no neutro. En el diseño el cuadro general es lo único
+          teñido de la fila, y es lo que hace que el bloque de servicios
+          generales se lea como un bloque aparte sin necesidad de leerlo. El
+          token es `info`: globals.css:170 documenta que "el accent cian es
+          info", y en oscuro vale 34 211 238, el hex exacto de la referencia.
+          Solo tiñe icono y borde: en claro `info` es cyan-600 (3,3:1), que vale
+          para gráfico pero no para texto pequeño. */}
       <span
         aria-hidden="true"
-        className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-hairline bg-canvas text-subtle"
+        className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-info/25 bg-info/10 text-info"
       >
         <Layers className="h-3.5 w-3.5" />
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-medium text-ink">General</span>
-        <span className="block text-xs text-subtle">Sin pieza asociada</span>
+        <span className="block text-sm text-subtle">General</span>
+        {/* El diseño pone aquí el ALCANCE de la línea ("Toda la boca",
+            "Estudio", "Por sesión · 4"). El contrato no manda el alcance, pero
+            SÍ las sesiones, así que se recupera el único de los tres que
+            tenemos con dato real en vez de repetir una constante muda. */}
+        <span className="block text-xs text-subtle">
+          {sessionsPlanned > 1
+            ? `Por sesión · ${sessionsPlanned}`
+            : "Sin pieza asociada"}
+        </span>
       </span>
     </div>
   );
@@ -148,15 +171,18 @@ function PlanItemRowCells({
   currency,
   actions,
   pending,
+  renderStatus,
+  renderPriority,
 }: {
   row: PlanItemRow;
   currency: string;
   actions: ReactNode;
   pending: boolean;
+  renderStatus?: (row: PlanItemRow) => ReactNode;
+  renderPriority?: (row: PlanItemRow) => ReactNode;
 }) {
   const { item, countsTowardsTotal } = row;
-  const status = getPlanItemStatusMeta(item.displayStatus);
-  const discount = item.discountAmount ?? 0;
+  const status = getPlanItemStatusMeta(item.status);
   const sessions = formatSessionsProgress(item);
 
   return (
@@ -172,7 +198,11 @@ function PlanItemRowCells({
       )}
     >
       <th scope="row" className={cn(BODY_CELL, "font-normal")}>
-        {item.general ? <GeneralScopeCell /> : <ToothScopeCell row={row} />}
+        {item.general ? (
+          <GeneralScopeCell sessionsPlanned={item.sessionsPlanned} />
+        ) : (
+          <ToothScopeCell row={row} />
+        )}
       </th>
 
       <td className={BODY_CELL}>
@@ -191,20 +221,8 @@ function PlanItemRowCells({
         {item.serviceCode && (
           <span className="block text-xs text-subtle">{item.serviceCode}</span>
         )}
-        {/* El servidor exige motivo para descontar (422 si falta) justamente por
-            trazabilidad: esconderlo aquí tiraría ese rastro y dejaría un importe
-            por debajo del catálogo sin justificación. */}
-        {discount > 0 && (
-          <span className="mt-0.5 block text-xs text-subtle">
-            Descuento {formatClinicCurrencyExact(discount, currency)}
-            {item.discountReason ? ` · ${item.discountReason}` : ""}
-          </span>
-        )}
       </td>
 
-      <td className={cn(BODY_CELL, "whitespace-nowrap text-sm text-subtle")}>
-        {formatPhase(item.phase)}
-      </td>
 
       <td
         className={cn(
@@ -222,7 +240,11 @@ function PlanItemRowCells({
       </td>
 
       <td className={BODY_CELL}>
-        <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
+        {renderStatus ? (
+          renderStatus(row)
+        ) : (
+          <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
+        )}
         {/* Contadores del SERVIDOR (`sessionsDone`/`sessionsPlanned`). Un
             tratamiento de varias sesiones se ve "En curso" durante semanas: sin
             el "2 de 3" no hay forma de saber cuánto falta.
@@ -231,14 +253,19 @@ function PlanItemRowCells({
             énfasis: entre una línea a medias y una terminada o sin empezar, la
             que hay que atender hoy es la primera, y en una tabla de veinte filas
             el gris de `text-subtle` la esconde entre las demás. */}
-        {sessions && (
-          <span
-            className={cn(
-              "mt-1 block whitespace-nowrap text-xs tabular-nums",
-              item.inProgress ? "font-medium text-ink" : "text-subtle",
+        {(renderPriority || sessions) && (
+          <span className="mt-1 flex items-center gap-2 whitespace-nowrap">
+            {renderPriority?.(row)}
+            {sessions && (
+              <span
+                className={cn(
+                  "text-xs tabular-nums",
+                  item.inProgress ? "font-medium text-ink" : "text-subtle",
+                )}
+              >
+                {sessions} sesiones
+              </span>
             )}
-          >
-            {sessions} sesiones
           </span>
         )}
       </td>
@@ -257,11 +284,15 @@ function GroupHeaderRow({
   group,
   currency,
   note,
+  icon: Icon,
+  iconClassName,
 }: {
   title: string;
   group: PlanItemGroup;
   currency: string;
   note?: string;
+  icon: LucideIcon;
+  iconClassName?: string;
 }) {
   return (
     <tr>
@@ -276,7 +307,14 @@ function GroupHeaderRow({
         colSpan={COLUMN_COUNT}
         className="border-b border-hairline bg-canvas px-3 py-2 text-left"
       >
-        <span className="flex flex-wrap items-baseline gap-x-2">
+        <span className="flex flex-wrap items-center gap-x-2">
+          {/* Icono de banda: es lo que hace que los dos bloques se distingan de
+              un vistazo sin leer el rótulo. Cian en el general, por el mismo
+              motivo que el cuadro de alcance. */}
+          <Icon
+            aria-hidden="true"
+            className={cn("h-3.5 w-3.5 shrink-0", iconClassName)}
+          />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-subtle">
             {title}
           </span>
@@ -286,12 +324,15 @@ function GroupHeaderRow({
               {formatClinicCurrencyExact(group.subtotal, currency)}
             </span>
           </span>
+          {/* A la DERECHA de la misma banda, como el diseño. Debajo duplicaba
+              la altura de la banda general y desalineaba los dos grupos.
+              Se oculta en estrecho antes que partir la banda en dos líneas. */}
+          {note && (
+            <span className="ml-auto hidden text-[11px] font-normal normal-case text-subtle sm:inline">
+              {note}
+            </span>
+          )}
         </span>
-        {note && (
-          <span className="mt-0.5 block text-[11px] font-normal normal-case text-subtle">
-            {note}
-          </span>
-        )}
       </th>
     </tr>
   );
@@ -318,17 +359,26 @@ export function TreatmentPlanItemsTable({
   currency,
   hiddenCount,
   renderActions,
+  renderStatus,
+  renderPriority,
   pendingItemIds,
 }: TreatmentPlanItemsTableProps) {
-  const groups: Array<{ title: string; group: PlanItemGroup; note?: string }> =
-    [
-      { title: "Por pieza", group: toothGroup },
-      {
-        title: "Servicios generales",
-        group: generalGroup,
-        note: "No se marcan sobre el odontograma.",
-      },
-    ];
+  const groups: Array<{
+    title: string;
+    group: PlanItemGroup;
+    note?: string;
+    icon: LucideIcon;
+    iconClassName?: string;
+  }> = [
+    { title: "Por pieza", group: toothGroup, icon: Stethoscope },
+    {
+      title: "Servicios generales",
+      group: generalGroup,
+      note: "No se marcan sobre el odontograma.",
+      icon: Layers,
+      iconClassName: "text-info",
+    },
+  ];
 
   return (
     <table className="w-full min-w-[50rem] border-separate border-spacing-0 text-sm">
@@ -345,9 +395,6 @@ export function TreatmentPlanItemsTable({
           </th>
           <th scope="col" className={HEAD_CELL}>
             Servicio
-          </th>
-          <th scope="col" className={HEAD_CELL}>
-            Fase
           </th>
           <th scope="col" className={cn(HEAD_CELL, "text-right")}>
             Importe
@@ -370,7 +417,7 @@ export function TreatmentPlanItemsTable({
       </thead>
 
       <tbody>
-        {groups.map(({ title, group, note }) =>
+        {groups.map(({ title, group, note, icon, iconClassName }) =>
           group.count === 0 ? null : (
             <Fragment key={group.kind}>
               <GroupHeaderRow
@@ -378,6 +425,8 @@ export function TreatmentPlanItemsTable({
                 group={group}
                 currency={currency}
                 note={note}
+                icon={icon}
+                iconClassName={iconClassName}
               />
               {group.rows.map((row) => (
                 <PlanItemRowCells
@@ -386,6 +435,8 @@ export function TreatmentPlanItemsTable({
                   currency={currency}
                   actions={renderActions(row)}
                   pending={pendingItemIds.has(row.item.id)}
+                  renderStatus={renderStatus}
+                  renderPriority={renderPriority}
                 />
               ))}
             </Fragment>

@@ -12,7 +12,7 @@ import {
   type PlanScopeFilter,
   type UseTreatmentPlanFiltersResult,
 } from "@/lib/hooks/odontogram";
-import type { PlanItemDisplayStatus } from "@/lib/entity/odontogram";
+import type { PlanItemStatus } from "@/lib/entity/odontogram";
 import { formatPhase, getPlanItemStatusMeta } from "./plan-item-display";
 
 interface TreatmentPlanFiltersBarProps {
@@ -49,7 +49,7 @@ function buildStatusSelectOptions(options: PlanFilterOption[]): SelectOption[] {
     { value: ALL_FILTER_VALUE, label: "Todos los estados" },
     ...options.map<SelectOption>((option) => ({
       value: option.value,
-      label: getPlanItemStatusMeta(option.value as PlanItemDisplayStatus).label,
+      label: getPlanItemStatusMeta(option.value as PlanItemStatus).label,
       description: countLabel(option.count),
     })),
   ];
@@ -137,13 +137,19 @@ export function TreatmentPlanFiltersBar({
             // El hover se fija aquí porque la variante `outline` del primitivo
             // usa `hover:bg-accent hover:text-accent-foreground` (toggle.tsx:19)
             // y `--accent` es VIOLETA en los dos temas (globals.css:23 y :89):
+            // El activo es NEUTRO ELEVADO, no azul: en el diseño el único azul
+            // de toda la sección es el CTA «Añadir al plan», y teñir el
+            // segmento de marca creaba dos focos azules en la misma fila donde
+            // el más grande no era la acción. La distinción se sostiene con el
+            // fondo elevado MÁS el peso tipográfico, así que no depende solo
+            // del color (WCAG 1.4.1).
             // un color que no aparece en ninguna otra parte de la pantalla,
             // pegado a un segmento activo azul marca. Mismo arreglo ya validado
             // en ServicesList.tsx. El par `data-[state=on]:hover:*` reafirma el
             // activo por especificidad (0,3,0 > 0,2,0) para que pasar el ratón
             // por encima —o dejarlo "pegado" tras un toque en tablet— no le
             // quite el azul al segmento que de verdad está activo.
-            className="h-[2.625rem] flex-none gap-1.5 border-hairline px-3 text-xs font-medium text-subtle hover:bg-hover hover:text-ink data-[state=on]:border-brand-strong data-[state=on]:bg-brand-strong data-[state=on]:text-white data-[state=on]:hover:bg-brand-strong data-[state=on]:hover:text-white"
+            className="h-[2.625rem] flex-none gap-1.5 border-hairline px-3 text-xs font-medium text-subtle hover:bg-hover hover:text-ink data-[state=on]:bg-hover-strong data-[state=on]:font-semibold data-[state=on]:text-ink data-[state=on]:hover:bg-hover-strong data-[state=on]:hover:text-ink"
           >
             {scope.label}
             {/* La jerarquía del contador se hace con el PESO y no con el alfa:

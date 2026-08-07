@@ -111,7 +111,7 @@ export interface UseTreatmentPlanBoardResult {
    * misma línea. No conviertas ese `false` en un toast propio.
    *
    * Tras el éxito se releen SIEMPRE las líneas y los totales del servidor:
-   * `lineTotal`, `total` y `displayStatus` los calcula él.
+   * `lineTotal`, `total` y `status` los calcula él.
    */
   updateItem: (
     itemId: string,
@@ -184,12 +184,12 @@ function buildGroup(kind: PlanGroupKind, rows: PlanItemRow[]): PlanItemGroup {
  * - No crea nada al montarse. Si el paciente no tiene plan, `planId` es `null` y
  *   la vista pinta su estado vacío; el borrador se crea con `ensurePlan()` en la
  *   primera escritura real.
- * - No recalcula `total`, `acceptedTotal`, `lineTotal` ni `displayStatus`: los
+ * - No recalcula `total`, `acceptedTotal`, `lineTotal` ni `status`: los
  *   congela/calcula el servidor y sumarlos aquí haría que la pantalla pudiera
  *   diferir del presupuesto guardado.
  * - No convierte importes de moneda (ADR-32): pinta la moneda congelada del plan.
  * - No parchea el estado tras una mutación: relee del servidor. Aceptar una
- *   línea mueve `total`, `acceptedTotal` y `displayStatus` a la vez, y adivinar
+ *   línea mueve `total`, `acceptedTotal` y `status` a la vez, y adivinar
  *   los tres en el cliente es exactamente cómo la pantalla acabaría enseñando un
  *   presupuesto que el servidor no guardó.
  *
