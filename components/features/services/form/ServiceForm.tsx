@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, Stethoscope, FileText, Sparkles } from "lucide-react";
+import { Info, Stethoscope, Sparkles } from "lucide-react";
 
 import {
   Form,
@@ -13,7 +13,6 @@ import {
   Input,
   Switch,
 } from "@/components/ui/atomic/forms";
-import TextArea from "@/components/ui/atomic/forms/textarea";
 import { Select } from "@/components/ui/controls/select";
 import { AvatarField } from "@/components/ui/controls/avatar-field";
 import { useServiceForm } from "@/lib/hooks/services/use-service-form";
@@ -466,42 +465,6 @@ export function ServiceForm({
               </div>
             </div>
           )}
-        </section>
-
-        {/* Descripción */}
-        <section className="bento p-4 lg:p-6">
-          <SectionHeader
-            icon={<FileText className="h-5 w-5" />}
-            title="Descripción"
-            subtitle="Detalles adicionales sobre el procedimiento."
-          />
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => {
-              const len = (field.value ?? "").length;
-              return (
-                <FormItem>
-                  <FormControl>
-                    <TextArea
-                      rows={4}
-                      maxLength={500}
-                      placeholder="Describa brevemente en qué consiste el servicio, indicaciones previas, etc."
-                      disabled={loading}
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <div className="flex items-center justify-between">
-                    <FormMessage />
-                    <span className="text-xs tabular-nums text-subtle">
-                      {len} / 500
-                    </span>
-                  </div>
-                </FormItem>
-              );
-            }}
-          />
         </section>
 
         {/* Acciones */}

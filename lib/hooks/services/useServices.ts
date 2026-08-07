@@ -177,6 +177,57 @@ export function useServices() {
     [],
   );
 
+  /**
+   * Marca/desmarca un servicio como "visible en odontograma".
+   *
+   * Optimista: pinta el nuevo valor en la fila ANTES de la respuesta y revierte
+   * si el PATCH falla. No toca `loading` a propósito — ese flag pone la tabla
+   * entera en estado de carga y un switch inline no debe vaciar el listado.
+   *
+   * A DIFERENCIA de `createService`/`updateService`/`toggleServiceStatus`, este
+   * método NO relanza: notifica el error, revierte la fila y devuelve `false`.
+   * El contrato es el booleano, no la excepción — el llamador decide por el
+   * valor de retorno (p. ej. recargar solo si fue `true`).
+   */
+  const setOdontogramVisibility = useCallback(
+    async (id: string, next: boolean) => {
+      const applyLocally = (value: boolean) =>
+        setServices((prev) =>
+          prev.map((s) =>
+            s.id === id ? { ...s, odontogramEnabled: value } : s,
+          ),
+        );
+
+      applyLocally(next);
+
+      try {
+        await servicesService.setOdontogramVisibility(id, next);
+        notify.success(
+          next ? "Servicio visible en odontograma" : "Servicio general",
+          {
+            description: next
+              ? "Se planificará diente a diente desde el odontograma del paciente."
+              : "Se planificará a nivel de paciente, sin asignarlo a una pieza dental.",
+          },
+        );
+        return true;
+      } catch (error: unknown) {
+        // El switch se conmutó desde el valor contrario, así que revertir es
+        // volver a `!next` (no hace falta capturar el valor previo).
+        applyLocally(!next);
+        notify.error(
+          errMsg(error, "No se pudo cambiar la visibilidad en el odontograma"),
+          {
+            description:
+              "El servicio se quedó como estaba. Inténtalo de nuevo en unos segundos; si persiste, contacta a soporte.",
+          },
+        );
+        return false;
+      }
+    },
+    [],
+  );
+
   return {
     loading,
     services,
@@ -186,5 +237,6 @@ export function useServices() {
     createService,
     updateService,
     toggleServiceStatus,
+    setOdontogramVisibility,
   };
 }

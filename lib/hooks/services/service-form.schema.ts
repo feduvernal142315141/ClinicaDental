@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { optionalText, requiredText } from "@/lib/validation/fields";
+import { requiredText } from "@/lib/validation/fields";
 
 /**
  * Tuplas espejo de los uniones del entity (lib/entity/services). zod necesita
@@ -67,7 +67,9 @@ export const serviceFormSchema = z
       .max(600, "La duración no puede superar 600 minutos")
       .optional(),
     category: z.enum(SERVICE_CATEGORY_VALUES).optional(),
-    description: optionalText({ max: 500 }),
+    // Sin `description`: el backend no tiene ese campo (ni en Service, ni en
+    // Create/UpdateServiceCommand, ni en los response models). Se tecleaba,
+    // se enviaba y se perdía.
     odontogramEnabled: z.boolean(),
     odontogramSymbolMode: z.enum(SYMBOL_MODE_VALUES),
     symbolText: z
