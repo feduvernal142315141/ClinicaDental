@@ -86,9 +86,10 @@ export function useSidebarNavigation() {
 
     const main: MenuItem[] = [];
 
-    if (hasModule("reports")) {
-      main.push({ path: "/dashboard", label: "Dashboard", icon: LayoutDashboard });
-    }
+    // El Dashboard es visible para todo usuario autenticado, sin importar rol ni
+    // permisos: sus endpoints dejaron de exigir `reports`/`general_option`. Sin
+    // esto el enlace quedaría oculto y la vista solo se alcanzaría tecleando la URL.
+    main.push({ path: "/dashboard", label: "Dashboard", icon: LayoutDashboard });
     if (hasModule("patients")) {
       main.push({ path: "/patients", label: "Pacientes", icon: Users });
     }

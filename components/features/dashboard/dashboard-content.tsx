@@ -49,11 +49,12 @@ const PatientsSection = dynamic(
 /**
  * Contenido del dashboard.
  *
- * Vive en un componente aparte a propósito: `useDashboardSummary` pide
- * `GET /dashboard/summary` (permiso `reports`) y `useClinicGeneralSettings` pide
- * `GET /clinic/general-settings` (permiso `general_option`). Los hooks no pueden
- * ser condicionales, así que la página solo monta este componente cuando el rol
- * tiene permiso; de lo contrario esas llamadas devolverían 403 nada más aterrizar.
+ * Se monta para cualquier usuario autenticado. Sus dos hooks
+ * (`GET /dashboard/summary` y `GET /clinic/general-settings`) estaban gateados
+ * por los permisos `reports` y `general_option`; ambos guards se retiraron del
+ * backend, así que ya no hace falta que la página condicione el montaje. Sigue
+ * viviendo en un componente aparte porque la página necesita esperar a que la
+ * sesión hidrate antes de disparar las peticiones.
  */
 export function DashboardContent() {
   const { data, loading, error, params, refresh, updatePeriod } =
