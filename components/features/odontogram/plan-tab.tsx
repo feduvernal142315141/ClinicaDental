@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
 import {
   Alert,
   AlertDescription,
@@ -66,10 +66,6 @@ import {
   getClinicCurrencySymbol,
 } from "@/lib/utils/clinic-regional-format";
 import { useOdontogramServices } from "@/lib/odontogram/application/hooks/useOdontogramServices";
-import { useServiceTemplates } from "@/lib/odontogram/application/hooks/useServiceTemplates";
-import { fetchServiceTemplateSteps } from "@/lib/odontogram/adapters/service-templates";
-import { notify } from "@/lib/utils/notify";
-import { notifyApiError } from "@/lib/utils/notify-error";
 import { useIcdasTemplateSuggestions } from "@/lib/odontogram/application/hooks/useIcdasTemplateSuggestions";
 import { isToothPhysicallyAbsent } from "@/lib/odontogram/domain/odontogram/constants/tooth-status.constants";
 
@@ -123,8 +119,8 @@ interface SidebarPanelProps {
 /**
  * Panel de la barra lateral: tarjeta + micro-label con icono.
  *
- * LOCAL a propósito: sus cuatro consumidores (sugerencias, plantillas ICDAS,
- * plantillas y catálogo) viven en este mismo fichero. No lo saques a
+ * LOCAL a propósito: sus tres consumidores (sugerencias, plantillas ICDAS y
+ * catálogo) viven en este mismo fichero. No lo saques a
  * `components/ui` mientras no exista un quinto consumidor fuera de aquí.
  */
 function SidebarPanel({
@@ -184,8 +180,8 @@ interface PickerRowProps {
 /**
  * Fila pulsable de la barra lateral: icono «+», título, subtítulo y valor.
  *
- * LOCAL a propósito: unifica las tres copias que había en este fichero
- * (sugerencias, plantillas y catálogo), que solo se diferenciaban en el borde
+ * LOCAL a propósito: unifica las copias que había en este fichero
+ * (sugerencias, plantillas ICDAS y catálogo), que solo se diferenciaban en el borde
  * y el hover. Mismo criterio que `SidebarPanel`: sin consumidor externo, no
  * es un átomo del sistema.
  */
@@ -254,12 +250,6 @@ export function PlanTab({
     error: catalogError,
     reload: reloadCatalog,
   } = useOdontogramServices();
-  const { templates: serviceTemplates, loading: templatesLoading } =
-    useServiceTemplates();
-  /** Id de la plantilla que se está aplicando: bloquea la fila y evita dobles. */
-  const [applyingTemplateId, setApplyingTemplateId] = useState<string | null>(
-    null,
-  );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<
     ProcedureCategory | "all"
@@ -309,26 +299,6 @@ export function PlanTab({
     if (onPlansChange) {
       onPlansChange(newPlans);
     }
-  };
-
-  /**
-   * Espejo de `plans` para leer el valor VIGENTE después de un `await`, sin
-   * depender del capturado por la clausura del click.
-   */
-  const plansRef = useRef<ProcedurePlan[]>(plans);
-  useEffect(() => {
-    plansRef.current = plans;
-  }, [plans]);
-
-  /**
-   * Añade planes sobre el estado vigente. `handleAddTemplate` es asíncrono
-   * desde que las plantillas vienen del backend: con la lectura de `plans` de
-   * la clausura, aplicar dos plantillas antes de que resolviera la primera
-   * hacía que la segunda pisara a la primera y un plan desapareciera sin aviso.
-   */
-  const appendPlans = (added: ProcedurePlan[]) => {
-    if (added.length === 0) return;
-    handlePlansUpdate([...plansRef.current, ...added]);
   };
 
   // Generar sugerencias inteligentes basadas en diagnósticos
@@ -451,97 +421,6 @@ export function PlanTab({
       };
       handlePlansUpdate([...plans, newPlan]);
     }
-  };
-
-  /**
-   * Aplica una plantilla de la clínica al plan del diente.
-   *
-   * Los pasos se piden al backend (ya enriquecidos) y se resuelven contra el
-   * catálogo real por UUID, igual que hace `handleApplyIcdasTemplate`. La
-   * versión anterior comparaba slugs del mock (`"endo-unirradicular"`) contra
-   * UUIDs, así que el `find` nunca acertaba y caía a un catálogo mock: cada
-   * plantilla aplicada metía precios de demostración en el plan del paciente.
-   *
-   * Un paso cuyo servicio no esté en el catálogo del odontograma (porque se
-   * desmarcó o se desactivó) se OMITE y se avisa. Antes también se omitía, pero
-   * en silencio: el odontólogo creía haber aplicado una plantilla completa.
-   */
-  const handleAddTemplate = async (templateId: string) => {
-    const template = serviceTemplates.find((t) => t.id === templateId);
-    if (!template || applyingTemplateId) return;
-
-    // Sin catálogo cargado no se puede resolver ningún paso, y el aviso de
-    // "pasos omitidos" acusaría al usuario de una configuración mal hecha que
-    // en realidad está bien. Mejor no dejar aplicar todavía.
-    if (catalogLoading || serviceCatalog.length === 0) {
-      notify.warning("El catálogo de servicios aún no está disponible", {
-        description: catalogError
-          ? "No se pudieron cargar los servicios. Reintenta antes de aplicar una plantilla."
-          : "Espera a que termine de cargar e inténtalo de nuevo.",
-      });
-      return;
-    }
-
-    setApplyingTemplateId(templateId);
-    let steps;
-    try {
-      steps = await fetchServiceTemplateSteps(templateId);
-    } catch (err) {
-      notifyApiError("No se pudo aplicar la plantilla", err);
-      return;
-    } finally {
-      setApplyingTemplateId(null);
-    }
-
-    if (steps.length === 0) {
-      notify.warning(`La plantilla "${template.name}" no tiene procedimientos`);
-      return;
-    }
-
-    const omitted: string[] = [];
-    const newPlans: ProcedurePlan[] = steps
-      .map((step) => {
-        const procedure = serviceCatalog.find((p) => p.id === step.serviceId);
-        if (!procedure) {
-          // El backend deja serviceName/serviceCode a null cuando el servicio
-          // no es visible para el tenant (plantilla global que apunta a un
-          // servicio de otra clínica): sin este fallback el aviso saldría con
-          // una lista de comas vacías.
-          omitted.push(step.serviceName || step.serviceCode || "Servicio no disponible");
-          return null;
-        }
-
-        return {
-          id: generateId(),
-          toothNumber: tooth.number,
-          surfaces: [],
-          procedureId: procedure.id,
-          displayName: procedure.name,
-          category: procedure.category,
-          status: "plan",
-          priority: "media",
-          material: procedure.materials?.[0],
-          durationMin: procedure.estimatedDuration,
-          cost: procedure.baseCost,
-          serviceSymbolText: procedure.serviceSymbolText,
-          serviceSymbolUrl: procedure.serviceSymbolUrl,
-          dependencies: step.dependsOn,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        } as ProcedurePlan;
-      })
-      .filter(Boolean) as ProcedurePlan[];
-
-    if (omitted.length > 0) {
-      notify.warning(
-        `Se omitieron ${omitted.length} de ${steps.length} pasos de "${template.name}"`,
-        {
-          description: `${omitted.join(", ")}: no están visibles en el odontograma. Márcalos en Ajustes › Servicios si deben planificarse por pieza.`,
-        },
-      );
-    }
-
-    appendPlans(newPlans);
   };
 
   // Apply all items from an ICDAS-based backend template suggestion
@@ -1109,37 +988,6 @@ export function PlanTab({
                       </div>
                     );
                   })}
-                </div>
-              )}
-            </SidebarPanel>
-          )}
-
-          {/*
-            Plantillas de la clínica (backend). Ver useServiceTemplates.
-            El panel se monta también mientras carga: un bloque que DESAPARECE
-            al fallar es indistinguible de "esta clínica no tiene plantillas".
-          */}
-          {(templatesLoading || serviceTemplates.length > 0) && (
-            <SidebarPanel
-              icon={<Package className="w-3 h-3 inline mr-1" />}
-              title="Plantillas"
-            >
-              {templatesLoading ? (
-                <p className="text-xs text-subtle">Cargando plantillas…</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {serviceTemplates.map((template) => (
-                    <PickerRow
-                      key={template.id}
-                      title={template.name}
-                      subtitle={
-                        applyingTemplateId === template.id
-                          ? "Aplicando…"
-                          : template.description
-                      }
-                      onClick={() => void handleAddTemplate(template.id)}
-                    />
-                  ))}
                 </div>
               )}
             </SidebarPanel>
