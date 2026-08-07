@@ -278,7 +278,15 @@ export function AddToPlanPanel({
             SELECCIÓN sobrevive porque vive aquí arriba. */}
         <TabsContent
           value="tooth"
-          className="flex min-h-0 flex-1 flex-col gap-2"
+          // El scroll vive AQUÍ, en el cuerpo de la pestaña, y no dentro de la
+          // lista de servicios. Antes la lista era la única superficie
+          // desplazable y todo lo de encima (nota, selector de piezas, buscador,
+          // chips) era `shrink-0`: al desplegar las piezas, la lista se
+          // estrujaba hasta casi cero y el último servicio quedaba escondido
+          // detrás del pie fijo. Con el scroll en el contenedor, cada bloque
+          // conserva su altura natural y se desplaza el conjunto — que además es
+          // lo que pide ADR-36, una sola superficie de scroll por vista.
+          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-1"
         >
           <p className="shrink-0 text-xs text-subtle">
             Estos son los servicios que se marcan sobre el odontograma. Se
@@ -310,7 +318,15 @@ export function AddToPlanPanel({
 
         <TabsContent
           value="general"
-          className="flex min-h-0 flex-1 flex-col gap-2"
+          // El scroll vive AQUÍ, en el cuerpo de la pestaña, y no dentro de la
+          // lista de servicios. Antes la lista era la única superficie
+          // desplazable y todo lo de encima (nota, selector de piezas, buscador,
+          // chips) era `shrink-0`: al desplegar las piezas, la lista se
+          // estrujaba hasta casi cero y el último servicio quedaba escondido
+          // detrás del pie fijo. Con el scroll en el contenedor, cada bloque
+          // conserva su altura natural y se desplaza el conjunto — que además es
+          // lo que pide ADR-36, una sola superficie de scroll por vista.
+          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-1"
         >
           <p className="shrink-0 text-xs text-subtle">
             Aquí solo aparecen los servicios con «Visible en odontograma»

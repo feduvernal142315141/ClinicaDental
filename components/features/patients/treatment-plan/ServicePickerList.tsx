@@ -110,7 +110,7 @@ export function ServicePickerList({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <div className="shrink-0">
         <label htmlFor={`${uid}-search`} className="sr-only">
           {searchPlaceholder}
@@ -182,7 +182,12 @@ export function ServicePickerList({
       </p>
 
       {/* Único contenedor con scroll del panel. */}
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-bento border border-hairline bg-surface">
+      {/* SIN scroll propio: lo lleva el cuerpo de la pestaña que la contiene
+          (AddToPlanPanel). Anidar un `overflow-y-auto` aquí dejaba la lista a
+          merced del espacio sobrante y la aplastaba en cuanto se desplegaba el
+          selector de piezas, además de crear la segunda barra que ADR-36
+          prohíbe. La lista ocupa lo que necesita y el conjunto se desplaza. */}
+      <div className="rounded-bento border border-hairline bg-surface">
         {visible.length === 0 ? (
           <p className="px-3 py-8 text-center text-sm text-subtle">
             Ningún servicio coincide con la búsqueda.
