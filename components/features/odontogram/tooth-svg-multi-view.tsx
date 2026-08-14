@@ -12,7 +12,6 @@ import { getDesignedToothPaths } from "./teeth-svg-adapter";
 interface ToothSVGMultiViewProps {
   toothNumber: number;
   view: "frontal" | "oclusal" | "lateral";
-  onSurfaceClick: (surface: ToothSurface) => void;
 }
 
 /* ---- Colores del tema – diseño profesional ---- */
@@ -31,11 +30,7 @@ const THEME = {
   hoverOpacity: 0.85,
 } as const;
 
-function _ToothSVGMultiView({
-  toothNumber,
-  view,
-  onSurfaceClick,
-}: ToothSVGMultiViewProps) {
+function _ToothSVGMultiView({ toothNumber, view }: ToothSVGMultiViewProps) {
   const isClient = typeof window !== "undefined";
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,7 +96,6 @@ function _ToothSVGMultiView({
       symbolKey={toothSymbolInfo?.symbolKey ?? null}
       symbolColor={toothSymbolInfo?.symbolColor ?? null}
       symbolImage={toothSymbolImage}
-      onSurfaceClick={onSurfaceClick}
     />
   );
 }
@@ -118,7 +112,6 @@ function DesignedToothView({
   symbolKey,
   symbolColor,
   symbolImage,
-  onSurfaceClick,
 }: {
   viewPaths: ToothViewPaths;
   surfaceColors: Record<ToothSurface, string>;
@@ -127,7 +120,6 @@ function DesignedToothView({
   symbolKey?: string | null;
   symbolColor?: string | null;
   symbolImage?: string | null;
-  onSurfaceClick: (surface: ToothSurface) => void;
 }) {
   const {
     viewBox,
@@ -186,7 +178,11 @@ function DesignedToothView({
         />
       ))}
 
-      {/* Superficies clickeables (zonas del diseño) */}
+      {/* Superficies del diseño: SOLO pintura. Desde el odontograma no se
+          selecciona una cara — el clic en cualquier punto de la pieza burbujea
+          al contenedor y abre el modal, que es donde se marcan las caras. Por
+          eso no llevan onClick ni feedback de hover propio: anunciarían una
+          selección por superficie que aquí no existe. */}
       {surfaces.map((sp: SurfacePath) => {
         if (!sp.d) return null; // Skip empty paths (non-visible surface)
         // El `??` no es defensivo por gusto: una celda ausente del mapa daría
@@ -213,11 +209,7 @@ function DesignedToothView({
             strokeWidth="0.5"
             strokeLinejoin="round"
             strokeOpacity="0.3"
-            className="cursor-pointer transition-all duration-150 hover:brightness-105 hover:fill-opacity-80"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSurfaceClick(sp.surface);
-            }}
+            pointerEvents="none"
           />
         );
       })}
