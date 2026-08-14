@@ -11,6 +11,14 @@ import { FeedbackModal } from "./FeedbackModal";
 /**
  * Botón flotante (FAB) para reportar feedback.
  * Visible en todas las páginas autenticadas, esquina inferior derecha.
+ *
+ * **Este botón es el DUEÑO de la esquina inferior derecha.** Está en todas las
+ * pantallas autenticadas, así que cualquier control flotante de una vista
+ * concreta tiene que apartarse de su hueco (48px + 24px de margen):
+ * - un FAB propio de la página se apila ENCIMA (`bottom-24`), no a su lado;
+ * - una barra dentro de un lienzo se corre a la izquierda (`right-20`).
+ * Ya pasó dos veces: la barra de zoom del odontograma quedaba tapada y el
+ * filtro móvil de la agenda se superponía exactamente encima.
  */
 export function FeedbackFAB() {
   const pathname = usePathname() || "/";
