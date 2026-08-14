@@ -22,6 +22,17 @@ interface SurfaceSelectorProps {
   surfaces: SurfaceState[];
   onSurfaceToggle: (surface: ToothSurface) => void;
   disabled?: boolean;
+  /**
+   * Previsualización de la plantilla apuntada en el panel de abajo: qué celdas
+   * escribiría (`affected`) y cuáles dejaría intactas (`ignored`). Se dibuja
+   * como CONTORNO, nunca como relleno: rellenarlas afirmaría un estado clínico
+   * que todavía no se ha guardado.
+   */
+  preview?: {
+    affected: Set<ToothSurface>;
+    ignored: Set<ToothSurface>;
+    color: string;
+  } | null;
 }
 
 /* ---- Tema visual idéntico al odontograma principal ---- */
@@ -77,6 +88,7 @@ export function SurfaceSelector({
   surfaces,
   onSurfaceToggle,
   disabled,
+  preview,
 }: SurfaceSelectorProps) {
   const [hoveredSurface, setHoveredSurface] = useState<ToothSurface | null>(
     null,
@@ -232,17 +244,36 @@ export function SurfaceSelector({
                 const selected = isSelected(surface);
                 const highlighted = activeSurface === surface;
                 const color = getSurfaceColor(surface);
+                const willBeWritten = preview?.affected.has(surface) ?? false;
+                const willBeIgnored = preview?.ignored.has(surface) ?? false;
 
                 return (
                   <path
                     key={`${view}-${surfacePath.surface}`}
                     d={surfacePath.d}
                     fill={selected ? color : THEME.surfaceDefault}
-                    fillOpacity={selected ? 0.88 : highlighted ? 0.94 : 1}
-                    stroke={
-                      selected || highlighted ? "#0369A1" : THEME.outlineStroke
+                    fillOpacity={
+                      // Una celda marcada que la plantilla NO va a tocar se
+                      // atenúa: es la mitad visual de "2 de las 3 caras".
+                      willBeIgnored
+                        ? 0.35
+                        : selected
+                          ? 0.88
+                          : highlighted
+                            ? 0.94
+                            : 1
                     }
-                    strokeWidth={selected || highlighted ? "1.4" : "0.5"}
+                    stroke={
+                      willBeWritten
+                        ? preview!.color
+                        : selected || highlighted
+                          ? "#0369A1"
+                          : THEME.outlineStroke
+                    }
+                    strokeWidth={
+                      willBeWritten ? "2.2" : selected || highlighted ? "1.4" : "0.5"
+                    }
+                    strokeDasharray={willBeWritten ? "3 2" : undefined}
                     strokeLinejoin="round"
                     className={cn(
                       "transition-all duration-150",
