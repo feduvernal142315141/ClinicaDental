@@ -8,6 +8,13 @@ import type {
 
 export type { TranscribeResponse } from "@/lib/entity/speech";
 
+function audioFilename(blob: Blob, prefix: string): string {
+  if (blob.type.includes("ogg")) return `${prefix}.ogg`;
+  if (blob.type.includes("mp4")) return `${prefix}.m4a`;
+  if (blob.type.includes("wav")) return `${prefix}.wav`;
+  return `${prefix}.webm`;
+}
+
 export const speechService = {
   /**
    * Envía el blob de audio a `/speech/transcribe`.
@@ -22,7 +29,7 @@ export const speechService = {
   ): Promise<TranscribeResponse> {
     const formData = new FormData();
     // Groq/Whisper acepta webm, mp3, mp4, mpeg, mpga, m4a, wav
-    formData.append("file", audioBlob, "recording.webm");
+    formData.append("file", audioBlob, audioFilename(audioBlob, "recording"));
     if (useSoapStructuring) {
       formData.append("useSoapStructuring", "true");
     }
@@ -49,7 +56,11 @@ export const speechService = {
     currentOdontogramContext?: Record<string, unknown>,
   ): Promise<OdontogramDictationPatchResponse> {
     const formData = new FormData();
-    formData.append("file", audioBlob, "odontogram-dictation.webm");
+    formData.append(
+      "file",
+      audioBlob,
+      audioFilename(audioBlob, "odontogram-dictation"),
+    );
 
     if (currentOdontogramContext) {
       formData.append(
@@ -66,6 +77,27 @@ export const speechService = {
           "Content-Type": "multipart/form-data",
         },
       },
+    );
+
+    return response.data;
+  },
+
+  /** Reinterpreta texto revisado por el usuario sin volver a subir el audio. */
+  async reinterpretOdontogram(
+    correctedTranscript: string,
+    currentOdontogramContext: Record<string, unknown>,
+  ): Promise<OdontogramDictationPatchResponse> {
+    const formData = new FormData();
+    formData.append("correctedTranscript", correctedTranscript);
+    formData.append(
+      "currentOdontogramContext",
+      JSON.stringify(currentOdontogramContext),
+    );
+
+    const response = await apiInstance.post<OdontogramDictationPatchResponse>(
+      "/speech/transcribe/odontogram",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
     );
 
     return response.data;

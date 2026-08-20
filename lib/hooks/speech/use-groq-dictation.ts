@@ -19,6 +19,22 @@ export interface UseGroqDictationOptions {
   processAudio?: (audioBlob: Blob) => Promise<void>;
   processingErrorTitle?: string;
   processingErrorDescription?: string;
+  /** Límite de seguridad de la grabación. Por defecto 90 segundos. */
+  maxDurationSeconds?: number;
+}
+
+const RECORDER_MIME_TYPES = [
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/ogg;codecs=opus",
+  "audio/mp4",
+] as const;
+
+function preferredRecorderMimeType(): string | undefined {
+  if (typeof MediaRecorder === "undefined") return undefined;
+  return RECORDER_MIME_TYPES.find((mimeType) =>
+    MediaRecorder.isTypeSupported(mimeType),
+  );
 }
 
 /**
@@ -36,6 +52,7 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [interimText, setInterimText] = useState("");
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   /**
    * Origen de la última transcripción completada con éxito.
    * `null` mientras no se haya realizado ningún dictado en esta sesión.
@@ -45,6 +62,8 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const maxDurationTimeoutRef = useRef<number | null>(null);
+  const durationIntervalRef = useRef<number | null>(null);
   const recognitionRef = useRef<InstanceType<typeof window.SpeechRecognition> | null>(null);
 
   // Stable ref to avoid re-creating recorder on every render
@@ -61,10 +80,17 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
   useEffect(() => {
     return () => {
       recognitionRef.current?.abort();
+      if (maxDurationTimeoutRef.current !== null) {
+        window.clearTimeout(maxDurationTimeoutRef.current);
+      }
+      if (durationIntervalRef.current !== null) {
+        window.clearInterval(durationIntervalRef.current);
+      }
       if (
         mediaRecorderRef.current &&
         mediaRecorderRef.current.state === "recording"
       ) {
+        mediaRecorderRef.current.onstop = null;
         mediaRecorderRef.current.stop();
       }
       streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -122,25 +148,136 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
     recognitionRef.current = recognition;
   }, [SpeechRecognitionAPI]);
 
+  const clearRecordingTimers = useCallback(() => {
+    if (maxDurationTimeoutRef.current !== null) {
+      window.clearTimeout(maxDurationTimeoutRef.current);
+      maxDurationTimeoutRef.current = null;
+    }
+    if (durationIntervalRef.current !== null) {
+      window.clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+  }, []);
+
+  const processRecordedAudio = useCallback(async (mimeType: string) => {
+    clearRecordingTimers();
+    setIsRecording(false);
+    setIsProcessing(true);
+
+    try {
+      const audioBlob = new Blob(chunksRef.current, {
+        type: mimeType || chunksRef.current[0]?.type || "audio/webm",
+      });
+      if (audioBlob.size <= 100) {
+        notify.warning("No se detectó audio suficiente", {
+          description: "Acércate al micrófono y vuelve a realizar el dictado.",
+        });
+        return;
+      }
+
+      if (optionsRef.current.processAudio) {
+        await optionsRef.current.processAudio(audioBlob);
+        return;
+      }
+
+      const soapMode = optionsRef.current.useSoapStructuring ?? false;
+      const result = await speechService.transcribeAudio(audioBlob, soapMode);
+
+      let textToInsert: string;
+      let source: TranscriptSource;
+
+      if (soapMode && result.formattedTranscript) {
+        textToInsert = result.formattedTranscript;
+        source = "ai";
+      } else {
+        textToInsert = result.rawTranscript;
+        source = "raw";
+        if (soapMode && !result.formattedTranscript) {
+          notify.warning("Formateo IA no disponible", {
+            description:
+              "Se insertó la transcripción cruda. El servicio de IA no respondió; puedes intentarlo de nuevo o estructurarlo manualmente.",
+          });
+        }
+      }
+
+      setLastTranscriptSource(source);
+      if (textToInsert.trim() && optionsRef.current.onResult) {
+        optionsRef.current.onResult(textToInsert);
+      }
+    } catch (error) {
+      console.error("[useGroqDictation] Groq transcription error:", error);
+      notify.error(
+        optionsRef.current.processingErrorTitle ??
+          "No se pudo procesar el dictado por voz",
+        {
+          description:
+            optionsRef.current.processingErrorDescription ??
+            "Revisa tu conexión e inténtalo de nuevo; si el problema persiste, escribe la nota a mano.",
+        },
+      );
+      if (optionsRef.current.onError && error instanceof Error) {
+        optionsRef.current.onError(error);
+      }
+    } finally {
+      setIsProcessing(false);
+      setInterimText("");
+      setRecordingSeconds(0);
+      chunksRef.current = [];
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      mediaRecorderRef.current = null;
+    }
+  }, [clearRecordingTimers]);
+
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      });
       streamRef.current = stream;
       chunksRef.current = [];
       setInterimText("");
+      setRecordingSeconds(0);
 
       // 1. Start MediaRecorder for Groq
-      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      const mimeType = preferredRecorderMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
-      recorder.start();
+      recorder.onstop = () => {
+        void processRecordedAudio(recorder.mimeType);
+      };
+      recorder.start(1000);
       mediaRecorderRef.current = recorder;
 
       // 2. Start SpeechRecognition for live preview
       startSpeechRecognition();
 
       setIsRecording(true);
+      durationIntervalRef.current = window.setInterval(() => {
+        setRecordingSeconds((current) => current + 1);
+      }, 1000);
+      const maxDurationSeconds = Math.max(
+        10,
+        optionsRef.current.maxDurationSeconds ?? 90,
+      );
+      maxDurationTimeoutRef.current = window.setTimeout(() => {
+        if (recorder.state !== "recording") return;
+        notify.warning("Se alcanzó el límite del dictado", {
+          description: `La grabación se detuvo automáticamente después de ${maxDurationSeconds} segundos.`,
+        });
+        recognitionRef.current?.abort();
+        recognitionRef.current = null;
+        recorder.stop();
+      }, maxDurationSeconds * 1000);
     } catch (error) {
       console.error("[useGroqDictation] mic access error:", error);
       notify.error("No se pudo acceder al micrófono", {
@@ -151,7 +288,7 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
         options.onError(error);
       }
     }
-  }, [options, startSpeechRecognition]);
+  }, [options, processRecordedAudio, startSpeechRecognition]);
 
   const stopRecording = useCallback(() => {
     // Stop live preview
@@ -164,68 +301,6 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
       return;
     }
 
-    recorder.onstop = async () => {
-      setIsRecording(false);
-      setIsProcessing(true);
-
-      try {
-        const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
-        if (audioBlob.size > 100) {
-          if (optionsRef.current.processAudio) {
-            await optionsRef.current.processAudio(audioBlob);
-            return;
-          }
-
-          const soapMode = optionsRef.current.useSoapStructuring ?? false;
-          const result = await speechService.transcribeAudio(audioBlob, soapMode);
-
-          let textToInsert: string;
-          let source: TranscriptSource;
-
-          if (soapMode && result.formattedTranscript) {
-            textToInsert = result.formattedTranscript;
-            source = "ai";
-          } else {
-            textToInsert = result.rawTranscript;
-            source = "raw";
-            // Si se pidió IA pero Gemini falló, el backend retorna null en
-            // formattedTranscript. Avisamos sin bloquear el guardado.
-            if (soapMode && !result.formattedTranscript) {
-              notify.warning("Formateo IA no disponible", {
-                description:
-                  "Se insertó la transcripción cruda. El servicio de IA no respondió; puedes intentarlo de nuevo o estructurarlo manualmente.",
-              });
-            }
-          }
-
-          setLastTranscriptSource(source);
-          if (textToInsert.trim() && optionsRef.current.onResult) {
-            optionsRef.current.onResult(textToInsert);
-          }
-        }
-      } catch (error) {
-        console.error("[useGroqDictation] Groq transcription error:", error);
-        notify.error(
-          optionsRef.current.processingErrorTitle ??
-            "No se pudo procesar el dictado por voz",
-          {
-            description:
-              optionsRef.current.processingErrorDescription ??
-              "Revisa tu conexión e inténtalo de nuevo; si el problema persiste, escribe la nota a mano.",
-          },
-        );
-        if (optionsRef.current.onError && error instanceof Error) {
-          optionsRef.current.onError(error);
-        }
-      } finally {
-        setIsProcessing(false);
-        setInterimText("");
-        chunksRef.current = [];
-        streamRef.current?.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
-    };
-
     recorder.stop();
   }, []);
 
@@ -233,6 +308,7 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
     recognitionRef.current?.abort();
     recognitionRef.current = null;
     chunksRef.current = [];
+    clearRecordingTimers();
 
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state === "recording") {
@@ -247,7 +323,8 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
     setIsRecording(false);
     setIsProcessing(false);
     setInterimText("");
-  }, []);
+    setRecordingSeconds(0);
+  }, [clearRecordingTimers]);
 
   return {
     isSupported:
@@ -258,6 +335,7 @@ export function useGroqDictation(options: UseGroqDictationOptions = {}) {
     isProcessing,
     /** Texto provisional en vivo desde el SpeechRecognition del navegador (preview). */
     interimText,
+    recordingSeconds,
     /**
      * Origen de la última transcripción insertada con éxito.
      * - `"raw"` — transcripción literal (Groq Whisper).

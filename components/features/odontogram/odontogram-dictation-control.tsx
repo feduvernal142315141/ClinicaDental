@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Mic, Square } from "lucide-react";
+import { AlertTriangle, Mic, Square, X } from "lucide-react";
 import { OdontogramButton } from "@/components/features/odontogram/ui/OdontogramButton";
+import { OdontogramTextArea } from "@/components/features/odontogram/ui/OdontogramInput";
 import { useOdontogramConfirm } from "@/components/features/odontogram/ui/OdontogramConfirm";
 import { useGroqDictation } from "@/lib/hooks/speech/use-groq-dictation";
 import {
@@ -15,6 +16,7 @@ import {
 } from "@/lib/odontogram/application/dictation";
 import { useOdontogramStore, useOdontogramStoreApi } from "@/lib/odontogram/store";
 import { notify } from "@/lib/utils/notify";
+import type { OdontogramDictationPatchResponse } from "@/lib/entity/speech";
 import {
   OdontogramDictationInconsistencies,
   type OdontogramDictationInconsistencyBatch,
@@ -33,6 +35,11 @@ export function OdontogramDictationControl({
   const [pendingBatches, setPendingBatches] = useState<
     OdontogramDictationInconsistencyBatch[]
   >([]);
+  const [transcriptionReview, setTranscriptionReview] = useState<{
+    patch: OdontogramDictationPatchResponse;
+    transcript: string;
+  } | null>(null);
+  const [isReinterpreting, setIsReinterpreting] = useState(false);
   const learningInFlight = useRef(new Set<string>());
 
   const applyPatch = useCallback(
@@ -40,12 +47,25 @@ export function OdontogramDictationControl({
       const result = applyOdontogramDictationPatch(storeApi, patch);
 
       if (result.appliedOperations > 0) {
+        const defaultedIcdasCount = patch.toothChanges.reduce(
+          (total, change) =>
+            total +
+            change.operations.filter(
+              (operation) =>
+                operation.diagnosis?.icdasSource === "dictation-default",
+            ).length,
+          0,
+        );
         notify.success("Odontograma actualizado desde el dictado", {
           description: `${result.appliedOperations} cambio${
             result.appliedOperations === 1 ? "" : "s"
           } aplicado${result.appliedOperations === 1 ? "" : "s"} en las piezas ${
             result.affectedTeeth.join(", ")
-          }.`,
+          }.${
+            defaultedIcdasCount > 0
+              ? ` Se asignó ICDAS 1 automáticamente a ${defaultedIcdasCount} caries sin valor dictado.`
+              : ""
+          }`,
         });
       }
 
@@ -74,12 +94,8 @@ export function OdontogramDictationControl({
     [],
   );
 
-  const processAudio = useCallback(
-    async (audioBlob: Blob) => {
-      const context = createOdontogramDictationContext(
-        storeApi.getState().getSnapshot(),
-      );
-      const patch = await adapter.transcribe(audioBlob, context);
+  const processPatch = useCallback(
+    (patch: OdontogramDictationPatchResponse) => {
       const operationCount = countOdontogramPatchOperations(patch);
       rememberInconsistencies(patch);
 
@@ -99,7 +115,8 @@ export function OdontogramDictationControl({
           (total, change) =>
             total +
             change.operations.filter(
-              (operation) => operation.action === "REMOVE" || operation.action === "RESET",
+              (operation) =>
+                operation.action === "REMOVE" || operation.action === "RESET",
             ).length,
           0,
         );
@@ -127,8 +144,52 @@ export function OdontogramDictationControl({
 
       applyPatch(patch);
     },
-    [adapter, applyPatch, confirm, rememberInconsistencies, storeApi],
+    [applyPatch, confirm, rememberInconsistencies],
   );
+
+  const processAudio = useCallback(
+    async (audioBlob: Blob) => {
+      const context = createOdontogramDictationContext(
+        storeApi.getState().getSnapshot(),
+      );
+      const patch = await adapter.transcribe(audioBlob, context);
+      if (patch.transcriptionQuality?.needsReview) {
+        setTranscriptionReview({ patch, transcript: patch.rawTranscript });
+        notify.warning("Revisa la transcripción antes de aplicar", {
+          description:
+            patch.transcriptionQuality.warnings[0]?.message ??
+            "El audio contiene un fragmento de baja confianza.",
+        });
+        return;
+      }
+
+      processPatch(patch);
+    },
+    [adapter, processPatch, storeApi],
+  );
+
+  const handleReinterpret = useCallback(async () => {
+    if (!transcriptionReview?.transcript.trim()) return;
+    setIsReinterpreting(true);
+    try {
+      const context = createOdontogramDictationContext(
+        storeApi.getState().getSnapshot(),
+      );
+      const patch = await adapter.reinterpret(
+        transcriptionReview.transcript.trim(),
+        context,
+      );
+      setTranscriptionReview(null);
+      processPatch(patch);
+    } catch {
+      notify.error("No se pudo reinterpretar la transcripción", {
+        description:
+          "Conservamos el texto corregido. Revisa tu conexión y vuelve a intentarlo.",
+      });
+    } finally {
+      setIsReinterpreting(false);
+    }
+  }, [adapter, processPatch, storeApi, transcriptionReview]);
 
   const handleResolve = useCallback(
     (
@@ -207,6 +268,7 @@ export function OdontogramDictationControl({
     isRecording,
     isProcessing,
     interimText,
+    recordingSeconds,
     startRecording,
     stopRecording,
   } = useGroqDictation({
@@ -235,7 +297,7 @@ export function OdontogramDictationControl({
           className="min-w-0 flex-1 truncate text-right text-xs text-subtle"
         >
           {isRecording
-            ? interimText.trim() || "Escuchando el examen dental…"
+            ? `${interimText.trim() || "Escuchando el examen dental…"} · ${recordingSeconds}s`
             : isProcessing
               ? "Transcribiendo y preparando los cambios…"
               : "Describe piezas, caras, diagnósticos o correcciones"}
@@ -251,13 +313,80 @@ export function OdontogramDictationControl({
             )
           }
           loading={isProcessing}
-          disabled={readOnly || isProcessing}
+          disabled={readOnly || isProcessing || isReinterpreting}
           aria-pressed={isRecording}
           onClick={handleToggle}
         >
           {isRecording ? "Terminar y aplicar" : "Dictar odontograma"}
         </OdontogramButton>
       </div>
+
+      {transcriptionReview && (
+        <section className="rounded-lg border border-amber-300 bg-amber-50/70 p-3 text-amber-950 dark:border-amber-700 dark:bg-amber-950/20 dark:text-amber-100">
+          <div className="flex items-start gap-2">
+            <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-semibold">Revisión obligatoria del dictado</h3>
+              <p className="mt-1 text-xs">
+                Corrige piezas, superficies o valores ICDAS dudosos. El odontograma
+                no cambiará hasta reinterpretar este texto.
+              </p>
+            </div>
+            <OdontogramButton
+              variant="ghost"
+              size="sm"
+              aria-label="Descartar transcripción"
+              icon={<X aria-hidden className="h-4 w-4" />}
+              onClick={() => setTranscriptionReview(null)}
+            />
+          </div>
+
+          <OdontogramTextArea
+            value={transcriptionReview.transcript}
+            rows={3}
+            className="mt-3 bg-surface text-ink"
+            disabled={isReinterpreting}
+            aria-describedby="odontogram-transcription-quality"
+            onChange={(event) =>
+              setTranscriptionReview((current) =>
+                current ? { ...current, transcript: event.target.value } : current,
+              )
+            }
+          />
+
+          <div id="odontogram-transcription-quality" className="mt-2 space-y-1 text-xs">
+            {transcriptionReview.patch.transcriptionQuality?.segments
+              .filter((segment) => segment.needsReview)
+              .map((segment, index) => (
+                <p key={`${segment.startSeconds ?? index}-${segment.endSeconds ?? index}`}>
+                  Fragmento dudoso{segment.startSeconds !== undefined
+                    ? ` (${segment.startSeconds.toFixed(1)}–${segment.endSeconds?.toFixed(1) ?? "?"} s)`
+                    : ""}: “{segment.text.trim()}”
+                </p>
+              ))}
+          </div>
+
+          <div className="mt-3 flex justify-end gap-2">
+            <OdontogramButton
+              variant="outline"
+              size="sm"
+              disabled={isReinterpreting}
+              onClick={() => setTranscriptionReview(null)}
+            >
+              Descartar
+            </OdontogramButton>
+            <OdontogramButton
+              variant="primary"
+              size="sm"
+              loading={isReinterpreting}
+              disabled={!transcriptionReview.transcript.trim()}
+              onClick={() => void handleReinterpret()}
+            >
+              Reinterpretar texto revisado
+            </OdontogramButton>
+          </div>
+        </section>
+      )}
 
       <OdontogramDictationInconsistencies
         batches={pendingBatches}
