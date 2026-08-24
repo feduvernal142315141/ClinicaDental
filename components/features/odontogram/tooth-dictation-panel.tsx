@@ -110,7 +110,14 @@ export function ToothDictationPanel({
         </OdontogramButton>
       </section>
 
-      <OdontogramDictationFeedback session={session} idPrefix="tooth-modal" />
+      {/* `compact`: dentro del diálogo del diente esto vive en una cabecera
+          pegajosa sobre un cuerpo con scroll. Una lista sin tope se comería la
+          pantalla y taparía justo lo que el doctor está mirando. */}
+      <OdontogramDictationFeedback
+        session={session}
+        idPrefix="tooth-modal"
+        compact
+      />
     </div>
   );
 }

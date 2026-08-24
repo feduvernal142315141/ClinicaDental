@@ -16,6 +16,11 @@ import {
   type OdontogramStoreApi,
 } from "@/lib/odontogram/store";
 import {
+  listOdontogramDictationOperations,
+  PATCH_TO_STORE_SURFACE,
+  type OdontogramDictationOperationEntry,
+} from "@/lib/odontogram/application/dictation-preview";
+import {
   createSurfaceRef,
   type ClinicalEvent,
   type ICDASScore,
@@ -113,26 +118,6 @@ export function createConfirmedOdontogramDictationPatch(
     inconsistencies: [],
   };
 }
-
-const PATCH_TO_STORE_SURFACE: Record<OdontogramDictationSurface, ToothSurface> = {
-  // Los códigos precisos de schema v3 pasan sin pérdida. `mesial`/`distal`
-  // siguen traducidos para respuestas antiguas del contrato de dictado.
-  mesial: "mesialOclusal",
-  distal: "distalOclusal",
-  mesialVestibular: "mesialVestibular",
-  mesialOclusal: "mesialOclusal",
-  mesialLingual: "mesialLingual",
-  distalVestibular: "distalVestibular",
-  distalOclusal: "distalOclusal",
-  distalLingual: "distalLingual",
-  facial: "facial",
-  facialOclusal: "facialOclusal",
-  lingual: "lingual",
-  lingualOclusal: "lingualOclusal",
-  oclusal: "oclusal",
-  cervicalVestibular: "cervicalVestibular",
-  cervicalLingual: "cervicalLingual",
-};
 
 /**
  * Celda del store → código de superficie del contrato de dictado.
@@ -268,14 +253,6 @@ export function createOdontogramDictationContext(
   };
 }
 
-export function odontogramPatchRequiresConfirmation(
-  patch: OdontogramDictationPatchResponse,
-): boolean {
-  return patch.toothChanges.some((change) =>
-    change.operations.some((operation) => operation.requiresConfirmation),
-  );
-}
-
 export function countOdontogramPatchOperations(
   patch: OdontogramDictationPatchResponse,
 ): number {
@@ -305,6 +282,55 @@ function operationUrgency(
   return "low";
 }
 
+/**
+ * Qué se puede heredar del hallazgo que YA había en esa celda.
+ *
+ * La herencia existe para el caso normal: redictar una caries con más detalle
+ * («ponle actividad inactiva») no debe borrar lo que no se repitió. Solo tiene
+ * sentido mientras se esté actualizando el MISMO hallazgo. En cuanto cambia el
+ * `findingKind`, lo que hay sobre la cara es OTRO hallazgo, y arrastrar los
+ * calificadores del anterior produce un registro clínicamente imposible: una
+ * lesión no cariosa que además es una caries activa ICDAS 2.
+ *
+ * Antes esto no era alcanzable porque la pareja REMOVE + UPSERT del mismo
+ * dictado era atómica y el UPSERT nunca llegaba a ver la caries vieja. Con la
+ * revisión por operación (HU-DICT-032) el doctor puede desmarcar el REMOVE y
+ * dejar solo el UPSERT, así que la garantía se perdió y el filtro tiene que
+ * estar aquí, en el aplicador.
+ *
+ * Un hallazgo anterior SIN `findingKind` (marcado a mano en el modal de pieza o
+ * de un esquema previo) no declara su tipo: se acepta como compatible, nunca
+ * como prueba de que fuese un hallazgo distinto.
+ */
+function inheritableSurfaceDiagnosis(
+  findingKind: OdontogramDictationSurfaceDiagnosis["findingKind"],
+  previous: Partial<SurfaceDiagnosis> | undefined,
+): Partial<SurfaceDiagnosis> {
+  if (!previous) return {};
+  const sameFinding =
+    previous.findingKind === undefined || previous.findingKind === findingKind;
+
+  return {
+    // Neutro: `visualImpact` no afirma nada clínico, solo cuánto pinta la celda
+    // en el odontograma, y es válido para cualquier `findingKind`.
+    visualImpact: previous.visualImpact,
+    // ICDAS (con su procedencia), tipo y actividad describen UNA CARIES: fuera
+    // de un hallazgo de caries no significan nada y no deben viajar.
+    ...(sameFinding && findingKind === "caries"
+      ? {
+          icdasScore: previous.icdasScore,
+          icdasSource: previous.icdasSource,
+          cariesType: previous.cariesType,
+          cariesActivity: previous.cariesActivity,
+        }
+      : {}),
+    // La lista de lesiones describe UNA LESIÓN NO CARIOSA.
+    ...(sameFinding && findingKind === "non-carious-lesion"
+      ? { nonCariousLesions: previous.nonCariousLesions }
+      : {}),
+  };
+}
+
 function mapSurfaceDiagnosis(
   toothNumber: number,
   surface: ToothSurface,
@@ -312,20 +338,21 @@ function mapSurfaceDiagnosis(
   previous?: Partial<SurfaceDiagnosis>,
 ): SurfaceDiagnosis {
   const input = operation.diagnosis!;
+  const inherited = inheritableSurfaceDiagnosis(input.findingKind, previous);
   const isDefaultedCaries =
     input.findingKind === "caries" &&
     input.icdasScore === undefined &&
-    previous?.icdasScore === undefined;
+    inherited.icdasScore === undefined;
   const icdasScore = (
     input.icdasScore ??
-    previous?.icdasScore ??
+    inherited.icdasScore ??
     (input.findingKind === "caries" ? 1 : 0)
   ) as ICDASScore;
   const icdasSource =
     input.icdasSource ??
-    previous?.icdasSource ??
+    inherited.icdasSource ??
     (isDefaultedCaries ? "dictation-default" : undefined);
-  const cariesType = input.cariesType ?? previous?.cariesType;
+  const cariesType = input.cariesType ?? inherited.cariesType;
 
   return {
     surface,
@@ -333,11 +360,11 @@ function mapSurfaceDiagnosis(
     icdasScore,
     icdasSource,
     cariesType,
-    cariesActivity: input.cariesActivity ?? previous?.cariesActivity,
+    cariesActivity: input.cariesActivity ?? inherited.cariesActivity,
     nonCariousLesions:
-      input.nonCariousLesions ?? previous?.nonCariousLesions ?? [],
+      input.nonCariousLesions ?? inherited.nonCariousLesions ?? [],
     findingKind: input.findingKind,
-    visualImpact: input.visualImpact ?? previous?.visualImpact ?? "surface",
+    visualImpact: input.visualImpact ?? inherited.visualImpact ?? "surface",
     notes: input.notes ?? operation.sourceText,
     lastUpdate: new Date().toISOString(),
   };
@@ -692,9 +719,97 @@ function preflightOperation(
   }
 }
 
+export interface OdontogramDictationApplyOptions {
+  /**
+   * `sequence` de las operaciones que el doctor dejó marcadas en la
+   * previsualización. Omitido o `null` = aplicar el parche entero, que es el
+   * comportamiento histórico y el que usan los flujos que no previsualizan.
+   *
+   * La clave es `sequence` porque el validador del backend
+   * (`OdontogramPatchOutputValidator`) garantiza que sea positiva, no repetida y
+   * consecutiva desde 1 DENTRO del parche; el parche construido en cliente
+   * (`createConfirmedOdontogramDictationPatch`) también renumera desde 1. Es una
+   * clave por parche: una selección no sobrevive a un dictado nuevo.
+   */
+  selectedSequences?: Iterable<number> | null;
+}
+
+/** Motivo por el que una operación no se puede aplicar sobre el estado actual. */
+export interface OdontogramDictationBlocker {
+  sequence: number;
+  toothNumber: number;
+  warning: string;
+}
+
+/**
+ * Operaciones a aplicar, en orden global de `sequence`, filtradas por la
+ * selección del doctor.
+ */
+function selectOperations(
+  patch: OdontogramDictationPatchResponse,
+  selected: ReadonlySet<number> | null,
+): OdontogramDictationOperationEntry[] {
+  const all = listOdontogramDictationOperations(patch);
+  if (!selected) return all;
+  return all.filter((entry) => selected.has(entry.operation.sequence));
+}
+
+function toSelectedSet(
+  selectedSequences: Iterable<number> | null | undefined,
+): ReadonlySet<number> | null {
+  return selectedSequences == null ? null : new Set(selectedSequences);
+}
+
+/**
+ * Preflight SIN mutar nada: qué operaciones del subconjunto no son aplicables
+ * sobre el odontograma actual. El panel lo usa para marcar la fila antes de que
+ * el doctor pulse aplicar, en vez de descubrirlo con un aviso después.
+ *
+ * No comprueba `readOnly`: eso lo sabe la UI por el propio store.
+ */
+export function findOdontogramDictationBlockers(
+  storeApi: OdontogramStoreApi,
+  patch: OdontogramDictationPatchResponse,
+  options: OdontogramDictationApplyOptions = {},
+): OdontogramDictationBlocker[] {
+  return selectOperations(patch, toSelectedSet(options.selectedSequences))
+    .map(({ toothNumber, operation }) => {
+      const warning = preflightOperation(storeApi, toothNumber, operation);
+      return warning
+        ? { sequence: operation.sequence, toothNumber, warning }
+        : null;
+    })
+    .filter((blocker): blocker is OdontogramDictationBlocker => blocker !== null);
+}
+
+/**
+ * Aplica el parche —o solo las operaciones que el doctor dejó marcadas— sobre
+ * el store.
+ *
+ * El PREFLIGHT corre sobre el SUBCONJUNTO SELECCIONADO, no sobre el parche
+ * entero: una operación que el doctor descartó no puede bloquear a las demás.
+ * La regla 11 del contrato («preflight de todo el lote; si una operación no es
+ * aplicable, no aplicar ninguna») sigue vigente, pero «el lote» pasa a ser lo
+ * que el doctor aprobó, que es lo único que se va a escribir.
+ *
+ * Esto NO afloja el preflight: cada comprobación se evalúa contra el snapshot
+ * inicial y es independiente del resto de operaciones del lote (existencia de
+ * la pieza, payload completo, `match` que coincida con EXACTAMENTE un evento,
+ * estado global válido), así que quitar operaciones del lote nunca convierte un
+ * `warning` en un falso «aplicable». Solo puede desbloquear operaciones que
+ * antes caían por culpa de otra.
+ *
+ * La suposición que sí se pierde es la ATOMICIDAD DE LA FRASE: hasta ahora, un
+ * dictado se aplicaba entero o no se aplicaba, así que una misma frase no podía
+ * quedar documentada a medias. Con revisión por operación, dos operaciones que
+ * salen del mismo `sourceText` pueden separarse. Es una decisión explícita del
+ * doctor, y por eso la previsualización muestra el `sourceText` de cada
+ * operación: separar debe ser algo que se ve, no algo que pasa.
+ */
 export function applyOdontogramDictationPatch(
   storeApi: OdontogramStoreApi,
   patch: OdontogramDictationPatchResponse,
+  options: OdontogramDictationApplyOptions = {},
 ): OdontogramDictationApplyResult {
   if (storeApi.getState().readOnly) {
     return {
@@ -704,22 +819,36 @@ export function applyOdontogramDictationPatch(
     };
   }
 
+  const selected = toSelectedSet(options.selectedSequences);
+  const orderedOperations = selectOperations(patch, selected);
+
+  if (selected && orderedOperations.length === 0) {
+    return {
+      appliedOperations: 0,
+      affectedTeeth: [],
+      warnings: ["No hay ninguna operación seleccionada para aplicar."],
+    };
+  }
+
+  // Una selección que apunta a operaciones inexistentes significa que lo
+  // aprobado y lo aplicable no son lo mismo: se dice, no se calla.
+  const missingSequences = selected
+    ? Array.from(selected).filter(
+        (sequence) =>
+          !orderedOperations.some(
+            (entry) => entry.operation.sequence === sequence,
+          ),
+      )
+    : [];
+
   const warnings: string[] = [];
   const affectedTeeth = new Set<number>();
   let appliedOperations = 0;
 
-  const orderedOperations = patch.toothChanges
-    .flatMap((change) =>
-      change.operations.map((operation) => ({
-        toothNumber: change.toothNumber,
-        operation,
-      })),
-    )
-    .sort((left, right) => left.operation.sequence - right.operation.sequence);
-
   // El extractor ya elimina autocorrecciones transitorias. Por ello cada
   // operación debe ser aplicable sobre el snapshot inicial y podemos impedir
-  // cualquier mutación si una sola instrucción resulta ambigua o inválida.
+  // cualquier mutación si una sola instrucción SELECCIONADA resulta ambigua o
+  // inválida.
   const preflightWarnings = orderedOperations.flatMap(
     ({ toothNumber, operation }) => {
       const warning = preflightOperation(storeApi, toothNumber, operation);
@@ -745,9 +874,31 @@ export function applyOdontogramDictationPatch(
     }
   });
 
+  missingSequences.forEach((sequence) => {
+    warnings.push(
+      `La instrucción ${sequence} ya no está en el dictado; no se aplicó.`,
+    );
+  });
+
   return {
     appliedOperations,
     affectedTeeth: Array.from(affectedTeeth),
     warnings,
   };
 }
+
+// La previsualización en castellano vive en `dictation-preview.ts` (módulo puro)
+// y se reexporta aquí para que el panel tenga UN solo punto de entrada.
+export {
+  describeOdontogramDictationOperation,
+  describeOdontogramDictationPatch,
+  listOdontogramDictationOperations,
+} from "@/lib/odontogram/application/dictation-preview";
+export type {
+  OdontogramDictationOperationDescription,
+  OdontogramDictationOperationEntry,
+  OdontogramDictationOperationKind,
+  OdontogramDictationPatchDescription,
+  OdontogramDictationSurfaceLabel,
+  OdontogramDictationToothGroup,
+} from "@/lib/odontogram/application/dictation-preview";

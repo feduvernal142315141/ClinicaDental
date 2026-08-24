@@ -4,12 +4,12 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
-import { useOdontogramConfirm } from "@/components/features/odontogram/ui/OdontogramConfirm";
 import {
   useGroqDictation,
   type RetainedDictationAudio,
@@ -19,11 +19,18 @@ import {
   countOdontogramPatchOperations,
   createConfirmedOdontogramDictationPatch,
   createOdontogramDictationContext,
-  odontogramPatchRequiresConfirmation,
+  describeOdontogramDictationPatch,
+  findOdontogramDictationBlockers,
   type OdontogramDictationAdapter,
+  type OdontogramDictationApplyOptions,
+  type OdontogramDictationPatchDescription,
   type OdontogramDictationSelection,
 } from "@/lib/odontogram/application/dictation";
-import { useOdontogramStore, useOdontogramStoreApi } from "@/lib/odontogram/store";
+import {
+  useOdontogramStore,
+  useOdontogramStoreApi,
+  type OdontogramStoreApi,
+} from "@/lib/odontogram/store";
 import { isRetryableError } from "@/lib/errors/normalize-error";
 import { notify } from "@/lib/utils/notify";
 import {
@@ -50,6 +57,45 @@ export interface OdontogramDictationTranscriptionReview {
 }
 
 /**
+ * Dictado interpretado que ESPERA la revisión del doctor (HU-DICT-032).
+ *
+ * Ningún dictado llega al odontograma sin pasar por aquí: el micrófono está
+ * abierto en el box, la voz no se puede autenticar y una frase del paciente no
+ * puede acabar en su historia clínica porque el modelo la entendió con mucha
+ * confianza. Es también lo que exige el contrato del backend
+ * (`ODONTOGRAM_DICTATION_API.md`, «Reglas para el frontend» 1, 2, 3 y 7).
+ */
+export interface OdontogramDictationPreviewState {
+  /** Parche íntegro tal y como respondió el backend: es lo que se aplicará. */
+  patch: OdontogramDictationPatchResponse;
+  /** El mismo parche en castellano clínico, ordenado y agrupado por pieza. */
+  description: OdontogramDictationPatchDescription;
+  /**
+   * `sequence` que el doctor deja marcados. Clave por parche: el validador del
+   * backend garantiza que sea única y consecutiva desde 1 DENTRO del parche,
+   * así que una selección nunca sobrevive a un dictado nuevo — y por eso el
+   * estado entero se reemplaza con cada interpretación.
+   *
+   * Nacen marcadas TODAS menos dos clases: las bloqueadas (no son aplicables) y
+   * las que la IA marca `requiresConfirmation` (regla 4 del contrato: la
+   * confirmación tiene que ser un gesto sobre ESA instrucción, no un clic
+   * global que las arrastre).
+   */
+  selected: ReadonlySet<number>;
+  /**
+   * `sequence` → por qué no se puede aplicar sobre el odontograma de AHORA
+   * (preflight de la regla 11).
+   *
+   * Se mantiene VIVO mientras el panel está abierto: el modal del diente sigue
+   * operativo debajo, así que el doctor puede borrar a mano justo el hallazgo
+   * que una instrucción `REMOVE` iba a quitar. Una instrucción bloqueada no se
+   * puede marcar; si ya estaba marcada cuando se bloqueó, se queda a la vista
+   * con su motivo y se puede DESmarcar para aplicar el resto.
+   */
+  blockers: ReadonlyMap<number, string>;
+}
+
+/**
  * Estado y acciones del dictado del odontograma, compartidos por TODAS las
  * superficies que lo ofrecen (la barra junto a las pestañas y el control
  * compacto del modal del diente).
@@ -63,7 +109,12 @@ export interface OdontogramDictationSession {
   isRecording: boolean;
   isProcessing: boolean;
   isReinterpreting: boolean;
-  /** Hay trabajo en curso: el botón de grabar no debe aceptar clics. */
+  /**
+   * Hay trabajo en curso: el botón de grabar no debe aceptar clics. Incluye la
+   * previsualización pendiente — grabar otra vez la reemplazaría, y perder en
+   * silencio un lote que el doctor aún no ha decidido es exactamente lo que
+   * este panel viene a impedir.
+   */
   isBusy: boolean;
   /**
    * Hay algo VIVO que el doctor tiene que poder ver o terminar: una grabación
@@ -85,6 +136,29 @@ export interface OdontogramDictationSession {
   updateTranscriptionReview: (transcript: string) => void;
   discardTranscriptionReview: () => void;
   reinterpret: () => void;
+  /**
+   * Dictado interpretado esperando revisión, o `null`. Mientras exista, el
+   * odontograma NO ha cambiado: solo `applyPreview` escribe.
+   */
+  preview: OdontogramDictationPreviewState | null;
+  /** Marca o desmarca una instrucción suelta de la previsualización. */
+  togglePreviewOperation: (sequence: number, selected: boolean) => void;
+  /**
+   * Marca o desmarca en bloque las instrucciones de una pieza. Marcar solo
+   * alcanza a lo aprobable en bloque: lo bloqueado no es aplicable y lo que la
+   * IA no da por seguro exige un gesto propio. Desmarcar alcanza a todo.
+   */
+  togglePreviewTooth: (toothNumber: number, selected: boolean) => void;
+  /**
+   * Quita de la selección lo que se bloqueó mientras el panel estaba abierto.
+   * Es el atajo del caso real: el doctor corrigió la pieza a mano y quiere
+   * aplicar lo que sigue siendo válido sin repasar fila por fila.
+   */
+  unselectBlockedPreviewOperations: () => void;
+  /** Escribe en el odontograma SOLO lo que quedó marcado. */
+  applyPreview: () => void;
+  /** Cierra la previsualización sin tocar nada. */
+  discardPreview: () => void;
   pendingBatches: OdontogramDictationInconsistencyBatch[];
   resolveBatch: (
     batch: OdontogramDictationInconsistencyBatch,
@@ -130,7 +204,39 @@ export function describeOdontogramDictationStatus(
     } · ${session.recordingSeconds}s`;
   }
   if (session.isProcessing) return "Transcribiendo y preparando los cambios…";
+  // Dice por qué el micrófono está apagado: hay un lote esperando decisión.
+  if (session.preview)
+    return "Revisa los cambios del dictado antes de aplicarlos";
   return idleText;
+}
+
+/**
+ * Preflight del parche entero contra el odontograma de AHORA, en el formato que
+ * consume el panel. `findOdontogramDictationBlockers` es puro y no muta nada:
+ * se puede llamar tantas veces como haga falta.
+ */
+function collectBlockers(
+  storeApi: OdontogramStoreApi,
+  patch: OdontogramDictationPatchResponse,
+): ReadonlyMap<number, string> {
+  return new Map(
+    findOdontogramDictationBlockers(storeApi, patch).map((blocker) => [
+      blocker.sequence,
+      blocker.warning,
+    ]),
+  );
+}
+
+/** Evita repintar el panel cuando el recálculo llega al mismo resultado. */
+function sameBlockers(
+  left: ReadonlyMap<number, string>,
+  right: ReadonlyMap<number, string>,
+): boolean {
+  if (left.size !== right.size) return false;
+  for (const [sequence, warning] of left) {
+    if (right.get(sequence) !== warning) return false;
+  }
+  return true;
 }
 
 interface OdontogramDictationProviderProps {
@@ -169,10 +275,11 @@ export function OdontogramDictationProvider({
   const lastSelectionRef = useRef(lastSelection);
   lastSelectionRef.current = lastSelection;
   const readOnly = useOdontogramStore((state) => state.readOnly);
-  const confirm = useOdontogramConfirm();
   const [pendingBatches, setPendingBatches] = useState<
     OdontogramDictationInconsistencyBatch[]
   >([]);
+  const [preview, setPreview] =
+    useState<OdontogramDictationPreviewState | null>(null);
   const [transcriptionReview, setTranscriptionReview] =
     useState<OdontogramDictationTranscriptionReview | null>(null);
   const [isReinterpreting, setIsReinterpreting] = useState(false);
@@ -181,8 +288,21 @@ export function OdontogramDictationProvider({
   const learningInFlight = useRef(new Set<string>());
 
   const applyPatch = useCallback(
-    (patch: OdontogramDictationPatchResponse) => {
-      const result = applyOdontogramDictationPatch(storeApi, patch);
+    (
+      patch: OdontogramDictationPatchResponse,
+      options?: OdontogramDictationApplyOptions,
+      /**
+       * Quien sepa contar mejor lo que pasó apaga el aviso genérico y lo cuenta
+       * él: un «requiere revisión» encima de un «no se aplicó nada» son dos
+       * toasts para un solo hecho.
+       */
+      feedback?: { notifyWarnings?: boolean },
+    ) => {
+      const result = applyOdontogramDictationPatch(storeApi, patch, options);
+      const selected =
+        options?.selectedSequences == null
+          ? null
+          : new Set(options.selectedSequences);
 
       if (result.appliedOperations > 0) {
         const defaultedIcdasCount = patch.toothChanges.reduce(
@@ -190,7 +310,10 @@ export function OdontogramDictationProvider({
             total +
             change.operations.filter(
               (operation) =>
-                operation.diagnosis?.icdasSource === "dictation-default",
+                operation.diagnosis?.icdasSource === "dictation-default" &&
+                // Solo cuenta lo que de verdad se escribió: avisar de un ICDAS
+                // por defecto que el doctor descartó sería mentira.
+                (!selected || selected.has(operation.sequence)),
             ).length,
           0,
         );
@@ -213,7 +336,7 @@ export function OdontogramDictationProvider({
         }));
       }
 
-      if (result.warnings.length > 0) {
+      if (feedback?.notifyWarnings !== false && result.warnings.length > 0) {
         notify.warning("Hay indicaciones que requieren revisión", {
           description: result.warnings[0],
         });
@@ -240,6 +363,15 @@ export function OdontogramDictationProvider({
     [],
   );
 
+  /**
+   * Abre la PREVISUALIZACIÓN. No escribe nada.
+   *
+   * Antes de HU-DICT-032 este camino aplicaba el parche directo cuando ninguna
+   * operación pedía confirmación, y solo levantaba un diálogo genérico —sin
+   * detalle de lo que iba a pasar— cuando alguna la pedía. Ese diálogo se
+   * retiró: el panel ES la confirmación, con la operación a la vista y la frase
+   * que la originó, y no tiene sentido apilar dos.
+   */
   const processPatch = useCallback(
     (patch: OdontogramDictationPatchResponse) => {
       const operationCount = countOdontogramPatchOperations(patch);
@@ -256,41 +388,39 @@ export function OdontogramDictationProvider({
         return;
       }
 
-      if (odontogramPatchRequiresConfirmation(patch)) {
-        const destructiveCount = patch.toothChanges.reduce(
-          (total, change) =>
-            total +
-            change.operations.filter(
+      const description = describeOdontogramDictationPatch(patch);
+      // Preflight contra el odontograma de AHORA: lo inaplicable se enseña con
+      // su motivo, pero nace desmarcado — marcarlo tumbaría el lote entero.
+      const blockers = collectBlockers(storeApi, patch);
+
+      setPreview({
+        patch,
+        description,
+        // Lo que la IA no da por seguro (`requiresConfirmation`, regla 4) nace
+        // DESMARCADO: confirmarlo tiene que ser un gesto sobre esa instrucción.
+        // Nacer marcado convertía el botón «Aplicar» en la única confirmación,
+        // y ese clic dice «acepto el lote», no «doy por bueno justo esto».
+        selected: new Set(
+          description.operations
+            .filter(
               (operation) =>
-                operation.action === "REMOVE" || operation.action === "RESET",
-            ).length,
-          0,
-        );
+                !blockers.has(operation.sequence) &&
+                !operation.requiresConfirmation,
+            )
+            .map((operation) => operation.sequence),
+        ),
+        blockers,
+      });
 
-        confirm({
-          title: "Confirmar cambios del dictado",
-          description: `La IA identificó ${operationCount} cambio${
-            operationCount === 1 ? "" : "s"
-          } en ${patch.toothChanges.length} pieza${
-            patch.toothChanges.length === 1 ? "" : "s"
-          }${
-            destructiveCount > 0
-              ? `, incluyendo ${destructiveCount} corrección${
-                  destructiveCount === 1 ? "" : "es"
-                } que desmarcará datos actuales`
-              : ""
-          }.`,
-          okText: "Aplicar cambios",
-          cancelText: "Descartar",
-          danger: destructiveCount > 0,
-          onOk: () => applyPatch(patch),
+      if (blockers.size === description.totalOperations) {
+        notify.warning("Ningún cambio del dictado se puede aplicar", {
+          description:
+            blockers.values().next().value ??
+            "Revisa el detalle junto al control de dictado.",
         });
-        return;
       }
-
-      applyPatch(patch);
     },
-    [applyPatch, confirm, rememberInconsistencies],
+    [rememberInconsistencies, storeApi],
   );
 
   const processAudio = useCallback(
@@ -374,14 +504,17 @@ export function OdontogramDictationProvider({
             },
           );
         } else {
+          let result;
           try {
-            appliedOperations = applyPatch(
+            result = applyPatch(
               createConfirmedOdontogramDictationPatch(
                 batch.dictationId,
                 batch.inconsistencies,
                 resolutions,
               ),
-            ).appliedOperations;
+              undefined,
+              { notifyWarnings: false },
+            );
           } catch {
             notify.error("No se pudo aplicar la aclaración", {
               description:
@@ -389,6 +522,28 @@ export function OdontogramDictationProvider({
             });
             return;
           }
+
+          // El preflight pudo rechazar el cambio clínico (la pieza ya no está
+          // como cuando se dictó, el `match` ya no coincide…). Si NADA se
+          // escribió, retirar el lote y mandar el aprendizaje sería enseñar
+          // como aprendida una decisión que el odontograma no aceptó: el lote
+          // se conserva tal cual, sin POST, y se dice el motivo real.
+          if (result.appliedOperations === 0) {
+            notify.warning("La aclaración no se aplicó al odontograma", {
+              description: `${
+                result.warnings[0] ??
+                "El odontograma actual no admite ese cambio."
+              } Se conservan las aclaraciones: corrige la pieza y vuelve a confirmar, o descártalas.`,
+            });
+            return;
+          }
+
+          if (result.warnings.length > 0) {
+            notify.warning("Hay indicaciones que requieren revisión", {
+              description: result.warnings[0],
+            });
+          }
+          appliedOperations = result.appliedOperations;
         }
       }
 
@@ -482,6 +637,192 @@ export function OdontogramDictationProvider({
     setTranscriptionReview(null);
   }, []);
 
+  const togglePreviewOperation = useCallback(
+    (sequence: number, isSelected: boolean) => {
+      setPreview((current) => {
+        if (!current) return current;
+        // Lo inaplicable no se puede aprobar (ver `blockers`).
+        if (isSelected && current.blockers.has(sequence)) return current;
+        const next = new Set(current.selected);
+        if (isSelected) next.add(sequence);
+        else next.delete(sequence);
+        return { ...current, selected: next };
+      });
+    },
+    [],
+  );
+
+  const togglePreviewTooth = useCallback(
+    (toothNumber: number, isSelected: boolean) => {
+      setPreview((current) => {
+        if (!current) return current;
+        const group = current.description.groups.find(
+          (item) => item.toothNumber === toothNumber,
+        );
+        if (!group) return current;
+
+        const next = new Set(current.selected);
+        group.operations.forEach((operation) => {
+          if (isSelected) {
+            // Marcar en bloque no puede arrastrar ni lo inaplicable ni lo que
+            // la IA no da por seguro: eso último exige su propio gesto.
+            if (
+              !current.blockers.has(operation.sequence) &&
+              !operation.requiresConfirmation
+            ) {
+              next.add(operation.sequence);
+            }
+            return;
+          }
+          next.delete(operation.sequence);
+        });
+        return { ...current, selected: next };
+      });
+    },
+    [],
+  );
+
+  const unselectBlockedPreviewOperations = useCallback(() => {
+    setPreview((current) => {
+      if (!current) return current;
+      const next = new Set(current.selected);
+      let changed = false;
+      current.blockers.forEach((_warning, sequence) => {
+        if (next.delete(sequence)) changed = true;
+      });
+      return changed ? { ...current, selected: next } : current;
+    });
+  }, []);
+
+  const previewPatch = preview?.patch ?? null;
+  /**
+   * Mientras el propio panel escribe, el store emite un cambio por operación.
+   * Recalcular con la escritura a medias solo produciría estados intermedios
+   * que nadie llega a ver (un `REMOVE` ya aplicado aparece como bloqueado): el
+   * recálculo que importa lo hace `applyPreview` cuando termina.
+   */
+  const isApplyingRef = useRef(false);
+
+  /**
+   * Mantiene VIVO el preflight mientras el panel está abierto.
+   *
+   * Hace falta porque el panel vive en la cabecera pegajosa del modal del
+   * diente y el modal sigue siendo operativo debajo: el doctor puede borrar a
+   * mano el hallazgo que una instrucción `REMOVE` iba a quitar y dejar el lote
+   * inaplicable sin que el panel se entere.
+   *
+   * La suscripción es a TODO el store —zustand vanilla no ofrece selectores en
+   * `subscribe`—, así que el listener corre con cada cambio (autosave, pestaña,
+   * moneda…). Por eso lo primero que hace es comparar por REFERENCIA las dos
+   * únicas colecciones que mira el preflight: si `teeth` y `clinicalEvents` son
+   * las mismas, no hay nada que recalcular y el coste es una comparación. El
+   * recorrido de las operaciones solo ocurre cuando los datos clínicos cambian
+   * de verdad, y el estado solo se reemplaza si el resultado es distinto.
+   */
+  useEffect(() => {
+    if (!previewPatch) return;
+
+    return storeApi.subscribe((state, previous) => {
+      if (isApplyingRef.current) return;
+      if (
+        state.teeth === previous.teeth &&
+        state.clinicalEvents === previous.clinicalEvents
+      ) {
+        return;
+      }
+
+      const blockers = collectBlockers(storeApi, previewPatch);
+      setPreview((current) => {
+        // Un dictado nuevo mientras tanto: estos bloqueos ya no son de nadie.
+        if (!current || current.patch !== previewPatch) return current;
+        return sameBlockers(current.blockers, blockers)
+          ? current
+          : { ...current, blockers };
+      });
+    });
+  }, [previewPatch, storeApi]);
+
+  /**
+   * ÚNICO camino por el que un dictado escribe en el odontograma. Manda lo
+   * marcado, no el parche entero: el preflight de la regla 11 sigue siendo
+   * todo-o-nada, pero «el lote» pasa a ser lo que el doctor aprobó.
+   *
+   * Cierra el panel SOLO cuando algo se escribió. Si no se escribió nada, la
+   * revisión se conserva con los motivos ya actualizados: cerrarla obligaría a
+   * volver a dictar por un lote que quizá solo necesitaba desmarcar una fila.
+   */
+  const applyPreview = useCallback(() => {
+    if (!preview || preview.selected.size === 0) return;
+
+    // Recálculo en el momento de aplicar, aunque la suscripción lo mantenga al
+    // día: es la única comprobación que ocurre con el store que se va a
+    // escribir, y es barata frente al coste de perder el lote.
+    const blockers = collectBlockers(storeApi, preview.patch);
+    const blockedSelected = Array.from(preview.selected).filter((sequence) =>
+      blockers.has(sequence),
+    );
+
+    if (blockedSelected.length > 0) {
+      setPreview((current) =>
+        current && current.patch === preview.patch
+          ? { ...current, blockers }
+          : current,
+      );
+      notify.warning(
+        blockedSelected.length === 1
+          ? "1 cambio marcado ya no se puede aplicar"
+          : `${blockedSelected.length} cambios marcados ya no se pueden aplicar`,
+        {
+          description: `${
+            blockers.get(blockedSelected[0]) ??
+            "El odontograma cambió mientras revisabas."
+          } Se conserva la revisión: desmárcalo y aplica el resto.`,
+        },
+      );
+      return;
+    }
+
+    isApplyingRef.current = true;
+    let result;
+    try {
+      result = applyPatch(
+        preview.patch,
+        { selectedSequences: preview.selected },
+        { notifyWarnings: false },
+      );
+    } finally {
+      isApplyingRef.current = false;
+    }
+
+    if (result.appliedOperations === 0) {
+      setPreview((current) =>
+        current && current.patch === preview.patch
+          ? { ...current, blockers: collectBlockers(storeApi, preview.patch) }
+          : current,
+      );
+      notify.warning("No se aplicó ningún cambio del dictado", {
+        description: `${
+          result.warnings[0] ?? "El odontograma actual no admite estos cambios."
+        } Se conserva la revisión para que desmarques lo que no se pueda aplicar.`,
+      });
+      return;
+    }
+
+    if (result.warnings.length > 0) {
+      notify.warning("Hay indicaciones que requieren revisión", {
+        description: result.warnings[0],
+      });
+    }
+    setPreview(null);
+  }, [applyPatch, preview, storeApi]);
+
+  const discardPreview = useCallback(() => {
+    setPreview(null);
+    notify.info("Dictado descartado", {
+      description: "No se cambió nada en el odontograma.",
+    });
+  }, []);
+
   const retryRetained = useCallback(() => {
     void retryRetainedAudio();
   }, [retryRetainedAudio]);
@@ -499,13 +840,14 @@ export function OdontogramDictationProvider({
       isRecording,
       isProcessing,
       isReinterpreting,
-      isBusy: isProcessing || isReinterpreting,
+      isBusy: isProcessing || isReinterpreting || preview !== null,
       isEngaged:
         isRecording ||
         isProcessing ||
         isReinterpreting ||
         retainedAudio !== null ||
         transcriptionReview !== null ||
+        preview !== null ||
         pendingBatches.length > 0,
       readOnly,
       interimText,
@@ -518,12 +860,20 @@ export function OdontogramDictationProvider({
       updateTranscriptionReview,
       discardTranscriptionReview,
       reinterpret,
+      preview,
+      togglePreviewOperation,
+      togglePreviewTooth,
+      unselectBlockedPreviewOperations,
+      applyPreview,
+      discardPreview,
       pendingBatches,
       resolveBatch: handleResolve,
       lastApplied,
     };
   }, [
     adapter,
+    applyPreview,
+    discardPreview,
     discardRetainedAudio,
     discardTranscriptionReview,
     handleResolve,
@@ -534,13 +884,17 @@ export function OdontogramDictationProvider({
     isSupported,
     lastApplied,
     pendingBatches,
+    preview,
     readOnly,
     recordingSeconds,
     reinterpret,
     retainedAudio,
     retryRetained,
+    togglePreviewOperation,
+    togglePreviewTooth,
     toggleRecording,
     transcriptionReview,
+    unselectBlockedPreviewOperations,
     updateTranscriptionReview,
   ]);
 

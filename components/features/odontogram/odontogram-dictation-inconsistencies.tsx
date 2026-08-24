@@ -10,7 +10,11 @@ import {
   RadioGroupItem,
 } from "@/components/ui";
 import { OdontogramButton } from "@/components/features/odontogram/ui/OdontogramButton";
+import { describeOdontogramDictationOperation } from "@/lib/odontogram/application/dictation";
+import { cn } from "@/lib/odontogram/utils";
+import type { OdontogramDictationOperationDescription } from "@/lib/odontogram/application/dictation";
 import type {
+  OdontogramDictationCandidate,
   OdontogramDictationInconsistency,
   ResolveOdontogramInconsistencyRequest,
 } from "@/lib/entity/speech";
@@ -35,6 +39,94 @@ export interface OdontogramDictationInconsistencyBatch {
     resolutions: ResolveOdontogramInconsistencyRequest[];
     appliedOperations: number;
   };
+}
+
+/**
+ * Lo que ESA opción escribiría de verdad en el odontograma.
+ *
+ * `candidate.label` lo redacta el modelo y el backend NO lo contrasta con la
+ * operación: solo comprueba que no esté vacío y que mida menos de 200
+ * caracteres. Elegir por ese rótulo es firmar un cambio en una historia clínica
+ * sin haberlo leído, así que el rótulo se queda como titular y debajo va la
+ * descripción que produce el propio módulo del odontograma
+ * (`describeOdontogramDictationOperation`, pura y sin store), con caras,
+ * detalle clínico y si borra algo.
+ */
+function describeCandidate(
+  candidate: OdontogramDictationCandidate,
+  fallbackToothNumber: number | undefined,
+): OdontogramDictationOperationDescription[] {
+  const toothNumber = candidate.toothChange?.toothNumber ?? fallbackToothNumber;
+  if (toothNumber === undefined) return [];
+
+  const operations = candidate.toothChange?.operations?.length
+    ? candidate.toothChange.operations
+    : candidate.operation
+      ? [candidate.operation]
+      : [];
+
+  return operations.map((operation) =>
+    describeOdontogramDictationOperation(toothNumber, operation),
+  );
+}
+
+/** Detalle clínico de una opción, en el mismo vocabulario que la previsualización. */
+function CandidateOperations({
+  descriptions,
+}: {
+  descriptions: OdontogramDictationOperationDescription[];
+}) {
+  if (descriptions.length === 0) {
+    return (
+      <p className="text-[11px] text-amber-800 dark:text-amber-200">
+        Esta opción no trae el cambio concreto que aplicaría. Descártala y
+        vuelve a dictar la indicación con otras palabras.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="space-y-1.5">
+      {descriptions.map((description, index) => {
+        // El primer detalle repite el titular en los hallazgos de superficie
+        // ("Caries" + "Caries en O"): se omite el chip redundante, no el dato.
+        const chips = description.details.filter(
+          (detail) => !description.summary.startsWith(detail),
+        );
+        return (
+          <li key={`${description.sequence}-${index}`} className="space-y-1">
+            <p
+              className={cn(
+                "text-[11px] font-medium",
+                description.destructive
+                  ? "text-rose-700 dark:text-rose-300"
+                  : "text-ink",
+              )}
+            >
+              {description.toothLabel} · {description.summary}
+            </p>
+            {(description.destructive || chips.length > 0) && (
+              <div className="flex flex-wrap items-center gap-1">
+                {description.destructive && (
+                  <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[11px] font-medium text-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+                    {description.actionLabel}
+                  </span>
+                )}
+                {chips.map((chip) => (
+                  <span
+                    key={chip}
+                    className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] text-subtle"
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 interface OdontogramDictationInconsistenciesProps {
@@ -144,9 +236,11 @@ export function OdontogramDictationInconsistencies({
                 Aclaraciones del dictado
               </p>
               <p className="mt-1 text-xs text-subtle">
-                Confirma lo que quiso decir la doctora. La selección se aprenderá
-                para los próximos dictados de esta clínica. Lo que descartes se
-                cierra sin aprenderse.
+                Confirma lo que quiso decir la doctora leyendo el cambio real de
+                cada opción: el rótulo lo redacta la IA, el detalle de debajo es
+                lo que se escribiría. La selección se aprenderá para los
+                próximos dictados de esta clínica. Lo que descartes se cierra
+                sin aprenderse.
               </p>
             </div>
 
@@ -236,15 +330,41 @@ export function OdontogramDictationInconsistencies({
                           >
                             {inconsistency.candidates.map((candidate) => {
                               const optionId = `${inconsistency.id}-${candidate.id}`;
+                              const detailId = `${optionId}-detail`;
+                              const descriptions = describeCandidate(
+                                candidate,
+                                inconsistency.toothNumber,
+                              );
                               return (
-                                <label
+                                <div
                                   key={candidate.id}
-                                  htmlFor={optionId}
-                                  className="flex cursor-pointer items-center gap-2 rounded-md border border-hairline px-3 py-2 text-xs text-ink transition-colors hover:bg-hover has-[[data-state=checked]]:border-brand has-[[data-state=checked]]:bg-brand/5"
+                                  className="overflow-hidden rounded-md border border-hairline transition-colors has-[[data-state=checked]]:border-brand has-[[data-state=checked]]:bg-brand/5"
                                 >
-                                  <RadioGroupItem id={optionId} value={candidate.id} />
-                                  <span>{candidate.label}</span>
-                                </label>
+                                  <label
+                                    htmlFor={optionId}
+                                    className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs text-ink transition-colors hover:bg-hover"
+                                  >
+                                    <RadioGroupItem
+                                      id={optionId}
+                                      value={candidate.id}
+                                      aria-describedby={detailId}
+                                    />
+                                    <span>{candidate.label}</span>
+                                  </label>
+                                  {/* El rótulo de arriba lo escribe la IA y nadie
+                                      lo valida: esto es lo que se escribiría. */}
+                                  <div
+                                    id={detailId}
+                                    className="space-y-1.5 border-t border-hairline bg-surface/60 px-3 py-2"
+                                  >
+                                    <p className="text-[11px] font-medium uppercase tracking-wide text-subtle">
+                                      Se escribiría en el odontograma
+                                    </p>
+                                    <CandidateOperations
+                                      descriptions={descriptions}
+                                    />
+                                  </div>
+                                </div>
                               );
                             })}
                           </RadioGroup>

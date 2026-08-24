@@ -4,32 +4,42 @@ import { AlertTriangle, RotateCw, X } from "lucide-react";
 import { OdontogramButton } from "@/components/features/odontogram/ui/OdontogramButton";
 import { OdontogramTextArea } from "@/components/features/odontogram/ui/OdontogramInput";
 import { OdontogramDictationInconsistencies } from "./odontogram-dictation-inconsistencies";
+import { OdontogramDictationPreviewPanel } from "./odontogram-dictation-preview";
 import type { OdontogramDictationSession } from "./odontogram-dictation-session";
 
 interface OdontogramDictationFeedbackProps {
   session: OdontogramDictationSession;
   /**
-   * Sufijo del `id` del bloque de fragmentos dudosos. Las dos superficies del
-   * dictado (barra de pestañas y modal del diente) nunca están montadas a la
-   * vez, pero el id se mantiene distinto para que un solapamiento momentáneo
-   * no duplique un `id` en el documento.
+   * Sufijo del `id` del bloque de fragmentos dudosos y de las casillas de la
+   * previsualización. Las dos superficies del dictado (barra de pestañas y
+   * modal del diente) nunca están montadas a la vez, pero el id se mantiene
+   * distinto para que un solapamiento momentáneo no duplique un `id` en el
+   * documento.
    */
   idPrefix: string;
+  /**
+   * Superficie con poco alto (el modal del diente): la previsualización acorta
+   * su lista y recorta los fragmentos. Mismo contenido, menos sitio.
+   */
+  compact?: boolean;
 }
 
 /**
- * Lo que el dictado tiene que CONTAR después de grabar: la grabación retenida
- * tras un fallo transitorio (HU-DICT-013), la transcripción que exige revisión
- * y las aclaraciones pendientes.
+ * Lo que el dictado tiene que CONTAR después de grabar: la previsualización
+ * obligatoria de los cambios (HU-DICT-032), la grabación retenida tras un fallo
+ * transitorio (HU-DICT-013), la transcripción que exige revisión y las
+ * aclaraciones pendientes.
  *
  * Vive en un componente propio porque acompaña al dictado esté donde esté el
  * botón: junto a las pestañas del odontograma o dentro del modal del diente.
  * El estado es el mismo (`OdontogramDictationSession`), así que nada se pierde
- * al abrir o cerrar la pieza en mitad de un reintento.
+ * al abrir o cerrar la pieza en mitad de un reintento —ni en mitad de una
+ * revisión: la previsualización sigue viva y con las mismas casillas marcadas.
  */
 export function OdontogramDictationFeedback({
   session,
   idPrefix,
+  compact = false,
 }: OdontogramDictationFeedbackProps) {
   const {
     isRecording,
@@ -43,6 +53,12 @@ export function OdontogramDictationFeedback({
     updateTranscriptionReview,
     discardTranscriptionReview,
     reinterpret,
+    preview,
+    togglePreviewOperation,
+    togglePreviewTooth,
+    unselectBlockedPreviewOperations,
+    applyPreview,
+    discardPreview,
     pendingBatches,
     resolveBatch,
   } = session;
@@ -51,6 +67,22 @@ export function OdontogramDictationFeedback({
 
   return (
     <>
+      {/* Primero de todo: es lo único que espera una decisión para escribir en
+          la historia clínica. */}
+      {preview && (
+        <OdontogramDictationPreviewPanel
+          preview={preview}
+          idPrefix={idPrefix}
+          compact={compact}
+          readOnly={readOnly}
+          onToggleOperation={togglePreviewOperation}
+          onToggleTooth={togglePreviewTooth}
+          onUnselectBlocked={unselectBlockedPreviewOperations}
+          onApply={applyPreview}
+          onDiscard={discardPreview}
+        />
+      )}
+
       {retainedAudio && !isRecording && (
         <section
           role="status"
