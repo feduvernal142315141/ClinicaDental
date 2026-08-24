@@ -1,6 +1,6 @@
 "use client";
 
-import { Stethoscope, ClipboardList } from "lucide-react";
+import { Stethoscope, ClipboardList, ListChecks } from "lucide-react";
 import {
   Tabs,
   TabsList,
@@ -20,8 +20,10 @@ import { EditPatientDrawer } from "./EditPatientDrawer";
 import { StartConsultationNowModal } from "@/components/features/appointments/StartConsultationNowModal";
 import { PatientOdontogramPanel } from "@/components/features/patients/detail/PatientOdontogramPanel";
 import { ActiveConsultationBanner } from "@/components/features/clinical-history/ActiveConsultationBanner";
+import { PatientTreatmentPlanPanel } from "@/components/features/patients/treatment-plan/PatientTreatmentPlanPanel";
 import {
   useClinicalHistoryPage,
+  TREATMENT_PLAN_TAB,
   type UseClinicalHistoryPageParams,
 } from "@/lib/hooks/patients/clinical-history-page/use-clinical-history-page";
 
@@ -63,6 +65,7 @@ export function ClinicalHistoryPage({
     canManageAttachments,
     canEditMedicalHistory,
     canEditPatient,
+    canViewTreatmentPlan,
     handleStartConsultation,
     handleStartNow,
     handleViewVisitHistory,
@@ -118,26 +121,43 @@ export function ClinicalHistoryPage({
         onValueChange={setActiveTab}
         className="flex flex-col flex-1 min-h-0"
       >
-        <TabsList className="shrink-0 self-start">
-          {isCurrentlyActiveConsultation && (
-            <TabsTrigger value="workspace">
-              <Stethoscope className="h-4 w-4" />
-              Workspace
+        {/* ── Franja de pestañas con scroll horizontal propio ──────────────
+            El `TabsList` es `inline-flex` y no encoge: con tres pestañas con
+            icono (y rótulos largos como "Historia Clínica (Lectura)") la última
+            se salía del viewport en pantallas estrechas y no había forma de
+            alcanzarla, porque el desbordamiento se recortaba contra el layout.
+            El contenedor NO necesita `tabindex`: sus hijos son focusables, y
+            tanto el tabulador como las flechas de Radix desplazan el scroll
+            hasta la pestaña enfocada (WCAG 2.2 — 2.1.1). `overflow-x` solo:
+            el ring de foco cabe dentro del `p-1` del propio `TabsList`. */}
+        <div className="shrink-0 overflow-x-auto">
+          <TabsList className="w-max">
+            {isCurrentlyActiveConsultation && (
+              <TabsTrigger value="workspace">
+                <Stethoscope className="h-4 w-4" />
+                Workspace
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="historia-clinica">
+              <ClipboardList className="h-4 w-4" />
+              {isCurrentlyActiveConsultation
+                ? "Historia Clínica (Lectura)"
+                : "Historia Clínica"}
             </TabsTrigger>
-          )}
-          <TabsTrigger value="historia-clinica">
-            <ClipboardList className="h-4 w-4" />
-            {isCurrentlyActiveConsultation
-              ? "Historia Clínica (Lectura)"
-              : "Historia Clínica"}
-          </TabsTrigger>
-          {!isCurrentlyActiveConsultation && (
-            <TabsTrigger value="odontograma">
-              <Stethoscope className="h-4 w-4" />
-              Odontograma
-            </TabsTrigger>
-          )}
-        </TabsList>
+            {!isCurrentlyActiveConsultation && (
+              <TabsTrigger value="odontograma">
+                <Stethoscope className="h-4 w-4" />
+                Odontograma
+              </TabsTrigger>
+            )}
+            {canViewTreatmentPlan && (
+              <TabsTrigger value={TREATMENT_PLAN_TAB}>
+                <ListChecks className="h-4 w-4" />
+                Plan de Tratamiento
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
 
         {isCurrentlyActiveConsultation && (
           <TabsContent
@@ -178,8 +198,12 @@ export function ClinicalHistoryPage({
             <p className={cn(SECTION_LABEL_CLASS, "select-none")}>
               Perfil · Adjuntos
             </p>
+            {/* "Planes del odontograma" — el rótulo tiene que decir lo que hay
+                en la columna, y lo que hay son los documentos de plan con su
+                avance, no las líneas presupuestadas de la pestaña
+                "Plan de Tratamiento". */}
             <p className={cn(SECTION_LABEL_CLASS, "select-none pl-4")}>
-              Anamnesis · Plan de Tratamiento · Evolución / Notas
+              Anamnesis · Planes del odontograma · Evolución / Notas
             </p>
             <p className={cn(SECTION_LABEL_CLASS, "select-none pl-3")}>
               Cronología de visitas
@@ -265,6 +289,21 @@ export function ClinicalHistoryPage({
               appointments={appointments}
               appointmentsLoading={appointmentsLoading}
               onSelectHistoricVisit={handleSelectHistoricVisit}
+            />
+          </TabsContent>
+        )}
+
+        {canViewTreatmentPlan && (
+          // `overflow-hidden` aquí: el scroll lo posee el cuerpo de la tabla,
+          // dentro del panel. Si esta pestaña también desbordara habría dos
+          // superficies scrolleables encajadas (ADR-36).
+          <TabsContent
+            value={TREATMENT_PLAN_TAB}
+            className="flex-1 min-h-0 mt-2 overflow-hidden flex flex-col"
+          >
+            <PatientTreatmentPlanPanel
+              patientId={patientId}
+              patientName={patient.name}
             />
           </TabsContent>
         )}

@@ -58,7 +58,11 @@ export function useTreatmentPlansPendingSection(patientId: string) {
   const { plans, fetchPlans, loading } = useTreatmentPlans();
 
   useEffect(() => {
-    fetchPlans(patientId, { page: 0, pageSize: 50 });
+    // `fetchPlans` ya avisa con toast y RELANZA. El servicio ahora rechaza de
+    // verdad ante un 403/500 (antes devolvía el cuerpo de error como si fuera
+    // una página vacía de planes), así que sin este `catch` la promesa quedaría
+    // sin manejar. Mismo patrón que `finalize-appointment-modal.tsx:111`.
+    void fetchPlans(patientId, { page: 0, pageSize: 50 }).catch(() => {});
   }, [patientId, fetchPlans]);
 
   const counts = useMemo<TreatmentStatusCounts>(() => {

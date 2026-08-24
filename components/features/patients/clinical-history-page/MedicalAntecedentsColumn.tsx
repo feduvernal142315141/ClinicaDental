@@ -192,7 +192,14 @@ export function MedicalAntecedentsColumn({
           página entera es la única superficie que scrollea. */}
       <section className="bento shrink-0 overflow-hidden">
         <div className="px-5 py-4 border-b border-hairline">
-          <h3 className={SECTION_LABEL_CLASS}>Planes de Tratamiento</h3>
+          {/* "Planes del odontograma" y no "Planes de Tratamiento": la ficha
+              tiene ahora una pestaña propia con ESE nombre, y son dos cosas
+              distintas —allí se ven las LÍNEAS presupuestadas con sus importes;
+              aquí, los DOCUMENTOS de plan y su avance derivado de los eventos
+              del odontograma, que es justo a donde lleva la acción de cada
+              tarjeta. Dos rótulos iguales con contenidos distintos en la misma
+              ficha mandan al usuario al sitio equivocado. */}
+          <h3 className={SECTION_LABEL_CLASS}>Planes del odontograma</h3>
         </div>
         {/* Resumen de estados (conteos por estado de avance) */}
         <TreatmentStatusOverview counts={planCounts} />

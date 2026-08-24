@@ -430,10 +430,13 @@ export function ResponsiveOdontogramWrapper({
       )}
       style={{ minHeight: "280px", touchAction: "none" }}
     >
-      {/* Controles de navegación (fuera del zoom y del arrastre) */}
+      {/* Controles de navegación (fuera del zoom y del arrastre).
+          `right-20` y no `right-4`: el FAB de feedback ocupa fijo la esquina
+          inferior derecha en TODA pantalla autenticada, y a `right-4` se comía
+          el botón de ajuste de esta barra. */}
       <div
         data-canvas-ui
-        className="absolute bottom-4 right-4 z-20 flex items-center gap-1 rounded-full border border-border/70 bg-surface/90 px-3 py-1.5 text-xs text-ink shadow-lg backdrop-blur-md transition-all hover:bg-surface hover:shadow-xl"
+        className="absolute bottom-4 right-20 z-20 flex items-center gap-1 rounded-full border border-border/70 bg-surface/90 px-3 py-1.5 text-xs text-ink shadow-lg backdrop-blur-md transition-all hover:bg-surface hover:shadow-xl"
       >
         <button
           onClick={() => applyZoom(1 / BUTTON_ZOOM_STEP)}

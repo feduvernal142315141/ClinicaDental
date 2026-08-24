@@ -145,6 +145,231 @@ export interface PaginatedTreatmentPlansResponse {
   pagination: Pagination;
 }
 
+// ─── Treatment Plan Items (líneas del plan) ─────────────────────────
+
+/**
+ * Estado de una línea del plan.
+ *
+ * Es EXACTAMENTE el vocabulario de `ClinicalEventStatus` del modal del diente.
+ * Una línea del plan y un procedimiento planificado sobre una pieza son la misma
+ * cosa vista desde dos pantallas: dos listas de estados obligaban a traducir en
+ * el medio y acababan divergiendo.
+ *
+ * Ojo: `canceled` con UNA ele, como el resto del odontograma.
+ */
+export type PlanItemStatus =
+  | "open"
+  | "plan"
+  | "scheduled"
+  | "in_progress"
+  | "done"
+  | "canceled"
+  | "observation";
+
+/** Prioridad clínica. Mismo vocabulario que `ProcedurePriority` del modal. */
+export type PlanItemPriority = "alta" | "media" | "baja";
+
+/**
+ * Los estados en el ORDEN DEL CICLO DE VIDA de una línea, no en orden
+ * alfabético ni de aparición en los datos: si se ordenaran por los datos, el
+ * desplegable de estados se recolocaría solo en cada recarga y dos pacientes lo
+ * enseñarían distinto.
+ */
+export const PLAN_ITEM_STATUSES: readonly PlanItemStatus[] = [
+  "open",
+  "plan",
+  "scheduled",
+  "in_progress",
+  "done",
+  "canceled",
+  "observation",
+];
+
+/** Prioridades de mayor a menor urgencia. */
+export const PLAN_ITEM_PRIORITIES: readonly PlanItemPriority[] = [
+  "alta",
+  "media",
+  "baja",
+];
+
+/**
+ * Una línea del plan de tratamiento.
+ * GET /treatment-plans/{planId}/items → `items[]`
+ *
+ * Importes: `unitCost`, `currencyCode` y `lineTotal` los CONGELA/CALCULA el
+ * servidor. El cliente nunca los manda ni los recalcula.
+ */
+export interface TreatmentPlanItem {
+  id: string;
+  planId: string;
+  itemOrder: number;
+
+  serviceId: string;
+  serviceCode: string;
+  serviceName: string;
+  /** Precio unitario congelado del catálogo en el momento de presupuestar. */
+  unitCost: number;
+  /** Moneda congelada de la línea (ISO-4217). Mezclar monedas es un 400. */
+  currencyCode: string;
+  /**
+   * Unidades. Cuando es > 1, `lineTotal` NO coincide con el precio de catálogo:
+   * la fila TIENE que mostrarlo (p. ej. "×2" junto al nombre del servicio) o el
+   * importe queda sin explicación en un documento que el paciente acepta.
+   */
+  quantity: number;
+  /** Calculado en el servidor: cantidad × precio unitario. NO recalcular. */
+  lineTotal: number;
+
+  /** JSON string con array de FDI, p. ej. `"[16,17]"`. Vacío/`"[]"` = general. */
+  toothNumbers?: string | null;
+  /** JSON string con array de superficies. Nulo si no aplica. */
+  surfaces?: string | null;
+  /** Lo decide el servidor: `true` cuando la línea no cuelga de una pieza. */
+  general: boolean;
+
+  /** JSON string con array de ids de evento del odontograma. */
+  odontogramEventIds?: string | null;
+  /** Clave de idempotencia del puente odontograma → plan. */
+  syncKey?: string | null;
+
+  status: PlanItemStatus;
+  priority: PlanItemPriority;
+  phase?: number | null;
+  /** Minutos estimados. Copiados del catálogo al añadir, editables después. */
+  durationMinutes?: number | null;
+
+  sessionsPlanned: number;
+  sessionsDone: number;
+  /** Derivado: hay sesiones registradas pero aún faltan. */
+  inProgress: boolean;
+
+  appointmentId?: string | null;
+  performedVisitId?: string | null;
+  /** ISO-8601. */
+  performedAt?: string | null;
+  performedBy?: string | null;
+  notes?: string | null;
+}
+
+/**
+ * GET /treatment-plans/{planId}/items — respuesta completa.
+ * Los totales vienen YA CALCULADOS: sumarlos en el cliente haría que el
+ * importe en pantalla pudiera diferir del presupuesto guardado.
+ */
+export interface TreatmentPlanItemsResponse {
+  planId: string;
+  items: TreatmentPlanItem[];
+  /**
+   * Suma de las líneas que cuentan para el presupuesto: todas menos las
+   * canceladas. El predicado exacto está en {@link countsTowardsPlanTotal}.
+   */
+  total: number;
+  /**
+   * Moneda CONGELADA de los importes (la de la primera línea). `null` cuando el
+   * plan aún no tiene líneas.
+   *
+   * Precedencia: esta moneda MANDA sobre la moneda actual de la clínica
+   * (ADR-32) — un plan presupuestado en USD se pinta en USD aunque la clínica
+   * haya cambiado de moneda después; lo contrario declararía un importe que el
+   * paciente nunca aceptó. Solo cuando falta se cae a la de la clínica, NUNCA a
+   * cadena vacía: `formatClinicCurrencyExact(x, "")` resuelve a USD en silencio
+   * y estrenaría la pantalla de una clínica boliviana con un "$0,00".
+   * `useTreatmentPlanItems` ya entrega esa resolución hecha en `currency`.
+   */
+  currencyCode?: string | null;
+  /**
+   * Nº TOTAL de líneas del plan, **incluidas las canceladas y las rechazadas**.
+   * OJO: no comparte criterio con `total`, que las excluye. Nunca pegues este
+   * contador y ese importe en la misma frase sin decir cuántas están anuladas
+   * ("8 líneas · 4.300" con 2 rechazadas no le cuadra a nadie que sume las
+   * filas). Para contar solo lo que suma, filtra con
+   * {@link countsTowardsPlanTotal}.
+   */
+  totalCount: number;
+  /** Cuántas de `totalCount` cuelgan de una pieza. Mismo criterio: incluye anuladas. */
+  toothCount: number;
+  /** Cuántas de `totalCount` son generales. Mismo criterio: incluye anuladas. */
+  generalCount: number;
+}
+
+/**
+ * ¿Esta línea suma en `total`? Espejo LITERAL de
+ * `TreatmentPlanPricingService.countsTowardsTotal` del backend: cuenta todo
+ * salvo lo cancelado.
+ *
+ * Para qué existe: el servidor manda `total` pero NO subtotales por grupo, y la
+ * pantalla necesita "POR PIEZA — N líneas · importe" y "SERVICIOS GENERALES —
+ * N líneas · importe". Esos subtotales son una PARTICIÓN de `total`, no un
+ * cálculo nuevo: con este predicado se cumple la invariante
+ * `subtotal(por pieza) + subtotal(generales) === total`. Las líneas canceladas se
+ * siguen mostrando en su grupo —con el importe tachado y fuera de la suma—, ni
+ * ocultas ni sumadas.
+ */
+export function countsTowardsPlanTotal(
+  item: Pick<TreatmentPlanItem, "status">,
+): boolean {
+  return item.status !== "canceled";
+}
+
+/**
+ * Una línea nueva dentro del body de POST /treatment-plans/{planId}/items.
+ * Sin importes a propósito: los pone el servidor desde el catálogo.
+ */
+export interface AddPlanItemRequest {
+  serviceId: string;
+  /** JSON string con array de FDI, p. ej. `"[16,17]"`. Omitir = general. */
+  toothNumbers?: string | null;
+  /** JSON string con array de superficies. */
+  surfaces?: string | null;
+  /** Unidades; ausente = 1. */
+  quantity?: number;
+  /** Fase del plan; ausente = sin fase. */
+  phase?: number;
+  /** Sesiones previstas; ausente = 1. */
+  sessionsPlanned?: number;
+  /** JSON string con array de ids de evento del odontograma. */
+  odontogramEventIds?: string | null;
+  /** Clave de idempotencia: reenviar la misma no duplica la línea. */
+  syncKey?: string | null;
+  notes?: string | null;
+}
+
+/** Body completo de POST /treatment-plans/{planId}/items. */
+export interface AddPlanItemsRequest {
+  items: AddPlanItemRequest[];
+}
+
+/**
+ * Body de PATCH /treatment-plans/items/{itemId}.
+ *
+ * Mismos campos que la ficha del modal del diente: estado, prioridad, tiempo,
+ * costo y notas. No hay decisión del paciente ni descuento: la clínica no
+ * gestiona eso.
+ *
+ * NULL-AWARE: manda SOLO lo que cambia. Un campo ausente no se toca; enviarlo
+ * en vacío/0 SÍ lo sobrescribe. No se puede cambiar aquí el servicio, la moneda,
+ * la pieza ni las superficies.
+ */
+export interface UpdatePlanItemRequest {
+  status?: PlanItemStatus;
+  priority?: PlanItemPriority;
+  phase?: number;
+  quantity?: number;
+  /** Minutos estimados. */
+  durationMinutes?: number;
+  /** Precio unitario. Editable por línea, como en la ficha del modal. */
+  unitCost?: number;
+  notes?: string;
+}
+
+/**
+ * Body (opcional) de PATCH /treatment-plans/items/{itemId}/session.
+ * `visitId` puede omitirse: el odontograma se puede llenar fuera de consulta.
+ */
+export interface RegisterPlanItemSessionRequest {
+  visitId?: string | null;
+}
+
 // ─── Service Templates / ICDAS Suggestions ──────────────────────────
 
 /** A single service within a template, as returned by the suggest endpoint. */

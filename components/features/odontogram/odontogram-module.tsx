@@ -145,11 +145,7 @@ function OdontogramModuleContent({
       key: "odontogram",
       label: "Odontograma",
       children: (
-        <OdontogramGrid
-          teeth={teeth}
-          onSurfaceClick={handlers.handleSurfaceClick}
-          onToothClick={handlers.handleToothClick}
-        />
+        <OdontogramGrid teeth={teeth} onToothClick={handlers.handleToothClick} />
       ),
     },
     {

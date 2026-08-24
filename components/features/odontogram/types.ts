@@ -1,9 +1,12 @@
 export * from "@/lib/odontogram/domain/odontogram/types"
 export * from "@/lib/odontogram/domain/odontogram/constants"
-export { PROCEDURE_CATALOG_MOCK as PROCEDURE_CATALOG } from "@/lib/odontogram/infrastructure/data/mock/procedure-catalog.mock"
-export { PROCEDURE_TEMPLATES_MOCK as PROCEDURE_TEMPLATES } from "@/lib/odontogram/infrastructure/data/mock/procedure-templates.mock"
+// El catálogo de procedimientos y las plantillas de tratamiento ya NO se
+// reexportan desde aquí: son datos de la clínica y se piden al backend con
+// `useOdontogramServices` / `useServiceTemplates`. Reexportarlos como
+// constantes invitaba a consumirlos de forma síncrona, que es justo lo que
+// permitía que un mock se colara en el plan de un paciente.
+// `TOOTH_TEMPLATES` sí se queda: son presets clínicos de superficie, no servicios.
 export { TOOTH_TEMPLATES_MOCK as TOOTH_TEMPLATES } from "@/lib/odontogram/infrastructure/data/mock/tooth-templates.mock"
-export { PROCEDURE_PROTOCOLS_MOCK as PROCEDURE_PROTOCOLS } from "@/lib/odontogram/infrastructure/data/mock/procedure-protocols.mock"
 import {
   ToothTypeService,
   ICDASService,

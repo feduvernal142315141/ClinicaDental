@@ -3,18 +3,16 @@
 import { OdontogramLegend } from "./odontogramLeyend";
 import { ToothSVGMultiView } from "./tooth-svg-multi-view";
 import { ResponsiveOdontogramWrapper } from "./responsive-odontogram-wrapper";
-import type { Tooth, ToothSurface } from "./types";
+import type { Tooth } from "./types";
 
 interface OdontogramGridProps {
   teeth: Tooth[];
-  onSurfaceClick: (toothNumber: number, surface: ToothSurface) => void;
+  /** El clic abre el modal de la pieza. La grilla NO selecciona caras: las
+   *  superficies se marcan dentro del modal. */
   onToothClick: (toothNumber: number) => void;
 }
 
-export function OdontogramGrid({
-  onSurfaceClick,
-  onToothClick,
-}: OdontogramGridProps) {
+export function OdontogramGrid({ onToothClick }: OdontogramGridProps) {
   const upperRight = [18, 17, 16, 15, 14, 13, 12, 11];
   const upperLeft = [21, 22, 23, 24, 25, 26, 27, 28];
   const lowerLeft = [31, 32, 33, 34, 35, 36, 37, 38];
@@ -42,11 +40,7 @@ export function OdontogramGrid({
             className={containerClass}
             onClick={() => onToothClick(num)}
           >
-            <ToothSVGMultiView
-              toothNumber={num}
-              view={view}
-              onSurfaceClick={(surface) => onSurfaceClick(num, surface)}
-            />
+            <ToothSVGMultiView toothNumber={num} view={view} />
           </div>
         ))}
       </div>

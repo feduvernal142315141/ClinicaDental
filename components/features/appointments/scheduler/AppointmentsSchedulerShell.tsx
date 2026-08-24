@@ -290,7 +290,10 @@ export function AppointmentsSchedulerShell({
             type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label="Filtrar especialistas"
-            className="fixed bottom-6 right-6 z-[100] grid h-14 w-14 place-items-center rounded-full bg-brand text-white shadow-lg transition-colors hover:bg-brand-strong"
+            // `bottom-24`: apilado ENCIMA del FAB de feedback, que ocupa fijo
+            // `bottom-6 right-6`. A la misma altura se superponían y este, con
+            // z-[100], tapaba el de feedback por completo.
+            className="fixed bottom-24 right-6 z-[100] grid h-14 w-14 place-items-center rounded-full bg-brand text-white shadow-lg transition-colors hover:bg-brand-strong"
           >
             <Filter className="h-5 w-5" />
           </button>

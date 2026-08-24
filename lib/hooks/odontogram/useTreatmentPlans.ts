@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { App } from "antd";
 import { treatmentPlanService } from "@/lib/services/odontogram";
 import type {
   CreateTreatmentPlanRequest,
@@ -15,7 +14,7 @@ import { notify } from "@/lib/utils/notify";
  * useTreatmentPlans Hook
  *
  * Hook for managing treatment-plan CRUD against the backend API.
- * Uses Ant Design App.useApp().message for user feedback.
+ * Uses `notify` (Sileo) for user feedback.
  */
 export function useTreatmentPlans() {
   const [loading, setLoading] = useState(false);

@@ -38,7 +38,6 @@ export interface Service {
   clinicId?: string;
   code: string;
   name: string;
-  description?: string;
   type: ServiceType;
   category?: ServiceCategory;
   cost: number;
@@ -85,7 +84,6 @@ export interface ServiceListItem {
 export interface CreateServiceRequest {
   code: string;
   name: string;
-  description?: string;
   type: ServiceType;
   category?: ServiceCategory;
   cost: number;
@@ -99,35 +97,43 @@ export interface CreateServiceRequest {
 }
 
 /**
- * Update service request payload
+ * Update service request payload.
+ *
+ * `active` NO viaja aquí: el estado se conmuta por su propio endpoint
+ * (`PATCH /services/{id}/toggle-status`) y el UpdateServiceCommand del backend
+ * no tiene ese campo.
  */
 export type UpdateServiceRequest = Partial<CreateServiceRequest> & {
   id: string;
-  active?: boolean;
 };
+
+/**
+ * Payload de `PATCH /services/{id}/odontogram-visibility`.
+ *
+ * `odontogramEnabled` es LA regla que decide dónde se planifica el servicio:
+ * `true` → diente a diente en el odontograma; `false` → servicio "general"
+ * (limpieza, radiografía, consulta), que se planifica a nivel paciente.
+ */
+export interface SetOdontogramVisibilityRequest {
+  odontogramEnabled: boolean;
+}
 
 /**
  * Query parameters for services list.
  *
- * Fase 2 (GET semántico): el front expresa INTENCIÓN plana (`q`, `active`,
- * `odontogramEnabled`, `sort`) y el backend resuelve el significado server-side
- * (barre `name`). Los campos estructurados `filters`/`orders` se mantienen para
- * coexistencia (aún soportados; endurecimiento de la ruta cruda en Fase 4).
+ * ÚNICA ruta soportada por `GET /services`: el controller solo declara
+ * `filters`/`orders`/`page`/`pageSize`. Cualquier otro query param (`q`,
+ * `active`, `odontogramEnabled`, `sort`) lo DESCARTA Spring en silencio, por
+ * eso no existe aquí. Los strings de `filters`/`orders` se construyen con
+ * `servicesQuery()` (`lib/query/domains/services.ts`), nunca a mano.
  */
 export interface ServicesQueryParams {
   page?: number;
   pageSize?: number;
-  /** @deprecated ruta estructurada (dialecto 4 segmentos); usar `q`/`active`/`odontogramEnabled` (coexistencia) */
+  /** Dialecto services: `campo__OPERADOR__valor__AND` */
   filters?: string[];
+  /** `campo__ASC` / `campo__DESC` */
   orders?: string[];
-  /** Búsqueda semántica libre (barre `name` server-side) */
-  q?: string;
-  /** Faceta escalar de estado (activos/inactivos) */
-  active?: boolean;
-  /** Faceta escalar: servicios habilitados para odontograma */
-  odontogramEnabled?: boolean;
-  /** Orden semántico: clave lógica + dirección, ej. "name:asc" */
-  sort?: string;
 }
 
 /**

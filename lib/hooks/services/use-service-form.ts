@@ -40,7 +40,6 @@ export function useServiceForm({
       cost: undefined,
       duration: undefined,
       category: undefined,
-      description: "",
       odontogramEnabled: false,
       odontogramSymbolMode: "NONE",
       symbolText: "",
@@ -64,7 +63,6 @@ export function useServiceForm({
           cost: service.cost,
           duration: service.duration ?? undefined,
           category: service.category,
-          description: service.description ?? "",
           odontogramEnabled: service.odontogramEnabled,
           // MANUAL (legacy) ya no se ofrece en la UI → se normaliza a NONE para
           // que el Select no quede vacío y no se reenvíe un modo sin soporte.
@@ -95,7 +93,6 @@ export function useServiceForm({
       const payload: CreateServiceRequest = {
         code: values.code,
         name: values.name,
-        description: values.description || undefined,
         type: values.type,
         category: values.category,
         cost: values.cost,

@@ -28,12 +28,9 @@ export function useOdontogramModule() {
     setIsModalOpen(true);
   };
 
-  const handleSurfaceClick = (toothNumber: number, surface: ToothSurface) => {
-    setSelectedTooth(toothNumber);
-    setSelectedSurface(surface);
-    setIsModalOpen(true);
-  };
-
+  // Desde la grilla solo se abre la pieza (handleToothClick). La preselección de
+  // cara sobrevive únicamente al abrir un evento clínico ya registrado, que sí
+  // sabe sobre qué superficies cae.
   const handleEventClick = (event: ClinicalEvent) => {
     setSelectedTooth(event.toothNumber);
     setSelectedSurface(event.surfaces.length > 0 ? event.surfaces[0] : null);
@@ -79,7 +76,6 @@ export function useOdontogramModule() {
     eventsByType,
     handlers: {
       handleToothClick,
-      handleSurfaceClick,
       handleEventClick,
       handleCloseModal,
       handleClearAll,

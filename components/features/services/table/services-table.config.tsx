@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/primitives/shadcn/dropdown-menu";
 import { DataTableColumn } from "@/components/ui/data-display/data-table";
+import { Switch } from "@/components/ui/atomic/forms";
 import type { ServiceListItem, ServiceType } from "@/lib/entity/services";
 import {
   SERVICE_TYPE_LABELS,
@@ -18,8 +19,12 @@ import dayjs from "dayjs";
 interface GetServicesColumnsParams {
   onEdit: (id: string) => void;
   onToggleStatus: (id: string, currentlyActive: boolean) => void;
+  /** Marca/desmarca "visible en odontograma" (optimista, ver useServices). */
+  onToggleOdontogram: (id: string, next: boolean) => void;
   canEdit: boolean;
   canBlock: boolean;
+  /** Ids con un PATCH de visibilidad en vuelo (switch bloqueado). */
+  pendingOdontogramIds: ReadonlySet<string>;
   /** Moneda configurada de la clínica (ISO-4217, ej. "BOB"). */
   currency: string;
 }
@@ -34,8 +39,10 @@ const TYPE_BADGE: Record<ServiceType, string> = {
 export function getServicesColumns({
   onEdit,
   onToggleStatus,
+  onToggleOdontogram,
   canEdit,
   canBlock,
+  pendingOdontogramIds,
   currency,
 }: GetServicesColumnsParams): DataTableColumn<ServiceListItem>[] {
   return [
@@ -117,20 +124,53 @@ export function getServicesColumns({
       ),
     },
     {
+      // `odontogramEnabled` decide DÓNDE se planifica el servicio: activado se
+      // planifica diente a diente en el odontograma; desactivado es un servicio
+      // "general" (limpieza, radiografía, consulta) que se planifica a nivel
+      // paciente. Por eso se puede conmutar desde la propia lista.
       key: "odontogramEnabled",
-      title: "Odontograma",
+      title: "Visible en odontograma",
       dataIndex: "odontogramEnabled",
       align: "center",
-      render: (value) =>
-        value ? (
-          <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-400/25 dark:text-emerald-300">
-            Sí
-          </span>
-        ) : (
-          <span className="inline-flex items-center rounded-full bg-hover px-2.5 py-0.5 text-xs font-semibold text-subtle ring-1 ring-hairline">
-            No
-          </span>
-        ),
+      width: 190,
+      render: (value, record) => {
+        const enabled = value === true;
+
+        if (!canEdit) {
+          return enabled ? (
+            <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-400/25 dark:text-emerald-300">
+              Odontograma
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-full bg-hover px-2.5 py-0.5 text-xs font-semibold text-subtle ring-1 ring-hairline">
+              General
+            </span>
+          );
+        }
+
+        return (
+          <div
+            className="flex items-center justify-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Switch
+              checked={enabled}
+              disabled={pendingOdontogramIds.has(record.id)}
+              onCheckedChange={(checked) =>
+                onToggleOdontogram(record.id, checked === true)
+              }
+              aria-label={
+                enabled
+                  ? `Quitar "${record.name}" del odontograma (pasa a servicio general)`
+                  : `Mostrar "${record.name}" en el odontograma`
+              }
+            />
+            <span className="text-xs font-medium text-subtle">
+              {enabled ? "Odontograma" : "General"}
+            </span>
+          </div>
+        );
+      },
     },
     {
       key: "active",

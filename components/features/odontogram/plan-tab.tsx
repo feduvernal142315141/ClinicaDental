@@ -49,12 +49,10 @@ import type {
 } from "./types";
 import type { ClinicalEventStatus } from "@/lib/odontogram/domain/odontogram/types/clinical-event.types";
 import {
-  PROCEDURE_CATALOG,
   PROCEDURE_CATEGORIES,
   PROCEDURE_CATEGORY_COLORS,
   PLAN_STATUS_LABELS,
   GLOBAL_STATUS_LABELS,
-  PROCEDURE_TEMPLATES,
   TreatmentSuggestionService,
   ClinicalConsistencyService,
   ToothTypeService,
@@ -121,8 +119,8 @@ interface SidebarPanelProps {
 /**
  * Panel de la barra lateral: tarjeta + micro-label con icono.
  *
- * LOCAL a propósito: sus cuatro consumidores (sugerencias, plantillas ICDAS,
- * plantillas y catálogo) viven en este mismo fichero. No lo saques a
+ * LOCAL a propósito: sus tres consumidores (sugerencias, plantillas ICDAS y
+ * catálogo) viven en este mismo fichero. No lo saques a
  * `components/ui` mientras no exista un quinto consumidor fuera de aquí.
  */
 function SidebarPanel({
@@ -182,8 +180,8 @@ interface PickerRowProps {
 /**
  * Fila pulsable de la barra lateral: icono «+», título, subtítulo y valor.
  *
- * LOCAL a propósito: unifica las tres copias que había en este fichero
- * (sugerencias, plantillas y catálogo), que solo se diferenciaban en el borde
+ * LOCAL a propósito: unifica las copias que había en este fichero
+ * (sugerencias, plantillas ICDAS y catálogo), que solo se diferenciaban en el borde
  * y el hover. Mismo criterio que `SidebarPanel`: sin consumidor externo, no
  * es un átomo del sistema.
  */
@@ -246,7 +244,12 @@ export function PlanTab({
   onPlansChange,
   onSchedulePlans,
 }: PlanTabProps) {
-  const { catalog: serviceCatalog } = useOdontogramServices();
+  const {
+    catalog: serviceCatalog,
+    loading: catalogLoading,
+    error: catalogError,
+    reload: reloadCatalog,
+  } = useOdontogramServices();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<
     ProcedureCategory | "all"
@@ -418,41 +421,6 @@ export function PlanTab({
       };
       handlePlansUpdate([...plans, newPlan]);
     }
-  };
-
-  const handleAddTemplate = (templateId: string) => {
-    const template = PROCEDURE_TEMPLATES.find((t) => t.id === templateId);
-    if (!template) return;
-
-    const newPlans: ProcedurePlan[] = template.procedures
-      .map((tp) => {
-        const procedure =
-          serviceCatalog.find((p) => p.id === tp.procedureId) ??
-          PROCEDURE_CATALOG.find((p) => p.id === tp.procedureId);
-        if (!procedure) return null;
-
-        return {
-          id: generateId(),
-          toothNumber: tooth.number,
-          surfaces: [],
-          procedureId: procedure.id,
-          displayName: procedure.name,
-          category: procedure.category,
-          status: "plan",
-          priority: "media",
-          material: procedure.materials?.[0],
-          durationMin: procedure.estimatedDuration,
-          cost: procedure.baseCost,
-          serviceSymbolText: procedure.serviceSymbolText,
-          serviceSymbolUrl: procedure.serviceSymbolUrl,
-          dependencies: tp.dependsOn,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        } as ProcedurePlan;
-      })
-      .filter(Boolean) as ProcedurePlan[];
-
-    handlePlansUpdate([...plans, ...newPlans]);
   };
 
   // Apply all items from an ICDAS-based backend template suggestion
@@ -1025,25 +993,6 @@ export function PlanTab({
             </SidebarPanel>
           )}
 
-          {/* Pre-built templates */}
-          {PROCEDURE_TEMPLATES.length > 0 && (
-            <SidebarPanel
-              icon={<Package className="w-3 h-3 inline mr-1" />}
-              title="Plantillas"
-            >
-              <div className="space-y-1.5">
-                {PROCEDURE_TEMPLATES.map((template) => (
-                  <PickerRow
-                    key={template.id}
-                    title={template.name}
-                    subtitle={template.description}
-                    onClick={() => handleAddTemplate(template.id)}
-                  />
-                ))}
-              </div>
-            </SidebarPanel>
-          )}
-
           {/* Catalog search */}
           <SidebarPanel
             icon={<Search className="w-3 h-3 inline mr-1" />}
@@ -1094,23 +1043,56 @@ export function PlanTab({
               ))}
             </div>
 
-            {/* Procedure list */}
-            <div className="space-y-1 max-h-[220px] overflow-y-auto">
-              {filteredCatalog.map((procedure) => (
-                <PickerRow
-                  key={procedure.id}
-                  title={procedure.name}
-                  titleAdornment={
-                    procedure.isFavorite ? (
-                      <Star className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
-                    ) : undefined
-                  }
-                  subtitle={`${procedure.estimatedDuration} min · ${formatCurrency(procedure.baseCost)}`}
-                  subtitleClassName="tabular-nums"
-                  onClick={() => handleAddProcedure(procedure)}
-                />
-              ))}
-            </div>
+            {/*
+              Contrato de estado explícito. Sin catálogo de reserva, una lista
+              vacía puede significar tres cosas muy distintas (cargando, falló,
+              o la clínica no tiene servicios marcados) y el odontólogo tiene
+              que poder distinguirlas: pintar la lista vacía a secas hacía que
+              un 403 se leyera como "aquí no hay nada configurado".
+            */}
+            {catalogLoading ? (
+              <p className="text-xs text-subtle">Cargando servicios…</p>
+            ) : catalogError ? (
+              <div className="space-y-2">
+                <p className="text-xs text-subtle">
+                  No se pudieron cargar los servicios de la clínica.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 w-full text-xs"
+                  onClick={reloadCatalog}
+                >
+                  Reintentar
+                </Button>
+              </div>
+            ) : serviceCatalog.length === 0 ? (
+              <p className="text-xs text-subtle">
+                No hay servicios habilitados para el odontograma. Márcalos desde
+                Ajustes › Servicios.
+              </p>
+            ) : filteredCatalog.length === 0 ? (
+              <p className="text-xs text-subtle">
+                Ningún procedimiento coincide con la búsqueda.
+              </p>
+            ) : (
+              <div className="space-y-1 max-h-[220px] overflow-y-auto">
+                {filteredCatalog.map((procedure) => (
+                  <PickerRow
+                    key={procedure.id}
+                    title={procedure.name}
+                    titleAdornment={
+                      procedure.isFavorite ? (
+                        <Star className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
+                      ) : undefined
+                    }
+                    subtitle={`${procedure.estimatedDuration} min · ${formatCurrency(procedure.baseCost)}`}
+                    subtitleClassName="tabular-nums"
+                    onClick={() => handleAddProcedure(procedure)}
+                  />
+                ))}
+              </div>
+            )}
           </SidebarPanel>
         </div>
       </div>

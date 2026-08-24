@@ -20,6 +20,21 @@ export interface UseClinicalHistoryPageParams {
   openFinalizeOnLoad?: boolean;
 }
 
+/** Valor canónico de la pestaña del plan de tratamiento en `?tab=`. */
+export const TREATMENT_PLAN_TAB = "plan-tratamiento";
+
+/**
+ * Alias aceptados en el deep-link `?tab=`. Existen para que un enlace ya
+ * repartido (correo, ficha impresa, otro módulo) no aterrice en una pestaña
+ * inexistente, que Radix pinta como contenido en blanco.
+ */
+const TAB_ALIASES: Record<string, string> = {
+  odontogram: "odontograma",
+  plan: TREATMENT_PLAN_TAB,
+  "plan-de-tratamiento": TREATMENT_PLAN_TAB,
+  "treatment-plan": TREATMENT_PLAN_TAB,
+};
+
 export function useClinicalHistoryPage({
   patientId,
   initialTab = "historia-clinica",
@@ -27,11 +42,11 @@ export function useClinicalHistoryPage({
   openFinalizeOnLoad = false,
 }: UseClinicalHistoryPageParams) {
   const router = useRouter();
-  const normalizedInitialTab =
-    initialTab === "odontogram"
-      ? "odontograma"
-      : (initialTab ??
-        (activeAppointmentId ? "workspace" : "historia-clinica"));
+  const normalizedInitialTab = initialTab
+    ? (TAB_ALIASES[initialTab] ?? initialTab)
+    : activeAppointmentId
+      ? "workspace"
+      : "historia-clinica";
 
   const [activeTab, setActiveTab] = useState(normalizedInitialTab);
   const [restoredAppointmentId, setRestoredAppointmentId] = useState<
@@ -283,7 +298,7 @@ export function useClinicalHistoryPage({
     setIsFinalizeModalOpen(true);
   }, [openFinalizeOnLoad, isCurrentlyActiveConsultation]);
 
-  const { isAdmin, can } = usePermission();
+  const { isAdmin, can, permissionsObj } = usePermission();
   const canManageAttachments =
     isAdmin || can("patients", PermissionAction.EDIT);
   const canEditMedicalHistory =
@@ -291,6 +306,24 @@ export function useClinicalHistoryPage({
     can("clinical_history", PermissionAction.EDIT) ||
     can("clinical_history", PermissionAction.CREATE);
   const canEditPatient = isAdmin || can("patients", PermissionAction.EDIT);
+
+  // Plan de tratamiento: el backend lo protege con `hasAuthority('odontogram')`,
+  // una autoridad de MÓDULO sin bits de acción — se concede en cuanto el rol
+  // tiene el módulo con cualquier valor. Por eso NO se puede usar `can(...,
+  // EDIT)` aquí: eso gatearía una pantalla de solo lectura con un permiso de
+  // escritura. Sin el módulo, tanto el listado de planes como el
+  // `POST /treatment-plans` del get-or-create responden 403, así que la pestaña
+  // se oculta entera en vez de enseñar un error que el usuario no puede resolver.
+  const canViewTreatmentPlan =
+    isAdmin || (permissionsObj["odontogram"] ?? 0) > 0;
+
+  // Un `?tab=plan-tratamiento` de alguien sin el módulo dejaría a Radix sin
+  // contenido que montar (pantalla en blanco). Se resuelve al leer, no con otro
+  // estado, para no encadenar un render extra en cada carga.
+  const effectiveActiveTab =
+    activeTab === TREATMENT_PLAN_TAB && !canViewTreatmentPlan
+      ? "historia-clinica"
+      : activeTab;
 
   useEffect(() => {
     let cancelled = false;
@@ -514,7 +547,7 @@ export function useClinicalHistoryPage({
     snapshotLoading,
     appointments,
     appointmentsLoading,
-    activeTab,
+    activeTab: effectiveActiveTab,
     setActiveTab,
     showStartNow,
     closeStartNow,
@@ -537,6 +570,7 @@ export function useClinicalHistoryPage({
     canManageAttachments,
     canEditMedicalHistory,
     canEditPatient,
+    canViewTreatmentPlan,
     isAdmin,
     can,
     handleStartConsultation,

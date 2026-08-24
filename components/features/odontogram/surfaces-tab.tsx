@@ -14,6 +14,8 @@ import {
 import { ODONTOGRAM_FIELD_LABEL_CLASS } from "@/components/features/odontogram/ui";
 import { cn } from "@/lib/odontogram/utils";
 import { SurfaceSelector, getSurfaceRank } from "./surface-selector";
+import { TemplatePicker, splitByTemplate } from "./template-picker";
+import type { AppliedTemplateRecord } from "./template-picker";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
 import {
@@ -77,9 +79,17 @@ export function SurfacesTab({
   onSurfaceStatesChange,
 }: SurfacesTabProps) {
   const [selectedSurfaces, setSelectedSurfaces] = useState<SurfaceState[]>([]);
-  const [lastUsedTemplate, setLastUsedTemplate] = useState<string | null>(null);
   const [flashedSurfaces, setFlashedSurfaces] = useState<Set<string>>(
     new Set(),
+  );
+  /** Plantilla apuntada en el panel: la previsualizan el picker Y el selector. */
+  const [previewTemplate, setPreviewTemplate] = useState<ToothTemplate | null>(
+    null,
+  );
+  /** Estado anterior a la última plantilla aplicada, para deshacerla. */
+  const [undoSnapshot, setUndoSnapshot] = useState<SurfaceState[] | null>(null);
+  const [lastApplied, setLastApplied] = useState<AppliedTemplateRecord | null>(
+    null,
   );
   const isInitialized = useRef<number | null>(null);
   const pendingInit = useRef(false);
@@ -295,71 +305,81 @@ export function SurfacesTab({
   const lingualCells = zoneCells("lingual");
 
   const handleApplyTemplate = (template: ToothTemplate) => {
-    // Las plantillas hablan en vocabulario CANÓNICO ADA ("la mesial"), no de
-    // celdas por vista: hay que PROYECTAR la celda marcada antes de comparar. Sin
-    // esto, "Caries incipiente" dejaría de aplicar a `mesialVestibular` EN
-    // SILENCIO (el usuario pulsa y no pasa nada).
-    const applicable = new Set(template.applicableSurfaces);
-    const matches = (surface: ToothSurface) =>
-      applicable.has(projectToCanonicalSurface(surface));
+    // Mismo criterio que la previsualización — de hecho, la MISMA función. Si
+    // divergieran, el panel enseñaría unas caras y escribiría otras.
+    const { affected } = splitByTemplate(markedSurfaces, template);
+    if (affected.length === 0) return;
+    const affectedSet = new Set(affected);
 
     // Flash animation: sobre las celdas realmente afectadas, no sobre el
     // vocabulario canónico de la plantilla (que no son códigos de celda).
-    setFlashedSurfaces(
-      new Set(
-        selectedSurfaces
-          .filter((s) => matches(s.surface))
-          .map((s) => s.surface),
-      ),
-    );
+    setFlashedSurfaces(new Set(affected));
     setTimeout(() => setFlashedSurfaces(new Set()), 600);
 
-    setSelectedSurfaces((prev) => {
-      const next = prev.map((surface) => {
-        if (matches(surface.surface)) {
-          return {
-            ...surface,
-            status: template.status,
-            icdasScore: template.icdasScore,
-            treatmentType: template.treatmentType,
-            color: template.color,
-            lastUpdate: new Date().toISOString(),
-          };
-        }
-        return surface;
-      });
-      return next;
-    });
-    setLastUsedTemplate(template.id);
+    // Foto del ANTES para poder deshacer. Se guarda el array entero, no solo
+    // las celdas tocadas: restaurar por partes dejaría fuera el orden de
+    // inserción, del que depende el resaltado de "última cara interactuada".
+    setUndoSnapshot(selectedSurfaces);
+    setLastApplied({ templateName: template.name, affected });
+
+    setSelectedSurfaces((prev) =>
+      prev.map((surface) =>
+        affectedSet.has(surface.surface)
+          ? {
+              ...surface,
+              status: template.status,
+              icdasScore: template.icdasScore,
+              treatmentType: template.treatmentType,
+              color: template.color,
+              lastUpdate: new Date().toISOString(),
+            }
+          : surface,
+      ),
+    );
   };
 
-  const getRelevantTemplates = (): ToothTemplate[] => {
-    let templates = [...TOOTH_TEMPLATES];
-
-    if (anterior) {
-      templates = templates.filter(
-        (t) => t.id !== "sealant-o" && t.id !== "amalgam-o",
-      );
-    } else {
-      templates = templates.filter(
-        (t) => t.id !== "caries-incisal" && t.id !== "veneer",
-      );
-    }
-
-    if (lastUsedTemplate) {
-      templates.sort((a, b) => {
-        if (a.id === lastUsedTemplate) return -1;
-        if (b.id === lastUsedTemplate) return 1;
-        return 0;
-      });
-    }
-
-    // El corte debe acompañar al catálogo: el filtro anterior/posterior deja
-    // exactamente 8 de las 10 plantillas, así que un corte en 6 expulsaría dos
-    // plantillas de la UI EN SILENCIO (no da error, simplemente no se ven).
-    // La rejilla es de 2 columnas: 8 = 4 filas, cabe sin desbordar.
-    return templates.slice(0, 8);
+  const handleUndoTemplate = () => {
+    if (!undoSnapshot) return;
+    setSelectedSurfaces(undoSnapshot);
+    setUndoSnapshot(null);
+    setLastApplied(null);
   };
+
+  // Catálogo aplicable a ESTA pieza, entero. Ya no se recorta: antes había un
+  // `slice(0, 8)` para que cuadrara la rejilla de 2 columnas, y con él la
+  // novena plantilla que se añadiera habría desaparecido de la pantalla SIN dar
+  // ningún error. La búsqueda de `TemplateSearch` es la que ahora acota, y esa
+  // sí dice cuántas hay y cuántas coinciden.
+  const relevantTemplates = useMemo<ToothTemplate[]>(
+    () =>
+      TOOTH_TEMPLATES.filter((t) =>
+        anterior
+          ? t.id !== "sealant-o" && t.id !== "amalgam-o"
+          : t.id !== "caries-incisal" && t.id !== "veneer",
+      ),
+    [anterior],
+  );
+
+  const markedSurfaces = useMemo(
+    () => selectedSurfaces.map((s) => s.surface),
+    [selectedSurfaces],
+  );
+
+  // El dibujo del diente y el panel de plantillas enseñan la MISMA jugada: qué
+  // celdas escribiría la plantilla apuntada y cuáles dejaría intactas.
+  const templatePreview = useMemo(() => {
+    if (!previewTemplate || markedSurfaces.length === 0) return null;
+    const { affected, ignored } = splitByTemplate(
+      markedSurfaces,
+      previewTemplate,
+    );
+    if (affected.length === 0) return null;
+    return {
+      affected: new Set(affected),
+      ignored: new Set(ignored),
+      color: SURFACE_STATUS_COLORS[previewTemplate.status],
+    };
+  }, [previewTemplate, markedSurfaces]);
 
   // Legend popover content
   const legendContent = (
@@ -452,6 +472,7 @@ export function SurfacesTab({
             surfaces={selectedSurfaces}
             onSurfaceToggle={handleSurfaceToggle}
             disabled={isDisabled}
+            preview={templatePreview}
           />
         </Card>
 
@@ -529,6 +550,67 @@ export function SurfacesTab({
                 ))}
               </div>
             )}
+          </Card>
+
+          {/* Plantillas — bloque PRIMARIO del panel, y por eso va aquí arriba.
+              Antes cerraba la columna, debajo de los siete botones de "Atajos
+              secundarios", así que el camino RÁPIDO quedaba enterrado bajo el
+              lento y fuera de la vista sin hacer scroll. Su sitio es justo bajo
+              "Selección actual" porque depende de ella: sin caras marcadas los
+              botones están deshabilitados. */}
+          <Card className="border-brand/40 bg-brand/5 p-3 ring-1 ring-brand/20">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              {/* Título de sección de verdad, no la etiqueta de campo: con
+                  ODONTOGRAM_FIELD_LABEL_CLASS pesaba lo mismo que "Zonas
+                  derivadas", que es un SUBtítulo dentro de otra tarjeta. */}
+              <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm font-semibold text-ink">
+                <Zap className="h-4 w-4 shrink-0 text-brand" />
+                Plantillas
+              </span>
+              {selectedSurfaces.length > 0 && !isDisabled && (
+                <nav
+                  aria-label="Navegación rápida"
+                  className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs"
+                >
+                  <button
+                    type="button"
+                    className="font-medium leading-none text-primary transition-colors hover:text-primary/80"
+                    onClick={() => onNavigateToTab?.("diagnostico")}
+                  >
+                    Diagnóstico
+                  </button>
+                  <span aria-hidden="true" className="text-subtle">
+                    /
+                  </span>
+                  <button
+                    type="button"
+                    className="font-medium leading-none text-primary transition-colors hover:text-primary/80"
+                    onClick={() => onNavigateToTab?.("plan")}
+                  >
+                    Plan
+                  </button>
+                </nav>
+              )}
+            </div>
+            {/* Al subir el bloque, con 0 caras marcadas lo primero que se ve es
+                una rejilla apagada. La línea dice POR QUÉ está apagada en vez de
+                dejar al usuario adivinando. */}
+            <p className="mb-3 text-xs leading-5 text-subtle">
+              {selectedSurfaces.length === 0
+                ? "Marca al menos una cara para aplicar una plantilla."
+                : "Aplica un diagnóstico o tratamiento a las caras marcadas."}
+            </p>
+            <TemplatePicker
+              templates={relevantTemplates}
+              toothNumber={tooth.number}
+              markedSurfaces={markedSurfaces}
+              disabled={isDisabled}
+              previewTemplate={previewTemplate}
+              onPreviewChange={setPreviewTemplate}
+              onApply={handleApplyTemplate}
+              lastApplied={lastApplied}
+              onUndo={handleUndoTemplate}
+            />
           </Card>
 
           {/* Quick actions - grouped */}
@@ -678,64 +760,6 @@ export function SurfacesTab({
             </div>
           </Card>
 
-          {/* Templates - always visible */}
-          <Card className="p-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span
-                className={cn(
-                  "inline-flex shrink-0 items-center gap-1 whitespace-nowrap",
-                  ODONTOGRAM_FIELD_LABEL_CLASS,
-                )}
-              >
-                <Zap className="h-3.5 w-3.5 shrink-0" />
-                Plantillas
-              </span>
-              {selectedSurfaces.length > 0 && !isDisabled && (
-                <nav
-                  aria-label="Navegación rápida"
-                  className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs"
-                >
-                  <button
-                    type="button"
-                    className="font-medium leading-none text-primary transition-colors hover:text-primary/80"
-                    onClick={() => onNavigateToTab?.("diagnostico")}
-                  >
-                    Diagnóstico
-                  </button>
-                  <span aria-hidden="true" className="text-subtle">
-                    /
-                  </span>
-                  <button
-                    type="button"
-                    className="font-medium leading-none text-primary transition-colors hover:text-primary/80"
-                    onClick={() => onNavigateToTab?.("plan")}
-                  >
-                    Plan
-                  </button>
-                </nav>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {getRelevantTemplates().map((template) => (
-                <Button
-                  key={template.id}
-                  variant="outline"
-                  size="sm"
-                  className="justify-start text-left h-auto py-1.5 px-2 bg-transparent"
-                  onClick={() => handleApplyTemplate(template)}
-                  disabled={isDisabled || selectedSurfaces.length === 0}
-                >
-                  <div className="flex items-center gap-1.5 w-full">
-                    <div
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: template.color }}
-                    />
-                    <span className="text-xs truncate">{template.name}</span>
-                  </div>
-                </Button>
-              ))}
-            </div>
-          </Card>
         </div>
       </div>
     </div>
