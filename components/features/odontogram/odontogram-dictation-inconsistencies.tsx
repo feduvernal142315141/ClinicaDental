@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, CircleHelp, X } from "lucide-react";
+import { ChevronDown, ChevronUp, CircleHelp, RotateCcw, X } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -15,10 +15,26 @@ import type {
   ResolveOdontogramInconsistencyRequest,
 } from "@/lib/entity/speech";
 
+/**
+ * Decisión del doctor sobre una aclaración: el id de la opción elegida, o
+ * `null` cuando la descarta. Una clave ausente significa "todavía sin decidir",
+ * y son esas las que mantienen el lote sin poder cerrarse.
+ */
+type InconsistencyDecision = string | null;
+
 export interface OdontogramDictationInconsistencyBatch {
   dictationId: string;
   inconsistencies: OdontogramDictationInconsistency[];
-  appliedLocally?: boolean;
+  /**
+   * El lote ya se decidió y se aplicó localmente; solo falta que el backend
+   * guarde el aprendizaje. Conserva las decisiones exactas para que el
+   * reintento mande el MISMO conjunto completo (el backend exige todas las
+   * pendientes) y para no volver a aplicar el cambio clínico.
+   */
+  pendingLearning?: {
+    resolutions: ResolveOdontogramInconsistencyRequest[];
+    appliedOperations: number;
+  };
 }
 
 interface OdontogramDictationInconsistenciesProps {
@@ -28,17 +44,17 @@ interface OdontogramDictationInconsistenciesProps {
     batch: OdontogramDictationInconsistencyBatch,
     resolutions: ResolveOdontogramInconsistencyRequest[],
   ) => void;
-  onDismiss: (dictationId: string, inconsistencyId: string) => void;
 }
 
 export function OdontogramDictationInconsistencies({
   batches,
   readOnly,
   onResolve,
-  onDismiss,
 }: OdontogramDictationInconsistenciesProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selections, setSelections] = useState<Record<string, string>>({});
+  const [decisions, setDecisions] = useState<
+    Record<string, InconsistencyDecision>
+  >({});
 
   const pendingCount = useMemo(
     () =>
@@ -51,22 +67,49 @@ export function OdontogramDictationInconsistencies({
 
   if (pendingCount === 0) return null;
 
-  const handleResolve = (batch: OdontogramDictationInconsistencyBatch) => {
-    const resolutions = batch.inconsistencies.map((inconsistency) => ({
-      inconsistencyId: inconsistency.id,
-      candidateId: selections[inconsistency.id],
-    }));
+  /**
+   * Decisiones vigentes del lote. En reintento mandan las ya enviadas: el
+   * backend necesita recibir exactamente el mismo conjunto completo.
+   */
+  const decisionsOf = (
+    batch: OdontogramDictationInconsistencyBatch,
+  ): Map<string, InconsistencyDecision> =>
+    batch.pendingLearning
+      ? new Map(
+          batch.pendingLearning.resolutions.map((resolution) => [
+            resolution.inconsistencyId,
+            resolution.candidateId,
+          ]),
+        )
+      : new Map(
+          batch.inconsistencies
+            .filter((inconsistency) => inconsistency.id in decisions)
+            .map((inconsistency) => [
+              inconsistency.id,
+              decisions[inconsistency.id],
+            ]),
+        );
 
-    onResolve(batch, resolutions);
+  const decide = (inconsistencyId: string, decision: InconsistencyDecision) => {
+    setDecisions((current) => ({ ...current, [inconsistencyId]: decision }));
   };
 
-  const handleDismiss = (dictationId: string, inconsistencyId: string) => {
-    setSelections((current) => {
+  const undecide = (inconsistencyId: string) => {
+    setDecisions((current) => {
       const next = { ...current };
       delete next[inconsistencyId];
       return next;
     });
-    onDismiss(dictationId, inconsistencyId);
+  };
+
+  const handleResolve = (batch: OdontogramDictationInconsistencyBatch) => {
+    const batchDecisions = decisionsOf(batch);
+    const resolutions = batch.inconsistencies.map((inconsistency) => ({
+      inconsistencyId: inconsistency.id,
+      candidateId: batchDecisions.get(inconsistency.id) ?? null,
+    }));
+
+    onResolve(batch, resolutions);
   };
 
   return (
@@ -102,86 +145,119 @@ export function OdontogramDictationInconsistencies({
               </p>
               <p className="mt-1 text-xs text-subtle">
                 Confirma lo que quiso decir la doctora. La selección se aprenderá
-                para los próximos dictados de esta clínica.
+                para los próximos dictados de esta clínica. Lo que descartes se
+                cierra sin aprenderse.
               </p>
             </div>
 
             {batches.map((batch) => {
-              const canResolve = batch.inconsistencies.every(
-                (inconsistency) =>
-                  inconsistency.candidates.length > 0 &&
-                  Boolean(selections[inconsistency.id]),
+              const retrying = batch.pendingLearning;
+              const batchDecisions = decisionsOf(batch);
+              // Cada aclaración pendiente tiene que estar decidida —elegida o
+              // descartada— porque el backend exige el lote completo. Una sin
+              // candidatos solo se puede descartar, y ya no bloquea al resto.
+              const canResolve = batch.inconsistencies.every((inconsistency) =>
+                batchDecisions.has(inconsistency.id),
               );
+              const locked = readOnly || !!retrying;
               return (
                 <section
                   key={batch.dictationId}
                   className="space-y-3 rounded-lg border border-hairline bg-muted/30 p-3"
                   aria-label="Aclaraciones de un dictado"
                 >
-                  {batch.appliedLocally && (
+                  {retrying && (
                     <p className="rounded-md bg-brand/5 px-3 py-2 text-xs text-subtle">
-                      La marca ya está aplicada. Solo falta guardar este aprendizaje.
+                      {retrying.appliedOperations > 0
+                        ? "La marca ya está aplicada. Solo falta guardar este aprendizaje."
+                        : "Las aclaraciones ya se decidieron. Solo falta guardar esa decisión."}
                     </p>
                   )}
-                  {batch.inconsistencies.map((inconsistency, index) => (
-                    <div
-                      key={inconsistency.id}
-                      className={index > 0 ? "border-t border-hairline pt-3" : ""}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="min-w-0 text-xs font-medium text-ink">
-                          {inconsistency.question}
+                  {batch.inconsistencies.map((inconsistency, index) => {
+                    const decision = batchDecisions.get(inconsistency.id);
+                    const isDismissed =
+                      batchDecisions.has(inconsistency.id) && decision === null;
+                    return (
+                      <div
+                        key={inconsistency.id}
+                        className={index > 0 ? "border-t border-hairline pt-3" : ""}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <p
+                            className={`min-w-0 text-xs font-medium ${
+                              isDismissed
+                                ? "text-subtle line-through"
+                                : "text-ink"
+                            }`}
+                          >
+                            {inconsistency.question}
+                          </p>
+                          {!isDismissed && (
+                            <button
+                              type="button"
+                              className="-mr-1 -mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-subtle transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 disabled:pointer-events-none disabled:opacity-40"
+                              aria-label="Descartar esta aclaración"
+                              title="Descartar aclaración"
+                              disabled={locked}
+                              onClick={() => decide(inconsistency.id, null)}
+                            >
+                              <X aria-hidden className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-subtle">
+                          Se escuchó: “{inconsistency.sourceText}”
                         </p>
-                        <button
-                          type="button"
-                          className="-mr-1 -mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-subtle transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
-                          aria-label="Descartar esta aclaración"
-                          title="Descartar aclaración"
-                          onClick={() =>
-                            handleDismiss(batch.dictationId, inconsistency.id)
-                          }
-                        >
-                          <X aria-hidden className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      <p className="mt-1 text-xs text-subtle">
-                        Se escuchó: “{inconsistency.sourceText}”
-                      </p>
 
-                      {inconsistency.candidates.length > 0 ? (
-                        <RadioGroup
-                          className="mt-3 gap-2"
-                          value={selections[inconsistency.id]}
-                          disabled={readOnly || batch.appliedLocally}
-                          onValueChange={(candidateId) =>
-                            setSelections((current) => ({
-                              ...current,
-                              [inconsistency.id]: candidateId,
-                            }))
-                          }
-                        >
-                          {inconsistency.candidates.map((candidate) => {
-                            const optionId = `${inconsistency.id}-${candidate.id}`;
-                            return (
-                              <label
-                                key={candidate.id}
-                                htmlFor={optionId}
-                                className="flex cursor-pointer items-center gap-2 rounded-md border border-hairline px-3 py-2 text-xs text-ink transition-colors hover:bg-hover has-[[data-state=checked]]:border-brand has-[[data-state=checked]]:bg-brand/5"
+                        {isDismissed ? (
+                          <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-muted px-3 py-2 text-xs text-subtle">
+                            <span>
+                              Descartada — no se aprenderá de esta aclaración.
+                            </span>
+                            {!locked && (
+                              <button
+                                type="button"
+                                className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 font-medium text-brand transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
+                                onClick={() => undecide(inconsistency.id)}
                               >
-                                <RadioGroupItem id={optionId} value={candidate.id} />
-                                <span>{candidate.label}</span>
-                              </label>
-                            );
-                          })}
-                        </RadioGroup>
-                      ) : (
-                        <p className="mt-2 rounded-md bg-muted px-3 py-2 text-xs text-subtle">
-                          No se encontró una opción suficientemente segura. Vuelve a
-                          dictar esta indicación con otras palabras.
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                                <RotateCcw aria-hidden className="h-3 w-3" />
+                                Recuperar
+                              </button>
+                            )}
+                          </div>
+                        ) : inconsistency.candidates.length > 0 ? (
+                          <RadioGroup
+                            className="mt-3 gap-2"
+                            value={decision ?? undefined}
+                            disabled={locked}
+                            onValueChange={(candidateId) =>
+                              decide(inconsistency.id, candidateId)
+                            }
+                          >
+                            {inconsistency.candidates.map((candidate) => {
+                              const optionId = `${inconsistency.id}-${candidate.id}`;
+                              return (
+                                <label
+                                  key={candidate.id}
+                                  htmlFor={optionId}
+                                  className="flex cursor-pointer items-center gap-2 rounded-md border border-hairline px-3 py-2 text-xs text-ink transition-colors hover:bg-hover has-[[data-state=checked]]:border-brand has-[[data-state=checked]]:bg-brand/5"
+                                >
+                                  <RadioGroupItem id={optionId} value={candidate.id} />
+                                  <span>{candidate.label}</span>
+                                </label>
+                              );
+                            })}
+                          </RadioGroup>
+                        ) : (
+                          <p className="mt-2 rounded-md bg-muted px-3 py-2 text-xs text-subtle">
+                            No se encontró una opción suficientemente segura.
+                            Descártala y vuelve a dictar esta indicación con
+                            otras palabras.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
 
                   <div className="flex justify-end">
                     <OdontogramButton
@@ -190,9 +266,7 @@ export function OdontogramDictationInconsistencies({
                       disabled={readOnly || !canResolve}
                       onClick={() => handleResolve(batch)}
                     >
-                      {batch.appliedLocally
-                        ? "Reintentar aprendizaje"
-                        : "Confirmar y aplicar"}
+                      {retrying ? "Reintentar aprendizaje" : "Confirmar y aplicar"}
                     </OdontogramButton>
                   </div>
                 </section>

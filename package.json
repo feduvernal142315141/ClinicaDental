@@ -8,6 +8,7 @@
     "dev:webpack": "next dev",
     "lint": "ESLINT_USE_FLAT_CONFIG=false next lint",
     "typecheck": "tsc --noEmit",
+    "check:dictation-contract": "node scripts/check-dictation-contract.mjs",
     "start": "NEXT_DIST_DIR=.next-build next start"
   },
   "dependencies": {

@@ -17,7 +17,6 @@ import {
 } from "@/lib/odontogram/store";
 import {
   createSurfaceRef,
-  projectToCanonicalSurface,
   type ClinicalEvent,
   type ICDASScore,
   type SurfaceDiagnosis,
@@ -51,6 +50,9 @@ export interface OdontogramDictationApplyResult {
 /**
  * Convierte las opciones ya confirmadas por el usuario en un parche local.
  * No depende de la respuesta del endpoint de aprendizaje.
+ *
+ * Las aclaraciones descartadas (`candidateId: null`) viajan al backend para
+ * cerrarse, pero no aportan ninguna operación: aquí se omiten en silencio.
  */
 export function createConfirmedOdontogramDictationPatch(
   dictationId: string,
@@ -65,8 +67,10 @@ export function createConfirmedOdontogramDictationPatch(
 
   inconsistencies.forEach((inconsistency) => {
     const resolution = resolutionsById.get(inconsistency.id);
+    if (!resolution || resolution.candidateId === null) return;
+
     const candidate = inconsistency.candidates.find(
-      (item) => item.id === resolution?.candidateId,
+      (item) => item.id === resolution.candidateId,
     );
     const toothChange =
       candidate?.toothChange ??
@@ -130,11 +134,21 @@ const PATCH_TO_STORE_SURFACE: Record<OdontogramDictationSurface, ToothSurface> =
   cervicalLingual: "cervicalLingual",
 };
 
+/**
+ * Celda del store → código de superficie del contrato de dictado.
+ *
+ * Pasa VERBATIM: `ToothSurface` es un subconjunto exacto de
+ * `OdontogramDictationSurface`, así que el contexto viaja con la celda v3 real.
+ *
+ * Antes se proyectaba a la superficie canónica ADA (`mesialOclusal → mesial`), y
+ * eso era una pérdida silenciosa en el viaje de vuelta: `PATCH_TO_STORE_SURFACE`
+ * reexpande `mesial` a `mesialOclusal`, de modo que decir "quita esa" sobre una
+ * lesión `mesialVestibular` habría borrado la celda equivocada. La proyección
+ * canónica sigue siendo la correcta para catálogos y facturación, no para
+ * señalar una celda concreta de la boca (ver también HU-DICT-018).
+ */
 function toPatchSurface(surface: ToothSurface): OdontogramDictationSurface {
-  if (surface === "cervicalVestibular" || surface === "cervicalLingual") {
-    return surface;
-  }
-  return projectToCanonicalSurface(surface);
+  return surface;
 }
 
 function toPatchGlobalStatus(status: ToothGlobalStatus): string {
@@ -148,9 +162,45 @@ function toPatchGlobalStatus(status: ToothGlobalStatus): string {
   }
 }
 
+/**
+ * Pieza (y caras) con foco AHORA en el modal del diente.
+ *
+ * Es un dato de INTERACCIÓN, no del snapshot clínico: el módulo lo recibe de su
+ * propia UI (ver `OdontogramDictationControl`), nunca lo lee del host ni lo
+ * guarda en el store — el autosave se suscribe a CUALQUIER cambio del store, así
+ * que mover el foco dispararía un PUT del odontograma.
+ */
+export interface OdontogramDictationSelection {
+  toothNumber: number;
+  /** Vacío cuando el modal está abierto sin ninguna cara seleccionada. */
+  surfaces: ToothSurface[];
+}
+
+export interface OdontogramDictationContextOptions {
+  /** `null`/omitido = no hay modal de diente abierto. No se inventa un foco. */
+  lastSelection?: OdontogramDictationSelection | null;
+}
+
+/**
+ * Tope de eventos recientes que viajan en el contexto.
+ *
+ * El backend rechaza un `currentOdontogramContext` de más de 100 000 caracteres
+ * (`ODONTOGRAM_DICTATION_API.md`). Una boca entera documentada supera de largo
+ * los 12 eventos, y la anáfora ("la anterior", "eso que acabo de decir") solo
+ * necesita lo último. El estado clínico completo sigue viajando en `teeth`.
+ */
+const RECENT_EVENTS_LIMIT = 12;
+
+/** Momento de la última escritura del evento; `updatedAt` manda sobre `createdAt`. */
+function eventRecency(event: ClinicalEvent): number {
+  const stamp = Date.parse(event.updatedAt || event.createdAt || "");
+  return Number.isNaN(stamp) ? 0 : stamp;
+}
+
 /** Contexto clínico compacto; omite metadatos y campos ajenos a correcciones. */
 export function createOdontogramDictationContext(
   snapshot: OdontogramSnapshot,
+  options: OdontogramDictationContextOptions = {},
 ): Record<string, unknown> {
   const relevantTeeth = snapshot.teeth
     .filter((tooth) => tooth.globalStatus !== "healthy" || !!tooth.diagnosis)
@@ -169,31 +219,52 @@ export function createOdontogramDictationContext(
         : undefined,
     }));
 
-  const relevantEvents = snapshot.clinicalEvents
+  // Los eventos viajan CON su `id` del store: sin él, un "quita lo anterior"
+  // no puede apuntar a un evento concreto y la eliminación sería a ciegas.
+  // Un evento cancelado se omite a propósito: no debe poder ser "la anterior".
+  const recentEvents = snapshot.clinicalEvents
     .filter(
       (event) =>
-        event.type === "diagnosis" ||
-        event.type === "ausente" ||
-        event.type === "implante",
+        event.status !== "canceled" &&
+        (event.type === "diagnosis" ||
+          event.type === "ausente" ||
+          event.type === "implante"),
     )
-    .map((event) => ({
-      toothNumber: event.toothNumber,
-      type: event.type,
-      level: event.level,
-      diagnosisKind: event.diagnosisKind,
-      surfaces: Array.from(new Set(event.surfaces.map(toPatchSurface))),
-      diagnosis: event.diagnosisPayload?.surfaceDiagnosis,
-      toothDiagnosis:
-        event.diagnosisKind === "tooth-diagnostic"
-          ? event.diagnosisPayload
-          : undefined,
-      status: event.status,
-    }));
+    .map((event, index) => ({ event, index }))
+    .sort(
+      (left, right) =>
+        eventRecency(right.event) - eventRecency(left.event) ||
+        right.index - left.index,
+    )
+    .slice(0, RECENT_EVENTS_LIMIT)
+    .map(({ event }) => {
+      const surfaceDiagnosis = event.diagnosisPayload?.surfaceDiagnosis;
+      return {
+        id: event.id,
+        toothNumber: event.toothNumber,
+        type: event.type,
+        level: event.level,
+        diagnosisKind: event.diagnosisKind,
+        surfaces: Array.from(new Set(event.surfaces.map(toPatchSurface))),
+        findingKind: surfaceDiagnosis?.findingKind,
+        icdasScore: event.icdasScore ?? surfaceDiagnosis?.icdasScore,
+      };
+    });
+
+  const lastSelection = options.lastSelection
+    ? {
+        toothNumber: options.lastSelection.toothNumber,
+        surfaces: Array.from(
+          new Set(options.lastSelection.surfaces.map(toPatchSurface)),
+        ),
+      }
+    : null;
 
   return {
     odontogramSchemaVersion: snapshot.schemaVersion,
+    lastSelection,
+    recentEvents,
     teeth: relevantTeeth,
-    clinicalEvents: relevantEvents,
   };
 }
 

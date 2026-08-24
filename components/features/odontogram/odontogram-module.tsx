@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { OdontogramGrid } from "./odontogram-grid";
 import { ToothModal } from "./tooth-modal";
@@ -24,7 +24,10 @@ import {
 import { useOdontogramStore } from "@/lib/odontogram/store";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
 import type { ClinicalEvent } from "@/components/odontogram/types";
-import type { OdontogramDictationAdapter } from "@/lib/odontogram/application/dictation";
+import type {
+  OdontogramDictationAdapter,
+  OdontogramDictationSelection,
+} from "@/lib/odontogram/application/dictation";
 import { OdontogramDictationControl } from "./odontogram-dictation-control";
 
 interface OdontogramModuleProps {
@@ -63,6 +66,39 @@ function OdontogramModuleContent({
   } = useOdontogramModule();
   const readOnly = useOdontogramStore((state) => state.readOnly);
   const [activeTab, setActiveTab] = useState(initialTab);
+
+  /**
+   * Pieza/caras con foco en el modal del diente (HU-DICT-011).
+   *
+   * Vive aquí, en la composición del módulo, y NO en el store: el runtime del
+   * módulo (`lib/odontogram/OdontogramModule.tsx`) tiene un `storeApi.subscribe`
+   * que agenda un PUT del odontograma ante CUALQUIER cambio de estado, así que
+   * mover el foco guardaría el paciente. Tampoco lo aporta el host: el foco
+   * nace y muere dentro del módulo, y sale de él solo como contexto de dictado.
+   */
+  const [dictationFocus, setDictationFocus] =
+    useState<OdontogramDictationSelection | null>(null);
+
+  const handleDictationFocusChange = useCallback(
+    (focus: OdontogramDictationSelection | null) => {
+      setDictationFocus((current) => {
+        if (current === null && focus === null) return current;
+        if (
+          current &&
+          focus &&
+          current.toothNumber === focus.toothNumber &&
+          current.surfaces.length === focus.surfaces.length &&
+          current.surfaces.every(
+            (surface, index) => surface === focus.surfaces[index],
+          )
+        ) {
+          return current;
+        }
+        return focus;
+      });
+    },
+    [],
+  );
 
   const {
     getEventTagColor,
@@ -212,7 +248,10 @@ function OdontogramModuleContent({
       )}
 
       {activeTab === "odontogram" && dictationAdapter ? (
-        <OdontogramDictationControl adapter={dictationAdapter} />
+        <OdontogramDictationControl
+          adapter={dictationAdapter}
+          lastSelection={dictationFocus}
+        />
       ) : null}
 
       <OdontogramTabs
@@ -227,6 +266,7 @@ function OdontogramModuleContent({
         tooth={currentTooth}
         isOpen={isModalOpen}
         initialSurface={selectedSurface}
+        onFocusChange={handleDictationFocusChange}
         onClose={handlers.handleCloseModal}
         onUpdateGlobalStatus={handlers.updateToothGlobalStatus}
       />

@@ -173,7 +173,13 @@ export interface OdontogramTranscriptionQuality {
 
 export interface ResolveOdontogramInconsistencyRequest {
   inconsistencyId: string;
-  candidateId: string;
+  /**
+   * Opción elegida por el doctor, o `null` cuando descarta la aclaración: el
+   * backend la cierra sin aprender nada de ella. Descartar es una decisión, no
+   * un silencio — el backend exige que TODA inconsistencia pendiente viaje en
+   * el lote, con su candidato o con `null`.
+   */
+  candidateId: string | null;
 }
 
 export interface ResolveOdontogramInconsistenciesRequest {
@@ -183,5 +189,11 @@ export interface ResolveOdontogramInconsistenciesRequest {
 export interface ResolveOdontogramInconsistenciesResponse {
   dictationId: string;
   resolvedInconsistencyIds: string[];
+  dismissedInconsistencyIds: string[];
   learned: boolean;
+}
+
+/** Interruptor por clínica del dictado del odontograma (HU-DICT-006). */
+export interface OdontogramDictationAvailability {
+  enabled: boolean;
 }

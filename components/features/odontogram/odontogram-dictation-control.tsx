@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { AlertTriangle, Mic, Square, X } from "lucide-react";
+import { AlertTriangle, Mic, RotateCw, Square, X } from "lucide-react";
 import { OdontogramButton } from "@/components/features/odontogram/ui/OdontogramButton";
 import { OdontogramTextArea } from "@/components/features/odontogram/ui/OdontogramInput";
 import { useOdontogramConfirm } from "@/components/features/odontogram/ui/OdontogramConfirm";
@@ -13,10 +13,19 @@ import {
   createOdontogramDictationContext,
   odontogramPatchRequiresConfirmation,
   type OdontogramDictationAdapter,
+  type OdontogramDictationSelection,
 } from "@/lib/odontogram/application/dictation";
 import { useOdontogramStore, useOdontogramStoreApi } from "@/lib/odontogram/store";
+import { isRetryableError } from "@/lib/errors/normalize-error";
 import { notify } from "@/lib/utils/notify";
-import type { OdontogramDictationPatchResponse } from "@/lib/entity/speech";
+import {
+  extractApiErrorMessage,
+  notifyApiError,
+} from "@/lib/utils/notify-error";
+import type {
+  OdontogramDictationPatchResponse,
+  ResolveOdontogramInconsistencyRequest,
+} from "@/lib/entity/speech";
 import {
   OdontogramDictationInconsistencies,
   type OdontogramDictationInconsistencyBatch,
@@ -24,12 +33,24 @@ import {
 
 interface OdontogramDictationControlProps {
   adapter: OdontogramDictationAdapter;
+  /**
+   * Pieza/caras con foco en el modal del diente, publicada por el propio módulo
+   * (HU-DICT-011). `null` cuando no hay modal abierto: sin foco NO se inventa
+   * ninguno — el backend prefiere emitir `UNRESOLVED_PREVIOUS_SELECTION` antes
+   * que adivinar una pieza en una historia clínica.
+   */
+  lastSelection?: OdontogramDictationSelection | null;
 }
 
 export function OdontogramDictationControl({
   adapter,
+  lastSelection = null,
 }: OdontogramDictationControlProps) {
   const storeApi = useOdontogramStoreApi();
+  // El contexto se arma al SOLTAR el botón, no al montar: se lee por ref para
+  // que `processAudio` no quede capturado con un foco viejo.
+  const lastSelectionRef = useRef(lastSelection);
+  lastSelectionRef.current = lastSelection;
   const readOnly = useOdontogramStore((state) => state.readOnly);
   const confirm = useOdontogramConfirm();
   const [pendingBatches, setPendingBatches] = useState<
@@ -74,6 +95,8 @@ export function OdontogramDictationControl({
           description: result.warnings[0],
         });
       }
+
+      return result;
     },
     [storeApi],
   );
@@ -151,6 +174,7 @@ export function OdontogramDictationControl({
     async (audioBlob: Blob) => {
       const context = createOdontogramDictationContext(
         storeApi.getState().getSnapshot(),
+        { lastSelection: lastSelectionRef.current },
       );
       const patch = await adapter.transcribe(audioBlob, context);
       if (patch.transcriptionQuality?.needsReview) {
@@ -174,6 +198,7 @@ export function OdontogramDictationControl({
     try {
       const context = createOdontogramDictationContext(
         storeApi.getState().getSnapshot(),
+        { lastSelection: lastSelectionRef.current },
       );
       const patch = await adapter.reinterpret(
         transcriptionReview.transcript.trim(),
@@ -181,11 +206,14 @@ export function OdontogramDictationControl({
       );
       setTranscriptionReview(null);
       processPatch(patch);
-    } catch {
-      notify.error("No se pudo reinterpretar la transcripción", {
-        description:
-          "Conservamos el texto corregido. Revisa tu conexión y vuelve a intentarlo.",
-      });
+    } catch (error) {
+      // Mismo endpoint que el dictado: puede responder 429 (cupo) o 503
+      // (apagado). Ese motivo debe llegar al doctor, no un genérico de conexión.
+      notifyApiError(
+        "No se pudo reinterpretar la transcripción",
+        error,
+        "Conservamos el texto corregido. Revisa tu conexión y vuelve a intentarlo.",
+      );
     } finally {
       setIsReinterpreting(false);
     }
@@ -194,73 +222,102 @@ export function OdontogramDictationControl({
   const handleResolve = useCallback(
     (
       batch: OdontogramDictationInconsistencyBatch,
-      resolutions: Parameters<
-        OdontogramDictationAdapter["resolveInconsistencies"]
-      >[1],
+      resolutions: ResolveOdontogramInconsistencyRequest[],
     ) => {
       if (learningInFlight.current.has(batch.dictationId)) return;
-      learningInFlight.current.add(batch.dictationId);
 
-      try {
-        if (!batch.appliedLocally) {
-          applyPatch(
-            createConfirmedOdontogramDictationPatch(
-              batch.dictationId,
-              batch.inconsistencies,
-              resolutions,
-            ),
-          );
-        }
-        setPendingBatches((current) =>
-          current.filter((item) => item.dictationId !== batch.dictationId),
-        );
+      const dismissedCount = resolutions.filter(
+        (resolution) => resolution.candidateId === null,
+      ).length;
+      const allDismissed =
+        resolutions.length > 0 && dismissedCount === resolutions.length;
+      // El cambio clínico se aplica UNA sola vez. En un reintento el lote ya
+      // trae las decisiones enviadas y lo que se aplicó, así que solo falta
+      // repetir el POST del aprendizaje.
+      let appliedOperations = batch.pendingLearning?.appliedOperations ?? 0;
 
-        void adapter
-          .resolveInconsistencies(batch.dictationId, resolutions)
-          .then(() => {
-            learningInFlight.current.delete(batch.dictationId);
-          })
-          .catch(() => {
-            learningInFlight.current.delete(batch.dictationId);
-            setPendingBatches((current) => [
-              ...current.filter(
-                (item) => item.dictationId !== batch.dictationId,
-              ),
-              { ...batch, appliedLocally: true },
-            ]);
-            notify.warning("El odontograma se actualizó", {
+      if (!batch.pendingLearning) {
+        if (allDismissed) {
+          notify.info(
+            dismissedCount === 1
+              ? "Aclaración descartada"
+              : `${dismissedCount} aclaraciones descartadas`,
+            {
               description:
-                "No se pudo guardar el aprendizaje. Puedes reintentarlo sin volver a marcar la pieza.",
+                "No cambian el odontograma y no se aprenderá de ellas.",
+            },
+          );
+        } else {
+          try {
+            appliedOperations = applyPatch(
+              createConfirmedOdontogramDictationPatch(
+                batch.dictationId,
+                batch.inconsistencies,
+                resolutions,
+              ),
+            ).appliedOperations;
+          } catch {
+            notify.error("No se pudo aplicar la aclaración", {
+              description:
+                "La opción seleccionada no contiene un cambio válido para el odontograma.",
             });
-          });
-      } catch {
-        learningInFlight.current.delete(batch.dictationId);
-        notify.error("No se pudo aplicar la aclaración", {
-          description:
-            "La opción seleccionada no contiene un cambio válido para el odontograma.",
-        });
+            return;
+          }
+        }
       }
+
+      learningInFlight.current.add(batch.dictationId);
+      setPendingBatches((current) =>
+        current.filter((item) => item.dictationId !== batch.dictationId),
+      );
+
+      void adapter
+        .resolveInconsistencies(batch.dictationId, resolutions)
+        .then(() => {
+          learningInFlight.current.delete(batch.dictationId);
+        })
+        .catch((error: unknown) => {
+          learningInFlight.current.delete(batch.dictationId);
+
+          // Un rechazo PERMANENTE (4xx de contrato: el lote ya se cerró, la
+          // aclaración no admite descarte…) no se arregla repitiendo la misma
+          // petición. Devolver el lote dejaría un botón "Reintentar
+          // aprendizaje" que no podría funcionar NUNCA: se informa con el
+          // motivo real del backend y el lote se retira.
+          if (!isRetryableError(error)) {
+            notifyApiError(
+              "No se pudo guardar el aprendizaje del dictado",
+              error,
+              "El servidor rechazó estas aclaraciones y no volverá a aceptarlas; no hace falta reintentar.",
+            );
+            return;
+          }
+
+          // Fallo TRANSITORIO (red, timeout, 429, 5xx): el lote vuelve CON las
+          // decisiones tomadas, así el reintento manda el mismo conjunto
+          // completo que el backend exige, sin volver a marcar la pieza ni
+          // pedirle al doctor que decida otra vez.
+          setPendingBatches((current) => [
+            ...current.filter((item) => item.dictationId !== batch.dictationId),
+            {
+              ...batch,
+              pendingLearning: { resolutions, appliedOperations },
+            },
+          ]);
+          notify.warning(
+            appliedOperations > 0
+              ? "El odontograma se actualizó"
+              : "Las aclaraciones quedaron decididas",
+            {
+              description: `${
+                extractApiErrorMessage(error) ??
+                "No se pudo guardar el aprendizaje."
+              } Puedes reintentarlo sin volver a marcar la pieza.`,
+            },
+          );
+        });
     },
     [adapter, applyPatch],
-  );
-
-  const handleDismissInconsistency = useCallback(
-    (dictationId: string, inconsistencyId: string) => {
-      setPendingBatches((current) =>
-        current.flatMap((batch) => {
-          if (batch.dictationId !== dictationId) return [batch];
-
-          const inconsistencies = batch.inconsistencies.filter(
-            (inconsistency) => inconsistency.id !== inconsistencyId,
-          );
-
-          return inconsistencies.length > 0
-            ? [{ ...batch, inconsistencies }]
-            : [];
-        }),
-      );
-    },
-    [],
   );
 
   const {
@@ -269,6 +326,9 @@ export function OdontogramDictationControl({
     isProcessing,
     interimText,
     recordingSeconds,
+    retainedAudio,
+    retryRetainedAudio,
+    discardRetainedAudio,
     startRecording,
     stopRecording,
   } = useGroqDictation({
@@ -320,6 +380,38 @@ export function OdontogramDictationControl({
           {isRecording ? "Terminar y aplicar" : "Dictar odontograma"}
         </OdontogramButton>
       </div>
+
+      {retainedAudio && !isRecording && (
+        <section
+          role="status"
+          aria-live="polite"
+          className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50/70 px-3 py-2 text-amber-950 dark:border-amber-700 dark:bg-amber-950/20 dark:text-amber-100"
+        >
+          <p className="min-w-0 flex-1 text-xs">
+            Guardamos tu grabación de {retainedAudio.seconds} s. Puedes
+            reintentar el envío sin volver a dictar; se descartará al aplicar
+            los cambios o al salir de la pantalla.
+          </p>
+          <OdontogramButton
+            size="sm"
+            variant="outline"
+            icon={<RotateCw aria-hidden className="h-3.5 w-3.5" />}
+            loading={isProcessing}
+            disabled={readOnly || isProcessing || isReinterpreting}
+            onClick={() => void retryRetainedAudio()}
+          >
+            Reintentar envío
+          </OdontogramButton>
+          <OdontogramButton
+            size="sm"
+            variant="ghost"
+            aria-label="Descartar la grabación guardada"
+            icon={<X aria-hidden className="h-4 w-4" />}
+            disabled={isProcessing}
+            onClick={discardRetainedAudio}
+          />
+        </section>
+      )}
 
       {transcriptionReview && (
         <section className="rounded-lg border border-amber-300 bg-amber-50/70 p-3 text-amber-950 dark:border-amber-700 dark:bg-amber-950/20 dark:text-amber-100">
@@ -392,7 +484,6 @@ export function OdontogramDictationControl({
         batches={pendingBatches}
         readOnly={readOnly}
         onResolve={handleResolve}
-        onDismiss={handleDismissInconsistency}
       />
     </div>
   );

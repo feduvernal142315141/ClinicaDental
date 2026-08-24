@@ -13,6 +13,7 @@ import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useOdontogramByVisit } from "@/lib/hooks/odontogram/useOdontogramByVisit";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings";
+import { useOdontogramDictationAvailability } from "@/lib/hooks/speech/use-odontogram-dictation-availability";
 import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
 import { OdontogramReadOnlyOverlay } from "@/components/features/odontogram/ui/OdontogramReadOnlyOverlay";
 import { OdontogramVisitContextBar } from "@/components/features/odontogram/ui/OdontogramVisitContextBar";
@@ -240,6 +241,17 @@ export function PatientOdontogramPanel({
     can("clinical_history", PermissionAction.EDIT) ||
     can("clinical_history", PermissionAction.CREATE);
 
+  // Interruptor por clínica: el control ni se monta si el dictado está apagado
+  // (o si sus recursos no cargaron en el backend). Se consulta desde el host
+  // para no romper la frontera del módulo, y solo cuando tendría sentido
+  // ofrecerlo. Solo un `enabled: false` explícito lo apaga: un 404 (backend sin
+  // desplegar todavía) o un corte de red dejan el control montado, porque el POST
+  // ya se defiende solo con un 503 explicado. Ocultarlo por un fallo transitorio
+  // haría desaparecer la función sin que nadie pueda saber por qué.
+  const isDictationEnabled = useOdontogramDictationAvailability(
+    !isHistoricMode && canUseClinicalDictation,
+  );
+
   // Solo lectura por: modo histórico, visita finalizada o falta de permiso.
   // "Sin consulta" ya NO bloquea: el permiso es lo único que manda.
   const readOnly = isHistoricMode || isNonEditableVisit || !canEditClinical;
@@ -289,7 +301,7 @@ export function PatientOdontogramPanel({
             clinicId={clinicId}
             adapter={adapter}
             dictationAdapter={
-              !isHistoricMode && canUseClinicalDictation
+              !isHistoricMode && canUseClinicalDictation && isDictationEnabled
                 ? dictationAdapter
                 : undefined
             }

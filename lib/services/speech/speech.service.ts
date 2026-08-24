@@ -1,5 +1,6 @@
 import apiInstance from "@/lib/services/apiConfig";
 import type {
+  OdontogramDictationAvailability,
   OdontogramDictationPatchResponse,
   ResolveOdontogramInconsistenciesRequest,
   ResolveOdontogramInconsistenciesResponse,
@@ -104,8 +105,21 @@ export const speechService = {
   },
 
   /**
-   * Registra la selección ya aplicada localmente. El backend solo aprende la
-   * coincidencia para la clínica y devuelve un acuse breve e idempotente.
+   * Interruptor por clínica del dictado del odontograma. Se consulta con la
+   * misma autoridad que el dictado; si responde `false` el control no se monta.
+   */
+  async getOdontogramDictationAvailability(): Promise<OdontogramDictationAvailability> {
+    const response = await apiInstance.get<OdontogramDictationAvailability>(
+      "/speech/transcribe/odontogram/availability",
+    );
+
+    return response.data;
+  },
+
+  /**
+   * Registra las decisiones del doctor sobre TODAS las aclaraciones pendientes
+   * del dictado: la opción elegida, o `null` cuando la descarta. El backend
+   * solo aprende de las elegidas y devuelve un acuse breve e idempotente.
    */
   async resolveOdontogramInconsistencies(
     dictationId: string,

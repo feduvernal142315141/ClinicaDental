@@ -285,3 +285,30 @@ export function normalizeError(err: unknown): AppError {
     _handled: false,
   };
 }
+
+// ============================================================
+// ¿REINTENTABLE?
+// ============================================================
+
+/**
+ * ¿Tiene sentido ofrecer "reintentar" esta MISMA petición sin cambiar nada?
+ *
+ * - **Sí (transitorio)**: red caída, timeout, `429` (cupo: el propio backend
+ *   dice en cuántos segundos volver) y `5xx` (el servidor falló, no la
+ *   petición).
+ * - **No (permanente)**: el resto de `4xx`. El backend rechaza el CONTENIDO o
+ *   el estado de la petición (contrato inválido, recurso ya cerrado, sin
+ *   permisos); repetirla idéntica volverá a fallar. Ofrecer un botón de
+ *   reintento ahí es un callejón sin salida: hay que informar y retirar la
+ *   acción, no invitar a insistir.
+ *
+ * Un error de JavaScript sin respuesta HTTP (`status 0`) cuenta como
+ * transitorio a propósito: preferimos conservar el trabajo del usuario y
+ * dejarle reintentar antes que descartarlo por un fallo que no entendemos.
+ */
+export function isRetryableError(err: unknown): boolean {
+  const { status } = normalizeError(err);
+  if (status === 429) return true;
+  if (status >= 500) return true;
+  return status === 0;
+}

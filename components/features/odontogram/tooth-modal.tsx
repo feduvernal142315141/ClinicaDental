@@ -57,6 +57,15 @@ interface ToothModalProps {
   isOpen: boolean;
   /** Cara clicada en la grilla, para preseleccionarla al abrir el modal. */
   initialSurface?: ToothSurface | null;
+  /**
+   * Notifica la pieza/caras con foco mientras el modal está abierto, y `null`
+   * al cerrarse o desmontarse. Lo consume el dictado por voz para resolver
+   * "esa", "ahí", "la misma pieza" (HU-DICT-011). El modal no sabe nada del
+   * dictado: solo publica su foco.
+   */
+  onFocusChange?: (
+    focus: { toothNumber: number; surfaces: ToothSurface[] } | null,
+  ) => void;
   onClose: () => void;
   onUpdateGlobalStatus: (
     toothNumber: number,
@@ -177,6 +186,7 @@ export function ToothModal({
   tooth,
   isOpen,
   initialSurface,
+  onFocusChange,
   onClose,
   onUpdateGlobalStatus,
 }: ToothModalProps) {
@@ -335,6 +345,32 @@ export function ToothModal({
   );
 
   const initializedToothRef = useRef<string | null>(null);
+
+  // El foco se publica por REF para que cambiar el callback (una lambda nueva
+  // en cada render del padre) no vuelva a disparar la notificación.
+  const onFocusChangeRef = useRef(onFocusChange);
+  onFocusChangeRef.current = onFocusChange;
+  const focusedToothNumber = tooth?.number ?? null;
+
+  useEffect(() => {
+    if (!isOpen || focusedToothNumber === null) {
+      onFocusChangeRef.current?.(null);
+      return;
+    }
+    onFocusChangeRef.current?.({
+      toothNumber: focusedToothNumber,
+      surfaces: selectedSurfaces,
+    });
+  }, [isOpen, focusedToothNumber, selectedSurfaces]);
+
+  // Desmontar el modal (cambio de paciente, salir de la pantalla) también borra
+  // el foco: un foco fantasma haría que el dictado escribiera en otra pieza.
+  useEffect(
+    () => () => {
+      onFocusChangeRef.current?.(null);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!isOpen || !tooth) {
