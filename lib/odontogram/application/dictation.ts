@@ -166,7 +166,7 @@ function toPatchGlobalStatus(status: ToothGlobalStatus): string {
  * Pieza (y caras) con foco AHORA en el modal del diente.
  *
  * Es un dato de INTERACCIÓN, no del snapshot clínico: el módulo lo recibe de su
- * propia UI (ver `OdontogramDictationControl`), nunca lo lee del host ni lo
+ * propia UI (ver `OdontogramDictationProvider`), nunca lo lee del host ni lo
  * guarda en el store — el autosave se suscribe a CUALQUIER cambio del store, así
  * que mover el foco dispararía un PUT del odontograma.
  */

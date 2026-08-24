@@ -29,6 +29,7 @@ import type {
   OdontogramDictationSelection,
 } from "@/lib/odontogram/application/dictation";
 import { OdontogramDictationControl } from "./odontogram-dictation-control";
+import { OdontogramDictationProvider } from "./odontogram-dictation-session";
 
 interface OdontogramModuleProps {
   initialTab?:
@@ -99,6 +100,17 @@ function OdontogramModuleContent({
     },
     [],
   );
+
+  /**
+   * Con la pieza abierta, el dictado lo pinta el modal (HU-DICT-029): allí es
+   * clicable y conoce el foco de primera mano. Esta bandera lo dice sin
+   * duplicar la condición de apertura del modal, porque el foco es EXACTAMENTE
+   * lo que `ToothModal` publica mientras está abierto sobre un diente — el
+   * mismo instante en que monta su control compacto. Así nunca hay dos botones
+   * de dictar a la vez (el motor, en cambio, es único por construcción: vive en
+   * `OdontogramDictationProvider`).
+   */
+  const isToothSurfaceActive = dictationFocus !== null;
 
   const {
     getEventTagColor,
@@ -225,51 +237,56 @@ function OdontogramModuleContent({
   ];
 
   return (
-    <div className="flex flex-col h-full flex-1 min-h-0 space-y-4">
-      {showHeader && (
-        <div className="flex items-center justify-between shrink-0">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Odontograma</h1>
-            <p className="text-muted-foreground">
-              Sistema de gestión dental profesional
-            </p>
+    <OdontogramDictationProvider
+      adapter={dictationAdapter}
+      lastSelection={dictationFocus}
+    >
+      <div className="flex flex-col h-full flex-1 min-h-0 space-y-4">
+        {showHeader && (
+          <div className="flex items-center justify-between shrink-0">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Odontograma</h1>
+              <p className="text-muted-foreground">
+                Sistema de gestión dental profesional
+              </p>
+            </div>
+            {activeTab === "odontogram" && (
+              <OdontogramButton
+                variant="outline"
+                icon={<RotateCcw className="h-4 w-4" />}
+                disabled={readOnly}
+                onClick={handleClearAll}
+              >
+                Limpiar Todo
+              </OdontogramButton>
+            )}
           </div>
-          {activeTab === "odontogram" && (
-            <OdontogramButton
-              variant="outline"
-              icon={<RotateCcw className="h-4 w-4" />}
-              disabled={readOnly}
-              onClick={handleClearAll}
-            >
-              Limpiar Todo
-            </OdontogramButton>
-          )}
-        </div>
-      )}
+        )}
 
-      {activeTab === "odontogram" && dictationAdapter ? (
-        <OdontogramDictationControl
-          adapter={dictationAdapter}
-          lastSelection={dictationFocus}
+        {/* Con la pieza abierta manda el control compacto del modal; en otra
+            pestaña el control se aparta solo, pero sin abandonar una grabación
+            en curso (`hidden`). */}
+        {isToothSurfaceActive ? null : (
+          <OdontogramDictationControl hidden={activeTab !== "odontogram"} />
+        )}
+
+        <OdontogramTabs
+          items={tabItems}
+          defaultActiveKey={initialTab}
+          onChange={(key) => setActiveTab(key as typeof initialTab)}
+          fill
+          className="flex-1"
         />
-      ) : null}
 
-      <OdontogramTabs
-        items={tabItems}
-        defaultActiveKey={initialTab}
-        onChange={(key) => setActiveTab(key as typeof initialTab)}
-        fill
-        className="flex-1"
-      />
-
-      <ToothModal
-        tooth={currentTooth}
-        isOpen={isModalOpen}
-        initialSurface={selectedSurface}
-        onFocusChange={handleDictationFocusChange}
-        onClose={handlers.handleCloseModal}
-        onUpdateGlobalStatus={handlers.updateToothGlobalStatus}
-      />
-    </div>
+        <ToothModal
+          tooth={currentTooth}
+          isOpen={isModalOpen}
+          initialSurface={selectedSurface}
+          onFocusChange={handleDictationFocusChange}
+          onClose={handlers.handleCloseModal}
+          onUpdateGlobalStatus={handlers.updateToothGlobalStatus}
+        />
+      </div>
+    </OdontogramDictationProvider>
   );
 }
