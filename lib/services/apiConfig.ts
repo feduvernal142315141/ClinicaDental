@@ -66,10 +66,52 @@ export const setInterceptorHandlers = (
   interceptorHandlers = { ...interceptorHandlers, ...handlers };
 };
 
+// ============================================
+// TIMEOUTS
+// ============================================
+
+/**
+ * Timeout de una pantalla normal. Una consulta a la API responde en cientos de
+ * milisegundos; 30 s ya son un fallo. No subir este valor: es lo que impide que
+ * una pantalla cualquiera se quede colgada medio minuto.
+ */
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+/**
+ * Timeout de los endpoints que encadenan proveedores de IA (`/speech/transcribe`
+ * y `/speech/transcribe/odontogram`).
+ *
+ * Con los 30 s por defecto el doctor veía «timeout of 30000ms exceeded» mientras
+ * el backend seguía trabajando y gastando llamadas de pago: el cliente se rendía
+ * ANTES que el servidor, así que la respuesta —incluso la buena— no llegaba a la
+ * pantalla nunca. La regla es la contraria: el cliente corta después.
+ *
+ * El presupuesto del servidor para un dictado (ver `gemini.http.read-timeout-ms`
+ * en backend-clinic/src/main/resources/application.yml) es transcripción (~10 s
+ * de holgura sobre el ~1 s medido) + hasta tres llamadas a Gemini de 35 s =
+ * 115 s. 120 s lo cubren entero con margen para la subida del audio.
+ *
+ * OJO: 120 s es el TOPE, no lo esperado. Un dictado sano tarda segundos y el
+ * backend ya avisa en su log al pasar de 12 s (SLO). Si alguna vez se baja el
+ * `read-timeout-ms` del backend, bájese también esto.
+ */
+const PROVIDER_CHAIN_TIMEOUT_MS = 120_000;
+
+/**
+ * ¿La petición encadena proveedores de IA en el backend?
+ *
+ * Solo los POST de dictado. El GET de disponibilidad
+ * (`/speech/transcribe/odontogram/availability`) es una consulta local y se
+ * queda con el timeout normal, por eso se exige el método.
+ */
+const usesProviderChain = (config: InternalAxiosRequestConfig): boolean =>
+  (config.method ?? "get").toLowerCase() === "post" &&
+  String(config.url ?? "").includes("/speech/transcribe");
+
 // Crear instancia de axios
 const apiInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
-  timeout: 30000, // 30 segundos
+  timeout: DEFAULT_TIMEOUT_MS,
   headers: {
     "Content-Type": "application/json",
   },
@@ -85,6 +127,12 @@ apiInstance.interceptors.request.use(
 
     // Registrar actividad del usuario (resetea timer de inactividad)
     interceptorHandlers.onActivity?.();
+
+    // Los dictados esperan a varios proveedores encadenados: se les amplía el
+    // timeout AQUÍ y solo a ellos, para no alargar el de ninguna otra pantalla.
+    if (usesProviderChain(config)) {
+      config.timeout = PROVIDER_CHAIN_TIMEOUT_MS;
+    }
 
     // Obtener el access token desde cookie (flujo OTP/JWT backend)
     const accessToken = getAccessToken();
