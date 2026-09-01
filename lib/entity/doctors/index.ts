@@ -175,6 +175,8 @@ export interface PaginatedDoctorsResponse {
 export interface LoginRequest {
   email: string;
   password: string;
+  /** Subdominio de la clínica. El backend busca al doctor por email + slug. */
+  clinicSlug: string;
 }
 
 export interface LoginResponse {
@@ -186,6 +188,8 @@ export interface LoginResponse {
 export interface ValidateOtpRequest {
   email: string;
   otpCode: string;
+  /** El mismo que se usó en /auth/login: el OTP se generó para ese par. */
+  clinicSlug: string;
 }
 
 export interface ValidateOtpResponse {
