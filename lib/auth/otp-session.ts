@@ -2,6 +2,12 @@ export type OtpSession = {
   email: string;
   otpExpiresAt: string;
   otpExpiresInSeconds: number;
+  /**
+   * La clínica con la que se pidió el código. Se guarda porque el segundo paso
+   * ocurre en otra página: sin esto, /auth/validate-otp no sabría con qué slug
+   * se generó el OTP y ningún login llegaría a completarse.
+   */
+  clinicSlug: string;
 };
 
 const STORAGE_KEY = "clinic_otp_session";
@@ -30,6 +36,9 @@ export function loadOtpSession(): OtpSession | null {
   try {
     const parsed = JSON.parse(raw) as OtpSession;
     if (!parsed?.email || !parsed?.otpExpiresAt) return null;
+    // Una sesión escrita antes de que el slug existiera no sirve para validar:
+    // mejor devolver null y mandar a repetir el login que fallar en el paso dos.
+    if (!parsed?.clinicSlug) return null;
     return parsed;
   } catch {
     return null;

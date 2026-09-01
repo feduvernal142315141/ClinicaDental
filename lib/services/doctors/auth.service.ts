@@ -39,7 +39,13 @@ async function login(credentials: LoginRequest): Promise<LoginResponse> {
   const encryptedPassword = await encryptPasswordForTransport(credentials.password);
   const response = await servicePost<LoginRequest, LoginResponse>(
     "/auth/login",
-    { email: credentials.email, password: encryptedPassword },
+    {
+      email: credentials.email,
+      password: encryptedPassword,
+      // Obligatorio y en minúscula: el backend resuelve al doctor por
+      // email + clinicSlug, y si no coincide responde credenciales inválidas.
+      clinicSlug: credentials.clinicSlug.toLowerCase(),
+    },
   );
 
   const status = response?.status;
@@ -71,7 +77,7 @@ async function validateOtp(
 ): Promise<ValidateOtpResponse> {
   const response = await servicePost<ValidateOtpRequest, ValidateOtpResponse>(
     "/auth/validate-otp",
-    data,
+    { ...data, clinicSlug: data.clinicSlug.toLowerCase() },
   );
 
   // servicePost swallows errors and returns err.response — check status explicitly

@@ -23,6 +23,7 @@ import { clearAuthTokens, saveLoggedUser } from "@/lib/auth/token-storage";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
 import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
 import { useVisitNoteDrafts } from "@/lib/store/useVisitNoteDrafts";
+import { resolveClinicSlug } from "@/lib/auth/clinic-slug";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -117,10 +118,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setAuthError(null);
     try {
-      const otp = await doctorAuthService.login({ email, password });
+      // Se resuelve aquí, dentro del submit: lee `window.location` y hacerlo en
+      // render rompería la hidratación.
+      const clinicSlug = resolveClinicSlug();
+      if (!clinicSlug) {
+        // Sin slug el backend respondería "credenciales inválidas", que manda a
+        // revisar la contraseña por un problema de dirección. Mejor decirlo.
+        setAuthError(
+          "No pudimos identificar la clínica desde esta dirección. Entra por el enlace de tu clínica.",
+        );
+        return;
+      }
+
+      const otp = await doctorAuthService.login({ email, password, clinicSlug });
       saveOtpPassword(password);
       saveOtpSession({
         email,
+        clinicSlug,
         otpExpiresAt: otp.otpExpiresAt,
         otpExpiresInSeconds: otp.otpExpiresInSeconds,
       });
@@ -154,6 +168,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const tokens = await doctorAuthService.validateOtp({
         email: session.email,
+        // El mismo con el que se pidió el código: el OTP se generó para ese par.
+        clinicSlug: session.clinicSlug,
         otpCode,
       });
 

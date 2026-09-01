@@ -72,6 +72,10 @@ export function ValidateOtpForm() {
     useState<ReturnType<typeof loadOtpSession>>(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
   const email = session?.email ?? "";
+  // El reenvío vuelve a pasar por /auth/login, que también exige el slug.
+  // Se reutiliza el de la sesión OTP: es la misma clínica, y así el reenvío no
+  // depende de volver a leer el host.
+  const clinicSlug = session?.clinicSlug ?? "";
 
   useEffect(() => {
     setSession(loadOtpSession());
@@ -142,16 +146,17 @@ export function ValidateOtpForm() {
     setShowSuccessOverlay(false);
     setLocalError(null);
     const password = loadOtpPassword();
-    if (!email || !password) {
+    if (!email || !password || !clinicSlug) {
       setLocalError("Para reenviar el código, vuelve a iniciar sesión.");
       return;
     }
 
     setResendLoading(true);
     try {
-      const newOtp = await doctorAuthService.login({ email, password });
+      const newOtp = await doctorAuthService.login({ email, password, clinicSlug });
       saveOtpSession({
         email,
+        clinicSlug,
         otpExpiresAt: newOtp.otpExpiresAt,
         otpExpiresInSeconds: newOtp.otpExpiresInSeconds,
       });
