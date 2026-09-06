@@ -1,6 +1,6 @@
 "use client";
 
-import { Stethoscope, ClipboardList, ListChecks } from "lucide-react";
+import { Stethoscope, ClipboardList, ListChecks, Images } from "lucide-react";
 import {
   Tabs,
   TabsList,
@@ -19,19 +19,22 @@ import { MedicalHistoryDrawer } from "@/components/features/clinical-history/sec
 import { EditPatientDrawer } from "./EditPatientDrawer";
 import { StartConsultationNowModal } from "@/components/features/appointments/StartConsultationNowModal";
 import { PatientOdontogramPanel } from "@/components/features/patients/detail/PatientOdontogramPanel";
-import { ActiveConsultationBanner } from "@/components/features/clinical-history/ActiveConsultationBanner";
 import { PatientTreatmentPlanPanel } from "@/components/features/patients/treatment-plan/PatientTreatmentPlanPanel";
 import {
   useClinicalHistoryPage,
-  TREATMENT_PLAN_TAB,
   type UseClinicalHistoryPageParams,
 } from "@/lib/hooks/patients/clinical-history-page/use-clinical-history-page";
+import { PATIENT_TABS } from "@/lib/hooks/patients/clinical-history-page/patient-tabs";
+import { PatientRecordHeader, VisitRibbon } from "./header";
+import { VisitAutosaveIndicator } from "./header/VisitAutosaveIndicator";
+import { EvolutionColumn } from "./evolution";
+import { ContinuityStrip } from "./continuity";
 
 type ClinicalHistoryPageProps = UseClinicalHistoryPageParams;
 
 export function ClinicalHistoryPage({
   patientId,
-  initialTab = "historia-clinica",
+  initialTab,
   activeAppointmentId,
   openFinalizeOnLoad,
 }: ClinicalHistoryPageProps) {
@@ -81,6 +84,10 @@ export function ClinicalHistoryPage({
     handlePatientPhotoChange,
     handleViewVisitOdontogram,
     handleSelectHistoricVisit,
+    handleStartScheduledConsultation,
+    consultationCta,
+    nextAppointment,
+    visitRibbonState,
   } = useClinicalHistoryPage({
     patientId,
     initialTab,
@@ -110,20 +117,43 @@ export function ClinicalHistoryPage({
     // completo. `h-full` y la cadena `flex flex-col` se conservan intactas —
     // son el eslabón de ADR-36 que mantiene UNA sola superficie con scroll.
     <div className="flex flex-col h-full p-4 lg:p-6">
-      {isCurrentlyActiveConsultation && (
-        <ActiveConsultationBanner onFinalizeClick={openFinalizeModal} />
-      )}
+      {/* ── Cabecera contextual ──────────────────────────────────────────
+          Sustituye al <h1> genérico, que además solo existía en la rama sin
+          consulta activa: durante una consulta la pantalla no decía de quién
+          era la historia que se estaba escribiendo. */}
+      <PatientRecordHeader
+        name={patient.name}
+        photoUrl={patient.photoUrl}
+        age={snapshot?.patientHeader?.age}
+        gender={snapshot?.patientHeader?.gender}
+        birthDate={patient.dateOfBirth}
+        phone={snapshot?.patientHeader?.phone ?? patient.phone}
+        email={snapshot?.patientHeader?.email ?? patient.email}
+        alerts={snapshotForbidden ? [] : snapshot?.patientHeader?.alerts}
+        canEdit={canEditPatient}
+        onEdit={openEditPatient}
+      />
 
-      {!isCurrentlyActiveConsultation && (
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">{patient.name}</h1>
-            <p className="text-sm text-muted-foreground">
-              Historia clínica del paciente
-            </p>
-          </div>
-        </div>
-      )}
+      {/* ── Cinta de visita ──────────────────────────────────────────────
+          Hermana del <Tabs>, nunca dentro de una pestaña: el estado de la
+          consulta tiene que verse desde las cuatro. Devuelve null cuando no hay
+          ni consulta activa ni modo histórico, así que se monta sin condicional.
+          El indicador de autoguardado va en su slot porque ese componente es
+          quien resetea el store al desmontar. */}
+      <VisitRibbon
+        state={visitRibbonState}
+        autosaveSlot={
+          visitRibbonState?.kind === "active" ? <VisitAutosaveIndicator /> : null
+        }
+        onFinalize={
+          visitRibbonState?.kind === "active" ? openFinalizeModal : undefined
+        }
+        onReturnToCurrent={
+          visitRibbonState?.kind === "historic"
+            ? handleBackToCurrentOdontogram
+            : undefined
+        }
+      />
 
       <Tabs
         value={activeTab}
@@ -131,187 +161,160 @@ export function ClinicalHistoryPage({
         className="flex flex-col flex-1 min-h-0"
       >
         {/* ── Franja de pestañas con scroll horizontal propio ──────────────
-            El `TabsList` es `inline-flex` y no encoge: con tres pestañas con
-            icono (y rótulos largos como "Historia Clínica (Lectura)") la última
-            se salía del viewport en pantallas estrechas y no había forma de
-            alcanzarla, porque el desbordamiento se recortaba contra el layout.
-            El contenedor NO necesita `tabindex`: sus hijos son focusables, y
-            tanto el tabulador como las flechas de Radix desplazan el scroll
-            hasta la pestaña enfocada (WCAG 2.2 — 2.1.1). `overflow-x` solo:
-            el ring de foco cabe dentro del `p-1` del propio `TabsList`. */}
+            El `TabsList` es `inline-flex` y no encoge: con cuatro pestañas con
+            icono la última se salía del viewport en pantallas estrechas y no
+            había forma de alcanzarla, porque el desbordamiento se recortaba
+            contra el layout. El contenedor NO necesita `tabindex`: sus hijos son
+            focusables, y tanto el tabulador como las flechas de Radix desplazan
+            el scroll hasta la pestaña enfocada (WCAG 2.2 — 2.1.1). `overflow-x`
+            solo: el ring de foco cabe dentro del `p-1` del propio `TabsList`, y
+            por eso ese `p-1` no se puede quitar al pasar a subrayadas.
+
+            LAS CUATRO SON FIJAS. Antes Workspace y Odontograma eran mutuamente
+            excluyentes según `isCurrentlyActiveConsultation`, así que ese
+            booleano decidía qué se MONTA: cualquier transición desmontaba y
+            remontaba el odontograma, con refetch completo y pérdida del
+            autoguardado con debounce de 300 ms. Ahora es cosmético. */}
         <div className="shrink-0 overflow-x-auto">
           <TabsList className="w-max">
-            {isCurrentlyActiveConsultation && (
-              <TabsTrigger value="workspace">
-                <Stethoscope className="h-4 w-4" />
-                Workspace
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="historia-clinica">
+            <TabsTrigger value={PATIENT_TABS.EVOLUTION}>
               <ClipboardList className="h-4 w-4" />
-              {isCurrentlyActiveConsultation
-                ? "Historia Clínica (Lectura)"
-                : "Historia Clínica"}
+              Evolución Clínica
             </TabsTrigger>
-            {!isCurrentlyActiveConsultation && (
-              <TabsTrigger value="odontograma">
-                <Stethoscope className="h-4 w-4" />
-                Odontograma
-              </TabsTrigger>
-            )}
+            <TabsTrigger value={PATIENT_TABS.ODONTOGRAM}>
+              <Stethoscope className="h-4 w-4" />
+              Odontograma
+            </TabsTrigger>
             {canViewTreatmentPlan && (
-              <TabsTrigger value={TREATMENT_PLAN_TAB}>
+              <TabsTrigger value={PATIENT_TABS.TREATMENT_PLAN}>
                 <ListChecks className="h-4 w-4" />
                 Plan de Tratamiento
               </TabsTrigger>
             )}
+            <TabsTrigger value={PATIENT_TABS.FILES}>
+              <Images className="h-4 w-4" />
+              Imágenes y Archivos
+            </TabsTrigger>
           </TabsList>
         </div>
 
-        {isCurrentlyActiveConsultation && (
-          <TabsContent
-            value="workspace"
-            className="flex-1 min-h-0 mt-2 overflow-hidden flex flex-col"
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] lg:grid-rows-1 gap-6 flex-1 min-h-0 h-full">
-              <ActiveConsultationNotes
-                patientId={patientId}
-                activeAppointmentId={effectiveActiveAppointmentId!}
-                canEdit={canEditMedicalHistory}
-              />
-              <PatientOdontogramPanel
-                patient={patient}
-                activeAppointmentId={effectiveActiveAppointmentId}
-                historicAppointmentId={historicAppointmentId}
-                onClearHistoric={handleBackToCurrentOdontogram}
-                appointments={appointments}
-                visitEditability={visitEditability}
-                onSelectHistoricVisit={handleSelectHistoricVisit}
-                finalizeOpen={isFinalizeModalOpen}
-                onFinalizeClose={closeFinalizeModal}
-                onFinalizeSuccess={handleFinalizeSuccess}
-              />
-            </div>
-          </TabsContent>
-        )}
-
+        {/* ── Evolución Clínica ────────────────────────────────────────────
+            Cuerpo a dos columnas 65/35 declarado en `xl` (1280px) y NO antes:
+            a 1024 en apaisado el ancho real del área de contenido es ~720px, y
+            un 35% daría 240px, insuficiente para la rejilla de antecedentes.
+            Por debajo de `xl` es UNA columna, y el orden del DOM ya es el bueno
+            (evolución antes que antecedentes completos), así que no hace falta
+            reordenar con `order-*`.
+            `items-start` evita que las columnas se estiren a la altura de la más
+            larga, y ninguna lleva `overflow-y-auto`: la única superficie con
+            scroll es este TabsContent (ADR-36). Tres barras de scroll a la vez
+            ya se pagaron una vez. */}
         <TabsContent
-          value="historia-clinica"
+          value={PATIENT_TABS.EVOLUTION}
           className="flex-1 min-h-0 mt-2 overflow-auto"
         >
-          {/* ── Etiquetas de sección — ayudan a escanear el layout ──────
-              Solo desde `lg`: son cabeceras DE COLUMNA, y en una sola columna
-              quedarían separadas del bloque que rotulan. Cada columna trae sus
-              propios títulos. */}
-          <div className="hidden lg:grid grid-cols-[280px_1fr_300px] gap-6 pb-2 shrink-0 px-0.5">
-            <p className={cn(SECTION_LABEL_CLASS, "select-none")}>
-              Perfil · Adjuntos
-            </p>
-            {/* "Planes del odontograma" — el rótulo tiene que decir lo que hay
-                en la columna, y lo que hay son los documentos de plan con su
-                avance, no las líneas presupuestadas de la pestaña
-                "Plan de Tratamiento". */}
-            <p className={cn(SECTION_LABEL_CLASS, "select-none pl-4")}>
-              Anamnesis · Planes del odontograma · Evolución / Notas
-            </p>
-            <p className={cn(SECTION_LABEL_CLASS, "select-none pl-3")}>
-              Cronología de visitas
-            </p>
-          </div>
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] xl:items-start">
+            {/* Columna izquierda (65%) — la evolución */}
+            <div className="flex flex-col gap-4">
+              {/* El editor de la visita SOLO existe con una consulta en curso.
+                  No hay compositor siempre presente: sin cita en contexto el
+                  `PATCH` de notas responde 404 y la única alternativa que
+                  funciona sin cita es la nota permanente del paciente, que es
+                  OTRO registro y se reemplaza al guardar. */}
+              {isCurrentlyActiveConsultation && effectiveActiveAppointmentId && (
+                <ActiveConsultationNotes
+                  patientId={patientId}
+                  activeAppointmentId={effectiveActiveAppointmentId}
+                  canEdit={canEditMedicalHistory}
+                />
+              )}
 
-          {/* ── Layout de 3 columnas ─────────────────────────────────────
-              Las tres columnas son FIJAS (280 / 1fr / 300) solo desde `lg`.
-              Sin ese corte, en pantallas estrechas la del medio se estrujaba a
-              unos pocos píxeles y el navegador partía el texto letra por letra
-              en vertical. Mismo patrón que ya usa la pestaña Workspace de este
-              archivo (`grid-cols-1 lg:grid-cols-[350px_1fr]`).
-              El grid NO impone alto: antes cada columna era `h-full` con su
-              propio `overflow-y-auto` y la vista mostraba TRES barras de scroll
-              a la vez. Ahora las columnas crecen con su contenido, `items-start`
-              evita que se estiren a la altura de la más larga, y la ÚNICA
-              superficie que scrollea es este TabsContent. */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr_300px] lg:items-start">
-            {/* Columna 1: Perfil + Adjuntos */}
-            {snapshotLoading ? (
-              <div className="flex h-40 items-center justify-center">
-                <LoadingSpinner size="md" message="Cargando datos..." />
-              </div>
-            ) : (
-              <PatientInfoColumn
-                patient={patient}
-                medicalHistory={snapshot?.medicalHistory ?? null}
-                patientHeader={snapshot?.patientHeader ?? null}
-                canUpload={canManageAttachments}
-                canDelete={canManageAttachments}
-                canEdit={canEditPatient}
-                activeAppointmentId={effectiveActiveAppointmentId}
-                onEditPatient={openEditPatient}
-                onPhotoChange={
-                  canEditPatient ? handlePatientPhotoChange : undefined
-                }
+              <ContinuityStrip
+                nextAppointment={nextAppointment}
+                cta={consultationCta}
+                onContinue={handleStartConsultation}
+                onStartScheduled={handleStartScheduledConsultation}
+                onStartNow={openStartNow}
               />
-            )}
 
-            {/* Columna 2: Anamnesis · Plan de Tratamiento · Notas */}
-            {snapshotLoading ? (
-              <div className="flex h-40 items-center justify-center">
-                <LoadingSpinner size="md" message="Cargando antecedentes..." />
-              </div>
-            ) : (
-              <MedicalAntecedentsColumn
-                medicalHistory={snapshot?.medicalHistory ?? null}
-                patientHeader={snapshot?.patientHeader ?? null}
+              <EvolutionColumn
                 patientId={patientId}
-                activeAppointmentId={effectiveActiveAppointmentId}
-                onEditClick={openMedicalHistoryDrawer}
-                canEdit={canEditMedicalHistory}
-                forbidden={snapshotForbidden}
-                loadError={snapshotError}
-                onRetry={() => loadSnapshot(patientId)}
-                onViewOdontogram={() =>
-                  setActiveTab(
-                    isCurrentlyActiveConsultation ? "workspace" : "odontograma",
-                  )
-                }
+                appointments={appointments}
+                loading={appointmentsLoading}
               />
-            )}
+            </div>
 
-            {/* Columna 3: Cronología de visitas */}
-            <VisitTimeline
-              appointments={appointments}
-              loading={appointmentsLoading}
-              activeAppointmentId={effectiveActiveAppointmentId}
-              onStartConsultation={handleStartConsultation}
-              onNewConsultation={openStartNow}
-              onViewVisitHistory={handleViewVisitHistory}
-              onAppointmentsChanged={loadAppointments}
-            />
+            {/* Columna derecha (35%) — antecedentes, planes y perfil */}
+            <div className="flex flex-col gap-4">
+              {snapshotLoading ? (
+                <div className="flex h-40 items-center justify-center">
+                  <LoadingSpinner size="md" message="Cargando antecedentes..." />
+                </div>
+              ) : (
+                <MedicalAntecedentsColumn
+                  medicalHistory={snapshot?.medicalHistory ?? null}
+                  patientHeader={snapshot?.patientHeader ?? null}
+                  patientId={patientId}
+                  activeAppointmentId={effectiveActiveAppointmentId}
+                  onEditClick={openMedicalHistoryDrawer}
+                  canEdit={canEditMedicalHistory}
+                  forbidden={snapshotForbidden}
+                  loadError={snapshotError}
+                  onRetry={() => loadSnapshot(patientId)}
+                  onViewOdontogram={() =>
+                    setActiveTab(PATIENT_TABS.ODONTOGRAM)
+                  }
+                />
+              )}
+
+              <div>
+                <p className={cn(SECTION_LABEL_CLASS, "select-none mb-2")}>
+                  Cronología de visitas
+                </p>
+                <VisitTimeline
+                  appointments={appointments}
+                  loading={appointmentsLoading}
+                  activeAppointmentId={effectiveActiveAppointmentId}
+                  onStartConsultation={handleStartConsultation}
+                  onNewConsultation={openStartNow}
+                  onViewVisitHistory={handleViewVisitHistory}
+                  onAppointmentsChanged={loadAppointments}
+                />
+              </div>
+            </div>
           </div>
         </TabsContent>
 
-        {!isCurrentlyActiveConsultation && (
-          <TabsContent
-            value="odontograma"
-            className="flex-1 min-h-0 mt-2 overflow-hidden flex flex-col"
-          >
-            <PatientOdontogramPanel
-              patient={patient}
-              activeAppointmentId={effectiveActiveAppointmentId}
-              historicAppointmentId={historicAppointmentId}
-              onClearHistoric={handleBackToCurrentOdontogram}
-              appointments={appointments}
-              visitEditability={visitEditability}
-              onSelectHistoricVisit={handleSelectHistoricVisit}
-            />
-          </TabsContent>
-        )}
+        {/* ── Odontograma ──────────────────────────────────────────────────
+            Ya no está condicionado por `isCurrentlyActiveConsultation`: es una
+            pestaña fija. El modal de finalizar consulta se renderiza DENTRO de
+            este árbol (lib/odontogram/OdontogramModule), y Radix desmonta las
+            pestañas inactivas — por eso `openFinalizeModal` salta a esta pestaña
+            antes de abrirlo. No quitar ese salto. */}
+        <TabsContent
+          value={PATIENT_TABS.ODONTOGRAM}
+          className="flex-1 min-h-0 mt-2 overflow-hidden flex flex-col"
+        >
+          <PatientOdontogramPanel
+            patient={patient}
+            activeAppointmentId={effectiveActiveAppointmentId}
+            historicAppointmentId={historicAppointmentId}
+            onClearHistoric={handleBackToCurrentOdontogram}
+            appointments={appointments}
+            visitEditability={visitEditability}
+            onSelectHistoricVisit={handleSelectHistoricVisit}
+            finalizeOpen={isFinalizeModalOpen}
+            onFinalizeClose={closeFinalizeModal}
+            onFinalizeSuccess={handleFinalizeSuccess}
+          />
+        </TabsContent>
 
         {canViewTreatmentPlan && (
           // `overflow-hidden` aquí: el scroll lo posee el cuerpo de la tabla,
           // dentro del panel. Si esta pestaña también desbordara habría dos
           // superficies scrolleables encajadas (ADR-36).
           <TabsContent
-            value={TREATMENT_PLAN_TAB}
+            value={PATIENT_TABS.TREATMENT_PLAN}
             className="flex-1 min-h-0 mt-2 overflow-hidden flex flex-col"
           >
             <PatientTreatmentPlanPanel
@@ -320,6 +323,32 @@ export function ClinicalHistoryPage({
             />
           </TabsContent>
         )}
+
+        {/* ── Imágenes y Archivos ──────────────────────────────────────────
+            Los adjuntos vivían dentro de la columna de perfil, donde no cabían.
+            `PatientInfoColumn` ya resuelve subida, descarga autenticada por Blob
+            y permisos, así que la pestaña la reutiliza en vez de duplicar esa
+            lógica: no hay URL pública ni miniatura, y esa parte es delicada. */}
+        <TabsContent
+          value={PATIENT_TABS.FILES}
+          className="flex-1 min-h-0 mt-2 overflow-auto"
+        >
+          <div className="max-w-3xl">
+            <PatientInfoColumn
+              patient={patient}
+              medicalHistory={snapshot?.medicalHistory ?? null}
+              patientHeader={snapshot?.patientHeader ?? null}
+              canUpload={canManageAttachments}
+              canDelete={canManageAttachments}
+              canEdit={canEditPatient}
+              activeAppointmentId={effectiveActiveAppointmentId}
+              onEditPatient={openEditPatient}
+              onPhotoChange={
+                canEditPatient ? handlePatientPhotoChange : undefined
+              }
+            />
+          </div>
+        </TabsContent>
       </Tabs>
 
       <StartConsultationNowModal

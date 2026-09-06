@@ -10,6 +10,10 @@ import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useActiveConsultation } from "@/lib/store/useActiveConsultation";
 import { getVisitEditability, isLockedVisit } from "./visit-editability";
+import { PATIENT_TABS, resolveTab, type PatientTab } from "./patient-tabs";
+import { localTodayInput, parseLocalValue } from "@/lib/datetime";
+import { formatVisitDate } from "@/lib/utils/visit-eligibility";
+import type { ConsultationCta } from "@/components/features/patients/clinical-history-page/continuity";
 import type { UpdateMedicalHistoryRequest } from "@/lib/entity/clinical-history";
 import type { Patient } from "@/lib/entity/patients";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
@@ -21,20 +25,11 @@ export interface UseClinicalHistoryPageParams {
   openFinalizeOnLoad?: boolean;
 }
 
-/** Valor canónico de la pestaña del plan de tratamiento en `?tab=`. */
-export const TREATMENT_PLAN_TAB = "plan-tratamiento";
-
 /**
- * Alias aceptados en el deep-link `?tab=`. Existen para que un enlace ya
- * repartido (correo, ficha impresa, otro módulo) no aterrice en una pestaña
- * inexistente, que Radix pinta como contenido en blanco.
+ * Se re-exporta para no romper a los consumidores que ya lo importaban de aquí.
+ * La definición canónica vive ahora en `patient-tabs.ts`, junto al resolvedor.
  */
-const TAB_ALIASES: Record<string, string> = {
-  odontogram: "odontograma",
-  plan: TREATMENT_PLAN_TAB,
-  "plan-de-tratamiento": TREATMENT_PLAN_TAB,
-  "treatment-plan": TREATMENT_PLAN_TAB,
-};
+export const TREATMENT_PLAN_TAB = PATIENT_TABS.TREATMENT_PLAN;
 
 export function useClinicalHistoryPage({
   patientId,
@@ -43,13 +38,12 @@ export function useClinicalHistoryPage({
   openFinalizeOnLoad = false,
 }: UseClinicalHistoryPageParams) {
   const router = useRouter();
-  const normalizedInitialTab = initialTab
-    ? (TAB_ALIASES[initialTab] ?? initialTab)
-    : activeAppointmentId
-      ? "workspace"
-      : "historia-clinica";
-
-  const [activeTab, setActiveTab] = useState(normalizedInitialTab);
+  // La normalización pasa por `resolveTab`, que es TOTAL: cualquier alias o
+  // valor desconocido cae en una pestaña que existe. Antes un `?tab=` fuera de
+  // la lista dejaba a Radix sin contenido que montar.
+  const [activeTab, setActiveTab] = useState<string>(() =>
+    resolveTab(initialTab, { canViewTreatmentPlan: true }),
+  );
   const [restoredAppointmentId, setRestoredAppointmentId] = useState<
     string | undefined
   >(undefined);
@@ -93,6 +87,7 @@ export function useClinicalHistoryPage({
     start: startConsultation,
     end: endConsultation,
     isActiveFor,
+    startTime: consultationStartTime,
   } = useActiveConsultation();
 
   const effectiveActiveAppointmentId =
@@ -166,7 +161,7 @@ export function useClinicalHistoryPage({
           }
           setRestoredAppointmentId(undefined);
           if (activeAppointmentId) {
-            setActiveTab("historia-clinica");
+            setActiveTab(PATIENT_TABS.EVOLUTION);
             router.replace(`/patients/${patientId}`);
           }
           return;
@@ -174,9 +169,9 @@ export function useClinicalHistoryPage({
 
         if (!activeAppointmentId && persistedMatchesCurrentPatient) {
           setRestoredAppointmentId(candidateAppointmentId);
-          setActiveTab("workspace");
+          setActiveTab(PATIENT_TABS.EVOLUTION);
           router.replace(
-            `/patients/${patientId}?tab=workspace&appointmentId=${candidateAppointmentId}`,
+            `/patients/${patientId}?tab=${PATIENT_TABS.EVOLUTION}&appointmentId=${candidateAppointmentId}`,
           );
           return;
         }
@@ -210,7 +205,7 @@ export function useClinicalHistoryPage({
 
         setRestoredAppointmentId(undefined);
         if (activeAppointmentId) {
-          setActiveTab("historia-clinica");
+          setActiveTab(PATIENT_TABS.EVOLUTION);
           router.replace(`/patients/${patientId}`);
         }
       });
@@ -268,7 +263,7 @@ export function useClinicalHistoryPage({
       endConsultation();
     }
     setRestoredAppointmentId(undefined);
-    setActiveTab("historia-clinica");
+    setActiveTab(PATIENT_TABS.EVOLUTION);
     if (activeAppointmentId) {
       router.replace(`/patients/${patientId}`);
     }
@@ -322,10 +317,10 @@ export function useClinicalHistoryPage({
     if (!openFinalizeOnLoad || !isCurrentlyActiveConsultation) return;
 
     // Mismo motivo que en `openFinalizeModal`: el modal solo existe dentro del
-    // Workspace. Al entrar por enlace con `openFinalizeOnLoad` la pestaña
-    // inicial por defecto es Historia Clínica, así que sin esto el modal se
-    // "abría" sobre una pestaña que no lo monta.
-    setActiveTab("workspace");
+    // módulo del odontograma. Al entrar por `?finalize=1` la pestaña inicial es
+    // Evolución, así que sin este salto el modal se "abría" sobre una pestaña
+    // que no lo monta.
+    setActiveTab(PATIENT_TABS.ODONTOGRAM);
     setIsFinalizeModalOpen(true);
   }, [openFinalizeOnLoad, isCurrentlyActiveConsultation]);
 
@@ -351,10 +346,9 @@ export function useClinicalHistoryPage({
   // Un `?tab=plan-tratamiento` de alguien sin el módulo dejaría a Radix sin
   // contenido que montar (pantalla en blanco). Se resuelve al leer, no con otro
   // estado, para no encadenar un render extra en cada carga.
-  const effectiveActiveTab =
-    activeTab === TREATMENT_PLAN_TAB && !canViewTreatmentPlan
-      ? "historia-clinica"
-      : activeTab;
+  const effectiveActiveTab: PatientTab = resolveTab(activeTab, {
+    canViewTreatmentPlan,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -410,9 +404,9 @@ export function useClinicalHistoryPage({
   // la consulta que se acababa de abrir.
   const handleStartConsultation = useCallback(
     (appointmentId: string) => {
-      setActiveTab("workspace");
+      setActiveTab(PATIENT_TABS.EVOLUTION);
       router.push(
-        `/patients/${patientId}?tab=workspace&appointmentId=${appointmentId}`,
+        `/patients/${patientId}?tab=${PATIENT_TABS.EVOLUTION}&appointmentId=${appointmentId}`,
       );
       void loadAppointments();
     },
@@ -422,9 +416,9 @@ export function useClinicalHistoryPage({
   const handleStartNow = useCallback(
     (appointmentId: string) => {
       setShowStartNow(false);
-      setActiveTab("workspace");
+      setActiveTab(PATIENT_TABS.EVOLUTION);
       router.push(
-        `/patients/${patientId}?tab=workspace&appointmentId=${appointmentId}`,
+        `/patients/${patientId}?tab=${PATIENT_TABS.EVOLUTION}&appointmentId=${appointmentId}`,
       );
       void loadAppointments();
     },
@@ -445,9 +439,9 @@ export function useClinicalHistoryPage({
       try {
         await appointmentsService.startAppointment(appointmentId);
         setVerifiedStatus("in_progress");
-        setActiveTab("workspace");
+        setActiveTab(PATIENT_TABS.EVOLUTION);
         router.push(
-          `/patients/${patientId}?tab=workspace&appointmentId=${appointmentId}`,
+          `/patients/${patientId}?tab=${PATIENT_TABS.EVOLUTION}&appointmentId=${appointmentId}`,
         );
       } catch (error) {
         notifyApiError("No se pudo iniciar la consulta", error);
@@ -475,22 +469,108 @@ export function useClinicalHistoryPage({
     [patientId, updateMedicalHistory],
   );
 
-  // La pestaña "odontograma" SOLO se monta cuando no hay consulta activa
-  // (ClinicalHistoryPage la condiciona a `!isCurrentlyActiveConsultation`).
-  // Durante una consulta activa el odontograma vive dentro de "workspace":
-  // fijar "odontograma" dejaba el panel en blanco justo al entrar al historial
-  // desde el drawer de visitas.
-  const handleViewOdontogram = useCallback(
-    (appointmentId: string) => {
-      setHistoricAppointmentId(appointmentId);
-      setActiveTab(isCurrentlyActiveConsultation ? "workspace" : "odontograma");
-    },
-    [isCurrentlyActiveConsultation],
-  );
+  // Con las cuatro pestañas fijas el destino ya no depende de si hay consulta
+  // activa: el odontograma tiene siempre su propia pestaña. Antes había que
+  // elegir entre "workspace" y "odontograma" según el estado, y equivocarse
+  // dejaba el panel en blanco.
+  const handleViewOdontogram = useCallback((appointmentId: string) => {
+    setHistoricAppointmentId(appointmentId);
+    setActiveTab(PATIENT_TABS.ODONTOGRAM);
+  }, []);
 
   const handleBackToCurrentOdontogram = useCallback(() => {
     setHistoricAppointmentId(undefined);
   }, []);
+
+  /**
+   * Estado del CTA de consulta de la franja de continuidad.
+   *
+   * Es una unión EXHAUSTIVA a propósito: la vista hace `switch` con un
+   * `default: { const _never: never = cta }`, así que añadir un caso obliga a
+   * pintarlo. El estado `disabled` no es cosmético — ofrecer "Nueva consulta"
+   * antes de saber si el paciente ya tiene una abierta es el único agujero de un
+   * clic que produce la consulta express DUPLICADA.
+   *
+   * El gate de permiso va aquí y no en el componente: iniciar una cita es una
+   * mutación (`PATCH /appointments/{id}/start`) y sin autoridad el backend
+   * responde 403, que abre el diálogo global de "Acceso Denegado".
+   */
+  const consultationCta = ((): ConsultationCta => {
+    if (!(isAdmin || can("appointments", PermissionAction.EDIT))) {
+      return { kind: "hidden" };
+    }
+    // Ya hay consulta en curso: manda "Finalizar" desde la cinta.
+    if (visitEditability.kind === "editable") return { kind: "hidden" };
+    if (appointmentsLoading) return { kind: "disabled" };
+
+    const inProgress = appointments.find((a) => a.status === "in_progress");
+    if (inProgress) {
+      return { kind: "continue", appointmentId: inProgress.id };
+    }
+
+    // "Hoy" en hora LOCAL de la clínica. Con `toISOString()` esto degradaba
+    // cada tarde en America/La_Paz y empujaba a crear una consulta duplicada.
+    const today = localTodayInput();
+    const todayScheduled = appointments
+      .filter((a) => a.status === "scheduled" && a.date === today)
+      .sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""))[0];
+    if (todayScheduled) {
+      return {
+        kind: "start-scheduled",
+        appointmentId: todayScheduled.id,
+        time: todayScheduled.time ?? "",
+        doctorName: todayScheduled.doctorName,
+      };
+    }
+
+    return { kind: "start" };
+  })();
+
+  /**
+   * Estado de la cinta de visita. PRECEDENCIA: el modo histórico GANA sobre la
+   * consulta activa — si estás mirando el pasado, la cinta tiene que decir eso y
+   * apagar cronómetro, autoguardado y "Finalizar", o la pantalla afirma dos
+   * cosas incompatibles a la vez.
+   */
+  const visitRibbonState = (() => {
+    if (historicAppointmentId) {
+      const visit = appointments.find((a) => a.id === historicAppointmentId);
+      return {
+        kind: "historic" as const,
+        dateLabel: visit ? formatVisitDate(parseLocalValue(visit.date)) : "una visita anterior",
+      };
+    }
+    if (!isCurrentlyActiveConsultation) return null;
+    const current = appointments.find(
+      (a) => a.id === effectiveActiveAppointmentId,
+    );
+    return {
+      kind: "active" as const,
+      // El store guarda `Date.now()`; la cinta espera algo parseable.
+      startedAt: consultationStartTime
+        ? new Date(consultationStartTime).toISOString()
+        : undefined,
+      dateLabel: current ? formatVisitDate(parseLocalValue(current.date)) : "hoy",
+      doctorName: current?.doctorName,
+    };
+  })();
+
+  /** Próxima cita agendada, la más cercana en el futuro. */
+  const nextAppointment = (() => {
+    const today = localTodayInput();
+    const upcoming = appointments
+      .filter((a) => a.status === "scheduled" && a.date >= today)
+      .sort((a, b) =>
+        `${a.date} ${a.time ?? ""}`.localeCompare(`${b.date} ${b.time ?? ""}`),
+      )[0];
+    return upcoming
+      ? {
+          date: upcoming.date,
+          time: upcoming.time,
+          doctorName: upcoming.doctorName,
+        }
+      : null;
+  })();
 
   const openStartNow = useCallback(() => {
     setShowStartNow(true);
@@ -501,14 +581,16 @@ export function useClinicalHistoryPage({
   }, []);
 
   const openFinalizeModal = useCallback(() => {
-    // El banner de consulta activa es de PÁGINA y su botón "Finalizar consulta"
-    // se ve desde cualquier pestaña, pero el modal de cierre se renderiza dentro
-    // del módulo del odontograma, que solo vive en el Workspace. Radix desmonta
-    // las pestañas inactivas, así que pulsarlo desde Historia Clínica encendía
-    // el estado y no pintaba nada: el botón parecía roto.
-    // Volver al Workspace además es lo coherente: el modal resume lo ejecutado
-    // en el odontograma, que es justo lo que esa pestaña muestra.
-    setActiveTab("workspace");
+    // El salto de pestaña NO es cosmético y no se puede quitar: el modal de
+    // cierre se renderiza dentro de `lib/odontogram/OdontogramModule`, dos
+    // niveles por debajo del panel del odontograma, y Radix DESMONTA las
+    // pestañas inactivas. Pulsar "Finalizar consulta" desde cualquier otra
+    // pestaña encendía el estado sin pintar nada: el botón parecía roto.
+    //
+    // El destino es ODONTOGRAMA (antes era el Workspace, que ya no existe).
+    // Que las cuatro pestañas estén siempre montadas NO basta: lo que da la
+    // garantía es el salto, porque Radix monta solo el TabsContent activo.
+    setActiveTab(PATIENT_TABS.ODONTOGRAM);
     setIsFinalizeModalOpen(true);
   }, []);
 
@@ -519,7 +601,7 @@ export function useClinicalHistoryPage({
   const handleFinalizeSuccess = useCallback(() => {
     setIsFinalizeModalOpen(false);
     endConsultation();
-    setActiveTab("historia-clinica");
+    setActiveTab(PATIENT_TABS.EVOLUTION);
     void loadAppointments();
     router.replace(`/patients/${patientId}`);
     router.refresh();
@@ -645,6 +727,9 @@ export function useClinicalHistoryPage({
     handleStartConsultation,
     handleStartNow,
     handleStartScheduledConsultation,
+    consultationCta,
+    nextAppointment,
+    visitRibbonState,
     handleViewVisitHistory,
     handleSaveMedicalHistory,
     handleViewOdontogram,
