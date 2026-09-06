@@ -19,6 +19,9 @@ import type {
   AppointmentStatus,
 } from "@/lib/entity/appointment/appointments";
 import { SECTION_LABEL_CLASS } from "./section-label";
+import { localTodayInput } from "@/lib/datetime";
+import { usePermission } from "@/lib/hooks/use-permission";
+import { PermissionAction } from "@/lib/permissions/permission-actions";
 
 export interface VisitTimelineProps {
   appointments: Appointment[];
@@ -27,6 +30,11 @@ export interface VisitTimelineProps {
   onViewVisitHistory?: (appointment: Appointment) => void;
   onStartConsultation?: (appointmentId: string) => void;
   onNewConsultation?: () => void;
+  /**
+   * Recarga la lista tras cancelar o reagendar. Sin esto la fila cancelada
+   * seguía pintada como "Agendada", con sus botones activos, hasta recargar.
+   */
+  onAppointmentsChanged?: () => void;
 }
 
 interface StatusConfig {
@@ -127,19 +135,42 @@ export function VisitTimeline({
   onViewVisitHistory,
   onStartConsultation,
   onNewConsultation,
+  onAppointmentsChanged,
 }: VisitTimelineProps) {
+  // Cancelar y reagendar son MUTACIONES sobre la agenda y hasta ahora se
+  // pintaban para cualquiera que pudiera abrir la ficha: este componente no
+  // importaba `usePermission` en absoluto. Se ocultan, no se deshabilitan: un
+  // control deshabilitado insinúa que en otro contexto sería posible.
+  const { isAdmin, can } = usePermission();
+  const canManageAppointments =
+    isAdmin || can("appointments", PermissionAction.EDIT);
+
   const [cancelAppt, setCancelAppt] = useState<Appointment | null>(null);
   const [rescheduleAppt, setRescheduleAppt] = useState<Appointment | null>(
     null,
   );
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  // Fecha LOCAL, no UTC. `new Date().toISOString().slice(0,10)` devuelve el día
+  // en UTC: en America/La_Paz (UTC-4, la zona por defecto de la clínica) a
+  // partir de las 20:00 locales la cita de HOY dejaba de reconocerse y el botón
+  // degradaba de "Continuar Consulta" a "Iniciar Nueva Consulta", con lo que el
+  // usuario creaba una consulta express DUPLICADA en vez de usar su cita.
+  //
+  // Se recalcula con la lista en vez de memorizarse con deps vacías: así una
+  // pestaña abierta cruzando la medianoche no se queda anclada al día anterior.
+  const today = localTodayInput();
 
   /**
-   * Sort order:
-   * 1. in_progress (active consultation) — always first
-   * 2. scheduled — upcoming, newest first
-   * 3. completed/cancelled/no_show — past, newest first
+   * Orden:
+   * 1. in_progress (consulta en curso) — siempre primero
+   * 2. scheduled — próximas, la MÁS CERCANA primero
+   * 3. completed/cancelled/no_show — pasadas, la más reciente primero
+   *
+   * Los dos bloques no pueden compartir comparador: para una cita futura
+   * "más reciente" es la más LEJANA, así que el orden descendente enterraba la
+   * próxima cita del paciente —el dato que más se busca— al fondo del bloque.
+   * Se desempata por hora: comparando solo `date`, dos citas del mismo día
+   * quedaban en orden arbitrario.
    */
   const sorted = useMemo<Appointment[]>(() => {
     const statusOrder = (s: AppointmentStatus): number => {
@@ -147,10 +178,13 @@ export function VisitTimeline({
       if (s === "scheduled") return 1;
       return 2;
     };
+    const stamp = (a: Appointment) => `${a.date} ${a.time ?? ""}`;
     return [...appointments].sort((a, b) => {
       const orderDiff = statusOrder(a.status) - statusOrder(b.status);
       if (orderDiff !== 0) return orderDiff;
-      return b.date.localeCompare(a.date);
+      return a.status === "scheduled"
+        ? stamp(a).localeCompare(stamp(b))
+        : stamp(b).localeCompare(stamp(a));
     });
   }, [appointments]);
 
@@ -212,7 +246,8 @@ export function VisitTimeline({
                   (appt.status === "completed" ||
                     appt.status === "in_progress") &&
                   !!onViewVisitHistory;
-                const canCancel = appt.status === "scheduled";
+                const canCancel =
+                  appt.status === "scheduled" && canManageAppointments;
                 const isLast = idx === sorted.length - 1;
 
                 return (
@@ -309,7 +344,10 @@ export function VisitTimeline({
           appointment={cancelAppt}
           isOpen
           onClose={() => setCancelAppt(null)}
-          onSuccess={() => setCancelAppt(null)}
+          onSuccess={() => {
+            setCancelAppt(null);
+            onAppointmentsChanged?.();
+          }}
         />
       )}
       {rescheduleAppt && (
@@ -317,7 +355,10 @@ export function VisitTimeline({
           appointment={rescheduleAppt}
           isOpen
           onClose={() => setRescheduleAppt(null)}
-          onSuccess={() => setRescheduleAppt(null)}
+          onSuccess={() => {
+            setRescheduleAppt(null);
+            onAppointmentsChanged?.();
+          }}
         />
       )}
     </div>

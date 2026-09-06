@@ -46,6 +46,7 @@ export function ClinicalHistoryPage({
     snapshotForbidden,
     snapshotError,
     loadSnapshot,
+    loadAppointments,
     activeTab,
     setActiveTab,
     showStartNow,
@@ -279,6 +280,7 @@ export function ClinicalHistoryPage({
               onStartConsultation={handleStartConsultation}
               onNewConsultation={openStartNow}
               onViewVisitHistory={handleViewVisitHistory}
+              onAppointmentsChanged={loadAppointments}
             />
           </div>
         </TabsContent>
