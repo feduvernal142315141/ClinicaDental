@@ -39,7 +39,6 @@ import type {
 } from "@/lib/entity/appointment/appointments";
 import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 import type { VisitRecordState } from "@/lib/hooks/patients/clinical-history-page/use-visit-records-batch";
-import { SECTION_LABEL_CLASS } from "../section-label";
 
 // ---------------------------------------------------------------------------
 // Catálogo CIE-10: resolución de etiquetas
@@ -271,6 +270,14 @@ export interface VisitEntryCardProps {
 /** Altura a partir de la cual la nota se pliega (px). */
 const NOTE_COLLAPSED_MAX_PX = 352; // = max-h-[22rem]
 
+/** Rótulo técnico de bloque clínico. */
+const BLOCK_LABEL_CLASS =
+  "mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-subtle/80";
+
+/** Contenedor de lectura para los bloques de texto largo (Subjetivo, Plan). */
+const PROSE_BOX_CLASS =
+  "rounded-xl bg-hover/60 p-3 text-sm leading-relaxed text-ink";
+
 const CHIP_CLASS =
   "inline-flex items-center gap-1.5 rounded-lg bg-hover px-2 py-1 text-xs text-ink ring-1 ring-hairline";
 
@@ -303,6 +310,7 @@ export function VisitEntryCard({
   const bodyId = useId();
 
   const statusConfig = getVisitStatusConfig(appointment.status);
+  const isRunning = appointment.status === "in_progress";
   const typeLabel = appointment.type
     ? (APPOINTMENT_TYPE_LABEL[appointment.type] ?? appointment.type)
     : null;
@@ -327,12 +335,15 @@ export function VisitEntryCard({
   return (
     <section
       className={cn(
-        "bento overflow-hidden",
-        // El borde de marca marca la consulta abierta, como en el mockup.
-        expanded && "border-l-2 border-l-brand",
+        // Sin borde izquierdo de color: esto es un asiento de la historia, no
+        // una alerta. La consulta EN CURSO —no la desplegada— se señala con un
+        // anillo mínimo, que es una diferencia de estado real y no de foco.
+        "overflow-hidden rounded-2xl border border-hairline bg-surface",
+        "shadow-sm transition-all ease-emphasized hover:border-hairline/80",
+        isRunning && "bg-brand/[0.02] ring-1 ring-brand/30",
       )}
     >
-      <div className="flex items-start gap-2 p-4">
+      <div className="flex items-start gap-2 p-4 sm:p-5">
         <button
           type="button"
           onClick={() => setExpanded((value) => !value)}
@@ -341,8 +352,11 @@ export function VisitEntryCard({
           className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left transition-colors ease-emphasized focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
         >
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold text-ink">
-              {title} · {formatLongDate(appointment.date)}
+            <span className="block truncate text-base font-semibold text-ink">
+              {title}{" "}
+              <span className="font-normal text-subtle">
+                · {formatLongDate(appointment.date)}
+              </span>
             </span>
 
             <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-subtle">
@@ -354,13 +368,15 @@ export function VisitEntryCard({
                 <User className="h-3 w-3 shrink-0" aria-hidden="true" />
                 Dr. {doctorName}
               </span>
-              {appointment.time ? (
+              {/* La hora solo se muestra donde SIGNIFICA algo: en una cita
+                  agendada es el dato que importa. En una ya finalizada sería
+                  ruido — y peor, el DTO no trae la hora real de atención, así
+                  que enseñar la de agenda insinuaría una hora de atención que
+                  el sistema no registra. */}
+              {appointment.status === "scheduled" && appointment.time ? (
                 <>
                   <span aria-hidden="true">·</span>
-                  {/* El DTO de la lista no trae la hora real de atención:
-                      presentar la hora de agenda como hora de atención sería
-                      falso, así que va rotulada. */}
-                  <span>{appointment.time} agendada</span>
+                  <span>{appointment.time}</span>
                 </>
               ) : null}
               <StatusBadge tone={statusConfig.tone} className="text-[10px]">
@@ -589,28 +605,53 @@ function VisitRecordBands({
   );
   const notes = record.clinicalNotes?.trim();
 
+  // Con registro pero SIN una sola anotación clínica no se pintan cuatro
+  // rótulos vacíos: se dice una vez y se dice claro. Sigue siendo distinguible
+  // de "sin registro de visita" (404) y de "no se pudo cargar" (5xx), que son
+  // los otros dos estados y viven arriba.
+  const hasAnyClinicalData = Boolean(
+    chiefComplaint ||
+      painText ||
+      extraoral.length ||
+      intraoral.length ||
+      diagnoses.length ||
+      notes,
+  );
+
+  if (!hasAnyClinicalData) {
+    return (
+      <div className="space-y-4">
+        <p className="py-2 text-center text-xs italic text-subtle">
+          Sin anotaciones clínicas registradas en esta visita
+        </p>
+        <VisitAttachments attachments={attachments} />
+        <VisitStampFooter appointment={appointment} record={record} />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5">
       {chiefComplaint || painText ? (
         <section>
-          <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>Subjetivo</h3>
+          <h3 className={BLOCK_LABEL_CLASS}>Subjetivo</h3>
           {/* Sin comillas y sin atribuirlo al paciente: este texto lo siembra el
               backend desde las notas de la cita, que puede haber escrito
               recepción. */}
-          {chiefComplaint ? (
-            <p className="text-sm leading-relaxed text-ink">{chiefComplaint}</p>
-          ) : null}
-          {painText ? (
-            <p className="mt-1 text-xs text-subtle">
-              <span className="text-ink">Dolor:</span> {painText}
-            </p>
-          ) : null}
+          <div className={PROSE_BOX_CLASS}>
+            {chiefComplaint ? <p>{chiefComplaint}</p> : null}
+            {painText ? (
+              <p className={cn("text-xs text-subtle", chiefComplaint && "mt-1.5")}>
+                <span className="font-medium text-ink">Dolor:</span> {painText}
+              </p>
+            ) : null}
+          </div>
         </section>
       ) : null}
 
       {extraoral.length > 0 || intraoral.length > 0 ? (
         <section>
-          <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>Objetivo</h3>
+          <h3 className={BLOCK_LABEL_CLASS}>Objetivo</h3>
           <div className="space-y-2">
             {extraoral.length > 0 ? (
               <FindingsGroup title="Extraoral" rows={extraoral} />
@@ -624,45 +665,59 @@ function VisitRecordBands({
 
       {diagnoses.length > 0 ? (
         <section>
-          <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>Apreciación</h3>
-          <ul className="flex flex-wrap gap-1.5">
+          <h3 className={BLOCK_LABEL_CLASS}>Apreciación</h3>
+          {/* Filas y no cápsulas: un diagnóstico CIE-10 con descripción es una
+              línea de texto larga, y como chip se estiraba a todo el ancho
+              perdiendo cualquier estructura. Así el código, la descripción, la
+              pieza y el estado ocupan siempre el mismo sitio y se comparan de
+              un vistazo entre diagnósticos. */}
+          <ul className="space-y-1.5">
             {diagnoses.map((diagnosis, index) => (
-              <li key={`${diagnosis.code}-${index}`} className={CHIP_CLASS}>
-                <span className="font-medium">
-                  {diagnosis.code} — {resolveDiagnosisLabel(diagnosis)}
+              <li
+                key={`${diagnosis.code}-${index}`}
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-hairline bg-surface px-3 py-2 text-xs"
+              >
+                {diagnosis.toothRef?.fdi ? (
+                  <span className="rounded-md bg-brand/10 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-brand">
+                    Pieza {diagnosis.toothRef.fdi}
+                    {diagnosis.toothRef.surface
+                      ? ` · ${diagnosis.toothRef.surface}`
+                      : ""}
+                  </span>
+                ) : null}
+                <span className="font-semibold text-ink">{diagnosis.code}</span>
+                <span className="min-w-0 text-subtle">
+                  {resolveDiagnosisLabel(diagnosis)}
                 </span>
-                <span className="text-[10px] text-subtle">
+                {diagnosis.source === "odontogram" ? (
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] text-subtle"
+                    title="Este diagnóstico se derivó de lo registrado en el odontograma"
+                  >
+                    <Activity className="h-2.5 w-2.5" aria-hidden="true" />
+                    del odontograma
+                  </span>
+                ) : null}
+                <span className="ml-auto shrink-0 rounded bg-hover px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-subtle">
                   {diagnosis.status === "confirmed" ? "Confirmado" : "Provisional"}
                 </span>
-                {diagnosis.toothRef?.fdi ? (
-                  <span className="rounded bg-surface px-1 text-[10px] tabular-nums text-subtle ring-1 ring-hairline">
-                    Pieza {diagnosis.toothRef.fdi}
-                    {diagnosis.toothRef.surface ? ` · ${diagnosis.toothRef.surface}` : ""}
-                  </span>
-                ) : null}
-                {diagnosis.source === "odontogram" ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-subtle">
-                    <Activity className="h-2.5 w-2.5" aria-hidden="true" />
-                    derivado del odontograma
-                  </span>
-                ) : null}
               </li>
             ))}
           </ul>
         </section>
       ) : null}
 
-      <section>
-        <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>Plan</h3>
-        {notes ? (
-          <ClinicalNote html={notes} />
-        ) : (
-          // Hay registro, pero nadie escribió la evolución. No es un fallo.
-          <p className="text-xs italic text-subtle">
-            Sin nota de evolución registrada
-          </p>
-        )}
-      </section>
+      {/* PLAN solo si hay nota. La ausencia ya la declara el estado global de
+          "sin anotaciones clínicas" de arriba, así que repetirla aquí como
+          rótulo huérfano solo añadía altura muerta a cada tarjeta. */}
+      {notes ? (
+        <section>
+          <h3 className={BLOCK_LABEL_CLASS}>Plan</h3>
+          <div className={PROSE_BOX_CLASS}>
+            <ClinicalNote html={notes} />
+          </div>
+        </section>
+      ) : null}
 
       <VisitAttachments attachments={attachments} />
 
@@ -719,9 +774,7 @@ function VisitAttachments({ attachments }: { attachments?: PatientAttachment[] }
 
   return (
     <section>
-      <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>
-        Adjuntos de esta consulta
-      </h3>
+      <h3 className={BLOCK_LABEL_CLASS}>Adjuntos de esta consulta</h3>
       <ul className="flex flex-wrap gap-1.5">
         {attachments.map((attachment) => {
           const Icon = attachmentIcon(attachment.mimeType);

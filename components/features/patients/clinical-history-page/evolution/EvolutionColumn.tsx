@@ -37,6 +37,29 @@ const MONTHS_ES = [
  * America/La_Paz (la zona por defecto de la clínica) devuelve el mes anterior
  * los días 1.
  */
+/**
+ * Todas las formas en que un humano puede escribir una fecha, para que la
+ * búsqueda encuentre lo que la tarjeta MUESTRA.
+ *
+ * `appointment.date` es `"2026-08-25"`, pero en pantalla pone "25 de agosto de
+ * 2026". Buscando solo contra la cadena cruda, teclear "agosto" o "25/08" no
+ * devolvía nada: la búsqueda no encontraba lo que el usuario estaba leyendo.
+ */
+function dateHaystack(date?: string): string {
+  if (!date) return "";
+  const [year, month, day] = date.split("-");
+  const monthName = MONTHS_ES[Number(month) - 1] ?? "";
+  return [
+    date,
+    `${day}/${month}/${year}`,
+    `${day}-${month}-${year}`,
+    `${day} de ${monthName} de ${year}`,
+    `${monthName} ${year}`,
+    monthName,
+    year,
+  ].join(" ");
+}
+
 function formatMonthLabel(date?: string): string {
   if (!date) return "";
   const [year, month] = date.split("-");
@@ -130,6 +153,8 @@ export function EvolutionColumn({
   const [query, setQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [visibleLimit, setVisibleLimit] = useState(VISIBLE_PAGE_SIZE);
 
   const [cancelAppt, setCancelAppt] = useState<Appointment | null>(null);
@@ -200,22 +225,31 @@ export function EvolutionColumn({
         return false;
       }
       if (selectedDoctor && a.doctorName?.trim() !== selectedDoctor) return false;
+      // Comparación de cadenas `YYYY-MM-DD`: es lexicográficamente ordenable y
+      // evita construir `Date`, que interpretaría la fecha en UTC y en
+      // America/La_Paz dejaría fuera el primer día del rango.
+      if (dateFrom && (a.date ?? "") < dateFrom) return false;
+      if (dateTo && (a.date ?? "") > dateTo) return false;
       if (!q) return true;
       const haystack = [
         a.services?.[0]?.serviceName,
         a.reason,
         a.type,
         a.doctorName,
-        a.date,
+        dateHaystack(a.date),
       ]
         .filter(Boolean)
         .join(" ");
       return matchesQuery(haystack, q);
     });
-  }, [ordered, query, selectedYear, selectedDoctor]);
+  }, [ordered, query, selectedYear, selectedDoctor, dateFrom, dateTo]);
 
   const hasFilters =
-    query.trim().length > 0 || selectedYear !== null || selectedDoctor !== null;
+    query.trim().length > 0 ||
+    selectedYear !== null ||
+    selectedDoctor !== null ||
+    dateFrom !== "" ||
+    dateTo !== "";
 
   /**
    * Con un filtro puesto NO se pagina: el usuario ya acotó el conjunto y
@@ -240,6 +274,8 @@ export function EvolutionColumn({
     setQuery("");
     setSelectedYear(null);
     setSelectedDoctor(null);
+    setDateFrom("");
+    setDateTo("");
     setVisibleLimit(VISIBLE_PAGE_SIZE);
   }, []);
 
@@ -367,6 +403,12 @@ export function EvolutionColumn({
         onDoctorChange={setSelectedDoctor}
         resultCount={filtered.length}
         totalCount={ordered.length}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateRangeChange={(range) => {
+          setDateFrom(range.from);
+          setDateTo(range.to);
+        }}
         onClear={clearFilters}
       />
 

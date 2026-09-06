@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CalendarRange, Search, SlidersHorizontal, X } from "lucide-react";
+import { DateRangePicker } from "@/components/ui/controls/date-range-picker";
 import { Select, type SelectOption } from "@/components/ui/controls/select";
 import { cn } from "@/lib/utils/utils";
 
@@ -17,6 +18,10 @@ export interface EvolutionFilterBarProps {
   doctors: string[];
   selectedDoctor: string | null;
   onDoctorChange: (doctor: string | null) => void;
+  /** Rango de fechas `YYYY-MM-DD`; cadena vacía = sin límite por ese lado. */
+  dateFrom: string;
+  dateTo: string;
+  onDateRangeChange: (range: { from: string; to: string }) => void;
   /** Consultas que sobreviven al filtro. */
   resultCount: number;
   /** Consultas totales antes de filtrar. */
@@ -30,7 +35,11 @@ const ALL_DOCTORS = "__all__";
  * Búsqueda y filtros del historial de evolución.
  *
  * QUÉ SE BUSCA, Y POR QUÉ NO MÁS: el filtro corre sobre los datos de la CITA
- * —motivo, servicio, tipo, doctor y fecha—, que llegan completos en la lista.
+ * —fecha, motivo, servicio, tipo y doctor—, que llegan completos en la lista.
+ * La fecha se busca en TODAS las formas en que se escribe ("agosto",
+ * "25/08/2026", "25 de agosto de 2026", "2026"), no solo en el `YYYY-MM-DD`
+ * crudo: la tarjeta muestra "25 de agosto de 2026" y una búsqueda que no
+ * encuentra lo que el usuario está leyendo se siente rota aunque funcione.
  * NO busca dentro del texto de las notas ni de los diagnósticos, aunque parezca
  * lo natural: esos viven en el registro de cada visita, que se carga
  * perezosamente (una petición por tarjeta). Buscar ahí devolvería resultados
@@ -52,12 +61,20 @@ export function EvolutionFilterBar({
   doctors,
   selectedDoctor,
   onDoctorChange,
+  dateFrom,
+  dateTo,
+  onDateRangeChange,
   resultCount,
   totalCount,
   onClear,
 }: EvolutionFilterBarProps) {
+  const hasDateRange = dateFrom !== "" || dateTo !== "";
+  const [showDateRange, setShowDateRange] = useState(hasDateRange);
   const hasFilters =
-    query.trim().length > 0 || selectedYear !== null || selectedDoctor !== null;
+    query.trim().length > 0 ||
+    selectedYear !== null ||
+    selectedDoctor !== null ||
+    hasDateRange;
 
   const doctorOptions = useMemo<SelectOption[]>(
     () => [
@@ -86,7 +103,7 @@ export function EvolutionFilterBar({
             type="search"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Buscar por tratamiento, doctor o motivo…"
+            placeholder="Buscar por fecha, tratamiento, doctor o motivo…"
             aria-label="Buscar en el historial de consultas"
             className={cn(
               "h-9 w-full rounded-lg bg-hover pl-9 pr-3 text-sm text-ink",
@@ -112,6 +129,41 @@ export function EvolutionFilterBar({
               searchPlaceholder="Buscar profesional…"
               aria-label="Filtrar por profesional"
               className="h-9 text-xs"
+            />
+          </div>
+        ) : null}
+      </div>
+
+      {/* ── Rango de fechas ──────────────────────────────────────────────
+          Plegado por defecto: la mayoría de las búsquedas se resuelven con el
+          texto (que ya entiende "agosto", "25/08/2026" o "25 de agosto") o con
+          un chip de año. El rango es para la pregunta concreta —"qué le hice
+          entre marzo y mayo"— y no tiene por qué ocupar sitio el resto del
+          tiempo. */}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setShowDateRange((open) => !open)}
+          aria-expanded={showDateRange}
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1",
+            "text-xs font-medium ring-1 transition-colors focus-visible:outline-none",
+            "focus-visible:ring-2 focus-visible:ring-brand/40",
+            hasDateRange
+              ? "bg-brand/10 text-brand ring-brand/30"
+              : "bg-hover text-subtle ring-hairline hover:text-ink",
+          )}
+        >
+          <CalendarRange className="h-3.5 w-3.5" aria-hidden="true" />
+          {hasDateRange ? "Rango activo" : "Rango de fechas"}
+        </button>
+
+        {showDateRange ? (
+          <div className="w-full">
+            <DateRangePicker
+              from={dateFrom}
+              to={dateTo}
+              onChange={onDateRangeChange}
             />
           </div>
         ) : null}
@@ -168,7 +220,7 @@ export function EvolutionFilterBar({
             {query.trim().length > 0 ? (
               <span className="hidden text-[11px] sm:inline">
                 {" "}
-                · se busca en motivo, servicio, doctor y fecha
+                · se busca en fecha, motivo, servicio y doctor
               </span>
             ) : null}
           </p>
