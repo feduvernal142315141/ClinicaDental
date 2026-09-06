@@ -80,9 +80,11 @@ export function PatientInfoColumn({
 
   // NOTA: aquí vivía la alerta "Antecedentes médicos sin revisar", retirada a
   // propósito. Dependía de `medicalHistory.validatedAt`, cuyo ÚNICO escritor es
-  // `PATCH /clinical-history/patients/{id}/medical-history/validate`, y el único
-  // llamador de ese endpoint en el front es `ClinicalHistoryPanel`, un componente
-  // antd que quedó huérfano al borrarse su host. Guardar antecedentes no escribe
+  // `PATCH /clinical-history/patients/{id}/medical-history/validate`, que ya no
+  // tiene ningún llamador en el front: el último era `ClinicalHistoryPanel`, un
+  // componente antd huérfano borrado en el rediseño de esta ficha. El endpoint y
+  // `clinicalHistoryService.validateMedicalHistory` siguen existiendo, sin uso.
+  // Guardar antecedentes no escribe
   // el flag, así que el aviso salía en la ficha de TODOS los pacientes y no había
   // forma de cerrarlo, tuvieran los antecedentes completos o no.
   //
