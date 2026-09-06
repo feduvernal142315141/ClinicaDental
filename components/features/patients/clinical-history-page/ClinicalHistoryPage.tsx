@@ -42,6 +42,10 @@ export function ClinicalHistoryPage({
     snapshotLoading,
     appointments,
     appointmentsLoading,
+    visitEditability,
+    snapshotForbidden,
+    snapshotError,
+    loadSnapshot,
     activeTab,
     setActiveTab,
     showStartNow,
@@ -176,7 +180,7 @@ export function ClinicalHistoryPage({
                 historicAppointmentId={historicAppointmentId}
                 onClearHistoric={handleBackToCurrentOdontogram}
                 appointments={appointments}
-                appointmentsLoading={appointmentsLoading}
+                visitEditability={visitEditability}
                 onSelectHistoricVisit={handleSelectHistoricVisit}
                 finalizeOpen={isFinalizeModalOpen}
                 onFinalizeClose={closeFinalizeModal}
@@ -256,6 +260,9 @@ export function ClinicalHistoryPage({
                 activeAppointmentId={effectiveActiveAppointmentId}
                 onEditClick={openMedicalHistoryDrawer}
                 canEdit={canEditMedicalHistory}
+                forbidden={snapshotForbidden}
+                loadError={snapshotError}
+                onRetry={() => loadSnapshot(patientId)}
                 onViewOdontogram={() =>
                   setActiveTab(
                     isCurrentlyActiveConsultation ? "workspace" : "odontograma",
@@ -287,7 +294,7 @@ export function ClinicalHistoryPage({
               historicAppointmentId={historicAppointmentId}
               onClearHistoric={handleBackToCurrentOdontogram}
               appointments={appointments}
-              appointmentsLoading={appointmentsLoading}
+              visitEditability={visitEditability}
               onSelectHistoricVisit={handleSelectHistoricVisit}
             />
           </TabsContent>

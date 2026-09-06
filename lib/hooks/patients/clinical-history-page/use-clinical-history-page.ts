@@ -9,6 +9,7 @@ import { useClinicalHistory } from "@/lib/hooks/clinical-history";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useActiveConsultation } from "@/lib/store/useActiveConsultation";
+import { getVisitEditability, isLockedVisit } from "./visit-editability";
 import type { UpdateMedicalHistoryRequest } from "@/lib/entity/clinical-history";
 import type { Patient } from "@/lib/entity/patients";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
@@ -67,12 +68,23 @@ export function useClinicalHistoryPage({
   const [patientLoading, setPatientLoading] = useState(true);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+  // Status leído por id en el efecto de restauración. Hasta ahora se calculaba y
+  // se tiraba; se conserva porque es el ÚNICO dato fiable cuando la cita no está
+  // en la lista (capada a 100 y sin canceladas).
+  const [verifiedStatus, setVerifiedStatus] = useState<
+    Appointment["status"] | undefined
+  >(undefined);
 
+  // `forbidden` y `error` se consumen a propósito: sin ellos un 403 dejaba
+  // `snapshot` en null y las columnas pintaban "Sin alergias registradas", es
+  // decir, un fallo de permisos presentado como afirmación médica.
   const {
     snapshot,
     loading: snapshotLoading,
     loadSnapshot,
     updateMedicalHistory,
+    forbidden: snapshotForbidden,
+    error: snapshotError,
   } = useClinicalHistory();
 
   const {
@@ -86,20 +98,17 @@ export function useClinicalHistoryPage({
   const effectiveActiveAppointmentId =
     activeAppointmentId ?? restoredAppointmentId;
 
-  // Estado REAL de la cita "activa" según la lista del backend ya cargada
-  // (getPatientAppointments) — la MISMA fuente que gatea la editabilidad del
-  // odontograma en PatientOdontogramPanel. Se usa para reconciliar el store
-  // local persistido (useActiveConsultation), que no conoce el status ni caduca,
-  // y así evitar el desfase que dejaba un Workspace "activo" (timer eterno) con
-  // el odontograma silenciosamente en solo-lectura. `undefined` mientras la lista
-  // carga o si la cita no está en ella → se trata como NO terminal (fail-open).
-  const activeAppointmentFromList = appointments.find(
-    (a) => a.id === effectiveActiveAppointmentId,
-  );
-  const activeAppointmentIsTerminal =
-    !!activeAppointmentFromList &&
-    activeAppointmentFromList.status !== "in_progress" &&
-    activeAppointmentFromList.status !== "scheduled";
+  // Editabilidad de la visita en contexto. Se calcula UNA vez aquí y se pasa a
+  // `PatientOdontogramPanel` por prop: antes cada uno tenía su propia regla y
+  // discrepaban justo en el caso de una cita ausente de la lista (el hook la
+  // daba por activa, el panel la bloqueaba).
+  const visitEditability = getVisitEditability({
+    appointmentId: effectiveActiveAppointmentId,
+    appointments,
+    appointmentsLoading,
+    verifiedStatus,
+  });
+  const activeAppointmentIsTerminal = isLockedVisit(visitEditability);
 
   useEffect(() => {
     const persistedMatchesCurrentPatient = persistedPatientId === patientId;
@@ -109,8 +118,14 @@ export function useClinicalHistoryPage({
 
     if (!candidateAppointmentId) {
       setRestoredAppointmentId(undefined);
+      setVerifiedStatus(undefined);
       return;
     }
+
+    // Se invalida antes de pedirlo: un status verificado de la cita ANTERIOR
+    // mandaría sobre la lista y bloquearía la nueva. Mientras tanto la
+    // editabilidad cae en `unknown`, que es fail-open y no flashea solo-lectura.
+    setVerifiedStatus(undefined);
 
     let cancelled = false;
 
@@ -122,12 +137,28 @@ export function useClinicalHistoryPage({
         const appointmentPatientId =
           appointment.patientId ?? appointment.patient_id;
         const isSamePatient = appointmentPatientId === patientId;
-        const isActiveStatus =
-          appointment.status === "in_progress" ||
-          appointment.status === "scheduled";
+        // D1: solo `in_progress` es una consulta en curso. Una cita `scheduled`
+        // no tiene fila PatientVisitRecord (la crea el /start), así que dejarla
+        // pasar como activa habilitaba a escribir contra un 404.
+        const isActiveStatus = appointment.status === "in_progress";
         const shouldClearPersistedSession =
           persistedMatchesCurrentPatient &&
           persistedAppointmentId === candidateAppointmentId;
+
+        if (isSamePatient) {
+          setVerifiedStatus(appointment.status);
+        }
+
+        // Una cita agendada de este paciente NO arma la consulta, pero SÍ
+        // conserva el contexto en la URL: es lo que permite a la ficha ofrecer
+        // "Iniciar consulta de las HH:mm" en vez de dejar al usuario sin salida.
+        if (isSamePatient && appointment.status === "scheduled") {
+          if (shouldClearPersistedSession) {
+            endConsultation();
+          }
+          setRestoredAppointmentId(undefined);
+          return;
+        }
 
         if (!isSamePatient || !isActiveStatus) {
           if (shouldClearPersistedSession) {
@@ -373,14 +404,19 @@ export function useClinicalHistoryPage({
     loadAppointments();
   }, [loadAppointments]);
 
+  // Ambos arranques recargan la lista de citas. Sin esto, la cita recién creada
+  // por `POST /appointments/start-now` (id NUEVO) no estaba en `appointments`, y
+  // con la editabilidad unificada en fail-closed eso bloqueaba el odontograma de
+  // la consulta que se acababa de abrir.
   const handleStartConsultation = useCallback(
     (appointmentId: string) => {
       setActiveTab("workspace");
       router.push(
         `/patients/${patientId}?tab=workspace&appointmentId=${appointmentId}`,
       );
+      void loadAppointments();
     },
-    [patientId, router],
+    [patientId, router, loadAppointments],
   );
 
   const handleStartNow = useCallback(
@@ -390,8 +426,36 @@ export function useClinicalHistoryPage({
       router.push(
         `/patients/${patientId}?tab=workspace&appointmentId=${appointmentId}`,
       );
+      void loadAppointments();
     },
-    [patientId, router],
+    [patientId, router, loadAppointments],
+  );
+
+  /**
+   * Inicia una cita AGENDADA desde la ficha (D1). Llama al `PATCH
+   * /appointments/{id}/start` real, que pone `in_progress`, fija `actualStartAt`,
+   * CREA la fila `PatientVisitRecord` y captura el snapshot "antes" del
+   * odontograma. Sin este paso el compositor escribiría contra un 404.
+   *
+   * D2: no pide confirmación aunque la cita sea de otro doctor. El gate de
+   * permiso sí es obligatorio — es una mutación — y lo aplica el llamador.
+   */
+  const handleStartScheduledConsultation = useCallback(
+    async (appointmentId: string) => {
+      try {
+        await appointmentsService.startAppointment(appointmentId);
+        setVerifiedStatus("in_progress");
+        setActiveTab("workspace");
+        router.push(
+          `/patients/${patientId}?tab=workspace&appointmentId=${appointmentId}`,
+        );
+      } catch (error) {
+        notifyApiError("No se pudo iniciar la consulta", error);
+      } finally {
+        void loadAppointments();
+      }
+    },
+    [patientId, router, loadAppointments],
   );
 
   const handleViewVisitHistory = useCallback((appointment: Appointment) => {
@@ -545,8 +609,13 @@ export function useClinicalHistoryPage({
     patientLoading,
     snapshot,
     snapshotLoading,
+    snapshotForbidden,
+    snapshotError,
+    loadSnapshot,
     appointments,
     appointmentsLoading,
+    visitEditability,
+    loadAppointments,
     activeTab: effectiveActiveTab,
     setActiveTab,
     showStartNow,
@@ -575,6 +644,7 @@ export function useClinicalHistoryPage({
     can,
     handleStartConsultation,
     handleStartNow,
+    handleStartScheduledConsultation,
     handleViewVisitHistory,
     handleSaveMedicalHistory,
     handleViewOdontogram,

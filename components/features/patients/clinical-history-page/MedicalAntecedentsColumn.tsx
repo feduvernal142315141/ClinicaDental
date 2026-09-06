@@ -32,6 +32,12 @@ interface MedicalAntecedentsColumnProps {
   canEdit?: boolean;
   /** Lleva a la pestaña Odontograma desde un plan de tratamiento. */
   onViewOdontogram?: () => void;
+  /** El backend devolvió 403 al pedir la historia clínica. */
+  forbidden?: boolean;
+  /** Falló la carga de la historia clínica (5xx, red). */
+  loadError?: string | null;
+  /** Reintenta la carga tras un fallo transitorio. */
+  onRetry?: () => void;
 }
 
 /** Resumen compacto de planes de tratamiento por estado de avance. */
@@ -113,6 +119,9 @@ export function MedicalAntecedentsColumn({
   onEditClick,
   canEdit = false,
   onViewOdontogram,
+  forbidden = false,
+  loadError = null,
+  onRetry,
 }: MedicalAntecedentsColumnProps) {
   const { saving, alertBadges, antecedentItems, handleSaveNotes } =
     useMedicalAntecedentsColumn({
@@ -127,6 +136,37 @@ export function MedicalAntecedentsColumn({
     pendingPlans,
     counts: planCounts,
   } = useTreatmentPlansPendingSection(patientId);
+
+  // Un fallo de lectura NUNCA puede renderizarse como dato clínico ausente. Sin
+  // este corte, un 403 dejaba `snapshot` en null y la columna afirmaba "Sin
+  // alergias registradas" sobre un paciente cuyos antecedentes no se han podido
+  // leer: una afirmación médica falsa nacida de un problema de permisos.
+  if (forbidden || loadError) {
+    return (
+      <div className="flex flex-col px-4 gap-4">
+        <Alert live={false} className="mt-3">
+          <AlertTriangle />
+          <AlertTitle>
+            {forbidden
+              ? "Sin acceso a los antecedentes"
+              : "No se pudieron cargar los antecedentes"}
+          </AlertTitle>
+          <AlertDescription className="flex flex-col items-start gap-2">
+            <span>
+              {forbidden
+                ? "Tu rol no permite ver la historia clínica de este paciente. Lo que no se muestra aquí no significa que el paciente no tenga antecedentes."
+                : "No hemos podido leer la historia clínica. No se está mostrando información médica de este paciente."}
+            </span>
+            {!forbidden && onRetry && (
+              <Button variant="outline" size="sm" onClick={onRetry}>
+                Reintentar
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col px-4 gap-4">

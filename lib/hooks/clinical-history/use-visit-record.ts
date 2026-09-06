@@ -104,6 +104,25 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
   const saveNotes = useCallback(
     async (html: string): Promise<{ updatedAt: string; updatedBy: string }> => {
       if (!appointmentId) throw new Error("No hay consulta activa");
+
+      // GUARD DESTRUCTIVO. `PATCH .../visits/{id}/notes` SOBREESCRIBE, y el
+      // handler del backend interpreta un valor vacío como borrado
+      // (`record.setClinicalNotes(sanitized)` con `sanitized = null`). No existe
+      // historial de versiones —ni Envers ni tabla de asientos—, así que una nota
+      // pisada por un guardado en blanco es irrecuperable. Ninguna de las normas
+      // de historia clínica revisadas admite borrar un asiento.
+      //
+      // El caso real no es alguien que quiera borrar: es un autoguardado que se
+      // dispara con el editor todavía vacío mientras el registro ya cargado sí
+      // tenía contenido.
+      const isBlank = !html || html.replace(/<[^>]*>/g, "").trim() === "";
+      const hadContent = !!record?.clinicalNotes?.replace(/<[^>]*>/g, "").trim();
+      if (isBlank && hadContent) {
+        throw new Error(
+          "No se guardó: dejar la nota vacía borraría la evolución registrada y no se puede deshacer.",
+        );
+      }
+
       setSaving(true);
       useAutosaveStatus.getState().markSaving();
       try {
@@ -135,18 +154,30 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
         });
         return result;
       } catch (err: unknown) {
-        const e = err as { message?: string };
+        const e = err as { message?: string; status?: number };
         useAutosaveStatus.getState().markError();
+        // El backend tiene dos rechazos con causa CONOCIDA que no son de red:
+        // 404 = la cita nunca se inició, así que no hay fila de visita donde
+        // escribir; 409 = la cita ya está finalizada o cancelada. Decirle
+        // "revisa tu conexión" a quien acaba de dictar 90 segundos es una
+        // instrucción falsa que además le hace perder el texto reintentando.
+        const description =
+          e?.status === 404
+            ? "Esta consulta no se ha iniciado, así que todavía no existe un registro de visita donde escribir. Inicia la consulta y vuelve a guardar; tu texto sigue aquí."
+            : e?.status === 409
+              ? "Esta consulta ya está cerrada y no admite más evolución. Tu texto sigue aquí: cópialo antes de salir."
+              : "Las notas de esta consulta no quedaron guardadas. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.";
         notify.error(e?.message || "No se pudieron guardar las notas clínicas", {
-          description:
-            "Las notas de esta consulta no quedaron guardadas. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+          description,
         });
         throw err;
       } finally {
         setSaving(false);
       }
     },
-    [patientId, appointmentId],
+    // `record.clinicalNotes` entra en las deps: sin él el guard destructivo
+    // leería un closure obsoleto y dejaría pasar justo el borrado que evita.
+    [patientId, appointmentId, record?.clinicalNotes],
   );
 
   // ---------------------------------------------------------------------------

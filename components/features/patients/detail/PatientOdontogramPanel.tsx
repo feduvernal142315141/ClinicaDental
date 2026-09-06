@@ -20,6 +20,7 @@ import {
   getEligibleVisits,
 } from "@/lib/utils/visit-eligibility";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
+import type { VisitEditability } from "@/lib/hooks/patients/clinical-history-page/visit-editability";
 import { notify } from "@/lib/utils/notify";
 import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
 
@@ -34,8 +35,11 @@ interface PatientOdontogramPanelProps {
   onClearHistoric?: () => void;
   /** All patient appointments — used to build the history timeline */
   appointments?: Appointment[];
-  /** True mientras la lista de citas aún carga (evita fail-closed prematuro). */
-  appointmentsLoading?: boolean;
+  /**
+   * Editabilidad de la visita en contexto, resuelta por `getVisitEditability` en
+   * el hook de la página. Es la FUENTE ÚNICA: este panel ya no la recalcula.
+   */
+  visitEditability?: VisitEditability;
   /** Called when user selects a historic visit from the timeline */
   onSelectHistoricVisit?: (appointmentId: string) => void;
   finalizeOpen?: boolean;
@@ -49,7 +53,7 @@ export function PatientOdontogramPanel({
   historicAppointmentId,
   onClearHistoric,
   appointments,
-  appointmentsLoading,
+  visitEditability,
   onSelectHistoricVisit,
   finalizeOpen,
   onFinalizeClose,
@@ -192,27 +196,16 @@ export function PatientOdontogramPanel({
     wasHistoricRef.current = isHistoricMode;
   }, [isHistoricMode, historicShortLabel, handleReturnToCurrent]);
 
-  // El odontograma es editable durante una visita ACTIVA (in_progress/scheduled)
-  // y solo-lectura si la visita EXISTE en la lista con status terminal
-  // (completed/cancelled/no-show). Whitelist (no blacklist "=== completed") para
-  // alinear la editabilidad con la MISMA regla que decide si la consulta está
-  // activa. Fail-open mientras la lista aún carga (activeAppointment undefined):
-  // no bloquear la edición de una consulta recién abierta.
-  const activeAppointment = useMemo(
-    () => appointments?.find((a) => a.id === activeAppointmentId),
-    [appointments, activeAppointmentId],
-  );
-  const isActiveVisitStatus =
-    activeAppointment?.status === "in_progress" ||
-    activeAppointment?.status === "scheduled";
-  // Fail-CLOSED una vez cargada la lista: si HAY una cita en contexto y tras cargar
-  // no está activa (finalizada/cancelada, o no aparece en la lista), la edición se
-  // bloquea — integridad clínico-legal de la visita. Durante la carga NO se bloquea,
-  // para no flashear "solo lectura".
-  // Sin cita en contexto NO aplica: el odontograma se puede llenar fuera de una
-  // consulta (volcar la ficha en papel de un paciente anterior al sistema).
-  const isNonEditableVisit =
-    !!activeAppointmentId && !appointmentsLoading && !isActiveVisitStatus;
+  // La editabilidad de la visita ya NO se calcula aquí: la resuelve
+  // `getVisitEditability` en el hook de la página y llega por prop. Tener dos
+  // copias de esta regla producía el estado imposible que motivó el cambio —
+  // cronómetro corriendo en la cabecera sobre un odontograma bloqueado— porque
+  // ante una cita ausente de la lista una decía "activa" y la otra "finalizada".
+  //
+  // `unknown` (lista en vuelo) y `no-visit` NO bloquean: la primera para no
+  // flashear solo-lectura, la segunda porque el odontograma se puede llenar
+  // fuera de una consulta, volcando la ficha en papel de un paciente antiguo.
+  const isNonEditableVisit = visitEditability?.kind === "locked";
 
   // El odontograma es documentación clínica: su edición se gatea con la
   // autoridad 'odontogram' (backend @PreAuthorize), no con clinical_history
