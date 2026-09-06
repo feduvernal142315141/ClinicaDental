@@ -1,8 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Activity, AlertTriangle, Info } from "lucide-react";
-import { Button, StatusBadge, type StatusBadgeTone } from "@/components/ui";
+import { useEffect, useId, useRef, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  ChevronDown,
+  FileText,
+  Image as ImageIcon,
+  Info,
+  MoreVertical,
+  Paperclip,
+  User,
+} from "lucide-react";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  StatusBadge,
+  type StatusBadgeTone,
+} from "@/components/ui";
 import { cn } from "@/lib/utils/utils";
 import { MONTHS_ES, dateToLocalInput } from "@/lib/datetime";
 import { CIE10_DENTAL_CODES } from "@/lib/entity/clinical-history/cie10-dental";
@@ -16,6 +34,7 @@ import type {
   AppointmentStatus,
   AppointmentType,
 } from "@/lib/entity/appointment/appointments";
+import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 import type { VisitRecordState } from "@/lib/hooks/patients/clinical-history-page/use-visit-records-batch";
 import { SECTION_LABEL_CLASS } from "../section-label";
 
@@ -50,21 +69,20 @@ interface VisitStatusConfig {
    *  estado de la NOTA (firmada/cerrada), que es justo lo que no existe aquí. */
   label: string;
   tone: StatusBadgeTone;
-  dotClass: string;
 }
 
 function getVisitStatusConfig(status: AppointmentStatus): VisitStatusConfig {
   switch (status) {
     case "in_progress":
-      return { label: "Consulta en curso", tone: "success", dotClass: "bg-emerald-500" };
+      return { label: "Consulta en curso", tone: "success" };
     case "completed":
-      return { label: "Consulta finalizada", tone: "progress", dotClass: "bg-sky-500" };
+      return { label: "Consulta finalizada", tone: "progress" };
     case "no-show":
     case "no_show":
-      return { label: "No asistió", tone: "danger", dotClass: "bg-rose-400 opacity-70" };
+      return { label: "No asistió", tone: "danger" };
     case "scheduled":
     default:
-      return { label: "Consulta agendada", tone: "warning", dotClass: "bg-amber-400" };
+      return { label: "Consulta agendada", tone: "warning" };
   }
 }
 
@@ -79,15 +97,6 @@ const APPOINTMENT_TYPE_LABEL: Record<AppointmentType, string> = {
 // ---------------------------------------------------------------------------
 // Fechas
 // ---------------------------------------------------------------------------
-
-/** "2026-08-14" -> { day: "14", monthYear: "AGO 2026" } sin pasar por UTC. */
-function splitVisitDate(date: string): { day: string; monthYear: string } {
-  const day = date?.slice(8, 10) ?? "";
-  const year = date?.slice(0, 4) ?? "";
-  const monthIndex = Number(date?.slice(5, 7)) - 1;
-  const month = MONTHS_ES[monthIndex]?.slice(0, 3) ?? "";
-  return { day, monthYear: month && year ? `${month} ${year}` : "" };
-}
 
 /** Fecha larga en español a partir de "YYYY-MM-DD" (sin `new Date(str)`). */
 function formatLongDate(date: string): string {
@@ -172,6 +181,54 @@ function collectFindings(
 }
 
 // ---------------------------------------------------------------------------
+// Texto plano a partir del HTML de la nota (sólo para el resumen colapsado)
+// ---------------------------------------------------------------------------
+
+const HTML_ENTITIES: Record<string, string> = {
+  "&nbsp;": " ",
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&aacute;": "á",
+  "&eacute;": "é",
+  "&iacute;": "í",
+  "&oacute;": "ó",
+  "&uacute;": "ú",
+  "&ntilde;": "ñ",
+};
+
+/**
+ * Resumen de UNA línea para la tarjeta colapsada.
+ *
+ * No se usa para nada más: la nota íntegra siempre se pinta como HTML en el
+ * bloque PLAN de la tarjeta expandida. Aquí sólo hace falta un texto plano que
+ * quepa en una línea, así que se cortan las etiquetas sin tocar el DOM (el
+ * componente también se renderiza en servidor).
+ */
+function htmlToPlainText(html: string): string {
+  const withBreaks = html.replace(/<\/(p|div|li|h[1-6]|tr)>|<br\s*\/?>/gi, " ");
+  const stripped = withBreaks.replace(/<[^>]*>/g, "");
+  const decoded = stripped.replace(
+    /&(nbsp|amp|lt|gt|quot|#39|aacute|eacute|iacute|oacute|uacute|ntilde);/gi,
+    (entity) => HTML_ENTITIES[entity.toLowerCase()] ?? entity,
+  );
+  return decoded.replace(/\s+/g, " ").trim();
+}
+
+// ---------------------------------------------------------------------------
+// Adjuntos
+// ---------------------------------------------------------------------------
+
+function attachmentIcon(mimeType: string | undefined) {
+  const mime = mimeType?.toLowerCase() ?? "";
+  if (mime.startsWith("image/")) return ImageIcon;
+  if (mime.includes("pdf")) return FileText;
+  return Paperclip;
+}
+
+// ---------------------------------------------------------------------------
 // Componente
 // ---------------------------------------------------------------------------
 
@@ -180,7 +237,21 @@ export interface VisitEntryCardProps {
   state: VisitRecordState;
   /** Reintenta la carga del registro tras un fallo técnico. */
   onRetry: () => void;
-  isLast?: boolean;
+  /**
+   * La tarjeta nace desplegada. La columna se lo pasa sólo a la consulta más
+   * reciente (o a la que está en curso); el resto empiezan plegadas.
+   */
+  defaultExpanded?: boolean;
+  /**
+   * Adjuntos que el host atribuye a ESTA consulta. Si no llega nada, no se
+   * pinta el bloque: el listado de adjuntos del paciente no devuelve
+   * `appointmentId`, así que esta tarjeta no puede deducir por su cuenta qué
+   * archivo pertenece a qué visita.
+   */
+  attachments?: PatientAttachment[];
+  /** Acciones de LECTURA del menú "⋯". Sin handlers no se pinta el menú. */
+  onViewOdontogram?: (appointment: Appointment) => void;
+  onViewAttachments?: (appointment: Appointment) => void;
 }
 
 /** Altura a partir de la cual la nota se pliega (px). */
@@ -196,92 +267,191 @@ const CHIP_CLASS =
  * superficie de consulta de un registro clínico-legal. Distingue de forma
  * explícita los tres estados que jamás deben confundirse — no hay registro
  * (404), hay registro pero sin nota, y fallo técnico al cargarlo.
+ *
+ * Plegada muestra el encabezado y un resumen de una línea; desplegada muestra
+ * los cuatro bloques de la evolución (subjetivo, objetivo, apreciación, plan).
+ * Esos bloques NO salen de parsear el HTML de la nota: el backend no tiene
+ * modelo SOAP (`clinical_notes` es UNA columna de texto), así que cada bloque
+ * se arma con un campo real distinto del registro.
  */
 export function VisitEntryCard({
   appointment,
   state,
   onRetry,
-  isLast = false,
+  defaultExpanded = false,
+  attachments,
+  onViewOdontogram,
+  onViewAttachments,
 }: VisitEntryCardProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const bodyId = useId();
+
   const statusConfig = getVisitStatusConfig(appointment.status);
-  const { day, monthYear } = splitVisitDate(appointment.date);
   const typeLabel = appointment.type
     ? (APPOINTMENT_TYPE_LABEL[appointment.type] ?? appointment.type)
     : null;
+  const title =
+    appointment.services?.[0]?.serviceName?.trim() || typeLabel || "Consulta";
+  const doctorName = appointment.doctorName?.trim() || "Sin doctor asignado";
+  // "Doctor de la cita" es literal y NO se puede abreviar a "Dr." a secas en el
+  // texto accesible: es la asignación de AGENDA, no constancia de quién atendió
+  // ni de quién escribió la nota (cualquiera puede iniciar la cita de otro).
+  const doctorLabel = `Doctor de la cita: ${doctorName}`;
+  const hasMenu = Boolean(onViewOdontogram || onViewAttachments);
+
+  const summary =
+    state.status === "ready"
+      ? htmlToPlainText(state.record.clinicalNotes ?? "")
+      : "";
 
   return (
-    <section className="bento overflow-hidden">
-      <div className="grid grid-cols-[76px_1fr] gap-3 p-4">
-        {/* ── Rail temporal ─────────────────────────────────────────────── */}
-        <div className="flex flex-col items-center border-r border-hairline pr-3 text-center">
-          <span className="text-2xl font-semibold tabular-nums leading-none text-ink">
-            {day}
+    <section
+      className={cn(
+        "bento overflow-hidden",
+        // El borde de marca marca la consulta abierta, como en el mockup.
+        expanded && "border-l-2 border-l-brand",
+      )}
+    >
+      <div className="flex items-start gap-2 p-4">
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+          aria-controls={bodyId}
+          className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left transition-colors ease-emphasized focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-semibold text-ink">
+              {title} · {formatLongDate(appointment.date)}
+            </span>
+
+            <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-subtle">
+              <span
+                className="inline-flex items-center gap-1"
+                title={doctorLabel}
+                aria-label={doctorLabel}
+              >
+                <User className="h-3 w-3 shrink-0" aria-hidden="true" />
+                Dr. {doctorName}
+              </span>
+              {appointment.time ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  {/* El DTO de la lista no trae la hora real de atención:
+                      presentar la hora de agenda como hora de atención sería
+                      falso, así que va rotulada. */}
+                  <span>{appointment.time} agendada</span>
+                </>
+              ) : null}
+              <StatusBadge tone={statusConfig.tone} className="text-[10px]">
+                {statusConfig.label}
+              </StatusBadge>
+            </span>
+
+            {!expanded ? (
+              <CollapsedSummary state={state} summary={summary} />
+            ) : null}
           </span>
-          <span className="mt-1 text-[11px] uppercase leading-none text-subtle">
-            {monthYear}
-          </span>
-          <span
-            className={cn("mt-2 h-2 w-2 rounded-full", statusConfig.dotClass)}
+
+          <ChevronDown
+            className={cn(
+              "mt-0.5 h-4 w-4 shrink-0 text-subtle transition-transform ease-emphasized motion-reduce:transition-none",
+              expanded && "rotate-180",
+            )}
             aria-hidden="true"
           />
-          <span className="mt-2 text-xs tabular-nums leading-none text-ink">
-            {appointment.time}
-          </span>
-          {/* Rótulo obligatorio: el DTO de la lista no trae la hora real de
-              atención, así que presentar la hora de agenda como hora de
-              atención sería falso. */}
-          <span className="mt-0.5 text-[10px] leading-none text-subtle">agendada</span>
-          {!isLast ? (
-            <span
-              className="mt-3 w-px flex-1 bg-hairline/60"
-              aria-hidden="true"
+        </button>
+
+        {hasMenu ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                title="Más opciones de esta consulta"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-subtle transition-colors ease-emphasized hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+              >
+                <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only">Más opciones de esta consulta</span>
+              </button>
+            </DropdownMenuTrigger>
+            {/* Superficie de lectura: sólo verbos de consulta, ninguna acción
+                de edición ni destructiva. */}
+            <DropdownMenuContent align="end">
+              {onViewOdontogram ? (
+                <DropdownMenuItem onClick={() => onViewOdontogram(appointment)}>
+                  <Activity className="h-4 w-4" aria-hidden="true" />
+                  Ver odontograma de esta visita
+                </DropdownMenuItem>
+              ) : null}
+              {/* "del paciente", no "de esta visita": el único destino que
+                  existe hoy es la pestaña de archivos, que lista TODOS los
+                  adjuntos del paciente — el listado ni siquiera devuelve
+                  `appointmentId`. Prometer un filtro por visita sería falso. */}
+              {onViewAttachments ? (
+                <DropdownMenuItem onClick={() => onViewAttachments(appointment)}>
+                  <Paperclip className="h-4 w-4" aria-hidden="true" />
+                  Ver archivos del paciente
+                </DropdownMenuItem>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+      </div>
+
+      <div id={bodyId} className={cn(!expanded && "hidden")}>
+        {expanded ? (
+          <div className="px-4 pb-4">
+            <VisitEntryBody
+              appointment={appointment}
+              state={state}
+              onRetry={onRetry}
+              attachments={attachments}
             />
-          ) : null}
-        </div>
-
-        {/* ── Contenido ─────────────────────────────────────────────────── */}
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge tone={statusConfig.tone}>{statusConfig.label}</StatusBadge>
-            {typeLabel ? (
-              <span className="inline-flex items-center rounded-full bg-hover px-2.5 py-0.5 text-xs font-medium text-subtle ring-1 ring-hairline">
-                {typeLabel}
-              </span>
-            ) : null}
           </div>
-
-          {/* "Doctor de la cita" es literal: es la asignación de AGENDA, no
-              constancia de quién atendió ni de quién escribió la nota. */}
-          <p className="mt-2 text-xs text-subtle">
-            Doctor de la cita:{" "}
-            <span className="text-ink">
-              {appointment.doctorName?.trim() || "Sin doctor asignado"}
-            </span>
-          </p>
-
-          <VisitEntryBody
-            appointment={appointment}
-            state={state}
-            onRetry={onRetry}
-          />
-        </div>
+        ) : null}
       </div>
     </section>
   );
 }
 
+/**
+ * Resumen de la tarjeta plegada. Nunca convierte un fallo técnico en silencio:
+ * si el registro no se pudo cargar, lo dice en la propia fila plegada.
+ */
+function CollapsedSummary({
+  state,
+  summary,
+}: {
+  state: VisitRecordState;
+  summary: string;
+}) {
+  if (state.status === "failed") {
+    return (
+      <span className="mt-1 block truncate text-xs text-amber-700 dark:text-amber-300">
+        No se pudo cargar el registro de esta visita
+      </span>
+    );
+  }
+  if (!summary) return null;
+  return (
+    <span className="mt-1 block truncate text-xs text-subtle">{summary}</span>
+  );
+}
+
 // ---------------------------------------------------------------------------
-// Cuerpo: los tres estados + las bandas APSO
+// Cuerpo: los tres estados + los bloques de la evolución
 // ---------------------------------------------------------------------------
 
 function VisitEntryBody({
   appointment,
   state,
   onRetry,
+  attachments,
 }: {
   appointment: Appointment;
   state: VisitRecordState;
   onRetry: () => void;
+  attachments?: PatientAttachment[];
 }) {
   if (state.status === "idle" || state.status === "loading") {
     return <VisitEntrySkeleton />;
@@ -290,7 +460,7 @@ function VisitEntryBody({
   if (state.status === "failed") {
     // Un fallo técnico NO es ausencia de dato clínico: jamás "Sin nota".
     return (
-      <div className="mt-3 rounded-lg bg-amber-500/15 px-3 py-2.5 text-xs text-amber-700 ring-1 ring-amber-400/25 dark:text-amber-300">
+      <div className="rounded-lg bg-amber-500/15 px-3 py-2.5 text-xs text-amber-700 ring-1 ring-amber-400/25 dark:text-amber-300">
         <div className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <div className="min-w-0">
@@ -315,17 +485,21 @@ function VisitEntryBody({
 
   if (state.status === "empty") {
     // 404: la visita no tiene registro clínico creado.
-    return (
-      <p className="mt-3 text-xs italic text-subtle">Sin registro de visita</p>
-    );
+    return <p className="text-xs italic text-subtle">Sin registro de visita</p>;
   }
 
-  return <VisitRecordBands appointment={appointment} record={state.record} />;
+  return (
+    <VisitRecordBands
+      appointment={appointment}
+      record={state.record}
+      attachments={attachments}
+    />
+  );
 }
 
 function VisitEntrySkeleton() {
   return (
-    <div className="mt-3 space-y-2" aria-hidden="true">
+    <div className="space-y-2" aria-hidden="true">
       <div className="h-3 w-24 animate-pulse rounded bg-hover" />
       <div className="h-3 w-full animate-pulse rounded bg-hover" />
       <div className="h-3 w-4/5 animate-pulse rounded bg-hover" />
@@ -335,16 +509,28 @@ function VisitEntrySkeleton() {
 }
 
 /**
- * Bandas en orden APSO (valoración y plan primero, luego lo subjetivo y lo
- * objetivo): es como se lee una evolución en la práctica clínica.
- * Una banda sin dato no se renderiza — ni rótulo, ni guion, ni fila vacía.
+ * Los cuatro bloques de la evolución, cada uno construido con un CAMPO REAL
+ * distinto del registro (no hay modelo SOAP en el backend, y parsear el HTML de
+ * la nota buscando encabezados inventaría una estructura que nadie escribió):
+ *
+ *   SUBJETIVO   ← `chiefComplaint` + `currentPain`
+ *   OBJETIVO    ← `examFindings`
+ *   APRECIACIÓN ← `diagnoses`
+ *   PLAN        ← `clinicalNotes`
+ *
+ * Un bloque sin dato NO se renderiza — ni rótulo, ni guion, ni caja vacía. La
+ * única excepción es PLAN: "hay registro pero nadie escribió la evolución" es
+ * uno de los tres estados que la vista tiene que distinguir siempre, así que
+ * ese mensaje se muestra aunque el resto del registro esté vacío.
  */
 function VisitRecordBands({
   appointment,
   record,
+  attachments,
 }: {
   appointment: Appointment;
   record: PatientVisitRecord;
+  attachments?: PatientAttachment[];
 }) {
   const diagnoses = record.diagnoses?.filter((d) => d?.code || d?.label) ?? [];
   const chiefComplaint = record.chiefComplaint?.trim();
@@ -360,10 +546,41 @@ function VisitRecordBands({
   const notes = record.clinicalNotes?.trim();
 
   return (
-    <div className="mt-3 space-y-4">
+    <div className="space-y-4">
+      {chiefComplaint || painText ? (
+        <section>
+          <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>Subjetivo</h3>
+          {/* Sin comillas y sin atribuirlo al paciente: este texto lo siembra el
+              backend desde las notas de la cita, que puede haber escrito
+              recepción. */}
+          {chiefComplaint ? (
+            <p className="text-sm leading-relaxed text-ink">{chiefComplaint}</p>
+          ) : null}
+          {painText ? (
+            <p className="mt-1 text-xs text-subtle">
+              <span className="text-ink">Dolor:</span> {painText}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {extraoral.length > 0 || intraoral.length > 0 ? (
+        <section>
+          <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>Objetivo</h3>
+          <div className="space-y-2">
+            {extraoral.length > 0 ? (
+              <FindingsGroup title="Extraoral" rows={extraoral} />
+            ) : null}
+            {intraoral.length > 0 ? (
+              <FindingsGroup title="Intraoral" rows={intraoral} />
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
       {diagnoses.length > 0 ? (
         <section>
-          <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>Diagnósticos</h3>
+          <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>Apreciación</h3>
           <ul className="flex flex-wrap gap-1.5">
             {diagnoses.map((diagnosis, index) => (
               <li key={`${diagnosis.code}-${index}`} className={CHIP_CLASS}>
@@ -391,43 +608,8 @@ function VisitRecordBands({
         </section>
       ) : null}
 
-      {chiefComplaint || painText ? (
-        <section>
-          <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>
-            Motivo de consulta registrado
-          </h3>
-          {/* Sin comillas y sin atribuirlo al paciente: este texto lo siembra el
-              backend desde las notas de la cita, que puede haber escrito
-              recepción. */}
-          {chiefComplaint ? (
-            <p className="text-sm leading-relaxed text-ink">{chiefComplaint}</p>
-          ) : null}
-          {painText ? (
-            <p className="mt-1 text-xs text-subtle">
-              <span className="text-ink">Dolor:</span> {painText}
-            </p>
-          ) : null}
-        </section>
-      ) : null}
-
-      {extraoral.length > 0 || intraoral.length > 0 ? (
-        <section>
-          <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>
-            Hallazgos del examen
-          </h3>
-          <div className="space-y-2">
-            {extraoral.length > 0 ? (
-              <FindingsGroup title="Extraoral" rows={extraoral} />
-            ) : null}
-            {intraoral.length > 0 ? (
-              <FindingsGroup title="Intraoral" rows={intraoral} />
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
       <section>
-        <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>Nota de evolución</h3>
+        <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>Plan</h3>
         {notes ? (
           <ClinicalNote html={notes} />
         ) : (
@@ -437,6 +619,8 @@ function VisitRecordBands({
           </p>
         )}
       </section>
+
+      <VisitAttachments attachments={attachments} />
 
       <VisitStampFooter appointment={appointment} record={record} />
     </div>
@@ -476,6 +660,41 @@ function formatPain(pain: PatientVisitRecord["currentPain"]): string | null {
   if (pain.location?.trim()) parts.push(pain.location.trim());
   if (pain.toothRef?.fdi) parts.push(`pieza ${pain.toothRef.fdi}`);
   return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+/**
+ * Adjuntos que el host atribuye a esta consulta.
+ *
+ * El rótulo dice "de esta consulta" y no "de esta nota" a propósito: el backend
+ * asocia el archivo a la CITA, no a la evolución, y el DTO del listado ni
+ * siquiera devuelve `appointmentId`. Sin datos del host no se pinta nada; una
+ * caja vacía sugeriría que se comprobó y no hay adjuntos.
+ */
+function VisitAttachments({ attachments }: { attachments?: PatientAttachment[] }) {
+  if (!attachments || attachments.length === 0) return null;
+
+  return (
+    <section>
+      <h3 className={cn(SECTION_LABEL_CLASS, "mb-1.5 block")}>
+        Adjuntos de esta consulta
+      </h3>
+      <ul className="flex flex-wrap gap-1.5">
+        {attachments.map((attachment) => {
+          const Icon = attachmentIcon(attachment.mimeType);
+          return (
+            <li
+              key={attachment.id}
+              className={cn(CHIP_CLASS, "max-w-full")}
+              title={attachment.fileName}
+            >
+              <Icon className="h-3 w-3 shrink-0 text-subtle" aria-hidden="true" />
+              <span className="truncate">{attachment.fileName}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
 }
 
 /**

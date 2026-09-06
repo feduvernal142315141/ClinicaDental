@@ -6,6 +6,7 @@ import {
   type VisitRecordState,
 } from "@/lib/hooks/patients/clinical-history-page/use-visit-records-batch";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
+import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 import { EvolutionScopeHeader } from "./EvolutionScopeHeader";
 import { VisitEntryCard } from "./VisitEntryCard";
 
@@ -41,6 +42,19 @@ export interface EvolutionColumnProps {
   invalidateToken?: number;
   printPreparing?: boolean;
   printProgress?: { loaded: number; total: number };
+  /**
+   * Adjuntos que el host atribuye a cada cita, indexados por `appointmentId`.
+   * Opcional a propósito: el listado de adjuntos del paciente NO devuelve
+   * `appointmentId`, así que sólo el host puede saber (si es que lo sabe) qué
+   * archivo pertenece a qué visita. Sin este mapa las tarjetas no pintan pills.
+   */
+  attachmentsByAppointmentId?: Record<string, PatientAttachment[]>;
+  /**
+   * Acciones de LECTURA del menú "⋯" de cada tarjeta. Sin ninguna de las dos,
+   * la tarjeta no pinta el menú.
+   */
+  onViewVisitOdontogram?: (appointment: Appointment) => void;
+  onViewVisitAttachments?: (appointment: Appointment) => void;
 }
 
 /**
@@ -61,6 +75,9 @@ export function EvolutionColumn({
   invalidateToken,
   printPreparing,
   printProgress,
+  attachmentsByAppointmentId,
+  onViewVisitOdontogram,
+  onViewVisitAttachments,
 }: EvolutionColumnProps) {
   const { records, request, retry, invalidate } = useVisitRecordsBatch(
     patientId,
@@ -172,17 +189,10 @@ export function EvolutionColumn({
         <div className="space-y-3" aria-busy="true">
           {[0, 1, 2].map((index) => (
             <section key={index} className="bento overflow-hidden p-4">
-              <div className="grid grid-cols-[76px_1fr] gap-3" aria-hidden="true">
-                <div className="space-y-2 border-r border-hairline pr-3">
-                  <div className="mx-auto h-6 w-8 animate-pulse rounded bg-hover" />
-                  <div className="mx-auto h-3 w-12 animate-pulse rounded bg-hover" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-5 w-40 animate-pulse rounded-full bg-hover" />
-                  <div className="h-3 w-56 animate-pulse rounded bg-hover" />
-                  <div className="h-3 w-full animate-pulse rounded bg-hover" />
-                  <div className="h-3 w-4/5 animate-pulse rounded bg-hover" />
-                </div>
+              <div className="space-y-2" aria-hidden="true">
+                <div className="h-4 w-64 animate-pulse rounded bg-hover" />
+                <div className="h-3 w-40 animate-pulse rounded bg-hover" />
+                <div className="h-3 w-full animate-pulse rounded bg-hover" />
               </div>
             </section>
           ))}
@@ -224,7 +234,13 @@ export function EvolutionColumn({
               appointment={appointment}
               state={records[appointment.id] ?? IDLE_STATE}
               onRetry={() => retry(appointment.id)}
-              isLast={index === ordered.length - 1}
+              // `ordered` ya pone primero la consulta en curso y, si no la hay,
+              // la más reciente: esa es la que nace desplegada. El resto se
+              // leen plegadas, con su resumen de una línea.
+              defaultExpanded={index === 0}
+              attachments={attachmentsByAppointmentId?.[appointment.id]}
+              onViewOdontogram={onViewVisitOdontogram}
+              onViewAttachments={onViewVisitAttachments}
             />
           </div>
         ))}

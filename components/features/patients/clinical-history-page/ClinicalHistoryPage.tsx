@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { clinicalHistoryService } from "@/lib/services/clinical-history";
 
-import { Stethoscope, ClipboardList, ListChecks, Images } from "lucide-react";
+import { Stethoscope, ClipboardList, ListChecks, Images, Plus } from "lucide-react";
+import { Button } from "@/components/ui";
 import {
   Tabs,
   TabsList,
@@ -28,6 +30,13 @@ import {
 } from "@/lib/hooks/patients/clinical-history-page/use-clinical-history-page";
 import { PATIENT_TABS } from "@/lib/hooks/patients/clinical-history-page/patient-tabs";
 import { PatientRecordHeader, VisitRibbon } from "./header";
+import {
+  PATIENT_TABS_LIST_CLASS,
+  PATIENT_TAB_TRIGGER_CLASS,
+} from "./patient-tabs-style";
+import { PatientImagesCard } from "./PatientImagesCard";
+import { EvolutionComposer } from "./evolution/EvolutionComposer";
+import { useEvolutionComposer } from "./evolution/use-evolution-composer";
 import { VisitAutosaveIndicator } from "./header/VisitAutosaveIndicator";
 import { EvolutionColumn } from "./evolution";
 import { EvolutionPrintDocument } from "./evolution/EvolutionPrintDocument";
@@ -109,11 +118,49 @@ export function ClinicalHistoryPage({
   // y sitio real donde ponerla. Se decide en JS y no con clases `2xl:` porque una
   // columna oculta por CSS seguiría MONTANDO el editor.
   const isWideDesktop = useIsWideDesktop();
+  // El panel de la consulta (motivo, dolor, CIE-10, hallazgos y su editor) vive
+  // en la pestaña del Odontograma. En ≥1536px va como columna lateral; por
+  // debajo, apilado. Montarlo solo en ≥1536px dejaría esos campos clínicos
+  // INALCANZABLES en tablet, que es el dispositivo del sillón.
+  const showConsultationPanel = isCurrentlyActiveConsultation;
   const showSideEvolution = isWideDesktop && isCurrentlyActiveConsultation;
 
   // Impresión conforme. Va ANTES de los returns condicionales de carga: es un
   // hook y no puede quedar detrás de un early-return.
   const evolutionPrint = useEvolutionPrint({ patientId, appointments });
+
+  const composer = useEvolutionComposer({
+    appointments,
+    loading: appointmentsLoading,
+    activeAppointmentId: effectiveActiveAppointmentId,
+    canWriteClinicalHistory: canEditMedicalHistory,
+  });
+
+  /**
+   * Guardado del compositor. ANEXA, no reemplaza: `PATCH .../visits/{id}/notes`
+   * sobreescribe la columna entera y no hay historial de versiones, así que
+   * mandar solo el borrador BORRARÍA lo que ya hubiera escrito el editor de la
+   * consulta activa. Se lee el registro vigente y se concatena.
+   */
+  const handleSaveEvolutionDraft = useCallback(
+    async (html: string) => {
+      if (composer.mode.kind !== "ready") return;
+      const appointmentId = composer.mode.appointmentId;
+      const current = await clinicalHistoryService.getVisitRecord(
+        patientId,
+        appointmentId,
+      );
+      const previous = current?.clinicalNotes ?? "";
+      await clinicalHistoryService.saveVisitNotes(
+        patientId,
+        appointmentId,
+        `${previous}${html}`,
+      );
+      composer.clearDraft();
+      setNotesSavedToken((token) => token + 1);
+    },
+    [composer, patientId],
+  );
 
   // El scroller real de la pestaña, para que el observer del feed mida contra él
   // y no contra el viewport (que queda detrás de dos ancestros que recortan).
@@ -162,6 +209,16 @@ export function ClinicalHistoryPage({
         alerts={snapshotForbidden ? [] : snapshot?.patientHeader?.alerts}
         canEdit={canEditPatient}
         onEdit={openEditPatient}
+        primaryAction={
+          <Button
+            type="button"
+            onClick={openStartNow}
+            className="rounded-xl bg-brand font-semibold text-white hover:bg-brand-strong"
+          >
+            <Plus className="h-4 w-4" />
+            Nueva Consulta
+          </Button>
+        }
       />
 
       {/* ── Cinta de visita ──────────────────────────────────────────────
@@ -196,9 +253,13 @@ export function ClinicalHistoryPage({
             había forma de alcanzarla, porque el desbordamiento se recortaba
             contra el layout. El contenedor NO necesita `tabindex`: sus hijos son
             focusables, y tanto el tabulador como las flechas de Radix desplazan
-            el scroll hasta la pestaña enfocada (WCAG 2.2 — 2.1.1). `overflow-x`
-            solo: el ring de foco cabe dentro del `p-1` del propio `TabsList`, y
-            por eso ese `p-1` no se puede quitar al pasar a subrayadas.
+            el scroll hasta la pestaña enfocada (WCAG 2.2 — 2.1.1).
+
+            OJO con el ring de foco: al pasar a subrayadas el `TabsList` pierde
+            su `p-1`, que era justo el hueco donde cabía el ring. La compensación
+            vive en `PATIENT_TAB_TRIGGER_CLASS` (ring-offset contra `canvas`); si
+            alguien "limpia" esas clases, el foco se recorta contra este
+            contenedor `overflow-x-auto` y deja de verse.
 
             LAS CUATRO SON FIJAS. Antes Workspace y Odontograma eran mutuamente
             excluyentes según `isCurrentlyActiveConsultation`, así que ese
@@ -206,22 +267,22 @@ export function ClinicalHistoryPage({
             remontaba el odontograma, con refetch completo y pérdida del
             autoguardado con debounce de 300 ms. Ahora es cosmético. */}
         <div className="shrink-0 overflow-x-auto">
-          <TabsList className="w-max">
-            <TabsTrigger value={PATIENT_TABS.EVOLUTION}>
+          <TabsList className={PATIENT_TABS_LIST_CLASS}>
+            <TabsTrigger value={PATIENT_TABS.EVOLUTION} className={PATIENT_TAB_TRIGGER_CLASS}>
               <ClipboardList className="h-4 w-4" />
               Evolución Clínica
             </TabsTrigger>
-            <TabsTrigger value={PATIENT_TABS.ODONTOGRAM}>
+            <TabsTrigger value={PATIENT_TABS.ODONTOGRAM} className={PATIENT_TAB_TRIGGER_CLASS}>
               <Stethoscope className="h-4 w-4" />
               Odontograma
             </TabsTrigger>
             {canViewTreatmentPlan && (
-              <TabsTrigger value={PATIENT_TABS.TREATMENT_PLAN}>
+              <TabsTrigger value={PATIENT_TABS.TREATMENT_PLAN} className={PATIENT_TAB_TRIGGER_CLASS}>
                 <ListChecks className="h-4 w-4" />
                 Plan de Tratamiento
               </TabsTrigger>
             )}
-            <TabsTrigger value={PATIENT_TABS.FILES}>
+            <TabsTrigger value={PATIENT_TABS.FILES} className={PATIENT_TAB_TRIGGER_CLASS}>
               <Images className="h-4 w-4" />
               Imágenes y Archivos
             </TabsTrigger>
@@ -247,19 +308,23 @@ export function ClinicalHistoryPage({
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] xl:items-start">
             {/* Columna izquierda (65%) — la evolución */}
             <div className="flex flex-col gap-4">
-              {/* El editor de la visita SOLO existe con una consulta en curso.
-                  No hay compositor siempre presente: sin cita en contexto el
-                  `PATCH` de notas responde 404 y la única alternativa que
-                  funciona sin cita es la nota permanente del paciente, que es
-                  OTRO registro y se reemplaza al guardar. */}
-              {isCurrentlyActiveConsultation && effectiveActiveAppointmentId && (
-                <ActiveConsultationNotes
-                  patientId={patientId}
-                  activeAppointmentId={effectiveActiveAppointmentId}
-                  canEdit={canEditMedicalHistory}
-                  onNotesSaved={() => setNotesSavedToken((t) => t + 1)}
-                />
-              )}
+              {/* Compositor siempre visible, como el diseño.
+                  El contrato de guardado NO es libre: `PATCH .../visits/{id}/notes`
+                  responde 404 si la cita nunca se inició y 409 si está cerrada.
+                  Por eso sin consulta en curso el botón cambia de verbo a
+                  "Guardar e iniciar consulta" y abre una; lo que NUNCA hace es
+                  caer en la nota permanente del paciente, que es OTRO registro,
+                  sin fecha, que se reemplaza al guardar. */}
+              <EvolutionComposer
+                mode={composer.mode}
+                value={composer.value}
+                onChange={composer.setValue}
+                onSave={handleSaveEvolutionDraft}
+                onRequestConsultation={openStartNow}
+                soapEnabled={composer.soapEnabled}
+                onSoapToggle={composer.setSoapEnabled}
+                contextLabel={composer.contextLabel}
+              />
 
               <ContinuityStrip
                 pendingActs={pendingActs}
@@ -310,6 +375,15 @@ export function ClinicalHistoryPage({
                   }
                 />
               )}
+
+              <div className="px-4">
+                <PatientImagesCard
+                  patientId={patientId}
+                  canManage={canManageAttachments}
+                  activeAppointmentId={effectiveActiveAppointmentId}
+                  onViewAll={() => setActiveTab(PATIENT_TABS.FILES)}
+                />
+              </div>
 
               <div>
                 <p className={cn(SECTION_LABEL_CLASS, "select-none mb-2")}>
@@ -370,12 +444,19 @@ export function ClinicalHistoryPage({
               onFinalizeSuccess={handleFinalizeSuccess}
             />
 
-            {showSideEvolution && effectiveActiveAppointmentId && (
-              <aside className="min-h-0 overflow-auto" aria-label="Evolución de la consulta en curso">
+            {showConsultationPanel && effectiveActiveAppointmentId && (
+              <aside
+                className={cn(
+                  "min-h-0",
+                  showSideEvolution && "overflow-auto",
+                )}
+                aria-label="Registro de la consulta en curso"
+              >
                 <ActiveConsultationNotes
                   patientId={patientId}
                   activeAppointmentId={effectiveActiveAppointmentId}
                   canEdit={canEditMedicalHistory}
+                  onNotesSaved={() => setNotesSavedToken((t) => t + 1)}
                 />
               </aside>
             )}

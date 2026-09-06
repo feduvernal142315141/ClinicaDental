@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Edit } from "lucide-react";
+import { AlertCircle, AlertTriangle, Pencil, Shield } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -9,7 +9,6 @@ import {
   StatusBadge,
   type StatusBadgeTone,
 } from "@/components/ui";
-import { ClinicalNotesEditor } from "@/components/features/clinical-history/notes/ClinicalNotesEditor";
 import { cn } from "@/lib/utils/utils";
 import { SECTION_LABEL_CLASS } from "./section-label";
 import { TreatmentPlansPendingSection } from "./TreatmentPlansPendingSection";
@@ -40,36 +39,61 @@ interface MedicalAntecedentsColumnProps {
   onRetry?: () => void;
 }
 
-/** Resumen compacto de planes de tratamiento por estado de avance. */
-function TreatmentStatusOverview({
+/**
+ * Fila de contadores de planes de tratamiento por estado de avance.
+ *
+ * Los tres números NO son decorativos: dicen cuánto trabajo hay abierto sobre
+ * el paciente. Por eso, si la lectura falló (403/5xx/red), se pinta "—" y no
+ * "0": un cero es una afirmación —"este paciente no tiene nada pendiente"— y
+ * no se puede afirmar lo que no se ha podido leer.
+ */
+function TreatmentStatusCounters({
   counts,
+  loading,
+  loadFailed,
 }: {
   counts: TreatmentStatusCounts;
+  loading: boolean;
+  loadFailed: boolean;
 }) {
-  const items: { label: string; value: number; tone: StatusBadgeTone }[] = [
-    { label: "Pendientes", value: counts.pendiente, tone: "warning" },
-    { label: "En curso", value: counts.enCurso, tone: "progress" },
-    { label: "Completados", value: counts.completado, tone: "success" },
+  const unknown = loadFailed || loading;
+  const unknownTitle = loadFailed
+    ? "No se pudieron leer los planes de tratamiento de este paciente. El recuento no se está mostrando."
+    : "Cargando los planes de tratamiento…";
+
+  const items: { label: string; value: number; className: string }[] = [
+    {
+      label: "Pendiente",
+      value: counts.pendiente,
+      className: "text-amber-600 dark:text-amber-400",
+    },
+    {
+      label: "En curso",
+      value: counts.enCurso,
+      className: "text-sky-600 dark:text-sky-400",
+    },
+    {
+      label: "Completado",
+      value: counts.completado,
+      className: "text-emerald-600 dark:text-emerald-400",
+    },
   ];
 
-  // Los cancelados solo se listan cuando los hay (mismo criterio que antes).
-  if (counts.cancelado > 0) {
-    items.push({
-      label: "Cancelados",
-      value: counts.cancelado,
-      tone: "neutral",
-    });
-  }
-
-  if (counts.total === 0) return null;
-
   return (
-    <div className="flex flex-wrap items-center gap-2 px-5 pt-4">
+    <div className="grid grid-cols-3 gap-2.5">
       {items.map((item) => (
-        <StatusBadge key={item.label} tone={item.tone} className="gap-1">
-          <span className="font-bold tabular-nums">{item.value}</span>
-          {item.label}
-        </StatusBadge>
+        <section key={item.label} className="bento px-3 py-2.5">
+          <p className={SECTION_LABEL_CLASS}>{item.label}</p>
+          <p
+            className={cn(
+              "mt-0.5 text-2xl font-bold leading-none tabular-nums",
+              unknown ? "text-subtle" : item.className,
+            )}
+            title={unknown ? unknownTitle : undefined}
+          >
+            {unknown ? "—" : item.value}
+          </p>
+        </section>
       ))}
     </div>
   );
@@ -93,21 +117,44 @@ const ALERT_TONE: Record<string, StatusBadgeTone> = {
   blue: "progress",
 };
 
-function AntecedentItem({
+/** Una celda de la rejilla de antecedentes. */
+function AntecedentCell({
   label,
   items,
   empty,
+  valueClassName,
+  withWarningIcon = false,
 }: {
   label: string;
   items?: string[];
   empty: string;
+  /** Color del valor cuando SÍ hay dato (rojo en alergias, ámbar en enfermedades). */
+  valueClassName?: string;
+  withWarningIcon?: boolean;
 }) {
+  const hasItems = Boolean(items?.length);
+
   return (
     <div>
-      <label className={cn(SECTION_LABEL_CLASS, "block mb-1")}>{label}</label>
-      <p className="text-sm text-foreground">
-        {items?.length ? items.join(", ") : empty}
-      </p>
+      <p className={cn(SECTION_LABEL_CLASS, "mb-0.5")}>{label}</p>
+      {hasItems ? (
+        <p
+          className={cn(
+            "flex items-start gap-1 text-xs font-medium",
+            valueClassName ?? "text-ink",
+          )}
+        >
+          {withWarningIcon && (
+            <AlertCircle
+              className="mt-0.5 h-3 w-3 shrink-0"
+              aria-hidden="true"
+            />
+          )}
+          <span>{items?.join(", ")}</span>
+        </p>
+      ) : (
+        <p className="text-xs italic text-subtle">{empty}</p>
+      )}
     </div>
   );
 }
@@ -123,16 +170,16 @@ export function MedicalAntecedentsColumn({
   loadError = null,
   onRetry,
 }: MedicalAntecedentsColumnProps) {
-  const { saving, alertBadges, antecedentItems, handleSaveNotes } =
-    useMedicalAntecedentsColumn({
-      patientId,
-      medicalHistory,
-      patientHeader,
-    });
+  const { alertBadges } = useMedicalAntecedentsColumn({
+    patientId,
+    medicalHistory,
+    patientHeader,
+  });
 
-  // Planes de tratamiento: una sola carga alimenta el resumen y la lista.
+  // Planes de tratamiento: una sola carga alimenta los contadores y la lista.
   const {
     loading: plansLoading,
+    loadFailed: plansLoadFailed,
     pendingPlans,
     counts: planCounts,
   } = useTreatmentPlansPendingSection(patientId);
@@ -193,34 +240,60 @@ export function MedicalAntecedentsColumn({
         </Alert>
       )}
 
-      {/* Antecedentes */}
-      <section className="bento shrink-0 p-6">
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h3 className={cn(SECTION_LABEL_CLASS, "mb-1")}>
+      {/* Contadores de planes — fuera de cualquier tarjeta contenedora */}
+      <TreatmentStatusCounters
+        counts={planCounts}
+        loading={plansLoading}
+        loadFailed={plansLoadFailed}
+      />
+
+      {/* Antecedentes médicos */}
+      <section className="bento shrink-0 p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-brand" aria-hidden="true" />
+            <h3 className="text-sm font-semibold text-ink">
               Antecedentes Médicos
             </h3>
-            <p className="text-xs text-subtle">
-              Información general y clínica del paciente
-            </p>
           </div>
           {canEdit && (
-            <Button onClick={() => onEditClick?.()}>
-              <Edit className="h-4 w-4" />
-              Editar historia clínica
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-subtle hover:text-brand"
+              onClick={() => onEditClick?.()}
+              aria-label="Editar antecedentes médicos"
+              title="Editar antecedentes médicos"
+            >
+              <Pencil className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          {antecedentItems.map((item) => (
-            <AntecedentItem
-              key={item.label}
-              label={item.label}
-              items={item.items}
-              empty={item.empty}
-            />
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+          <AntecedentCell
+            label="Alergias"
+            items={medicalHistory?.allergies}
+            empty="Sin alergias registradas"
+            valueClassName="text-rose-600 dark:text-rose-400"
+            withWarningIcon
+          />
+          <AntecedentCell
+            label="Medicamentos"
+            items={medicalHistory?.currentMedications}
+            empty="Ninguno"
+          />
+          <AntecedentCell
+            label="Cirugías"
+            items={medicalHistory?.previousSurgeries}
+            empty="Ninguna"
+          />
+          <AntecedentCell
+            label="Enfermedades"
+            items={medicalHistory?.systemicDiseases}
+            empty="Ninguna"
+            valueClassName="text-amber-700 dark:text-amber-400"
+          />
         </div>
       </section>
 
@@ -231,7 +304,7 @@ export function MedicalAntecedentsColumn({
           tarjeta del plan por abajo. Hoy la columna ya no limita el alto: la
           página entera es la única superficie que scrollea. */}
       <section className="bento shrink-0 overflow-hidden">
-        <div className="px-5 py-4 border-b border-hairline">
+        <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-hairline">
           {/* "Planes del odontograma" y no "Planes de Tratamiento": la ficha
               tiene ahora una pestaña propia con ESE nombre, y son dos cosas
               distintas —allí se ven las LÍNEAS presupuestadas con sus importes;
@@ -240,9 +313,17 @@ export function MedicalAntecedentsColumn({
               tarjeta. Dos rótulos iguales con contenidos distintos en la misma
               ficha mandan al usuario al sitio equivocado. */}
           <h3 className={SECTION_LABEL_CLASS}>Planes del odontograma</h3>
+          {/* Los cancelados no tienen contador propio en la fila de arriba;
+              se siguen mostrando aquí para no PERDER el dato cuando los hay. */}
+          {!plansLoadFailed && planCounts.cancelado > 0 && (
+            <StatusBadge tone="neutral" className="gap-1">
+              <span className="font-bold tabular-nums">
+                {planCounts.cancelado}
+              </span>
+              cancelados
+            </StatusBadge>
+          )}
         </div>
-        {/* Resumen de estados (conteos por estado de avance) */}
-        <TreatmentStatusOverview counts={planCounts} />
         <div className="p-5">
           <TreatmentPlansPendingSection
             plans={pendingPlans}
@@ -250,22 +331,6 @@ export function MedicalAntecedentsColumn({
             onViewOdontogram={onViewOdontogram}
           />
         </div>
-      </section>
-
-      {/* Notas de historial */}
-      <section className="bento shrink-0 p-6">
-        <h3 className={cn(SECTION_LABEL_CLASS, "mb-4")}>
-          Notas permanentes del paciente
-        </h3>
-        <ClinicalNotesEditor
-          patientId={patientId}
-          initialContent={medicalHistory?.clinicalNotes}
-          updatedAt={medicalHistory?.clinicalNotesUpdatedAt}
-          updatedBy={medicalHistory?.clinicalNotesUpdatedBy}
-          readOnly={!canEdit}
-          onSave={handleSaveNotes}
-          saving={saving}
-        />
       </section>
     </div>
   );

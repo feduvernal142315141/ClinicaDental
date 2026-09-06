@@ -3,14 +3,7 @@
 import * as React from "react";
 import { Pencil } from "lucide-react";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Button,
-  StatusBadge,
-  type StatusBadgeTone,
-} from "@/components/ui";
+import { Avatar, AvatarFallback, AvatarImage, Button } from "@/components/ui";
 import { formatDate } from "@/lib/entity/patients";
 import type {
   AlertSeverity,
@@ -52,12 +45,29 @@ export interface PatientRecordHeaderProps {
   primaryAction?: React.ReactNode;
 }
 
-/** Severidad del backend → tono del pill Bento. `info` es deliberadamente
- * neutro: no compite visualmente con una alergia. */
-const ALERT_TONE: Record<AlertSeverity, StatusBadgeTone> = {
-  critical: "danger",
-  warning: "warning",
-  info: "neutral",
+/**
+ * Forma común de los tags de alerta: píldora pequeña y de bajo contraste, para
+ * que acompañen al nombre sin convertirse en el elemento dominante de la
+ * cabecera.
+ */
+const ALERT_TAG_BASE =
+  "inline-block max-w-[12rem] truncate rounded-full px-2 py-0.5 text-[11px] font-medium";
+
+/**
+ * Severidad del backend → color del tag.
+ *
+ * Se escriben a mano con utilidades Tailwind y SIEMPRE con su variante `dark:`
+ * porque el sistema Bento **no tiene** tokens `success`/`warning`/`danger`: los
+ * únicos tokens semánticos son los de superficie/marca. `info` es
+ * deliberadamente neutro (tokens `bg-hover`/`border-hairline`) para que no
+ * compita visualmente con una alergia.
+ */
+const ALERT_TAG_CLASS: Record<AlertSeverity, string> = {
+  critical:
+    "bg-rose-50 text-rose-700 border border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60",
+  warning:
+    "bg-amber-50 text-amber-800 border border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60",
+  info: "bg-hover text-subtle border border-hairline",
 };
 
 /** Orden de recorte: lo grave primero. */
@@ -140,23 +150,22 @@ export function PatientRecordHeader({
               </h1>
 
               {visibleAlerts.map((alert) => (
-                <StatusBadge
+                <span
                   key={alert.id}
-                  tone={ALERT_TONE[alert.severity]}
-                  className="max-w-[12rem]"
+                  className={cn(ALERT_TAG_BASE, ALERT_TAG_CLASS[alert.severity])}
                   title={alert.message}
                 >
-                  <span className="truncate">{alert.message}</span>
-                </StatusBadge>
+                  {alert.message}
+                </span>
               ))}
 
               {hiddenAlerts.length > 0 ? (
-                <StatusBadge
-                  tone="neutral"
+                <span
+                  className={cn(ALERT_TAG_BASE, ALERT_TAG_CLASS.info)}
                   title={hiddenAlerts.map((a) => a.message).join("\n")}
                 >
                   {`+${hiddenAlerts.length}`}
-                </StatusBadge>
+                </span>
               ) : null}
             </div>
 

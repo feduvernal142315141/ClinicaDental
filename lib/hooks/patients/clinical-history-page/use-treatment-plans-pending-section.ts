@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTreatmentPlans } from "@/lib/hooks/odontogram/useTreatmentPlans";
 import type {
   TreatmentPlanResponse,
@@ -56,13 +56,20 @@ function derivePlanStatus(
 
 export function useTreatmentPlansPendingSection(patientId: string) {
   const { plans, fetchPlans, loading } = useTreatmentPlans();
+  // Un fallo de lectura deja `plans` en `[]`, igual que un paciente sin planes.
+  // Sin esta bandera, la UI no puede distinguir "cero planes" de "no se pudo
+  // leer", y pintaría un 0 —una afirmación clínica— sobre un 403 o un 5xx.
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     // `fetchPlans` ya avisa con toast y RELANZA. El servicio ahora rechaza de
     // verdad ante un 403/500 (antes devolvía el cuerpo de error como si fuera
     // una página vacía de planes), así que sin este `catch` la promesa quedaría
     // sin manejar. Mismo patrón que `finalize-appointment-modal.tsx:111`.
-    void fetchPlans(patientId, { page: 0, pageSize: 50 }).catch(() => {});
+    setLoadFailed(false);
+    void fetchPlans(patientId, { page: 0, pageSize: 50 }).catch(() => {
+      setLoadFailed(true);
+    });
   }, [patientId, fetchPlans]);
 
   const counts = useMemo<TreatmentStatusCounts>(() => {
@@ -105,6 +112,8 @@ export function useTreatmentPlansPendingSection(patientId: string) {
 
   return {
     loading,
+    /** La carga de planes falló (403/5xx/red): los contadores NO son un hecho. */
+    loadFailed,
     pendingPlans,
     counts,
   };
