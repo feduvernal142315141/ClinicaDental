@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/primitives/shadcn/alert-dialog";
 import { notify } from "@/lib/utils/notify";
 import { cn } from "@/lib/utils/utils";
-import apiInstance from "@/lib/services/apiConfig";
 import { patientAttachmentsService } from "@/lib/services/patientAttachments/patientAttachments.service";
 import {
   ATTACHMENT_CATEGORY_COLORS,
@@ -63,9 +62,11 @@ export function AttachmentCard({ attachment, patientId, onDelete, canDelete }: A
 
   const handleDownload = async () => {
     try {
-      const url = patientAttachmentsService.getDownloadUrl(patientId, attachment.id);
-      const response = await apiInstance.get<Blob>(url, { responseType: "blob" });
-      const blobUrl = URL.createObjectURL(response.data);
+      const blob = await patientAttachmentsService.downloadAttachment(
+        patientId,
+        attachment.id,
+      );
+      const blobUrl = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = blobUrl;
       anchor.download = attachment.fileName;

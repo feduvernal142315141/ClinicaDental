@@ -493,8 +493,25 @@ function CollapsedSummary({
     );
   }
   if (!summary) return null;
+  // `aria-hidden` SOLO en el resumen, no en la rama de fallo de arriba.
+  //
+  // Este span vive DENTRO del botón del acordeón, así que su texto entra en el
+  // nombre accesible: un lector de pantalla leía "Consulta · 14 de agosto de
+  // 2026, Doctor de la cita: X, Consulta finalizada" seguido del arranque
+  // ENTERO de la nota clínica, en cada una de las tarjetas de la lista. Se
+  // oculta como adorno visual y el nombre del botón vuelve a ser identificativo.
+  //
+  // No se saca del botón: eso mataría el área pulsable de toda esa línea, que
+  // hoy despliega la tarjeta, y encogería el objetivo táctil de cada consulta.
+  // Y "No se pudo cargar el registro" SÍ debe anunciarse: es un estado, no un
+  // adorno, y por eso su rama se queda intacta.
   return (
-    <span className="mt-1 block truncate text-xs text-subtle">{summary}</span>
+    <span
+      aria-hidden="true"
+      className="mt-1 block truncate text-xs text-subtle"
+    >
+      {summary}
+    </span>
   );
 }
 

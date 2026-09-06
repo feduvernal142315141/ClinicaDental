@@ -222,9 +222,13 @@ export function ClinicalHistoryPage({
     const mh = snapshot?.medicalHistory;
     if (!mh) return [];
     return [
+      // Con prefijo: el chip derivado decía solo "Penicilina", y sin él una
+      // alergia y una enfermedad sistémica solo se distinguían por el color.
+      // Las enfermedades se dejan sin prefijar: no hay evidencia de cómo las
+      // frasea el backend y anteponer "Enfermedad:" sería inventar copy.
       ...(mh.allergies ?? []).map((value, i) => ({
         id: `derived-allergy-${i}`,
-        message: value,
+        message: `Alergia: ${value}`,
         severity: "critical" as const,
       })),
       ...(mh.systemicDiseases ?? []).map((value, i) => ({
@@ -434,14 +438,12 @@ export function ClinicalHistoryPage({
                 />
               )}
 
-              <div className="px-4">
-                <PatientImagesCard
-                  patientId={patientId}
-                  canManage={canManageAttachments}
-                  activeAppointmentId={effectiveActiveAppointmentId}
-                  onViewAll={() => setActiveTab(PATIENT_TABS.FILES)}
-                />
-              </div>
+              <PatientImagesCard
+                patientId={patientId}
+                canManage={canManageAttachments}
+                activeAppointmentId={effectiveActiveAppointmentId}
+                onViewAll={() => setActiveTab(PATIENT_TABS.FILES)}
+              />
             </div>
           </div>
         </TabsContent>

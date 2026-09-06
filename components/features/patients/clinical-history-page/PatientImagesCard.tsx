@@ -13,6 +13,7 @@ import {
   File as FileIcon,
   Image as ImageIcon,
   ImagePlus,
+  Loader2,
   UploadCloud,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle, Button } from "@/components/ui";
@@ -21,6 +22,7 @@ import { notify } from "@/lib/utils/notify";
 import { notifyApiError } from "@/lib/utils/notify-error";
 import { toLocalDate } from "@/lib/datetime";
 import { usePatientAttachments } from "@/lib/hooks/patientAttachments/usePatientAttachments";
+import { patientAttachmentsService } from "@/lib/services/patientAttachments/patientAttachments.service";
 import type {
   AttachmentCategory,
   PatientAttachment,
@@ -69,17 +71,42 @@ function shortDate(iso?: string): string {
  * descargar el archivo entero por cada celda solo para pintar 90 píxeles.
  * Por eso cada celda es un icono por tipo + nombre + fecha.
  */
-function AttachmentTile({ attachment }: { attachment: PatientAttachment }) {
+function AttachmentTile({
+  attachment,
+  onDownload,
+  downloading,
+}: {
+  attachment: PatientAttachment;
+  onDownload: (attachment: PatientAttachment) => void;
+  downloading: boolean;
+}) {
   const isPdf = attachment.mimeType === "application/pdf";
   const isImage = attachment.mimeType?.startsWith("image/");
 
+  // Botón, no div con onClick: se necesita foco por teclado, Enter/Espacio y un
+  // nombre accesible. Descarga en vez de previsualizar — no existe URL pública
+  // ni endpoint de miniatura, así que "previsualizar" significaría bajarse el
+  // fichero entero (hasta 10 MB) igualmente.
+  //
+  // Sin `hover:scale`: no hay un solo uso de transform en esta vista, y la celda
+  // vive dentro del ancestro con scroll de ADR-36, donde crecer empuja píxeles
+  // fuera de la caja. El realce va por color y anillo, como el resto.
   return (
-    <div
-      className="relative aspect-square overflow-hidden rounded-xl border border-hairline bg-hover"
+    <button
+      type="button"
+      onClick={() => onDownload(attachment)}
+      disabled={downloading}
+      aria-label={`Descargar ${attachment.fileName}`}
+      className="group relative aspect-square overflow-hidden rounded-xl border border-hairline bg-hover text-left transition-colors hover:border-brand/40 hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-60"
       title={`${attachment.fileName} — ${shortDate(attachment.uploadedAt)}`}
     >
       <div className="flex h-full w-full items-center justify-center">
-        {isImage ? (
+        {downloading ? (
+          <Loader2
+            className="h-6 w-6 animate-spin text-subtle motion-reduce:animate-none"
+            aria-hidden="true"
+          />
+        ) : isImage ? (
           <ImageIcon className="h-7 w-7 text-brand" aria-hidden="true" />
         ) : isPdf ? (
           <FileText className="h-7 w-7 text-subtle" aria-hidden="true" />
@@ -95,7 +122,7 @@ function AttachmentTile({ attachment }: { attachment: PatientAttachment }) {
           {shortDate(attachment.uploadedAt)}
         </p>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -121,6 +148,32 @@ export function PatientImagesCard({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownload = useCallback(
+    async (attachment: PatientAttachment) => {
+      setDownloadingId(attachment.id);
+      try {
+        const blob = await patientAttachmentsService.downloadAttachment(
+          patientId,
+          attachment.id,
+        );
+        // Ancla sintética con `revokeObjectURL` inmediato: el navegador ya ha
+        // tomado el blob al disparar el clic, así que no se filtra memoria.
+        const blobUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = blobUrl;
+        anchor.download = attachment.fileName;
+        anchor.click();
+        URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        notifyApiError("No se pudo descargar el archivo", error);
+      } finally {
+        setDownloadingId(null);
+      }
+    },
+    [patientId],
+  );
 
   const images = attachments.filter((a) => a.mimeType?.startsWith("image/"));
   // La tercera celda de la fila es el slot "+ Subir" cuando hay permiso; sin
@@ -227,7 +280,12 @@ export function PatientImagesCard({
         <>
           <div className="grid grid-cols-3 gap-2">
             {visible.map((attachment) => (
-              <AttachmentTile key={attachment.id} attachment={attachment} />
+              <AttachmentTile
+                key={attachment.id}
+                attachment={attachment}
+                onDownload={handleDownload}
+                downloading={downloadingId === attachment.id}
+              />
             ))}
 
             {canManage && (

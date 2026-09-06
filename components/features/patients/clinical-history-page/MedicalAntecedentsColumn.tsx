@@ -185,7 +185,7 @@ export function MedicalAntecedentsColumn({
   // leer: una afirmación médica falsa nacida de un problema de permisos.
   if (forbidden || loadError) {
     return (
-      <div className="flex flex-col px-4 gap-4">
+      <div className="flex flex-col gap-4">
         <Alert live={false} className="mt-3">
           <AlertTriangle />
           <AlertTitle>
@@ -211,7 +211,7 @@ export function MedicalAntecedentsColumn({
   }
 
   return (
-    <div className="flex flex-col px-4 gap-4">
+    <div className="flex flex-col gap-4">
       {/* Alertas — banner al tope */}
       {alertBadges.length > 0 && (
         // Contenedor NEUTRO a propósito: la severidad la lleva cada pill, que
