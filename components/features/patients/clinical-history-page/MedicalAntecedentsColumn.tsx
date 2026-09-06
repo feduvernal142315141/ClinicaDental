@@ -10,7 +10,6 @@ import {
   type StatusBadgeTone,
 } from "@/components/ui";
 import { cn } from "@/lib/utils/utils";
-import { SECTION_LABEL_CLASS } from "./section-label";
 import type {
   ClinicalHistoryMedicalHistory,
   ClinicalHistoryPatientHeader,
@@ -79,11 +78,16 @@ function TreatmentStatusCounters({
   return (
     <div className="grid grid-cols-3 gap-2.5">
       {items.map((item) => (
-        <section key={item.label} className="bento px-3 py-2.5">
-          <p className={SECTION_LABEL_CLASS}>{item.label}</p>
+        <section
+          key={item.label}
+          className="rounded-xl border border-hairline bg-surface px-3 py-2.5"
+        >
+          <p className="text-[10px] font-bold uppercase tracking-wider text-subtle">
+            {item.label}
+          </p>
           <p
             className={cn(
-              "mt-0.5 text-2xl font-bold leading-none tabular-nums",
+              "mt-1 text-2xl font-bold leading-none tabular-nums",
               unknown ? "text-subtle" : item.className,
             )}
             title={unknown ? unknownTitle : undefined}
@@ -133,11 +137,15 @@ function AntecedentCell({
 
   return (
     <div>
-      <p className={cn(SECTION_LABEL_CLASS, "mb-0.5")}>{label}</p>
+      <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-subtle/80">
+        {label}
+      </p>
       {hasItems ? (
         <p
           className={cn(
-            "flex items-start gap-1 text-xs font-medium",
+            "flex items-start gap-1 text-xs",
+            // Alergias y enfermedades van con peso: son las dos que cambian una
+            // decisión clínica. Medicamentos y cirugías se leen en tono normal.
             valueClassName ?? "text-ink",
           )}
         >
@@ -150,7 +158,10 @@ function AntecedentCell({
           <span>{items?.join(", ")}</span>
         </p>
       ) : (
-        <p className="text-xs italic text-subtle">{empty}</p>
+        // Sin cursiva: en una rejilla de cuatro celdas todas vacías, la cursiva
+        // gris hacía que el bloque entero pareciera deshabilitado en vez de
+        // simplemente sin datos.
+        <p className="text-xs font-normal text-subtle/70">{empty}</p>
       )}
     </div>
   );
@@ -255,7 +266,7 @@ export function MedicalAntecedentsColumn({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-subtle hover:text-brand"
+              className="h-8 w-8 rounded-lg text-subtle hover:bg-hover hover:text-brand"
               onClick={() => onEditClick?.()}
               aria-label="Editar antecedentes médicos"
               title="Editar antecedentes médicos"
@@ -270,7 +281,7 @@ export function MedicalAntecedentsColumn({
             label="Alergias"
             items={medicalHistory?.allergies}
             empty="Sin alergias registradas"
-            valueClassName="text-rose-600 dark:text-rose-400"
+            valueClassName="font-semibold text-rose-600 dark:text-rose-400"
             withWarningIcon
           />
           <AntecedentCell
@@ -287,7 +298,7 @@ export function MedicalAntecedentsColumn({
             label="Enfermedades"
             items={medicalHistory?.systemicDiseases}
             empty="Ninguna"
-            valueClassName="text-amber-700 dark:text-amber-400"
+            valueClassName="font-medium text-amber-700 dark:text-amber-400"
           />
         </div>
       </section>

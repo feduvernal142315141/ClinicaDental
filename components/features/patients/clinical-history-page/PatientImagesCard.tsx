@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
   type DragEvent,
-  type KeyboardEvent,
 } from "react";
 import {
   AlertTriangle,
@@ -14,7 +13,6 @@ import {
   Image as ImageIcon,
   ImagePlus,
   Loader2,
-  UploadCloud,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle, Button } from "@/components/ui";
 import { cn } from "@/lib/utils/utils";
@@ -22,6 +20,7 @@ import { notify } from "@/lib/utils/notify";
 import { notifyApiError } from "@/lib/utils/notify-error";
 import { toLocalDate } from "@/lib/datetime";
 import { usePatientAttachments } from "@/lib/hooks/patientAttachments/usePatientAttachments";
+import { ATTACHMENT_CATEGORIES } from "@/lib/entity/patientAttachment";
 import { patientAttachmentsService } from "@/lib/services/patientAttachments/patientAttachments.service";
 import type {
   AttachmentCategory,
@@ -71,6 +70,31 @@ function shortDate(iso?: string): string {
  * descargar el archivo entero por cada celda solo para pintar 90 píxeles.
  * Por eso cada celda es un icono por tipo + nombre + fecha.
  */
+/**
+ * Nombre legible del adjunto.
+ *
+ * El backend guarda el fichero como `UUID_nombreOriginal` y el DTO del LISTADO
+ * devuelve esa cadena tal cual — el nombre original solo viaja en la cabecera de
+ * la descarga. Así que la miniatura mostraba "16bbcdb9-8812-4a22-9aab-0…", que
+ * no dice nada de lo que hay dentro.
+ *
+ * Se le quita el prefijo cuando lo lleva. Si detrás no queda nada legible, se
+ * cae a la categoría clínica del adjunto ("Radiografía", "Imagen clínica"…),
+ * que es un dato REAL del registro y no una etiqueta inventada.
+ */
+const UUID_PREFIX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[_-]?/i;
+
+function displayFileName(attachment: PatientAttachment): string {
+  const raw = (attachment.fileName ?? "").trim();
+  const stripped = raw.replace(UUID_PREFIX, "").trim();
+  if (stripped) return stripped;
+  const category = ATTACHMENT_CATEGORIES.find(
+    (c) => c.value === attachment.category,
+  )?.label;
+  return category ?? "Archivo";
+}
+
 function AttachmentTile({
   attachment,
   onDownload,
@@ -96,9 +120,9 @@ function AttachmentTile({
       type="button"
       onClick={() => onDownload(attachment)}
       disabled={downloading}
-      aria-label={`Descargar ${attachment.fileName}`}
+      aria-label={`Descargar ${displayFileName(attachment)}`}
       className="group relative aspect-square overflow-hidden rounded-xl border border-hairline bg-hover text-left transition-colors hover:border-brand/40 hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-60"
-      title={`${attachment.fileName} — ${shortDate(attachment.uploadedAt)}`}
+      title={`${displayFileName(attachment)} — ${shortDate(attachment.uploadedAt)}`}
     >
       <div className="flex h-full w-full items-center justify-center">
         {downloading ? (
@@ -116,7 +140,7 @@ function AttachmentTile({
       </div>
       <div className="absolute inset-x-0 bottom-0 bg-black/65 px-1.5 py-1">
         <p className="truncate text-[10px] font-medium leading-tight text-white">
-          {attachment.fileName}
+          {displayFileName(attachment)}
         </p>
         <p className="text-[10px] leading-tight text-white/70">
           {shortDate(attachment.uploadedAt)}
@@ -231,12 +255,6 @@ export function PatientImagesCard({
     if (uploading) return;
     void handleFile(e.dataTransfer.files?.[0]);
   };
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      openPicker();
-    }
-  };
 
   return (
     <section className="bento p-4">
@@ -278,7 +296,15 @@ export function PatientImagesCard({
         </Alert>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-2">
+          <div
+            onDragOver={canManage ? onDragOver : undefined}
+            onDragLeave={canManage ? onDragLeave : undefined}
+            onDrop={canManage ? onDrop : undefined}
+            className={cn(
+              "grid grid-cols-3 gap-2 rounded-xl transition-colors",
+              isDragging && "bg-brand/5 ring-2 ring-brand/40",
+            )}
+          >
             {visible.map((attachment) => (
               <AttachmentTile
                 key={attachment.id}
@@ -318,63 +344,30 @@ export function PatientImagesCard({
             <p className="mt-2 text-xs text-subtle">Cargando archivos…</p>
           )}
 
-          {/* Zona de arrastre — se OCULTA sin permiso (patrón de esta vista),
-              no se deshabilita. */}
+          {/* El input vive suelto: la caja de arrastre se retiró (consumía ~120px
+              en una columna que ya era demasiado alta) y ahora quien dispara el
+              selector es el slot "+ Subir" de la rejilla. Arrastrar sigue
+              funcionando: el drop se escucha sobre la propia rejilla, así que no
+              se perdió la función, solo el ladrillo. */}
           {canManage && (
             <>
-              <div
-                role="button"
-                tabIndex={uploading ? -1 : 0}
-                aria-label="Zona de carga: haz clic o arrastra un archivo aquí para subirlo al expediente"
-                aria-disabled={uploading}
-                onClick={openPicker}
-                onKeyDown={onKeyDown}
-                onDragOver={onDragOver}
-                onDragLeave={onDragLeave}
-                onDrop={onDrop}
-                className={cn(
-                  "mt-3 flex cursor-pointer flex-col items-center gap-1 rounded-bento border border-dashed p-4 text-center transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                  isDragging
-                    ? "border-brand bg-brand/5"
-                    : fileError
-                      ? "border-rose-400 bg-rose-500/5 dark:border-rose-500/60"
-                      : "border-hairline hover:border-brand/50 hover:bg-hover",
-                  uploading && "pointer-events-none opacity-60",
-                )}
-              >
-                <UploadCloud
-                  className={cn(
-                    "h-5 w-5 transition-colors",
-                    isDragging ? "text-brand" : "text-subtle",
-                  )}
-                  aria-hidden="true"
-                />
-                <p className="text-xs font-medium text-ink">
-                  {uploading ? "Subiendo archivo…" : "Arrastra archivos aquí"}
-                </p>
-                <p className="text-[11px] text-subtle">
-                  o haz clic para examinar
-                </p>
-                <p className="text-[10px] text-subtle">
-                  JPG, PNG, WEBP o PDF — máx. {MAX_SIZE_MB} MB
-                </p>
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept={ACCEPTED_ACCEPT}
-                  className="hidden"
-                  disabled={uploading}
-                  aria-hidden="true"
-                  tabIndex={-1}
-                  onChange={(e) => {
-                    void handleFile(e.target.files?.[0]);
-                    // Permite volver a elegir el MISMO archivo tras un error.
-                    e.target.value = "";
-                  }}
-                />
-              </div>
-
+              <input
+                ref={inputRef}
+                type="file"
+                accept={ACCEPTED_ACCEPT}
+                className="hidden"
+                disabled={uploading}
+                aria-hidden="true"
+                tabIndex={-1}
+                onChange={(e) => {
+                  void handleFile(e.target.files?.[0]);
+                  // Permite volver a elegir el MISMO archivo tras un error.
+                  e.target.value = "";
+                }}
+              />
+              <p className="mt-2 text-[10px] text-subtle">
+                JPG, PNG, WEBP o PDF — máx. {MAX_SIZE_MB} MB
+              </p>
               {fileError && (
                 <p
                   role="alert"

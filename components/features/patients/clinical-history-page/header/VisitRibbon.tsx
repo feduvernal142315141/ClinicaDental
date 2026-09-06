@@ -101,7 +101,7 @@ export function VisitRibbon({
     return (
       <div
         className={cn(
-          "flex w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-bento px-4 py-3",
+          "mt-4 flex w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-bento px-4 py-3",
           HISTORIC_TONE,
         )}
       >
@@ -135,7 +135,7 @@ export function VisitRibbon({
   return (
     <div
       className={cn(
-        "flex w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-bento px-4 py-3",
+        "mt-4 flex w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-bento px-4 py-3",
         ACTIVE_TONE,
       )}
     >
