@@ -40,7 +40,6 @@ export interface EvolutionComposerProps {
   onAttach?: () => void;
   onDictate?: () => void;
   /** Contra qué registro se escribe. Lo compone `useEvolutionComposer`. */
-  contextLabel: string;
   className?: string;
 }
 
@@ -72,7 +71,6 @@ export function EvolutionComposer({
   onSoapToggle,
   onAttach,
   onDictate,
-  contextLabel,
   className,
 }: EvolutionComposerProps) {
   const soapId = useId();
@@ -127,13 +125,13 @@ export function EvolutionComposer({
   }
 
   const isLoading = mode.kind === "loading";
-  const needsConsultation = mode.kind === "needs-consultation";
-  // El verbo del botón dice lo que va a PASAR. Sin consulta abierta, "Guardar"
-  // sería mentira: no hay registro contra el que escribir hasta que se inicie.
-  const saveLabel = needsConsultation
-    ? "Guardar e iniciar consulta"
-    : "Guardar";
-  const busyLabel = needsConsultation ? "Iniciando consulta…" : "Guardando…";
+  // El botón dice SIEMPRE "Guardar". Sin consulta abierta, pulsarlo abre la
+  // consulta y guarda a continuación, sin que el usuario tenga que entender la
+  // diferencia. Lo que NO se salta es el paso donde se eligen doctor y motivo:
+  // `POST /appointments/start-now` crea un acto asistencial real, y crearlo con
+  // valores inventados metería una cita fantasma en la agenda de alguien.
+  const saveLabel = "Guardar";
+  const busyLabel = "Guardando…";
 
   return (
     <section
@@ -182,18 +180,9 @@ export function EvolutionComposer({
             "outline-none focus-visible:outline-none",
             "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/30",
           )}
-          aria-describedby={`${textareaId}-context`}
-        />
+          />
       )}
 
-      {/* Contra QUÉ se escribe. Va siempre, también mientras se comprueba: la
-          duda sobre el destino del texto no puede quedar sin decir. */}
-      <p
-        id={`${textareaId}-context`}
-        className="px-4 pb-2.5 text-[11px] text-subtle"
-      >
-        {contextLabel}
-      </p>
 
       {/* ── Pie ────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3 border-t border-hairline px-3 py-2">
@@ -225,7 +214,7 @@ export function EvolutionComposer({
           onClick={() => void handleSubmit()}
           disabled={isLoading || busy || isEmpty}
           className={cn(
-            "inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-1.5",
+            "inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2",
             "text-sm font-medium text-white transition-colors hover:bg-brand-strong",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
             "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-brand",

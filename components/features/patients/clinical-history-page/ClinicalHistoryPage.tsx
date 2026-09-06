@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clinicalHistoryService } from "@/lib/services/clinical-history";
+import type { ClinicalHistoryAlert } from "@/lib/entity/clinical-history";
 
 import { Stethoscope, ClipboardList, ListChecks, Images, Plus } from "lucide-react";
 import { Button } from "@/components/ui";
@@ -13,10 +14,8 @@ import {
 } from "@/components/ui/primitives/shadcn/tabs";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { cn } from "@/lib/utils/utils";
-import { SECTION_LABEL_CLASS } from "./section-label";
 import { PatientInfoColumn } from "./PatientInfoColumn";
 import { MedicalAntecedentsColumn } from "./MedicalAntecedentsColumn";
-import { VisitTimeline } from "./VisitTimeline";
 import { ActiveConsultationNotes } from "./ActiveConsultationNotes";
 import { VisitHistoryDrawer } from "./VisitHistoryDrawer";
 import { MedicalHistoryDrawer } from "@/components/features/clinical-history/sections/MedicalHistoryDrawer";
@@ -36,12 +35,12 @@ import {
 } from "./patient-tabs-style";
 import { PatientImagesCard } from "./PatientImagesCard";
 import { EvolutionComposer } from "./evolution/EvolutionComposer";
-import { useEvolutionComposer } from "./evolution/use-evolution-composer";
+import { useEvolutionComposer, draftToHtml } from "./evolution/use-evolution-composer";
+import { notifyApiError } from "@/lib/utils/notify-error";
 import { VisitAutosaveIndicator } from "./header/VisitAutosaveIndicator";
 import { EvolutionColumn } from "./evolution";
 import { EvolutionPrintDocument } from "./evolution/EvolutionPrintDocument";
 import { useEvolutionPrint } from "./evolution/use-evolution-print";
-import { ContinuityStrip } from "./continuity";
 import { useIsWideDesktop } from "@/lib/hooks/use-wide-desktop";
 
 type ClinicalHistoryPageProps = UseClinicalHistoryPageParams;
@@ -63,7 +62,6 @@ export function ClinicalHistoryPage({
     snapshotForbidden,
     snapshotError,
     loadSnapshot,
-    loadAppointments,
     activeTab,
     setActiveTab,
     showStartNow,
@@ -89,9 +87,7 @@ export function ClinicalHistoryPage({
     canEditPatient,
     canViewTreatmentPlan,
     canViewClinicalHistory,
-    handleStartConsultation,
     handleStartNow,
-    handleViewVisitHistory,
     handleSaveMedicalHistory,
     handleBackToCurrentOdontogram,
     handleFinalizeSuccess,
@@ -99,14 +95,7 @@ export function ClinicalHistoryPage({
     handlePatientPhotoChange,
     handleViewVisitOdontogram,
     handleSelectHistoricVisit,
-    handleStartScheduledConsultation,
-    consultationCta,
-    nextAppointment,
     visitRibbonState,
-    pendingActs,
-    pendingActsLoading,
-    pendingActsUnavailable,
-    pendingActsUnavailableReason,
   } = useClinicalHistoryPage({
     patientId,
     initialTab,
@@ -142,6 +131,14 @@ export function ClinicalHistoryPage({
    * mandar solo el borrador BORRARÍA lo que ya hubiera escrito el editor de la
    * consulta activa. Se lee el registro vigente y se concatena.
    */
+  /**
+   * Marca que el usuario pulsó "Guardar" SIN consulta abierta. El botón no
+   * cambia de verbo: se abre la consulta express y, en cuanto existe, la nota se
+   * guarda sola. Sin esta marca el texto se quedaba en el compositor esperando
+   * un segundo clic que nadie sabía que hacía falta.
+   */
+  const pendingComposerSaveRef = useRef(false);
+
   const handleSaveEvolutionDraft = useCallback(
     async (html: string) => {
       if (composer.mode.kind !== "ready") return;
@@ -162,6 +159,23 @@ export function ClinicalHistoryPage({
     [composer, patientId],
   );
 
+  // Cierra el ciclo de "Guardar" sin consulta: cuando la consulta express ya
+  // existe, se persiste el borrador que el usuario había escrito. Se dispara UNA
+  // vez (la marca se limpia antes de guardar) para que un re-render no reenvíe
+  // la nota, que con este endpoint significaría duplicarla.
+  useEffect(() => {
+    if (!pendingComposerSaveRef.current) return;
+    if (composer.mode.kind !== "ready") return;
+    if (!composer.value.trim()) {
+      pendingComposerSaveRef.current = false;
+      return;
+    }
+    pendingComposerSaveRef.current = false;
+    void handleSaveEvolutionDraft(draftToHtml(composer.value)).catch((error) => {
+      notifyApiError("No se pudo guardar la evolución", error);
+    });
+  }, [composer.mode, composer.value, handleSaveEvolutionDraft]);
+
   // El scroller real de la pestaña, para que el observer del feed mida contra él
   // y no contra el viewport (que queda detrás de dos ancestros que recortan).
   const evolutionScrollRef = useRef<HTMLDivElement | null>(null);
@@ -171,6 +185,39 @@ export function ClinicalHistoryPage({
   // con su sello de última edición, justo debajo del editor que ya muestra el
   // nuevo — dos versiones de la misma nota clínica en la misma pantalla.
   const [notesSavedToken, setNotesSavedToken] = useState(0);
+
+  /**
+   * Alertas de la cabecera.
+   *
+   * `patientHeader.alerts` es lo que el backend YA calculó, y manda cuando trae
+   * algo. Pero hoy llega vacío en pacientes que sí tienen alergias o
+   * enfermedades sistémicas registradas, y una alergia que no se ve en la
+   * cabecera es justo el dato que no puede faltar. Cuando eso pasa se derivan de
+   * los antecedentes, que es de donde el backend las sacaría.
+   *
+   * NO se derivan si la historia clínica no se pudo leer (403/5xx): ahí no se
+   * sabe si hay alergias, y una cabecera sin chips diría que no las hay.
+   */
+  const headerAlerts = useMemo<ClinicalHistoryAlert[]>(() => {
+    if (snapshotForbidden || snapshotError) return [];
+    const fromBackend = snapshot?.patientHeader?.alerts ?? [];
+    if (fromBackend.length > 0) return fromBackend;
+
+    const mh = snapshot?.medicalHistory;
+    if (!mh) return [];
+    return [
+      ...(mh.allergies ?? []).map((value, i) => ({
+        id: `derived-allergy-${i}`,
+        message: value,
+        severity: "critical" as const,
+      })),
+      ...(mh.systemicDiseases ?? []).map((value, i) => ({
+        id: `derived-disease-${i}`,
+        message: value,
+        severity: "warning" as const,
+      })),
+    ];
+  }, [snapshot, snapshotForbidden, snapshotError]);
 
   if (patientLoading) {
     return (
@@ -206,7 +253,7 @@ export function ClinicalHistoryPage({
         birthDate={patient.dateOfBirth}
         phone={snapshot?.patientHeader?.phone ?? patient.phone}
         email={snapshot?.patientHeader?.email ?? patient.email}
-        alerts={snapshotForbidden ? [] : snapshot?.patientHeader?.alerts}
+        alerts={headerAlerts}
         canEdit={canEditPatient}
         onEdit={openEditPatient}
         primaryAction={
@@ -320,23 +367,12 @@ export function ClinicalHistoryPage({
                 value={composer.value}
                 onChange={composer.setValue}
                 onSave={handleSaveEvolutionDraft}
-                onRequestConsultation={openStartNow}
+                onRequestConsultation={() => {
+                  pendingComposerSaveRef.current = true;
+                  openStartNow();
+                }}
                 soapEnabled={composer.soapEnabled}
                 onSoapToggle={composer.setSoapEnabled}
-                contextLabel={composer.contextLabel}
-              />
-
-              <ContinuityStrip
-                pendingActs={pendingActs}
-                pendingUnavailable={pendingActsUnavailable}
-                pendingUnavailableReason={pendingActsUnavailableReason}
-                pendingLoading={pendingActsLoading}
-                nextAppointment={nextAppointment}
-                cta={consultationCta}
-                onContinue={handleStartConsultation}
-                onStartScheduled={handleStartScheduledConsultation}
-                onStartNow={openStartNow}
-                onViewPending={() => setActiveTab(PATIENT_TABS.TREATMENT_PLAN)}
               />
 
               <EvolutionColumn
@@ -370,9 +406,6 @@ export function ClinicalHistoryPage({
                   forbidden={snapshotForbidden}
                   loadError={snapshotError}
                   onRetry={() => loadSnapshot(patientId)}
-                  onViewOdontogram={() =>
-                    setActiveTab(PATIENT_TABS.ODONTOGRAM)
-                  }
                 />
               )}
 
@@ -382,21 +415,6 @@ export function ClinicalHistoryPage({
                   canManage={canManageAttachments}
                   activeAppointmentId={effectiveActiveAppointmentId}
                   onViewAll={() => setActiveTab(PATIENT_TABS.FILES)}
-                />
-              </div>
-
-              <div>
-                <p className={cn(SECTION_LABEL_CLASS, "select-none mb-2")}>
-                  Cronología de visitas
-                </p>
-                <VisitTimeline
-                  appointments={appointments}
-                  loading={appointmentsLoading}
-                  activeAppointmentId={effectiveActiveAppointmentId}
-                  onStartConsultation={handleStartConsultation}
-                  onNewConsultation={openStartNow}
-                  onViewVisitHistory={handleViewVisitHistory}
-                  onAppointmentsChanged={loadAppointments}
                 />
               </div>
             </div>

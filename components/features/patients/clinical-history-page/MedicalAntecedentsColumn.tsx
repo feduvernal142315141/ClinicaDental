@@ -11,7 +11,6 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/utils/utils";
 import { SECTION_LABEL_CLASS } from "./section-label";
-import { TreatmentPlansPendingSection } from "./TreatmentPlansPendingSection";
 import type {
   ClinicalHistoryMedicalHistory,
   ClinicalHistoryPatientHeader,
@@ -29,8 +28,6 @@ interface MedicalAntecedentsColumnProps {
   activeAppointmentId?: string;
   onEditClick?: () => void;
   canEdit?: boolean;
-  /** Lleva a la pestaña Odontograma desde un plan de tratamiento. */
-  onViewOdontogram?: () => void;
   /** El backend devolvió 403 al pedir la historia clínica. */
   forbidden?: boolean;
   /** Falló la carga de la historia clínica (5xx, red). */
@@ -165,7 +162,6 @@ export function MedicalAntecedentsColumn({
   patientId,
   onEditClick,
   canEdit = false,
-  onViewOdontogram,
   forbidden = false,
   loadError = null,
   onRetry,
@@ -180,7 +176,6 @@ export function MedicalAntecedentsColumn({
   const {
     loading: plansLoading,
     loadFailed: plansLoadFailed,
-    pendingPlans,
     counts: planCounts,
   } = useTreatmentPlansPendingSection(patientId);
 
@@ -297,41 +292,6 @@ export function MedicalAntecedentsColumn({
         </div>
       </section>
 
-      {/* Planes de tratamiento */}
-      {/* `shrink-0` es defensivo: si algún día se vuelve a acotar el alto de
-          esta columna, sus hijos se comprimirían, y aquí `overflow-hidden`
-          convertiría esa compresión en un RECORTE — que es como se cortaba la
-          tarjeta del plan por abajo. Hoy la columna ya no limita el alto: la
-          página entera es la única superficie que scrollea. */}
-      <section className="bento shrink-0 overflow-hidden">
-        <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-hairline">
-          {/* "Planes del odontograma" y no "Planes de Tratamiento": la ficha
-              tiene ahora una pestaña propia con ESE nombre, y son dos cosas
-              distintas —allí se ven las LÍNEAS presupuestadas con sus importes;
-              aquí, los DOCUMENTOS de plan y su avance derivado de los eventos
-              del odontograma, que es justo a donde lleva la acción de cada
-              tarjeta. Dos rótulos iguales con contenidos distintos en la misma
-              ficha mandan al usuario al sitio equivocado. */}
-          <h3 className={SECTION_LABEL_CLASS}>Planes del odontograma</h3>
-          {/* Los cancelados no tienen contador propio en la fila de arriba;
-              se siguen mostrando aquí para no PERDER el dato cuando los hay. */}
-          {!plansLoadFailed && planCounts.cancelado > 0 && (
-            <StatusBadge tone="neutral" className="gap-1">
-              <span className="font-bold tabular-nums">
-                {planCounts.cancelado}
-              </span>
-              cancelados
-            </StatusBadge>
-          )}
-        </div>
-        <div className="p-5">
-          <TreatmentPlansPendingSection
-            plans={pendingPlans}
-            loading={plansLoading}
-            onViewOdontogram={onViewOdontogram}
-          />
-        </div>
-      </section>
     </div>
   );
 }

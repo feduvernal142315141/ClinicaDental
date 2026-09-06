@@ -20,16 +20,21 @@ export interface EvolutionScopeHeaderProps {
 }
 
 /**
- * Cabecera de alcance de la columna de evolución clínica.
+ * Barra sutil sobre la columna de evolución.
  *
- * No es una tarjeta: es texto sobre el fondo de la vista. Su única razón de
- * existir es declarar, de forma permanente y visible (nunca en un tooltip),
- * QUÉ contiene exactamente el listado que hay debajo y qué no contiene.
+ * SIMPLIFICADA a propósito. Antes declaraba en pantalla, de forma permanente,
+ * el alcance completo del listado ("registrada en este sistema · N consultas ·
+ * ordenado por fecha de atención · no incluye canceladas · solo la última
+ * edición"). Ese bloque metía un ladrillo de texto entre el compositor y la
+ * primera consulta, y el diseño lo quiere fuera.
  *
- * El título dice "registrada en este sistema" a propósito: el listado excluye
- * las consultas canceladas y está capado por el backend, así que llamarlo
- * "historia clínica completa" o "todas las consultas" sería una afirmación
- * falsa sobre un registro clínico-legal.
+ * Esas declaraciones NO se han perdido, y no podían perderse: viajan íntegras
+ * en el pie del documento IMPRESO —repetido en cada folio—, que es la copia que
+ * se entrega al paciente y donde la norma exige que consten.
+ *
+ * Lo que SÍ se queda en pantalla es el aviso de truncado, y solo cuando ocurre
+ * de verdad: ahí el listado aparenta ser el historial completo sin serlo, y eso
+ * no puede quedar únicamente en el papel.
  */
 export function EvolutionScopeHeader({
   shownCount,
@@ -38,55 +43,49 @@ export function EvolutionScopeHeader({
   printPreparing = false,
   printProgress,
 }: EvolutionScopeHeaderProps) {
-  const countText =
-    shownCount === 1 ? "1 consulta mostrada" : `${shownCount} consultas mostradas`;
+  if (!truncated && !onPrint) return null;
 
   return (
-    <header className="mb-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold text-ink">
-            Evolución clínica registrada en este sistema
-          </h2>
-          {/* Declaración de alcance PERMANENTE: qué se muestra, con qué orden,
-              qué se excluye y qué se conserva de cada nota. */}
-          <p className="mt-1 text-[11px] leading-relaxed text-subtle">
-            {countText} · Ordenado por fecha de atención, la más reciente primero ·
-            No se incluyen las consultas canceladas · Se conserva únicamente la
-            última edición de cada nota
-          </p>
-        </div>
-
-        {onPrint ? (
+    <div className="mb-2 flex flex-col gap-2">
+      {onPrint ? (
+        <div className="flex items-center justify-end">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={onPrint}
             disabled={printPreparing}
             aria-live="polite"
-            className={cn("shrink-0 gap-2", "pointer-coarse:h-11 pointer-coarse:px-4")}
+            title={
+              shownCount === 1
+                ? "Imprimir la consulta mostrada"
+                : `Imprimir las ${shownCount} consultas mostradas`
+            }
+            className={cn(
+              "h-8 shrink-0 gap-1.5 px-2 text-xs text-subtle hover:text-ink",
+              "[@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:px-3",
+            )}
           >
             {printPreparing ? (
               <Loader2
-                className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
                 aria-hidden="true"
               />
             ) : (
-              <Printer className="h-4 w-4" aria-hidden="true" />
+              <Printer className="h-3.5 w-3.5" aria-hidden="true" />
             )}
             {/* El feed carga perezosamente, así que imprimir obliga a traer las
                 visitas que falten. Con un historial largo eso son segundos de
                 espera: sin este rótulo el usuario pulsa y no ve nada pasar. */}
             {printPreparing && printProgress
-              ? `Preparando documento… ${printProgress.loaded}/${printProgress.total}`
-              : "Imprimir evolución"}
+              ? `Preparando… ${printProgress.loaded}/${printProgress.total}`
+              : "Imprimir"}
           </Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       {truncated ? (
-        <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/15 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-400/25 dark:text-amber-300">
+        <div className="flex items-start gap-2 rounded-lg bg-amber-500/15 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-400/25 dark:text-amber-300">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span>
             Se muestran las 100 consultas más recientes registradas; puede haber
@@ -94,7 +93,7 @@ export function EvolutionScopeHeader({
           </span>
         </div>
       ) : null}
-    </header>
+    </div>
   );
 }
 
