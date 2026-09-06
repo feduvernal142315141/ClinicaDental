@@ -25,6 +25,8 @@ export interface EvolutionColumnProps {
   appointments: Appointment[];
   loading: boolean;
   onPrint?: () => void;
+  printPreparing?: boolean;
+  printProgress?: { loaded: number; total: number };
 }
 
 /**
@@ -39,6 +41,8 @@ export function EvolutionColumn({
   appointments,
   loading,
   onPrint,
+  printPreparing,
+  printProgress,
 }: EvolutionColumnProps) {
   const { records, request, retry } = useVisitRecordsBatch(patientId);
 
@@ -126,7 +130,7 @@ export function EvolutionColumn({
   if (loading && ordered.length === 0) {
     return (
       <div className="min-w-0">
-        <EvolutionScopeHeader shownCount={0} truncated={false} onPrint={onPrint} />
+        <EvolutionScopeHeader shownCount={0} truncated={false} onPrint={onPrint} printPreparing={printPreparing} printProgress={printProgress} />
         <div className="space-y-3" aria-busy="true">
           {[0, 1, 2].map((index) => (
             <section key={index} className="bento overflow-hidden p-4">
@@ -152,7 +156,7 @@ export function EvolutionColumn({
   if (ordered.length === 0) {
     return (
       <div className="min-w-0">
-        <EvolutionScopeHeader shownCount={0} truncated={truncated} onPrint={onPrint} />
+        <EvolutionScopeHeader shownCount={0} truncated={truncated} onPrint={onPrint} printPreparing={printPreparing} printProgress={printProgress} />
         <section className="bento p-6">
           <p className="text-sm text-subtle">
             Este paciente no tiene consultas registradas en el sistema
@@ -168,6 +172,8 @@ export function EvolutionColumn({
         shownCount={ordered.length}
         truncated={truncated}
         onPrint={onPrint}
+          printPreparing={printPreparing}
+          printProgress={printProgress}
       />
       <div className="space-y-3">
         {ordered.map((appointment, index) => (

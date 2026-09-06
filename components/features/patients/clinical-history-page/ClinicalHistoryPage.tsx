@@ -28,6 +28,8 @@ import { PATIENT_TABS } from "@/lib/hooks/patients/clinical-history-page/patient
 import { PatientRecordHeader, VisitRibbon } from "./header";
 import { VisitAutosaveIndicator } from "./header/VisitAutosaveIndicator";
 import { EvolutionColumn } from "./evolution";
+import { EvolutionPrintDocument } from "./evolution/EvolutionPrintDocument";
+import { useEvolutionPrint } from "./evolution/use-evolution-print";
 import { ContinuityStrip } from "./continuity";
 import { useIsWideDesktop } from "@/lib/hooks/use-wide-desktop";
 
@@ -104,6 +106,10 @@ export function ClinicalHistoryPage({
   // columna oculta por CSS seguiría MONTANDO el editor.
   const isWideDesktop = useIsWideDesktop();
   const showSideEvolution = isWideDesktop && isCurrentlyActiveConsultation;
+
+  // Impresión conforme. Va ANTES de los returns condicionales de carga: es un
+  // hook y no puede quedar detrás de un early-return.
+  const evolutionPrint = useEvolutionPrint({ patientId, appointments });
 
   if (patientLoading) {
     return (
@@ -254,6 +260,9 @@ export function ClinicalHistoryPage({
                 patientId={patientId}
                 appointments={appointments}
                 loading={appointmentsLoading}
+                onPrint={evolutionPrint.print}
+                printPreparing={evolutionPrint.preparing}
+                printProgress={evolutionPrint.progress}
               />
             </div>
 
@@ -415,6 +424,14 @@ export function ClinicalHistoryPage({
         clinicId={patient.clinicId}
         onClose={closeVisitHistory}
         onViewOdontogram={handleViewVisitOdontogram}
+      />
+
+      {/* Documento imprimible. Vive fuera de las pestañas y se monta por portal:
+          la cadena de scroll de ADR-36 lo recortaría a una sola página. */}
+      <EvolutionPrintDocument
+        patientName={patient.name}
+        appointments={appointments}
+        records={evolutionPrint.records}
       />
 
       <EditPatientDrawer

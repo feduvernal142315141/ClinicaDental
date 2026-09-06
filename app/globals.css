@@ -436,3 +436,352 @@ html {
   text-transform: none;
   letter-spacing: -0.01em;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   IMPRESIÓN — Copia de la evolución clínica del paciente
+   (components/features/patients/clinical-history-page/evolution/
+    EvolutionPrintDocument.tsx)
+
+   No es un "modo bonito" de la pantalla: es el documento que el paciente tiene
+   derecho a llevarse (Bolivia NT-64 art. 23, Colombia Res. 1995/1999, México
+   NOM-004-SSA3-2012, Argentina Ley 26.529, España Ley 41/2002), y Bolivia
+   exige que vaya identificado "en cada uno de sus folios" — de ahí la cabecera
+   y el pie FIJOS, que se repiten en todas las páginas.
+
+   El documento se monta en un portal como hijo directo de <body>: la vista
+   vive dentro de contenedores con `overflow` (ADR-36) y bajo
+   `html { overflow: hidden }`, así que in-situ saldría recortado a una sola
+   página. Aquí sólo hay que apagar el resto del árbol.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* En pantalla no existe. `hidden` de Tailwind hace lo mismo en el marcado; esta
+   regla lo garantiza aunque alguien quite la clase. */
+.evolution-print {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 18mm 14mm 20mm;
+  }
+
+  /* `html { overflow: hidden }` y las superficies con scroll de la app
+     recortarían el documento a la altura del viewport: una página y nada más. */
+  html,
+  body {
+    overflow: visible !important;
+    height: auto !important;
+    background: rgb(255 255 255) !important;
+  }
+
+  /* Todo lo que no sea el documento desaparece: shell, pestañas, toasts de
+     sileo, portales de Radix y el overlay de desarrollo de Next.
+
+     El `:has()` NO es decorativo: sin él esta regla se aplicaría a CUALQUIER
+     pantalla de la app, y un Ctrl+P en agenda o en pacientes saldría en blanco.
+     Sólo se apaga el resto del árbol cuando el documento clínico está montado.
+     Si algún navegador no soporta `:has()`, la regla se descarta entera y como
+     mucho se imprime la app junto al documento — nunca una hoja vacía. */
+  body:has(> .evolution-print) > *:not(.evolution-print) {
+    display: none !important;
+  }
+
+  .evolution-print {
+    display: block !important;
+    /* Paleta Bento FORZADA a claro: el usuario puede estar en tema oscuro y el
+       papel no tiene tema. Se redefinen los tokens semánticos, no los colores
+       de cada regla, para que el documento siga hablando el idioma del sistema.
+       `hairline` va más oscuro que en pantalla porque un borde de 226 sobre
+       blanco no sale en una láser. */
+    --canvas: 255 255 255;
+    --surface: 255 255 255;
+    --ink: 16 24 38;
+    --muted-ch: 82 92 110;
+    --hairline: 150 162 178;
+
+    /* Bandas que reservan la cabecera y el pie fijos (ver `__reserve`). */
+    --print-header-h: 17mm;
+    --print-footer-h: 16mm;
+
+    color: rgb(var(--ink));
+    background: rgb(var(--surface));
+    font-size: 9.5pt;
+    line-height: 1.45;
+    /* Los chips llevan borde, pero si la impresora respeta color, mejor. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* La advertencia de truncamiento añade un renglón al pie. */
+  .evolution-print--truncated {
+    --print-footer-h: 21mm;
+  }
+
+  /* Ningún control sobrevive al papel: botones, chevrons e iconos de acción no
+     significan nada impresos y ensucian el documento. */
+  .evolution-print button,
+  .evolution-print [role="button"],
+  .evolution-print [data-print-hidden],
+  .evolution-print svg {
+    display: none !important;
+  }
+
+  /* ── Cabecera fija: identificación de CADA folio ───────────────────────── */
+  .evolution-print__header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8mm;
+    padding-bottom: 2mm;
+    border-bottom: 0.8pt solid rgb(var(--hairline));
+    background: rgb(var(--surface));
+  }
+
+  .evolution-print__header-side {
+    text-align: right;
+  }
+
+  .evolution-print__header-patient {
+    font-size: 11pt;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .evolution-print__header-clinic {
+    font-size: 9.5pt;
+    font-weight: 600;
+  }
+
+  .evolution-print__header-meta {
+    font-size: 7.5pt;
+    color: rgb(var(--muted-ch));
+  }
+
+  /* ── Pie fijo: declaraciones de alcance en CADA folio ──────────────────── */
+  .evolution-print__footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding-top: 1.5mm;
+    border-top: 0.8pt solid rgb(var(--hairline));
+    background: rgb(var(--surface));
+    font-size: 7pt;
+    line-height: 1.35;
+    color: rgb(var(--muted-ch));
+  }
+
+  /* ── Hoja ──────────────────────────────────────────────────────────────
+     `thead`/`tfoot` se repiten en cada folio: son lo ÚNICO que reserva la
+     banda de la cabecera y el pie fijos. Sin ellas, de la segunda página en
+     adelante el texto pasaría por debajo del nombre del paciente. */
+  .evolution-print__sheet {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .evolution-print__sheet thead {
+    display: table-header-group;
+  }
+
+  .evolution-print__sheet tfoot {
+    display: table-footer-group;
+  }
+
+  .evolution-print__sheet td {
+    padding: 0;
+    vertical-align: top;
+  }
+
+  .evolution-print__reserve--top {
+    height: var(--print-header-h);
+  }
+
+  .evolution-print__reserve--bottom {
+    height: var(--print-footer-h);
+  }
+
+  /* ── Bloque de apertura (sólo primera página) ──────────────────────────── */
+  .evolution-print__intro {
+    padding-bottom: 3mm;
+    margin-bottom: 3mm;
+    border-bottom: 0.8pt solid rgb(var(--hairline));
+  }
+
+  .evolution-print__title {
+    font-size: 13pt;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+  }
+
+  .evolution-print__intro-meta {
+    margin-top: 1mm;
+    font-size: 7.5pt;
+    color: rgb(var(--muted-ch));
+  }
+
+  /* ── Asiento ───────────────────────────────────────────────────────────── */
+  .evolution-print__row,
+  .evolution-print__entry {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .evolution-print__entry {
+    padding: 3mm 0;
+    border-bottom: 0.5pt solid rgb(var(--hairline));
+  }
+
+  .evolution-print__entry-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6mm;
+  }
+
+  .evolution-print__entry-date {
+    font-size: 10.5pt;
+    font-weight: 700;
+  }
+
+  .evolution-print__entry-time {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .evolution-print__hint {
+    font-size: 7.5pt;
+    font-weight: 400;
+    color: rgb(var(--muted-ch));
+  }
+
+  .evolution-print__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5mm;
+    margin-top: 1.5mm;
+  }
+
+  /* Los chips de pantalla se distinguen por un fondo teñido al 15%: en blanco y
+     negro ese fondo desaparece y todos los estados quedan iguales. En papel la
+     distinción va en el BORDE y el peso del texto, que sobreviven siempre. */
+  .evolution-print__chip {
+    display: inline-block;
+    padding: 0.4mm 1.8mm;
+    border: 0.7pt solid rgb(var(--ink));
+    border-radius: 1.5mm;
+    background: transparent;
+    color: rgb(var(--ink));
+    font-size: 7.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .evolution-print__chip--soft {
+    border-color: rgb(var(--muted-ch));
+    color: rgb(var(--muted-ch));
+    font-weight: 500;
+  }
+
+  .evolution-print__meta {
+    margin-top: 1.5mm;
+    font-size: 8.5pt;
+    color: rgb(var(--muted-ch));
+  }
+
+  .evolution-print__strong {
+    color: rgb(var(--ink));
+    font-weight: 600;
+  }
+
+  .evolution-print__text {
+    font-size: 9.5pt;
+  }
+
+  .evolution-print__bands {
+    margin-top: 2.5mm;
+  }
+
+  .evolution-print__band + .evolution-print__band {
+    margin-top: 2.5mm;
+  }
+
+  .evolution-print__band-title {
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgb(var(--muted-ch));
+    margin-bottom: 1mm;
+  }
+
+  .evolution-print__diagnoses li {
+    margin-bottom: 0.8mm;
+    font-size: 9pt;
+  }
+
+  .evolution-print__findings + .evolution-print__findings {
+    margin-top: 1.5mm;
+  }
+
+  .evolution-print__findings-title {
+    font-size: 7.5pt;
+    font-weight: 600;
+    color: rgb(var(--muted-ch));
+  }
+
+  .evolution-print__findings-row {
+    display: flex;
+    gap: 1.5mm;
+    font-size: 8.5pt;
+  }
+
+  .evolution-print__findings-row dt {
+    color: rgb(var(--muted-ch));
+  }
+
+  /* La nota va ÍNTEGRA: en papel no hay "ver nota completa", así que ni plegado
+     ni recorte. `prose` trae sus propios colores por variables; se fijan al
+     tinta del documento para que no salga gris claro. */
+  .evolution-print__note {
+    max-width: none;
+    font-size: 9.5pt;
+    color: rgb(var(--ink));
+    --tw-prose-body: rgb(var(--ink));
+    --tw-prose-headings: rgb(var(--ink));
+    --tw-prose-bold: rgb(var(--ink));
+    --tw-prose-quotes: rgb(var(--ink));
+    --tw-prose-code: rgb(var(--ink));
+    --tw-prose-bullets: rgb(var(--muted-ch));
+    --tw-prose-counters: rgb(var(--muted-ch));
+    --tw-prose-hr: rgb(var(--hairline));
+    --tw-prose-quote-borders: rgb(var(--hairline));
+  }
+
+  /* Ausencias y sellos: en cursiva y en gris, nunca en rojo ni con icono — el
+     documento no alarma, informa. */
+  .evolution-print__absence {
+    font-size: 8.5pt;
+    font-style: italic;
+    color: rgb(var(--muted-ch));
+  }
+
+  .evolution-print__absence--alert {
+    font-style: normal;
+    font-weight: 600;
+    color: rgb(var(--ink));
+  }
+
+  .evolution-print__stamp {
+    margin-top: 2.5mm;
+    padding-top: 1.5mm;
+    border-top: 0.5pt solid rgb(var(--hairline));
+    font-size: 7.5pt;
+    color: rgb(var(--muted-ch));
+  }
+}

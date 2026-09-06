@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Printer } from "lucide-react";
+import { AlertTriangle, Loader2, Printer } from "lucide-react";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils/utils";
 
@@ -13,6 +13,10 @@ export interface EvolutionScopeHeaderProps {
    */
   truncated: boolean;
   onPrint?: () => void;
+  /** El documento se está preparando: hay que cargar los registros que faltan. */
+  printPreparing?: boolean;
+  /** Progreso de esa carga, para que el botón diga por qué tarda. */
+  printProgress?: { loaded: number; total: number };
 }
 
 /**
@@ -31,6 +35,8 @@ export function EvolutionScopeHeader({
   shownCount,
   truncated,
   onPrint,
+  printPreparing = false,
+  printProgress,
 }: EvolutionScopeHeaderProps) {
   const countText =
     shownCount === 1 ? "1 consulta mostrada" : `${shownCount} consultas mostradas`;
@@ -57,10 +63,24 @@ export function EvolutionScopeHeader({
             variant="outline"
             size="sm"
             onClick={onPrint}
+            disabled={printPreparing}
+            aria-live="polite"
             className={cn("shrink-0 gap-2", "pointer-coarse:h-11 pointer-coarse:px-4")}
           >
-            <Printer className="h-4 w-4" aria-hidden="true" />
-            Imprimir evolución
+            {printPreparing ? (
+              <Loader2
+                className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+            ) : (
+              <Printer className="h-4 w-4" aria-hidden="true" />
+            )}
+            {/* El feed carga perezosamente, así que imprimir obliga a traer las
+                visitas que falten. Con un historial largo eso son segundos de
+                espera: sin este rótulo el usuario pulsa y no ve nada pasar. */}
+            {printPreparing && printProgress
+              ? `Preparando documento… ${printProgress.loaded}/${printProgress.total}`
+              : "Imprimir evolución"}
           </Button>
         ) : null}
       </div>
