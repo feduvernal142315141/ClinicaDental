@@ -158,8 +158,14 @@ async function getVisitRecord(
   patientId: string,
   appointmentId: string,
 ): Promise<PatientVisitRecord> {
+  // El 404 aquí NO es un fallo: significa que la consulta nunca se inició, así
+  // que no existe fila de registro. La ficha lo pinta como "Sin registro de
+  // visita". Se declara esperado para que el interceptor no lo registre en rojo:
+  // el feed pide una visita por tarjeta y la consola se llenaba de errores
+  // indistinguibles de los de verdad.
   const response = await serviceGet<PatientVisitRecord>(
     `${endpoint}/${patientId}/visits/${appointmentId}`,
+    { expectedStatuses: [404] },
   );
   if (response?.status >= 200 && response?.status < 300 && response?.data) {
     return normalizeVisitRecord(response.data);

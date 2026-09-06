@@ -188,10 +188,22 @@ apiInstance.interceptors.response.use(
         (error as { _interceptorHandled?: boolean })._interceptorHandled = true;
       }
 
-      console.error(
-        `[HTTP ${status}] ${appError.code}:`,
-        { technical: appError.technical, correlationId: appError.correlationId },
-      );
+      // Un status que el llamador DECLARÓ esperado no es un error: es un
+      // estado legítimo del dominio. El caso real es
+      // `GET .../visits/{appointmentId}`, que devuelve 404 cuando la consulta
+      // nunca se inició — o sea "esta visita no tiene registro", que la ficha
+      // pinta como tal. Registrarlo en rojo llenaba la consola de cinco errores
+      // por cada paciente abierto y, peor, los volvía indistinguibles de un
+      // fallo de verdad.
+      const expected = (
+        error.config as { expectedStatuses?: number[] } | undefined
+      )?.expectedStatuses;
+      if (!expected?.includes(status)) {
+        console.error(
+          `[HTTP ${status}] ${appError.code}:`,
+          { technical: appError.technical, correlationId: appError.correlationId },
+        );
+      }
 
     } else if (appError.isTimeout) {
       console.error("[TIMEOUT]:", appError.technical);

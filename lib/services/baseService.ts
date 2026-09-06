@@ -1,11 +1,20 @@
 
+import type { AxiosRequestConfig } from "axios";
 import apiInstance from "@/lib/services/apiConfig";
 import {ResponseEntity, ServiceResponse} from "@/lib/models/response";
 import type {SearchRequest} from "@/lib/query";
 
-export const serviceGet = async <T = unknown>(url: string): ServiceResponse<T> => {
+/**
+ * `config` permite al servicio declarar qué status son ESPERADOS
+ * (`{ expectedStatuses: [404] }`), para que el interceptor no los registre como
+ * error. Un 404 puede ser un estado del dominio, no un fallo.
+ */
+export const serviceGet = async <T = unknown>(
+    url: string,
+    config?: AxiosRequestConfig & { expectedStatuses?: number[] },
+): ServiceResponse<T> => {
     return apiInstance
-        .get<ResponseEntity<T>>(url)
+        .get<ResponseEntity<T>>(url, config)
         .then((response) => {
             return response
         })

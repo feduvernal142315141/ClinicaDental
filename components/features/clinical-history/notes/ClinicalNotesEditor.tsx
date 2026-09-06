@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useVisitNoteDrafts } from "@/lib/store/useVisitNoteDrafts";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import UnderlineExtension from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
   Bold,
@@ -87,8 +86,11 @@ export function ClinicalNotesEditor({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
+      // `StarterKit` de TipTap v3 YA incluye Underline (verificado en
+      // node_modules/@tiptap/starter-kit: `underline` está en sus opciones).
+      // Añadir @tiptap/extension-underline encima registraba el mismo nombre dos
+      // veces y el editor avisaba en consola en cada montaje.
       StarterKit,
-      UnderlineExtension,
       Placeholder.configure({
         placeholder: "Escribe aquí las notas del historial...",
       }),
