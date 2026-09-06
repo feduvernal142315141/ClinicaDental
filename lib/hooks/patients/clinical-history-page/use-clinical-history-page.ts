@@ -13,6 +13,7 @@ import { getVisitEditability, isLockedVisit } from "./visit-editability";
 import { PATIENT_TABS, resolveTab, type PatientTab } from "./patient-tabs";
 import { localTodayInput, parseLocalValue } from "@/lib/datetime";
 import { formatVisitDate } from "@/lib/utils/visit-eligibility";
+import { usePendingActs } from "./use-pending-acts";
 import type { ConsultationCta } from "@/components/features/patients/clinical-history-page/continuity";
 import type { UpdateMedicalHistoryRequest } from "@/lib/entity/clinical-history";
 import type { Patient } from "@/lib/entity/patients";
@@ -555,6 +556,16 @@ export function useClinicalHistoryPage({
     };
   })();
 
+  // Actos pendientes del odontograma. Se gatea con la MISMA autoridad de módulo
+  // que la pestaña de plan: sin ella el backend responde 403 y pedirlo solo
+  // serviría para disparar el diálogo global de "Acceso Denegado" en cada
+  // apertura de la ficha.
+  const {
+    pendingActs,
+    loading: pendingActsLoading,
+    forbidden: pendingActsForbidden,
+  } = usePendingActs(patientId, canViewTreatmentPlan);
+
   /** Próxima cita agendada, la más cercana en el futuro. */
   const nextAppointment = (() => {
     const today = localTodayInput();
@@ -730,6 +741,9 @@ export function useClinicalHistoryPage({
     consultationCta,
     nextAppointment,
     visitRibbonState,
+    pendingActs,
+    pendingActsLoading,
+    pendingActsForbidden,
     handleViewVisitHistory,
     handleSaveMedicalHistory,
     handleViewOdontogram,

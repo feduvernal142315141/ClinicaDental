@@ -29,6 +29,7 @@ import { PatientRecordHeader, VisitRibbon } from "./header";
 import { VisitAutosaveIndicator } from "./header/VisitAutosaveIndicator";
 import { EvolutionColumn } from "./evolution";
 import { ContinuityStrip } from "./continuity";
+import { useIsWideDesktop } from "@/lib/hooks/use-wide-desktop";
 
 type ClinicalHistoryPageProps = UseClinicalHistoryPageParams;
 
@@ -88,12 +89,21 @@ export function ClinicalHistoryPage({
     consultationCta,
     nextAppointment,
     visitRibbonState,
+    pendingActs,
+    pendingActsLoading,
+    pendingActsForbidden,
   } = useClinicalHistoryPage({
     patientId,
     initialTab,
     activeAppointmentId,
     openFinalizeOnLoad,
   });
+
+  // La columna lateral de evolución solo tiene sentido con una consulta en curso
+  // y sitio real donde ponerla. Se decide en JS y no con clases `2xl:` porque una
+  // columna oculta por CSS seguiría MONTANDO el editor.
+  const isWideDesktop = useIsWideDesktop();
+  const showSideEvolution = isWideDesktop && isCurrentlyActiveConsultation;
 
   if (patientLoading) {
     return (
@@ -230,11 +240,14 @@ export function ClinicalHistoryPage({
               )}
 
               <ContinuityStrip
+                pendingActs={pendingActsForbidden ? undefined : pendingActs}
+                pendingLoading={pendingActsLoading}
                 nextAppointment={nextAppointment}
                 cta={consultationCta}
                 onContinue={handleStartConsultation}
                 onStartScheduled={handleStartScheduledConsultation}
                 onStartNow={openStartNow}
+                onViewPending={() => setActiveTab(PATIENT_TABS.TREATMENT_PLAN)}
               />
 
               <EvolutionColumn
@@ -295,18 +308,47 @@ export function ClinicalHistoryPage({
           value={PATIENT_TABS.ODONTOGRAM}
           className="flex-1 min-h-0 mt-2 overflow-hidden flex flex-col"
         >
-          <PatientOdontogramPanel
-            patient={patient}
-            activeAppointmentId={effectiveActiveAppointmentId}
-            historicAppointmentId={historicAppointmentId}
-            onClearHistoric={handleBackToCurrentOdontogram}
-            appointments={appointments}
-            visitEditability={visitEditability}
-            onSelectHistoricVisit={handleSelectHistoricVisit}
-            finalizeOpen={isFinalizeModalOpen}
-            onFinalizeClose={closeFinalizeModal}
-            onFinalizeSuccess={handleFinalizeSuccess}
-          />
+          {/* ── Odontograma, con evolución al lado en pantallas muy anchas ──
+              A partir de 1536px cabe documentar y dibujar a la vez, que es el
+              gesto que el odontólogo ya tiene aprendido en monitor grande. Por
+              debajo son pestañas separadas: medido, a 1024 en apaisado al
+              odontograma le quedaban ~346px y las caras salían a ~4px.
+
+              GUARD DE INSTANCIA ÚNICA de TipTap: el editor vive aquí Y en la
+              pestaña Evolución, pero Radix desmonta las pestañas inactivas, así
+              que solo una está viva a la vez. Eso es lo que lo hace seguro — y
+              por eso NO se puede añadir `forceMount` a estas dos pestañas sin
+              romperlo: habría dos editores sobre la misma nota, que sobreescribe
+              y no guarda versiones. */}
+          <div
+            className={cn(
+              "flex-1 min-h-0 flex flex-col",
+              showSideEvolution && "2xl:grid 2xl:grid-cols-[1fr_420px] 2xl:gap-4",
+            )}
+          >
+            <PatientOdontogramPanel
+              patient={patient}
+              activeAppointmentId={effectiveActiveAppointmentId}
+              historicAppointmentId={historicAppointmentId}
+              onClearHistoric={handleBackToCurrentOdontogram}
+              appointments={appointments}
+              visitEditability={visitEditability}
+              onSelectHistoricVisit={handleSelectHistoricVisit}
+              finalizeOpen={isFinalizeModalOpen}
+              onFinalizeClose={closeFinalizeModal}
+              onFinalizeSuccess={handleFinalizeSuccess}
+            />
+
+            {showSideEvolution && effectiveActiveAppointmentId && (
+              <aside className="min-h-0 overflow-auto" aria-label="Evolución de la consulta en curso">
+                <ActiveConsultationNotes
+                  patientId={patientId}
+                  activeAppointmentId={effectiveActiveAppointmentId}
+                  canEdit={canEditMedicalHistory}
+                />
+              </aside>
+            )}
+          </div>
         </TabsContent>
 
         {canViewTreatmentPlan && (
