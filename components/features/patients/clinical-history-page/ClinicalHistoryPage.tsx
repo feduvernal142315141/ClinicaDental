@@ -105,7 +105,11 @@ export function ClinicalHistoryPage({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    // El padding lo pone la vista, no el `<main>`: esta ruta se pinta a sangre
+    // (`AppShell bleed`) para que la cabecera del paciente ocupe el ancho
+    // completo. `h-full` y la cadena `flex flex-col` se conservan intactas —
+    // son el eslabón de ADR-36 que mantiene UNA sola superficie con scroll.
+    <div className="flex flex-col h-full p-4 lg:p-6">
       {isCurrentlyActiveConsultation && (
         <ActiveConsultationBanner onFinalizeClick={openFinalizeModal} />
       )}

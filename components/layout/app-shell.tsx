@@ -6,12 +6,24 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import { AppHeader } from "@/components/layout/app-header";
+import { cn } from "@/lib/utils/utils";
 
 interface AppShellProps {
   children: React.ReactNode;
+  /**
+   * Layout a sangre: el `<main>` pierde su padding y la ruta asume el suyo, y
+   * se oculta el `AppHeader` de escritorio para que el contenido ocupe el ancho
+   * completo. Lo pide HOY solo `/patients/[id]`.
+   *
+   * Va por prop y no por early-return en `AppChrome` a propósito: así se
+   * conservan el guard de sesión, el sidebar y el `MobileHeader`, y sobre todo
+   * NO se remonta `AppShell` al navegar dentro y fuera de la ruta — un remonte
+   * reiniciaría el colapso del sidebar, que es `useState` local sin persistir.
+   */
+  bleed?: boolean;
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, bleed = false }: AppShellProps) {
   const { user, loading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -57,6 +69,7 @@ export function AppShell({ children }: AppShellProps) {
           onClose={closeSidebar}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={toggleSidebarCollapse}
+          showAccountFooter={bleed}
         />
       </aside>
 
@@ -68,11 +81,18 @@ export function AppShell({ children }: AppShellProps) {
           onToggleSidebar={toggleSidebar}
         />
 
-        {/* Header desktop */}
-        <AppHeader />
+        {/* Header desktop — se oculta en el layout a sangre. Perfil, Soporte y
+            Cerrar sesión viven SOLO aquí en escritorio, así que el sidebar los
+            repone con `showAccountFooter` o la ruta se queda sin sesión. */}
+        {!bleed && <AppHeader />}
 
         {/* Contenido con scroll */}
-        <main className="flex-1 overflow-auto bg-canvas p-4 lg:p-6">
+        <main
+          className={cn(
+            "flex-1 overflow-auto bg-canvas",
+            bleed ? "p-0" : "p-4 lg:p-6",
+          )}
+        >
           {children}
         </main>
       </div>

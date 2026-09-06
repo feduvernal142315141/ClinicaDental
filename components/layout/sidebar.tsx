@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils/utils";
+import { SidebarFooter } from "@/components/ui/atomic/navigation/sidebar-footer";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
 import { useSidebarNavigation } from "@/lib/hooks/use-sidebar-navigation";
@@ -15,6 +17,14 @@ interface SidebarProps {
   onClose: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  /**
+   * Monta el pie de cuenta (Perfil · Soporte · Cerrar sesión) dentro del
+   * sidebar. Solo lo pide el layout a sangre de `/patients/[id]`, que oculta el
+   * `AppHeader`: sin esto, esa ruta se quedaría SIN forma de cerrar sesión,
+   * porque los tres viven únicamente ahí (y en el `MobileHeader` por debajo de
+   * `lg`). No se activa en el resto de rutas para no duplicar el menú.
+   */
+  showAccountFooter?: boolean;
 }
 
 export function Sidebar({
@@ -23,8 +33,10 @@ export function Sidebar({
   onClose,
   isCollapsed = false,
   onToggleCollapse,
+  showAccountFooter = false,
 }: SidebarProps) {
   const { name: clinicName, logoUrl } = useClinicBranding();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const { mainMenuItems, secondaryMenuItems, isActiveRoute } =
     useSidebarNavigation();
@@ -227,6 +239,28 @@ export function Sidebar({
             </SidebarSection>
           )}
         </nav>
+
+        {/* Pie de cuenta — solo en el layout a sangre (ver `showAccountFooter`).
+            Se pinta FUERA del <nav> a propósito: no es navegación de la app,
+            es la sesión. En modo colapsado el propio SidebarFooter reduce a
+            avatar, así que no necesita un tratamiento aparte. */}
+        {showAccountFooter && (
+          <div
+            className={cn(
+              "shrink-0 border-t border-hairline p-3",
+              isCollapsed && "flex justify-center px-2",
+            )}
+          >
+            <SidebarFooter
+              userName={user?.email?.split(String.fromCharCode(64))[0] || "Usuario"}
+              userEmail={user?.email || ""}
+              compact={isCollapsed}
+              onLogout={logout}
+              onProfile={() => router.push("/settings/profile")}
+              onSupport={() => router.push("/support")}
+            />
+          </div>
+        )}
       </div>
     </>
   );
