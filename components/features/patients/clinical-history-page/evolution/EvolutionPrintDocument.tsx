@@ -229,6 +229,14 @@ export interface EvolutionPrintDocumentProps {
   appointments: Appointment[];
   /** Estados de carga por cita, tal como los deja `useEvolutionPrint`. */
   records: Record<string, VisitRecordState>;
+  /**
+   * Declaración de que este documento es un EXTRACTO y no la copia completa de
+   * la historia clínica. Va en el pie de cada folio, junto a las demás
+   * declaraciones de alcance: un extracto que no se declara como tal se lee como
+   * el expediente entero, y eso es justo lo que las normas de historia clínica
+   * persiguen.
+   */
+  partialNote?: string;
 }
 
 export function EvolutionPrintDocument({
@@ -236,6 +244,7 @@ export function EvolutionPrintDocument({
   patientDocumentId,
   appointments,
   records,
+  partialNote,
 }: EvolutionPrintDocumentProps) {
   const { name: clinicName } = useClinicBranding();
 
@@ -304,6 +313,9 @@ export function EvolutionPrintDocument({
 
       {/* ── Pie fijo: declaraciones de alcance en CADA folio ────────────── */}
       <footer className="evolution-print__footer">
+        {partialNote ? (
+          <p className="evolution-print__partial">{partialNote}</p>
+        ) : null}
         <p>{SCOPE_STATEMENT}</p>
         {truncated ? <p>{TRUNCATION_STATEMENT}</p> : null}
       </footer>

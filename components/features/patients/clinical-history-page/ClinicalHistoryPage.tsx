@@ -180,11 +180,27 @@ export function ClinicalHistoryPage({
   // y no contra el viewport (que queda detrás de dos ancestros que recortan).
   const evolutionScrollRef = useRef<HTMLDivElement | null>(null);
 
+
   // Señal de "la nota de esta visita se acaba de guardar desde el editor". El
   // feed la usa para refrescar esa tarjeta: si no, mostraría el texto anterior
   // con su sello de última edición, justo debajo del editor que ya muestra el
   // nuevo — dos versiones de la misma nota clínica en la misma pantalla.
   const [notesSavedToken, setNotesSavedToken] = useState(0);
+
+  // Selección del feed y ALCANCE del documento a imprimir. Se separan a
+  // propósito: la selección cambia mientras el usuario teclea, y el alcance solo
+  // en el momento de pulsar imprimir — si compartieran estado, seguir filtrando
+  // con el diálogo de impresión abierto cambiaría el documento bajo los pies.
+  const [printSelectionIds, setPrintSelectionIds] = useState<string[] | null>(
+    null,
+  );
+  const [printScope, setPrintScope] = useState<"all" | "selection">("all");
+
+  const printedAppointments = useMemo(() => {
+    if (printScope !== "selection" || !printSelectionIds) return appointments;
+    const wanted = new Set(printSelectionIds);
+    return appointments.filter((appointment) => wanted.has(appointment.id));
+  }, [appointments, printScope, printSelectionIds]);
 
   /**
    * Alertas de la cabecera.
@@ -383,8 +399,16 @@ export function ClinicalHistoryPage({
                 scrollRootRef={evolutionScrollRef}
                 invalidateAppointmentId={effectiveActiveAppointmentId}
                 invalidateToken={notesSavedToken}
+                onSelectionChange={setPrintSelectionIds}
+                onPrintSelection={() => {
+                  setPrintScope("selection");
+                  evolutionPrint.print();
+                }}
                 onAppointmentsChanged={loadAppointments}
-                onPrint={evolutionPrint.print}
+                onPrint={() => {
+                  setPrintScope("all");
+                  evolutionPrint.print();
+                }}
                 printPreparing={evolutionPrint.preparing}
                 printProgress={evolutionPrint.progress}
               />
@@ -549,8 +573,13 @@ export function ClinicalHistoryPage({
           la cadena de scroll de ADR-36 lo recortaría a una sola página. */}
       <EvolutionPrintDocument
         patientName={patient.name}
-        appointments={appointments}
+        appointments={printedAppointments}
         records={evolutionPrint.records}
+        partialNote={
+          printScope === "selection" && printSelectionIds
+            ? `Documento PARCIAL: contiene ${printSelectionIds.length} de ${appointments.length} consultas registradas, seleccionadas con un filtro en pantalla. No es la copia completa de la historia clínica.`
+            : undefined
+        }
       />
 
       <EditPatientDrawer

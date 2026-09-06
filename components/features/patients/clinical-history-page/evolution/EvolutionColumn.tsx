@@ -9,6 +9,9 @@ import type { Appointment } from "@/lib/entity/appointment/appointments";
 import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 import { EvolutionScopeHeader } from "./EvolutionScopeHeader";
 import { VisitEntryCard } from "./VisitEntryCard";
+import { EvolutionFilterBar } from "./EvolutionFilterBar";
+import { Button } from "@/components/ui";
+import { matchesQuery } from "@/lib/utils/text";
 import { CancelModal } from "@/components/features/appointments/scheduler/CancelModal";
 import { RescheduleModal } from "@/components/features/appointments/scheduler/RescheduleModal";
 import { usePermission } from "@/lib/hooks/use-permission";
@@ -19,6 +22,28 @@ const BACKEND_PAGE_CAP = 100;
 
 /** Cuántas tarjetas piden su registro al montar, sin esperar al scroll. */
 const EAGER_COUNT = 8;
+
+/** Consultas que se pintan de entrada. El resto entra por "cargar más". */
+const VISIBLE_PAGE_SIZE = 6;
+
+const MONTHS_ES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+] as const;
+
+/**
+ * "Julio 2026" a partir de un `YYYY-MM-DD`. Se compone a mano en vez de con
+ * `new Date(...)`: parsear esa cadena como fecha la interpreta en UTC y en
+ * America/La_Paz (la zona por defecto de la clínica) devuelve el mes anterior
+ * los días 1.
+ */
+function formatMonthLabel(date?: string): string {
+  if (!date) return "";
+  const [year, month] = date.split("-");
+  const index = Number(month) - 1;
+  const name = MONTHS_ES[index];
+  return name && year ? `${name} ${year}` : "";
+}
 
 /** Margen del observer: pide el registro bastante antes de que se vea. */
 const OBSERVER_ROOT_MARGIN = "600px";
@@ -35,6 +60,14 @@ export interface EvolutionColumnProps {
    * cada visita y cada 403 abría el diálogo modal global.
    */
   canViewClinicalHistory?: boolean;
+  /**
+   * Recibe los ids de las consultas que sobreviven al filtro, o `null` cuando no
+   * hay filtro. Permite al host ofrecer "imprimir la selección" además del
+   * expediente completo.
+   */
+  onSelectionChange?: (appointmentIds: string[] | null) => void;
+  /** Imprime solo lo filtrado. El host decide qué documento emite. */
+  onPrintSelection?: () => void;
   /** Se llama tras cancelar o reagendar, para que la lista deje de estar obsoleta. */
   onAppointmentsChanged?: () => void;
   /** Contenedor con scroll real, para que el observer mida contra él. */
@@ -85,6 +118,8 @@ export function EvolutionColumn({
   onViewVisitOdontogram,
   onViewVisitAttachments,
   onAppointmentsChanged,
+  onSelectionChange,
+  onPrintSelection,
 }: EvolutionColumnProps) {
   // Cancelar y reagendar son MUTACIONES sobre la agenda. Sin permiso no se pasan
   // los handlers, así que los ítems del menú no existen en el DOM — ausentes, no
@@ -92,6 +127,11 @@ export function EvolutionColumn({
   const { isAdmin, can } = usePermission();
   const canManageAppointments =
     isAdmin || can("appointments", PermissionAction.EDIT);
+  const [query, setQuery] = useState("");
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
+  const [visibleLimit, setVisibleLimit] = useState(VISIBLE_PAGE_SIZE);
+
   const [cancelAppt, setCancelAppt] = useState<Appointment | null>(null);
   const [rescheduleAppt, setRescheduleAppt] = useState<Appointment | null>(null);
 
@@ -128,6 +168,80 @@ export function EvolutionColumn({
       return bKey.localeCompare(aKey);
     });
   }, [appointments]);
+
+  const years = useMemo(() => {
+    const set = new Set<number>();
+    for (const a of ordered) {
+      const year = Number(a.date?.slice(0, 4));
+      if (Number.isFinite(year) && year > 1900) set.add(year);
+    }
+    return [...set].sort((a, b) => b - a);
+  }, [ordered]);
+
+  const doctors = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of ordered) {
+      const name = a.doctorName?.trim();
+      if (name) set.add(name);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, "es"));
+  }, [ordered]);
+
+  /**
+   * Filtrado en memoria sobre los datos de la CITA. Se usa `matchesQuery` de
+   * `lib/utils/text` —el normalizador canónico del repo— y no un `includes`
+   * propio: en español "extraccion" tiene que encontrar "Extracción", y quien
+   * busca en el sillón no escribe tildes.
+   */
+  const filtered = useMemo(() => {
+    const q = query.trim();
+    return ordered.filter((a) => {
+      if (selectedYear !== null && Number(a.date?.slice(0, 4)) !== selectedYear) {
+        return false;
+      }
+      if (selectedDoctor && a.doctorName?.trim() !== selectedDoctor) return false;
+      if (!q) return true;
+      const haystack = [
+        a.services?.[0]?.serviceName,
+        a.reason,
+        a.type,
+        a.doctorName,
+        a.date,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      return matchesQuery(haystack, q);
+    });
+  }, [ordered, query, selectedYear, selectedDoctor]);
+
+  const hasFilters =
+    query.trim().length > 0 || selectedYear !== null || selectedDoctor !== null;
+
+  /**
+   * Con un filtro puesto NO se pagina: el usuario ya acotó el conjunto y
+   * esconderle parte de lo que pidió detrás de un "cargar más" convierte un
+   * resultado de búsqueda en una verdad a medias.
+   */
+  const visible = useMemo(
+    () => (hasFilters ? filtered : filtered.slice(0, visibleLimit)),
+    [filtered, hasFilters, visibleLimit],
+  );
+  const remaining = hasFilters ? 0 : filtered.length - visible.length;
+
+  // El host necesita saber qué hay filtrado para poder imprimir la selección.
+  // Se avisa con los IDS y no con las citas: así el efecto no se redispara por
+  // una identidad de array nueva con el mismo contenido.
+  const selectionKey = hasFilters ? filtered.map((a) => a.id).join(",") : null;
+  useEffect(() => {
+    onSelectionChange?.(selectionKey ? selectionKey.split(",") : null);
+  }, [selectionKey, onSelectionChange]);
+
+  const clearFilters = useCallback(() => {
+    setQuery("");
+    setSelectedYear(null);
+    setSelectedDoctor(null);
+    setVisibleLimit(VISIBLE_PAGE_SIZE);
+  }, []);
 
   // El backend descarta la metadata de paginación: llegar justo al tope es lo
   // único de lo que se puede deducir que hay consultas anteriores sin listar.
@@ -190,13 +304,14 @@ export function EvolutionColumn({
     }
   }, []);
 
-  // Las primeras tarjetas se piden al montar: son las que el clínico ve sin
-  // desplazarse y no deben depender de que el observer dispare.
+  // Se piden las tarjetas VISIBLES, no las primeras del historial completo: con
+  // un filtro puesto o tras "cargar más", las que hay que traer son otras. El
+  // tope evita que quitar el filtro sobre 500 consultas dispare 500 peticiones.
   useEffect(() => {
-    for (const appointment of ordered.slice(0, EAGER_COUNT)) {
+    for (const appointment of visible.slice(0, EAGER_COUNT)) {
       requestRef.current(appointment.id);
     }
-  }, [ordered]);
+  }, [visible]);
 
   if (loading && ordered.length === 0) {
     return (
@@ -233,36 +348,104 @@ export function EvolutionColumn({
   return (
     <div className="min-w-0">
       <EvolutionScopeHeader
-        shownCount={ordered.length}
+        shownCount={filtered.length}
         truncated={truncated}
         onPrint={onPrint}
-          printPreparing={printPreparing}
-          printProgress={printProgress}
+        printPreparing={printPreparing}
+        printProgress={printProgress}
+        onPrintSelection={hasFilters ? onPrintSelection : undefined}
+        selectionCount={filtered.length}
       />
-      <div className="space-y-3">
-        {ordered.map((appointment, index) => (
-          <div
-            key={appointment.id}
-            data-appointment-id={appointment.id}
-            ref={(node) => registerNode(appointment.id, node)}
-          >
-            <VisitEntryCard
-              appointment={appointment}
-              state={records[appointment.id] ?? IDLE_STATE}
-              onRetry={() => retry(appointment.id)}
-              // `ordered` ya pone primero la consulta en curso y, si no la hay,
-              // la más reciente: esa es la que nace desplegada. El resto se
-              // leen plegadas, con su resumen de una línea.
-              defaultExpanded={index === 0}
-              attachments={attachmentsByAppointmentId?.[appointment.id]}
-              onViewOdontogram={onViewVisitOdontogram}
-              onViewAttachments={onViewVisitAttachments}
-              onReschedule={canManageAppointments ? setRescheduleAppt : undefined}
-              onCancel={canManageAppointments ? setCancelAppt : undefined}
-            />
-          </div>
-        ))}
-      </div>
+      <EvolutionFilterBar
+        query={query}
+        onQueryChange={setQuery}
+        years={years}
+        selectedYear={selectedYear}
+        onYearChange={setSelectedYear}
+        doctors={doctors}
+        selectedDoctor={selectedDoctor}
+        onDoctorChange={setSelectedDoctor}
+        resultCount={filtered.length}
+        totalCount={ordered.length}
+        onClear={clearFilters}
+      />
+
+      {filtered.length === 0 ? (
+        <section className="bento p-6">
+          <p className="text-sm text-subtle">
+            Ninguna consulta coincide con la búsqueda. Prueba con otro término o
+            quita los filtros.
+          </p>
+        </section>
+      ) : (
+        <div className="space-y-3">
+          {visible.map((appointment, index) => {
+            // Separador de mes: se pinta al CAMBIAR de mes respecto a la
+            // tarjeta anterior. Rompe la monotonía del scroll y sitúa un
+            // tratamiento antiguo de un vistazo, sin tener que leer fechas.
+            const monthKey = appointment.date?.slice(0, 7) ?? "";
+            const previousMonthKey =
+              index > 0 ? (visible[index - 1].date?.slice(0, 7) ?? "") : null;
+            const showMonth = monthKey !== "" && monthKey !== previousMonthKey;
+
+            return (
+              <div key={appointment.id}>
+                {showMonth ? (
+                  <div className="flex items-center gap-3 pb-2 pt-1">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-subtle">
+                      {formatMonthLabel(appointment.date)}
+                    </span>
+                    <div className="h-px flex-1 bg-hairline" />
+                  </div>
+                ) : null}
+
+                <div
+                  data-appointment-id={appointment.id}
+                  ref={(node) => registerNode(appointment.id, node)}
+                >
+                  <VisitEntryCard
+                    appointment={appointment}
+                  state={records[appointment.id] ?? IDLE_STATE}
+                  onRetry={() => retry(appointment.id)}
+                  // `ordered` ya pone primero la consulta en curso y, si no la hay,
+                  // la más reciente: esa es la que nace desplegada. El resto se
+                  // leen plegadas, con su resumen de una línea.
+                  defaultExpanded={index === 0}
+                  attachments={attachmentsByAppointmentId?.[appointment.id]}
+                  onViewOdontogram={onViewVisitOdontogram}
+                  onViewAttachments={onViewVisitAttachments}
+                  onReschedule={canManageAppointments ? setRescheduleAppt : undefined}
+                  onCancel={canManageAppointments ? setCancelAppt : undefined}
+                  />
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Pie de paginación: dice cuánto se está viendo del total ANTES de
+              ofrecer más. Sin ese recuento, un historial recortado se lee como
+              el historial completo. */}
+          {remaining > 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 pb-6 pt-3">
+              <p className="text-xs text-subtle">
+                Mostrando {visible.length} de {filtered.length} consultas
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setVisibleLimit((limit) => limit + VISIBLE_PAGE_SIZE)
+                }
+                className="rounded-xl px-5 text-xs font-medium"
+              >
+                Cargar consultas anteriores (
+                {Math.min(VISIBLE_PAGE_SIZE, remaining)} más)
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Modales de agenda. Al cerrarse con éxito avisan al host para que
           recargue: sin eso la fila cancelada seguía pintada como "Agendada",

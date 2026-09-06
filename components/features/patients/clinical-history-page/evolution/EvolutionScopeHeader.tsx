@@ -1,7 +1,13 @@
 "use client";
 
 import { AlertTriangle, Loader2, Printer } from "lucide-react";
-import { Button } from "@/components/ui";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui";
 import { cn } from "@/lib/utils/utils";
 
 export interface EvolutionScopeHeaderProps {
@@ -17,6 +23,14 @@ export interface EvolutionScopeHeaderProps {
   printPreparing?: boolean;
   /** Progreso de esa carga, para que el botón diga por qué tarda. */
   printProgress?: { loaded: number; total: number };
+  /**
+   * Imprimir SOLO lo que el filtro deja a la vista. Si no llega, el botón
+   * imprime el expediente completo sin preguntar — que es lo correcto cuando no
+   * hay nada filtrado.
+   */
+  onPrintSelection?: () => void;
+  /** Cuántas consultas entran en esa selección. */
+  selectionCount?: number;
 }
 
 /**
@@ -42,6 +56,8 @@ export function EvolutionScopeHeader({
   onPrint,
   printPreparing = false,
   printProgress,
+  onPrintSelection,
+  selectionCount,
 }: EvolutionScopeHeaderProps) {
   if (!truncated && !onPrint) return null;
 
@@ -49,6 +65,44 @@ export function EvolutionScopeHeader({
     <div className="mb-2 flex flex-col gap-2">
       {onPrint ? (
         <div className="flex items-center justify-end">
+          {onPrintSelection ? (
+            /* Con un filtro puesto hay DOS documentos posibles y no son
+               intercambiables: el expediente completo es el que la norma
+               reconoce como copia de la historia; la selección es un extracto.
+               Por eso se pregunta en vez de decidir por el usuario, y por eso el
+               extracto se imprime declarándose como tal. */
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={printPreparing}
+                  className="h-8 gap-1.5 px-2 text-xs text-subtle hover:text-ink"
+                >
+                  {printPreparing ? (
+                    <Loader2
+                      className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <Printer className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                  {printPreparing && printProgress
+                    ? `Preparando… ${printProgress.loaded}/${printProgress.total}`
+                    : "Imprimir"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onPrint}>
+                  Imprimir expediente completo
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onPrintSelection}>
+                  Imprimir selección actual ({selectionCount ?? 0})
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
           <Button
             type="button"
             variant="ghost"
@@ -81,6 +135,7 @@ export function EvolutionScopeHeader({
               ? `Preparando… ${printProgress.loaded}/${printProgress.total}`
               : "Imprimir"}
           </Button>
+          )}
         </div>
       ) : null}
 

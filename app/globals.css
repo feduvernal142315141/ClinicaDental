@@ -562,6 +562,17 @@ html {
   }
 
   /* ── Pie fijo: declaraciones de alcance en CADA folio ──────────────────── */
+  /* Aviso de documento PARCIAL. Con borde y en negrita porque los fondos
+     teñidos desaparecen al imprimir en blanco y negro, y esta línea es
+     justamente la que impide que un extracto se lea como el expediente
+     completo. */
+  .evolution-print__partial {
+    font-weight: 700;
+    border: 1pt solid #000;
+    padding: 2mm;
+    margin-bottom: 1.5mm;
+  }
+
   .evolution-print__footer {
     position: fixed;
     bottom: 0;
@@ -785,3 +796,4 @@ html {
     color: rgb(var(--muted-ch));
   }
 }
+
