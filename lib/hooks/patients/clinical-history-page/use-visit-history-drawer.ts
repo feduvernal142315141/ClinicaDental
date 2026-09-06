@@ -47,6 +47,10 @@ export function useVisitHistoryDrawer({
     reset: resetOdontogramSnapshots,
   } = useOdontogramVisitSnapshots();
   const [attachments, setAttachments] = useState<PatientAttachment[]>([]);
+  // Una lista vacía porque la lectura falló NO es "esta visita no tiene
+  // archivos". El drawer pintaba las dos igual, así que un 500 afirmaba que no
+  // hubo radiografías ni consentimiento en esa visita (ADR-61).
+  const [attachmentsError, setAttachmentsError] = useState(false);
 
   useEffect(() => {
     if (!open || !appointmentId) {
@@ -55,12 +59,17 @@ export function useVisitHistoryDrawer({
     }
 
     loadOdontogramSnapshots(appointmentId);
+    setAttachmentsError(false);
     clinicalHistoryService
       .getVisitAttachments(patientId, appointmentId)
-      .then(setAttachments)
+      .then((data) => {
+        setAttachments(data);
+        setAttachmentsError(false);
+      })
       .catch((error) => {
         notifyApiError("No se pudieron cargar los archivos adjuntos", error);
         setAttachments([]);
+        setAttachmentsError(true);
       });
   }, [
     open,
@@ -100,6 +109,7 @@ export function useVisitHistoryDrawer({
     record,
     loading,
     attachments,
+    attachmentsError,
     pain,
     hasPain,
     formattedVisitDate,

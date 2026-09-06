@@ -13,10 +13,31 @@ import type {
 import { notify } from "@/lib/utils/notify";
 import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
 
+/**
+ * Marca un rechazo como YA notificado. `GlobalErrorListeners` sólo se calla si
+ * la razón trae este flag; sin él, encima del toast con el motivo real aparece
+ * "Error inesperado · Ocurrió un problema en segundo plano. Recarga la página",
+ * que además de contradecir al bueno invita a recargar — y el texto sin guardar
+ * vive sólo en memoria. Convención ya usada en `useAppointments`.
+ */
+function markHandled(err: unknown): void {
+  if (err && typeof err === "object") {
+    (err as { _interceptorHandled?: boolean })._interceptorHandled = true;
+  }
+}
+
 export function useVisitRecord(patientId: string, appointmentId?: string) {
   const [record, setRecord] = useState<PatientVisitRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  /**
+   * Fallo de LECTURA del registro, que NO es lo mismo que `record === null`:
+   * un 404 afirma "esta visita no tiene registro" y es un dato; un 5xx o un
+   * corte de red significa "no sabemos qué tiene" y es ausencia de dato.
+   * Quien pinte el registro debe distinguirlos (ADR-61) y el guard destructivo
+   * de `saveNotes` lo necesita para no dar por vacío lo que no ha podido leer.
+   */
+  const [error, setError] = useState<unknown>(null);
 
   const load = useCallback(async () => {
     if (!appointmentId) return;
@@ -27,12 +48,15 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
         appointmentId,
       );
       setRecord(data);
+      setError(null);
     } catch (err: unknown) {
       const e = err as { status?: number; message?: string };
       if (e?.status === 404) {
         // No visit record yet — graceful empty state
         setRecord(null);
+        setError(null);
       } else {
+        setError(err);
         notify.error(e?.message || "No se pudo cargar el registro de visita", {
           description:
             "No pudimos recuperar los datos de esta consulta. Revisa tu conexión y vuelve a intentarlo; si persiste, contacta a soporte.",
@@ -49,6 +73,7 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
       load();
     } else {
       setRecord(null);
+      setError(null);
     }
   }, [appointmentId, load]);
 
@@ -118,9 +143,51 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
       const isBlank = !html || html.replace(/<[^>]*>/g, "").trim() === "";
       const hadContent = !!record?.clinicalNotes?.replace(/<[^>]*>/g, "").trim();
       if (isBlank && hadContent) {
-        throw new Error(
+        // El rechazo se DECLARA aquí, no en el `catch` de más abajo: este `throw`
+        // vive FUERA del `try`, así que no ejecutaba `markError()` ni ningún
+        // aviso. La promesa subía sin capturar hasta `unhandledrejection` y el
+        // usuario leía "Error inesperado · Ocurrió un problema en segundo plano"
+        // en lugar del motivo real, mientras la cinta de autoguardado seguía
+        // diciendo "Guardado".
+        //
+        // Y el guard NO se mete dentro del `try`: este `Error` no lleva `status`,
+        // así que el ternario de mensajes caería en "Revisa tu conexión e
+        // inténtalo de nuevo" — una instrucción falsa ante un rechazo
+        // determinista, que fallaría igual en cada reintento.
+        useAutosaveStatus.getState().markError();
+        notify.error("No se guardó: la nota quedaría vacía", {
+          description:
+            "El editor está vacío y esta consulta ya tiene evolución registrada: guardar así la borraría y no se podría recuperar. Lo ya guardado sigue intacto; vuelve a escribir la evolución antes de guardar.",
+        });
+        // Se CONSERVA el `throw`: es lo que impide que el editor descarte el
+        // borrador y que el feed dé por bueno un guardado que no ocurrió.
+        const rejection = new Error(
           "No se guardó: dejar la nota vacía borraría la evolución registrada y no se puede deshacer.",
         );
+        // Nadie captura esta promesa (el editor llama `onSave` desde un onClick),
+        // así que sin la marca llega a `unhandledrejection` y el clínico ve DOS
+        // toasts a la vez: el motivo real y "Error inesperado · … Recarga la
+        // página", que es justo lo que no debe hacer.
+        markHandled(rejection);
+        throw rejection;
+      }
+
+      // El mismo borrado por la otra puerta: si la LECTURA del registro falló,
+      // `record` es null sin que eso signifique "esta visita no tenía nota".
+      // `hadContent` sale false y el guard de arriba dejaría pasar el PATCH en
+      // blanco que sí borraría la evolución guardada en el servidor. Mientras no
+      // se sepa qué hay, no se escribe vacío.
+      if (isBlank && error) {
+        useAutosaveStatus.getState().markError();
+        notify.error("No se guardó: no se pudo leer la evolución de esta consulta", {
+          description:
+            "El editor está vacío y no pudimos comprobar si esta consulta ya tenía evolución registrada: guardarla así podría borrarla sin poder recuperarla. Vuelve a abrir la consulta cuando se restablezca la conexión y comprueba lo que hay guardado antes de escribir.",
+        });
+        const rejection = new Error(
+          "No se guardó: no se pudo leer el registro de esta visita, así que no se escribe una nota vacía.",
+        );
+        markHandled(rejection);
+        throw rejection;
       }
 
       setSaving(true);
@@ -170,6 +237,10 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
         notify.error(e?.message || "No se pudieron guardar las notas clínicas", {
           description,
         });
+        // El motivo real ya está en pantalla. Sin la marca se le suma el genérico
+        // "Recarga la página": en el 409 el usuario acaba de leer "cópialo antes
+        // de salir" y recargar destruiría el borrador, que sólo vive en memoria.
+        markHandled(err);
         throw err;
       } finally {
         setSaving(false);
@@ -177,7 +248,9 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
     },
     // `record.clinicalNotes` entra en las deps: sin él el guard destructivo
     // leería un closure obsoleto y dejaría pasar justo el borrado que evita.
-    [patientId, appointmentId, record?.clinicalNotes],
+    // `error` entra por lo mismo: es lo que distingue "no había nota" de "no se
+    // pudo leer si la había".
+    [patientId, appointmentId, record?.clinicalNotes, error],
   );
 
   // ---------------------------------------------------------------------------
@@ -240,6 +313,9 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
     record,
     loading,
     saving,
+    // `error` no es "record vacío": ver el comentario del estado. Quien lo pinte
+    // debe darle una rama propia distinta de "sin registro" (ADR-61).
+    error,
     load,
     save,
     saveNotes,

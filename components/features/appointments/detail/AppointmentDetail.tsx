@@ -12,6 +12,8 @@ import {
 } from "@ant-design/icons";
 import { useAppointments } from "@/lib/hooks/appointments";
 import { useAppointmentsPage } from "@/lib/hooks/appointments";
+import { appointmentsService } from "@/lib/services/appointments/appointments.service";
+import { notify } from "@/lib/utils/notify";
 import type { Appointment } from "@/lib/entity/appointment";
 import { AppointmentForm } from "../form/AppointmentForm";
 import { isAppointmentActionable } from "@/lib/utils/appointment-utils";
@@ -94,11 +96,37 @@ export function AppointmentDetail({
     modal.confirm({
       title: "¿Marcar cita como realizada?",
       content:
-        "Se abrirá el workspace clínico para guardar el snapshot del odontograma antes de finalizar la cita.",
+        "La cita quedará registrada como consulta en curso y se abrirá la ficha del paciente para guardar el snapshot del odontograma antes de finalizarla.",
       okText: "Abrir finalización segura",
       okType: "primary",
       cancelText: "Cancelar",
-      onOk: () => {
+      onOk: async () => {
+        // Este botón se pinta para una cita AGENDADA cuya hora ya pasó: la que
+        // se atendió sin pulsar "Iniciar". Una cita `scheduled` no tiene fila
+        // `PatientVisitRecord` —la crea `PATCH /appointments/{id}/start`—, así
+        // que navegar sin iniciarla dejaba a la ficha sin consulta en curso y
+        // el modal de cierre no llegaba a abrirse (D1). Mismo camino que
+        // `app/(authenticated)/appointments/page.tsx`.
+        if (appointment.status !== "in_progress") {
+          try {
+            const result = await appointmentsService.startAppointment(
+              appointment.id,
+            );
+            if (result?.appointmentAdjusted) {
+              sessionStorage.setItem("appointmentAdjusted", "true");
+            }
+          } catch (error) {
+            notify.error(
+              (error as Error).message || "No se pudo iniciar la cita",
+              {
+                description:
+                  "La cita no quedó abierta, así que todavía no se puede finalizar. Revisa tu conexión e inténtalo de nuevo; si el problema persiste, contacta a soporte.",
+              },
+            );
+            return;
+          }
+        }
+
         const query = new URLSearchParams({
           tab: "workspace",
           appointmentId: appointment.id,

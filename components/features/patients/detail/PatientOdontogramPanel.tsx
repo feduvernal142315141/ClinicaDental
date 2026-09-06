@@ -9,7 +9,10 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { useOdontogramByVisit } from "@/lib/hooks/odontogram/useOdontogramByVisit";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings";
 import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
-import { OdontogramReadOnlyOverlay } from "@/components/features/odontogram/ui/OdontogramReadOnlyOverlay";
+import {
+  OdontogramReadOnlyOverlay,
+  type OdontogramReadOnlyReason,
+} from "@/components/features/odontogram/ui/OdontogramReadOnlyOverlay";
 import { OdontogramVisitContextBar } from "@/components/features/odontogram/ui/OdontogramVisitContextBar";
 import { OdontogramHistoricFrame } from "@/components/features/odontogram/ui/OdontogramHistoricFrame";
 import { StatusBadge } from "@/components/ui";
@@ -38,13 +41,56 @@ interface PatientOdontogramPanelProps {
   /**
    * Editabilidad de la visita en contexto, resuelta por `getVisitEditability` en
    * el hook de la página. Es la FUENTE ÚNICA: este panel ya no la recalcula.
+   *
+   * OBLIGATORIA: siendo opcional, omitirla dejaba `kind === "locked"` en false y
+   * abría la edición sobre una visita cerrada (fail-open silencioso).
    */
-  visitEditability?: VisitEditability;
+  visitEditability: VisitEditability;
   /** Called when user selects a historic visit from the timeline */
   onSelectHistoricVisit?: (appointmentId: string) => void;
   finalizeOpen?: boolean;
   onFinalizeClose?: () => void;
   onFinalizeSuccess?: (result: { followUpId?: string }) => void;
+}
+
+/**
+ * Motivo de bloqueo de la visita → rótulo del overlay.
+ *
+ * `switch` EXHAUSTIVO a propósito. El mapeo anterior era un ternario que
+ * colapsaba cualquier `locked` en "completed", así que una cita aún agendada
+ * ("not-started") y una cuyo estado no se pudo verificar ("not-listed": 5xx en
+ * el GET por id y ausente de una lista capada a 100 y sin canceladas) se
+ * anunciaban las dos como "Visita finalizada" — un estado futuro y un fallo
+ * técnico renderizados como un hecho clínico consumado (ADR-61). Con el `never`
+ * del `default`, un motivo nuevo en `getVisitEditability` rompe la compilación
+ * en lugar de colapsar otra vez en silencio.
+ */
+function readOnlyReasonFor(
+  editability: VisitEditability,
+): OdontogramReadOnlyReason | null {
+  switch (editability.kind) {
+    case "no-visit":
+    case "unknown":
+    case "editable":
+      return null;
+    case "locked":
+      switch (editability.reason) {
+        case "terminal":
+          return "completed";
+        case "not-started":
+          return "not-started";
+        case "not-listed":
+          return "unverified";
+        default: {
+          const _never: never = editability.reason;
+          return _never;
+        }
+      }
+    default: {
+      const _never: never = editability;
+      return _never;
+    }
+  }
 }
 
 export function PatientOdontogramPanel({
@@ -205,7 +251,7 @@ export function PatientOdontogramPanel({
   // `unknown` (lista en vuelo) y `no-visit` NO bloquean: la primera para no
   // flashear solo-lectura, la segunda porque el odontograma se puede llenar
   // fuera de una consulta, volcando la ficha en papel de un paciente antiguo.
-  const isNonEditableVisit = visitEditability?.kind === "locked";
+  const isNonEditableVisit = visitEditability.kind === "locked";
 
   // El odontograma es documentación clínica: su edición se gatea con la
   // autoridad 'odontogram' (backend @PreAuthorize), no con clinical_history
@@ -215,19 +261,18 @@ export function PatientOdontogramPanel({
     can("odontogram", PermissionAction.EDIT) ||
     can("odontogram", PermissionAction.CREATE);
 
-  // Solo lectura por: modo histórico, visita finalizada o falta de permiso.
+  // Solo lectura por: modo histórico, visita bloqueada (cerrada, aún no
+  // iniciada o no verificable) o falta de permiso.
   // "Sin consulta" ya NO bloquea: el permiso es lo único que manda.
   const readOnly = isHistoricMode || isNonEditableVisit || !canEditClinical;
 
   // Motivo del modo solo-lectura → feedback coherente en el overlay.
-  // Precedencia: sin permiso (no accionable) > visita finalizada.
-  const readOnlyReason: "completed" | "no-permission" | null = isHistoricMode
+  // Precedencia: sin permiso (no accionable) > motivo de la visita.
+  const readOnlyReason: OdontogramReadOnlyReason | null = isHistoricMode
     ? null
     : !canEditClinical
       ? "no-permission"
-      : isNonEditableVisit
-        ? "completed"
-        : null;
+      : readOnlyReasonFor(visitEditability);
 
   // Edición fuera de consulta: se guarda el estado actual del paciente, pero no
   // queda snapshot en el historial por visita (el backend no lo escribe sin cita).

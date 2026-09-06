@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Pencil } from "lucide-react";
+import { HelpCircle, Pencil } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage, Button } from "@/components/ui";
 import { formatDate } from "@/lib/entity/patients";
@@ -38,6 +38,15 @@ export interface PatientRecordHeaderProps {
   phone?: string;
   email?: string;
   alerts?: ClinicalHistoryAlert[];
+  /**
+   * NO se sabe si este paciente tiene alertas: la historia clínica no se pudo
+   * leer. Sin esto, una cabecera sin chips se lee igual que la de un paciente
+   * sin alergias — y el resto de la cabecera se pinta poblada de todos modos,
+   * porque nacimiento, teléfono y correo salen de la ficha del paciente.
+   */
+  alertsUnknown?: boolean;
+  /** Por qué no se sabe. Cambia el rótulo: no es lo mismo un 403 que un 500. */
+  alertsUnknownReason?: "forbidden" | "error";
   /** Por defecto FALSE: sin permiso explícito no se ofrece editar. */
   canEdit?: boolean;
   onEdit?: () => void;
@@ -103,6 +112,8 @@ export function PatientRecordHeader({
   phone,
   email,
   alerts,
+  alertsUnknown = false,
+  alertsUnknownReason,
   canEdit = false,
   onEdit,
   primaryAction,
@@ -148,6 +159,28 @@ export function PatientRecordHeader({
               <h1 className="min-w-0 break-words text-xl font-semibold text-ink">
                 {name}
               </h1>
+
+              {/* Chip de indeterminación. NO usa la paleta de alerta (rose /
+                  amber): no afirma nada clínico, dice que el dato falta. El
+                  borde discontinuo lo separa a simple vista de un chip real. */}
+              {alertsUnknown ? (
+                <span
+                  className={cn(
+                    ALERT_TAG_BASE,
+                    "inline-flex max-w-none items-center gap-1 border border-dashed border-hairline bg-hover text-subtle",
+                  )}
+                  title={
+                    alertsUnknownReason === "forbidden"
+                      ? "Tu rol no puede leer la historia clínica de este paciente, así que no se sabe si tiene alergias o enfermedades registradas."
+                      : "No se pudo leer la historia clínica, así que no se sabe si este paciente tiene alergias o enfermedades registradas. Vuelve a intentarlo desde la columna de antecedentes."
+                  }
+                >
+                  <HelpCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  {alertsUnknownReason === "forbidden"
+                    ? "Sin acceso a las alertas"
+                    : "Alertas no disponibles"}
+                </span>
+              ) : null}
 
               {visibleAlerts.map((alert) => (
                 <span

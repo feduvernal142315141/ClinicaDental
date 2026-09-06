@@ -10,6 +10,7 @@ import {
   FileText,
   Image as ImageIcon,
   Info,
+  Lock,
   MoreVertical,
   Paperclip,
   User,
@@ -25,8 +26,14 @@ import {
   type StatusBadgeTone,
 } from "@/components/ui";
 import { cn } from "@/lib/utils/utils";
-import { MONTHS_ES, dateToLocalInput } from "@/lib/datetime";
+import { MONTHS_ES, dateToLocalDate } from "@/lib/datetime";
 import { CIE10_DENTAL_CODES } from "@/lib/entity/clinical-history/cie10-dental";
+// Normalización de autoría COMPARTIDA (la usan también el drawer de historial y
+// el editor): el literal "anonymous" jamás se imprime en un documento clínico.
+import {
+  NO_AUTHORSHIP_LABEL,
+  resolveAuthorship,
+} from "@/lib/utils/clinical-authorship";
 import type {
   ExamFindings,
   PatientVisitRecord,
@@ -125,27 +132,16 @@ function parseStamp(iso: string | undefined): StampMoment | null {
     // inventar una fecha. La comparación cae a los primeros 10 caracteres.
     return { localDate: iso.slice(0, 10), text: iso };
   }
-  const localDate = dateToLocalInput(parsed);
+  // `dateToLocalDate` y NO `dateToLocalInput`: este último devuelve
+  // 'YYYY-MM-DDTHH:mm' (16 caracteres), y comparado con `appointment.date`
+  // ('YYYY-MM-DD') el `>` de más abajo se cumplía por prefijo — "2026-09-06T18:42"
+  // es mayor que "2026-09-06" — así que el aviso de anotación tardía salía en
+  // TODA nota escrita el mismo día de la consulta y no salía en las tardías.
+  const localDate = dateToLocalDate(parsed);
   const time = `${String(parsed.getHours()).padStart(2, "0")}:${String(
     parsed.getMinutes(),
   ).padStart(2, "0")}`;
   return { localDate, text: `${formatLongDate(localDate)} ${time}` };
-}
-
-// ---------------------------------------------------------------------------
-// Autoría
-// ---------------------------------------------------------------------------
-
-/**
- * El backend sobreescribe la nota y sólo conserva el ÚLTIMO editor. Cuando ese
- * campo no identifica a nadie (`null`, vacío o el literal "anonymous") no hay
- * constancia de autoría, y NO se puede sustituir por `doctorName`: el doctor de
- * la cita es una asignación de agenda, no prueba de quién escribió la nota.
- */
-function resolveAuthorship(updatedBy: string | undefined | null): string | null {
-  const value = updatedBy?.trim();
-  if (!value || value.toLowerCase() === "anonymous") return null;
-  return value;
 }
 
 // ---------------------------------------------------------------------------
@@ -240,6 +236,14 @@ export interface VisitEntryCardProps {
   /** Reintenta la carga del registro tras un fallo técnico. */
   onRetry: () => void;
   /**
+   * El rol puede LEER la historia clínica. Con `false` el feed no pide NINGÚN
+   * registro, así que `state` se queda en `idle` para siempre: sin esta bandera
+   * la tarjeta pintaba el esqueleto de carga eternamente y una visita CON nota
+   * se veía igual que una SIN nota. Es un hecho de AUTORIZACIÓN, no un fallo
+   * técnico, y por eso no se cuela por la rama de error.
+   */
+  canViewClinicalHistory?: boolean;
+  /**
    * La tarjeta nace desplegada. La columna se lo pasa sólo a la consulta más
    * reciente (o a la que está en curso); el resto empiezan plegadas.
    */
@@ -286,8 +290,9 @@ const CHIP_CLASS =
  *
  * No monta editores, ni cajas de texto, ni acciones destructivas: es una
  * superficie de consulta de un registro clínico-legal. Distingue de forma
- * explícita los tres estados que jamás deben confundirse — no hay registro
- * (404), hay registro pero sin nota, y fallo técnico al cargarlo.
+ * explícita los estados que jamás deben confundirse — no hay registro (404),
+ * hay registro pero sin nota, fallo técnico al cargarlo, y no tienes permiso
+ * para leerlo (que no es ninguno de los anteriores).
  *
  * Plegada muestra el encabezado y un resumen de una línea; desplegada muestra
  * los cuatro bloques de la evolución (subjetivo, objetivo, apreciación, plan).
@@ -299,6 +304,7 @@ export function VisitEntryCard({
   appointment,
   state,
   onRetry,
+  canViewClinicalHistory = true,
   defaultExpanded = false,
   attachments,
   onViewOdontogram,
@@ -385,7 +391,11 @@ export function VisitEntryCard({
             </span>
 
             {!expanded ? (
-              <CollapsedSummary state={state} summary={summary} />
+              <CollapsedSummary
+                state={state}
+                summary={summary}
+                canViewClinicalHistory={canViewClinicalHistory}
+              />
             ) : null}
           </span>
 
@@ -465,6 +475,7 @@ export function VisitEntryCard({
               appointment={appointment}
               state={state}
               onRetry={onRetry}
+              canViewClinicalHistory={canViewClinicalHistory}
               attachments={attachments}
             />
           </div>
@@ -481,10 +492,22 @@ export function VisitEntryCard({
 function CollapsedSummary({
   state,
   summary,
+  canViewClinicalHistory,
 }: {
   state: VisitRecordState;
   summary: string;
+  canViewClinicalHistory: boolean;
 }) {
+  // Antes que cualquier estado de carga: sin permiso el registro NUNCA se pidió,
+  // así que `state` no describe nada. Se anuncia (sin `aria-hidden`) porque es un
+  // estado del documento, no un adorno.
+  if (!canViewClinicalHistory) {
+    return (
+      <span className="mt-1 block truncate text-xs italic text-subtle">
+        Sin acceso al registro de esta visita
+      </span>
+    );
+  }
   if (state.status === "failed") {
     return (
       <span className="mt-1 block truncate text-xs text-amber-700 dark:text-amber-300">
@@ -516,44 +539,109 @@ function CollapsedSummary({
 }
 
 // ---------------------------------------------------------------------------
-// Cuerpo: los tres estados + los bloques de la evolución
+// Cuerpo: los estados de lectura + los bloques de la evolución
 // ---------------------------------------------------------------------------
 
 function VisitEntryBody({
   appointment,
   state,
   onRetry,
+  canViewClinicalHistory,
   attachments,
 }: {
   appointment: Appointment;
   state: VisitRecordState;
   onRetry: () => void;
+  canViewClinicalHistory: boolean;
   attachments?: PatientAttachment[];
 }) {
-  if (state.status === "idle" || state.status === "loading") {
-    return <VisitEntrySkeleton />;
+  // Los servicios salen de la CITA, no del registro: se conocen aunque el
+  // registro clínico no se haya podido leer o no exista, así que van fuera del
+  // switch de estado.
+  const services = <VisitAppointmentServices appointment={appointment} />;
+
+  // Falta de AUTORIZACIÓN, no fallo técnico: ni esqueleto (afirmaría que está
+  // cargando algo que nadie pidió) ni la rama de error (afirmaría un fallo del
+  // sistema y ofrecería un "Reintentar" que solo generaría 403).
+  if (!canViewClinicalHistory) {
+    return (
+      <div className="space-y-3.5">
+        {services}
+        <div className="rounded-lg bg-hover px-3 py-2.5 text-xs text-subtle">
+          <div className="flex items-start gap-2">
+            <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="font-medium text-ink">
+                Sin acceso al registro de esta visita
+              </p>
+              <p className="mt-0.5 leading-relaxed">
+                Tu rol no permite ver la historia clínica de este paciente. Lo
+                que no se muestra aquí no significa que la visita no tenga
+                anotaciones clínicas.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.status === "loading") {
+    return (
+      <div className="space-y-3.5">
+        {services}
+        <div aria-busy="true">
+          {/* El esqueleto va `aria-hidden`, así que sin este texto un lector de
+              pantalla no emitía NADA durante la carga. */}
+          <span className="sr-only">Cargando el registro de esta visita…</span>
+          <VisitEntrySkeleton />
+        </div>
+      </div>
+    );
+  }
+
+  if (state.status === "idle") {
+    // `idle` = todavía no se ha pedido. Es transitorio (la columna encola las
+    // tarjetas visibles al montar y el observer el resto), y el único `idle`
+    // que NO se resolvía nunca —el de la falta de permiso— ya se interceptó
+    // arriba. Se pinta el mismo esqueleto pero SIN `aria-busy`: no hay ninguna
+    // petición en curso que anunciar.
+    return (
+      <div className="space-y-3.5">
+        {services}
+        <VisitEntrySkeleton />
+      </div>
+    );
   }
 
   if (state.status === "failed") {
     // Un fallo técnico NO es ausencia de dato clínico: jamás "Sin nota".
     return (
-      <div className="rounded-lg bg-amber-500/15 px-3 py-2.5 text-xs text-amber-700 ring-1 ring-amber-400/25 dark:text-amber-300">
-        <div className="flex items-start gap-2">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <div className="min-w-0">
-            <p className="font-medium">No se pudo cargar el registro de esta visita</p>
-            {state.message ? (
-              <p className="mt-0.5 opacity-80">{state.message}</p>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onRetry}
-              className="mt-2 pointer-coarse:h-11 pointer-coarse:px-4"
-            >
-              Reintentar
-            </Button>
+      <div className="space-y-3.5">
+        {services}
+        <div className="rounded-lg bg-amber-500/15 px-3 py-2.5 text-xs text-amber-700 ring-1 ring-amber-400/25 dark:text-amber-300">
+          <div className="flex items-start gap-2">
+            <AlertTriangle
+              className="mt-0.5 h-3.5 w-3.5 shrink-0"
+              aria-hidden="true"
+            />
+            <div className="min-w-0">
+              <p className="font-medium">
+                No se pudo cargar el registro de esta visita
+              </p>
+              {state.message ? (
+                <p className="mt-0.5 opacity-80">{state.message}</p>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onRetry}
+                className="mt-2 pointer-coarse:h-11 pointer-coarse:px-4"
+              >
+                Reintentar
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -562,15 +650,66 @@ function VisitEntryBody({
 
   if (state.status === "empty") {
     // 404: la visita no tiene registro clínico creado.
-    return <p className="text-xs italic text-subtle">Sin registro de visita</p>;
+    return (
+      <div className="space-y-3.5">
+        {services}
+        <p className="text-xs italic text-subtle">Sin registro de visita</p>
+      </div>
+    );
   }
 
   return (
-    <VisitRecordBands
-      appointment={appointment}
-      record={state.record}
-      attachments={attachments}
-    />
+    <div className="space-y-3.5">
+      {services}
+      <VisitRecordBands
+        appointment={appointment}
+        record={state.record}
+        attachments={attachments}
+      />
+    </div>
+  );
+}
+
+/**
+ * Servicios de la CITA (no del registro), lista completa.
+ *
+ * El título de la tarjeta muestra `services[0]` como identificador de fila; sin
+ * este bloque, una cita con "Exodoncia tercer molar + Sutura + Radiografía
+ * periapical" quedaba documentada como si solo se hubiera hecho la primera, y no
+ * hay ningún otro sitio en la ficha donde consultarlos.
+ *
+ * NO se concatenan en el título (ese tiene `truncate`, así que volverían a
+ * desaparecer con puntos suspensivos) ni se truncan aquí: cada nombre se pinta
+ * entero, aunque el texto pase a dos líneas. Y NO se imprime `serviceCost`: la
+ * ficha clínica no es un documento de facturación.
+ */
+function VisitAppointmentServices({ appointment }: { appointment: Appointment }) {
+  const services = appointment.services ?? [];
+  // Con un solo servicio el título de la tarjeta ya lo muestra íntegro: repetirlo
+  // sería ruido. El dato que se perdía es el de las citas con varios.
+  if (services.length < 2) return null;
+
+  return (
+    <section>
+      <h3 className={BLOCK_LABEL_CLASS}>Servicios de la cita</h3>
+      <ul className="space-y-1">
+        {services.map((service, index) => (
+          <li
+            key={`${service.serviceId ?? "servicio"}-${index}`}
+            className="flex gap-2 text-xs text-ink"
+          >
+            <span className="shrink-0 text-subtle" aria-hidden="true">
+              ·
+            </span>
+            <span className="min-w-0">
+              {service.serviceName?.trim() ||
+                service.serviceCode?.trim() ||
+                "Servicio sin nombre registrado"}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -891,16 +1030,20 @@ function VisitStampFooter({
   return (
     <div className="mt-3 border-t border-hairline pt-2">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-subtle">
-        {author && stamp ? (
-          <span>
-            Última edición: <span className="text-ink">{author}</span> · {stamp.text}
-          </span>
-        ) : author ? (
+        {/* La fecha NO cuelga de que haya autor: "anonymous" (o vacío) es
+            ausencia de constancia de AUTORÍA, no ausencia de edición, y el sello
+            de tiempo sigue siendo un dato real del registro. */}
+        {author ? (
           <span>
             Última edición: <span className="text-ink">{author}</span>
+            {stamp ? ` · ${stamp.text}` : ""}
+          </span>
+        ) : stamp ? (
+          <span>
+            <span className="italic">{NO_AUTHORSHIP_LABEL}</span> · {stamp.text}
           </span>
         ) : (
-          <span className="italic">Sin registro de autoría</span>
+          <span className="italic">{NO_AUTHORSHIP_LABEL}</span>
         )}
 
         <button

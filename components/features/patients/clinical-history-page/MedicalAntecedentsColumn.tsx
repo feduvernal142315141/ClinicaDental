@@ -1,6 +1,12 @@
 "use client";
 
-import { AlertCircle, AlertTriangle, Pencil, Shield } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  NotebookText,
+  Pencil,
+  Shield,
+} from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -10,6 +16,7 @@ import {
   type StatusBadgeTone,
 } from "@/components/ui";
 import { cn } from "@/lib/utils/utils";
+import { NO_AUTHORSHIP_LABEL } from "@/lib/utils/clinical-authorship";
 import type {
   ClinicalHistoryMedicalHistory,
   ClinicalHistoryPatientHeader,
@@ -177,8 +184,7 @@ export function MedicalAntecedentsColumn({
   loadError = null,
   onRetry,
 }: MedicalAntecedentsColumnProps) {
-  const { alertBadges } = useMedicalAntecedentsColumn({
-    patientId,
+  const { alertBadges, clinicalNote } = useMedicalAntecedentsColumn({
     medicalHistory,
     patientHeader,
   });
@@ -303,6 +309,60 @@ export function MedicalAntecedentsColumn({
         </div>
       </section>
 
+      {/* Notas permanentes — SOLO LECTURA.
+          Es la única superficie donde estas notas se ven: sin ella una
+          advertencia como "anticoagulado, coordinar INR antes de exodoncia"
+          seguía en base de datos pero era invisible en la ficha. NO lleva
+          editor a propósito (ADR-65): el guardado era de reemplazo total y sin
+          versiones, y había un segundo editor indistinguible sobre la misma
+          nota. Va después del corte de `forbidden || loadError`, así que aquí
+          ya está descartado el fallo de lectura (ADR-61). */}
+      <section className="bento shrink-0 p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <NotebookText className="h-4 w-4 text-brand" aria-hidden="true" />
+          <h3 className="text-sm font-semibold text-ink">Notas permanentes</h3>
+        </div>
+
+        {clinicalNote.kind === "no-record" ? (
+          <p className="text-xs text-subtle/70">
+            Este paciente todavía no tiene historia clínica registrada, así que
+            no hay notas permanentes que mostrar.
+          </p>
+        ) : clinicalNote.kind === "empty" ? (
+          <p className="text-xs text-subtle/70">
+            La historia clínica está registrada y no tiene ninguna nota
+            permanente.
+          </p>
+        ) : (
+          <>
+            <div
+              // Mismas defensas que la nota de visita: un token sin espacios o
+              // una tabla ancha desbordaban la caja y el contenido clínico
+              // quedaba recortado sin ninguna señal.
+              className="prose prose-sm max-w-none text-ink dark:prose-invert [overflow-wrap:anywhere] [&_table]:block [&_table]:overflow-x-auto"
+              dangerouslySetInnerHTML={{ __html: clinicalNote.html }}
+            />
+            {/* Sólo se puede afirmar la ÚLTIMA edición: el backend sobreescribe
+                la nota y no guarda versiones ni auditoría (ADR-62). */}
+            <div className="mt-3 border-t border-hairline pt-2 text-[11px] text-subtle">
+              {clinicalNote.author ? (
+                <span>
+                  Última edición:{" "}
+                  <span className="text-ink">{clinicalNote.author}</span>
+                  {clinicalNote.editedAt ? ` · ${clinicalNote.editedAt}` : null}
+                </span>
+              ) : (
+                <span>
+                  <span className="italic">{NO_AUTHORSHIP_LABEL}</span>
+                  {clinicalNote.editedAt
+                    ? ` · Última edición: ${clinicalNote.editedAt}`
+                    : null}
+                </span>
+              )}
+            </div>
+          </>
+        )}
+      </section>
     </div>
   );
 }

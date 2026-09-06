@@ -35,16 +35,26 @@ const ALL_DOCTORS = "__all__";
  * Búsqueda y filtros del historial de evolución.
  *
  * QUÉ SE BUSCA, Y POR QUÉ NO MÁS: el filtro corre sobre los datos de la CITA
- * —fecha, motivo, servicio, tipo y doctor—, que llegan completos en la lista.
- * La fecha se busca en TODAS las formas en que se escribe ("agosto",
- * "25/08/2026", "25 de agosto de 2026", "2026"), no solo en el `YYYY-MM-DD`
- * crudo: la tarjeta muestra "25 de agosto de 2026" y una búsqueda que no
- * encuentra lo que el usuario está leyendo se siente rota aunque funcione.
- * NO busca dentro del texto de las notas ni de los diagnósticos, aunque parezca
- * lo natural: esos viven en el registro de cada visita, que se carga
- * perezosamente (una petición por tarjeta). Buscar ahí devolvería resultados
- * distintos según cuánto hubieras desplazado la página, y una búsqueda que se
- * salta consultas sin decirlo, en una historia clínica, es peor que no tenerla.
+ * —fecha, servicio, tipo, doctor y las NOTAS DE LA CITA—, que llegan completos
+ * en la lista. La fecha se busca en TODAS las formas en que se escribe
+ * ("agosto", "25/08/2026", "25 de agosto de 2026", "2026"), no solo en el
+ * `YYYY-MM-DD` crudo: la tarjeta muestra "25 de agosto de 2026" y una búsqueda
+ * que no encuentra lo que el usuario está leyendo se siente rota aunque
+ * funcione.
+ *
+ * POR QUÉ NO DICE "MOTIVO": el campo que se busca es `appointment.notes`, que es
+ * lo que el backend siembra como `chiefComplaint` y lo que la tarjeta pinta bajo
+ * "Subjetivo". El "Motivo" del formulario de agenda es otro campo
+ * (`appointment.reason`) que el comando de creación descarta antes de guardar:
+ * no existe en el DTO y no se puede buscar. Prometer "motivo" en el rótulo era
+ * ofrecer un filtro sobre un dato que nunca llega.
+ *
+ * NO busca dentro del texto de las notas de evolución ni de los diagnósticos,
+ * aunque parezca lo natural: esos viven en el registro de cada visita, que se
+ * carga perezosamente (una petición por tarjeta). Buscar ahí devolvería
+ * resultados distintos según cuánto hubieras desplazado la página, y una
+ * búsqueda que se salta consultas sin decirlo, en una historia clínica, es peor
+ * que no tenerla. Por eso el rótulo lo declara también en negativo.
  *
  * NOTA sobre los nombres: llegan del backend tal cual estén guardados, a veces
  * en mayúsculas. NO se normalizan — reescribir el nombre de un profesional en un
@@ -103,7 +113,7 @@ export function EvolutionFilterBar({
             type="search"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Buscar por fecha, tratamiento, doctor o motivo…"
+            placeholder="Buscar por fecha, servicio, doctor o notas de la cita…"
             aria-label="Buscar en el historial de consultas"
             className={cn(
               "h-9 w-full rounded-lg bg-hover pl-9 pr-3 text-sm text-ink",
@@ -220,7 +230,8 @@ export function EvolutionFilterBar({
             {query.trim().length > 0 ? (
               <span className="hidden text-[11px] sm:inline">
                 {" "}
-                · se busca en fecha, motivo, servicio y doctor
+                · se busca en fecha, servicio, tipo, doctor y notas de la cita;
+                no en las notas de evolución ni en los diagnósticos
               </span>
             ) : null}
           </p>

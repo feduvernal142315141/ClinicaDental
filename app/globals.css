@@ -477,17 +477,32 @@ html {
   /* Todo lo que no sea el documento desaparece: shell, pestañas, toasts de
      sileo, portales de Radix y el overlay de desarrollo de Next.
 
-     El `:has()` NO es decorativo: sin él esta regla se aplicaría a CUALQUIER
-     pantalla de la app, y un Ctrl+P en agenda o en pacientes saldría en blanco.
-     Sólo se apaga el resto del árbol cuando el documento clínico está montado.
-     Si algún navegador no soporta `:has()`, la regla se descarta entera y como
-     mucho se imprime la app junto al documento — nunca una hoja vacía. */
-  body:has(> .evolution-print) > *:not(.evolution-print) {
+     La guarda es OPT-IN, y por eso mira `[data-print-active]` y no la mera
+     presencia del nodo: el documento vive montado mientras la ficha esté
+     abierta, así que condicionarlo sólo al montaje secuestraba el Ctrl+P nativo
+     en las cuatro pestañas de /patients/[id] y sacaba el documento con los
+     asientos sin cargar. La marca la pone `useEvolutionPrint` justo antes de
+     `window.print()` y la retira en `afterprint`.
+
+     El `:has()` tampoco es decorativo: sin él esta regla se aplicaría a
+     CUALQUIER pantalla de la app. Si algún navegador no lo soporta, la regla se
+     descarta entera y como mucho se imprime la app junto al documento — nunca
+     una hoja vacía. */
+  body:has(> .evolution-print[data-print-active]) > *:not(.evolution-print) {
     display: none !important;
   }
 
-  .evolution-print {
+  /* Sin la marca el documento sigue oculto (`display:none` fuera de esta media
+     query + `hidden` en el marcado): un Ctrl+P imprime la aplicación, no la
+     historia clínica. Va en una regla aparte a propósito: si el selector con
+     atributo envolviera también los tokens de abajo, su especificidad ganaría a
+     los modificadores `--truncated`/`--partial` y el pie se quedaría con la
+     reserva base. */
+  .evolution-print[data-print-active] {
     display: block !important;
+  }
+
+  .evolution-print {
     /* Paleta Bento FORZADA a claro: el usuario puede estar en tema oscuro y el
        papel no tiene tema. Se redefinen los tokens semánticos, no los colores
        de cada regla, para que el documento siga hablando el idioma del sistema.
@@ -512,9 +527,31 @@ html {
     print-color-adjust: exact;
   }
 
-  /* La advertencia de truncamiento añade un renglón al pie. */
+  /* ── Reserva del pie, POR ESTADO ────────────────────────────────────────
+     El pie es `position: fixed` y de fondo OPACO: lo que no quepa en la banda
+     reservada por el `tfoot` no se recorta, se imprime ENCIMA del cuerpo, y la
+     pérdida es invisible (el texto sigue en la capa de texto del PDF). A veces
+     lo tapado no es prosa: es el sello de "Sin registro de autoría" (ADR-62) o
+     el propio aviso de documento parcial.
+
+     Alturas medidas del pie sobre A4 (7pt/1.35, ancho útil 182mm):
+       base . . . . . . . . . ~11,5mm  (declaraciones de alcance, 3 renglones)
+       + truncamiento . . . . ~15mm    (un renglón más)
+       + aviso PARCIAL  . . . ~24,5mm  (recuadro 1pt + negrita + margen, ADR-68)
+       + parcial y truncado . ~28mm
+     Cada reserva lleva ~5mm de holgura porque el aviso parcial lo compone el
+     host y su longitud varía. El recuadro NO se encoge: ADR-68 lo exige con
+     borde porque un fondo teñido desaparece en blanco y negro. */
   .evolution-print--truncated {
     --print-footer-h: 21mm;
+  }
+
+  .evolution-print--partial {
+    --print-footer-h: 30mm;
+  }
+
+  .evolution-print--partial.evolution-print--truncated {
+    --print-footer-h: 34mm;
   }
 
   /* Ningún control sobrevive al papel: botones, chevrons e iconos de acción no
@@ -758,11 +795,21 @@ html {
 
   /* La nota va ÍNTEGRA: en papel no hay "ver nota completa", así que ni plegado
      ni recorte. `prose` trae sus propios colores por variables; se fijan al
-     tinta del documento para que no salga gris claro. */
+     tinta del documento para que no salga gris claro.
+
+     `overflow-wrap` no es cosmético: el saneador del backend admite `<table>` y
+     `<a href>`, y en medio paginado lo que se sale del área de página NO SE
+     IMPRIME. Una URL de 90 caracteres o una tabla de periodontograma son
+     contenido clínico legítimo que desaparecería sin dejar marca. La pantalla
+     resuelve lo mismo en la tarjeta; aquí NO se copia su `overflow-x: auto`,
+     porque un contenedor con scroll en papel esconde igual y encima sin
+     síntoma visible en el navegador. */
   .evolution-print__note {
     max-width: none;
     font-size: 9.5pt;
     color: rgb(var(--ink));
+    overflow-wrap: anywhere;
+    word-break: break-word;
     --tw-prose-body: rgb(var(--ink));
     --tw-prose-headings: rgb(var(--ink));
     --tw-prose-bold: rgb(var(--ink));
@@ -772,6 +819,19 @@ html {
     --tw-prose-counters: rgb(var(--muted-ch));
     --tw-prose-hr: rgb(var(--hairline));
     --tw-prose-quote-borders: rgb(var(--hairline));
+  }
+
+  /* Una tabla de la nota se ajusta al folio: sin `table-layout: fixed` el
+     navegador la ensancha con su contenido y las columnas de la derecha caen
+     fuera del papel. */
+  .evolution-print__note table {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .evolution-print__note td,
+  .evolution-print__note th {
+    overflow-wrap: anywhere;
   }
 
   /* Ausencias y sellos: en cursiva y en gris, nunca en rojo ni con icono — el

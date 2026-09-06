@@ -8,10 +8,16 @@ export function usePatientAttachments(patientId: string) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // "No tienes acceso" y "no se pudo leer" son dos hechos distintos y la pantalla
+  // tiene que poder decir cuál es (ADR-61). El mensaje aplanado no basta:
+  // clasificar por su texto sería adivinar. Mismo par `error`/`forbidden` que
+  // `use-clinical-history.ts`, que es el patrón ya establecido en el repo.
+  const [forbidden, setForbidden] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setForbidden(false);
     try {
       const data = await patientAttachmentsService.getAttachments(patientId);
       setAttachments(data);
@@ -20,6 +26,7 @@ export function usePatientAttachments(patientId: string) {
       // convertir un fallo de recarga en un falso "no se pudo subir".
       notifyApiError("No se pudieron cargar los archivos del paciente", err);
       setError(extractApiErrorMessage(err) ?? "Error al cargar archivos");
+      setForbidden((err as { status?: number } | null)?.status === 403);
     } finally {
       setLoading(false);
     }
@@ -50,5 +57,5 @@ export function usePatientAttachments(patientId: string) {
     void load();
   }, [load]);
 
-  return { attachments, loading, uploading, error, load, upload, remove };
+  return { attachments, loading, uploading, error, forbidden, load, upload, remove };
 }

@@ -10,6 +10,7 @@ import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 import { EvolutionScopeHeader } from "./EvolutionScopeHeader";
 import { VisitEntryCard } from "./VisitEntryCard";
 import { EvolutionFilterBar } from "./EvolutionFilterBar";
+import { AlertTriangle, Lock } from "lucide-react";
 import { Button } from "@/components/ui";
 import { matchesQuery } from "@/lib/utils/text";
 import { cn } from "@/lib/utils/utils";
@@ -94,6 +95,14 @@ export interface EvolutionColumnProps {
   onPrintSelection?: () => void;
   /** Se llama tras cancelar o reagendar, para que la lista deje de estar obsoleta. */
   onAppointmentsChanged?: () => void;
+  /**
+   * Fallo al LEER el listado de citas del paciente (no el registro de cada
+   * visita). Con un fallo aquí `appointments` llega vacío, y sin esta señal la
+   * columna afirmaba "Este paciente no tiene consultas registradas": una
+   * afirmación clínica falsa nacida de un problema técnico (ADR-61). `null` =
+   * el listado se leyó bien.
+   */
+  appointmentsError?: unknown;
   /** Contenedor con scroll real, para que el observer mida contra él. */
   scrollRootRef?: React.RefObject<HTMLElement | null>;
   /**
@@ -144,6 +153,7 @@ export function EvolutionColumn({
   onAppointmentsChanged,
   onSelectionChange,
   onPrintSelection,
+  appointmentsError = null,
 }: EvolutionColumnProps) {
   // Cancelar y reagendar son MUTACIONES sobre la agenda. Sin permiso no se pasan
   // los handlers, así que los ítems del menú no existen en el DOM — ausentes, no
@@ -232,9 +242,14 @@ export function EvolutionColumn({
       if (dateFrom && (a.date ?? "") < dateFrom) return false;
       if (dateTo && (a.date ?? "") > dateTo) return false;
       if (!q) return true;
+      // `a.notes` y NO `a.reason`: `reason` no existe en el DTO de cita que
+      // devuelve el backend (el normalizador lo deja `undefined`), mientras que
+      // `notes` es lo que el backend siembra como `chiefComplaint` y lo que la
+      // tarjeta pinta bajo "Subjetivo". Buscando contra `reason` la búsqueda no
+      // encontraba el texto que el clínico estaba leyendo en pantalla.
       const haystack = [
         a.services?.[0]?.serviceName,
-        a.reason,
+        a.notes,
         a.type,
         a.doctorName,
         dateHaystack(a.date),
@@ -369,6 +384,45 @@ export function EvolutionColumn({
     );
   }
 
+  // TERCER ESTADO, distinto de "cargando" y de "no hay consultas": el listado no
+  // se pudo leer. Decir aquí "este paciente no tiene consultas registradas"
+  // convertiría un fallo técnico en una afirmación sobre el paciente (ADR-61).
+  if (appointmentsError && ordered.length === 0) {
+    return (
+      <div className="min-w-0">
+        <EvolutionScopeHeader shownCount={0} truncated={false} onPrint={onPrint} printPreparing={printPreparing} printProgress={printProgress} />
+        <section className="bento p-6">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle
+              className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
+              aria-hidden="true"
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-ink">
+                No se pudo cargar el listado de consultas
+              </p>
+              <p className="mt-1 text-sm text-subtle">
+                No estamos mostrando la evolución clínica de este paciente. Esto
+                no significa que no tenga consultas registradas.
+              </p>
+              {onAppointmentsChanged ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onAppointmentsChanged}
+                  className="mt-3 pointer-coarse:h-11 pointer-coarse:px-4"
+                >
+                  Reintentar
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   if (ordered.length === 0) {
     return (
       <div className="min-w-0">
@@ -393,6 +447,57 @@ export function EvolutionColumn({
         onPrintSelection={hasFilters ? onPrintSelection : undefined}
         selectionCount={filtered.length}
       />
+
+      {/* El listado se leyó a medias: hay consultas en pantalla, pero pueden
+          faltar. Se avisa ENCIMA de la lista en vez de sustituirla, porque lo que
+          ya llegó es información real que no hay que esconder. */}
+      {appointmentsError ? (
+        <section className="bento mb-3 px-3 py-2.5">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+            <AlertTriangle
+              className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+              aria-hidden="true"
+            />
+            <p className="min-w-0 flex-1 text-xs text-subtle">
+              <span className="font-medium text-ink">
+                La última lectura del listado de consultas falló.
+              </span>{" "}
+              Lo que ves puede estar incompleto o desactualizado.
+            </p>
+            {onAppointmentsChanged ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onAppointmentsChanged}
+                className="shrink-0 pointer-coarse:h-11 pointer-coarse:px-4"
+              >
+                Reintentar
+              </Button>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {/* Sin permiso de historia clínica NINGUNA tarjeta puede pedir su
+          registro: se dice una vez arriba, y cada tarjeta lo repite en su propio
+          cuerpo (donde antes se quedaba un esqueleto eterno). */}
+      {!canViewClinicalHistory ? (
+        <section className="bento mb-3 px-3 py-2.5">
+          <div className="flex items-start gap-2">
+            <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-subtle" aria-hidden="true" />
+            <p className="min-w-0 text-xs text-subtle">
+              <span className="font-medium text-ink">
+                Estás viendo solo la agenda de este paciente.
+              </span>{" "}
+              Tu rol no permite ver la historia clínica, así que no se muestran
+              las anotaciones de ninguna consulta. Lo que no se muestra aquí no
+              significa que las consultas no tengan registro clínico.
+            </p>
+          </div>
+        </section>
+      ) : null}
+
       <EvolutionFilterBar
         query={query}
         onQueryChange={setQuery}
@@ -459,6 +564,7 @@ export function EvolutionColumn({
                     appointment={appointment}
                   state={records[appointment.id] ?? IDLE_STATE}
                   onRetry={() => retry(appointment.id)}
+                  canViewClinicalHistory={canViewClinicalHistory}
                   // `ordered` ya pone primero la consulta en curso y, si no la hay,
                   // la más reciente: esa es la que nace desplegada. El resto se
                   // leen plegadas, con su resumen de una línea.

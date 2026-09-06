@@ -5,6 +5,12 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils/utils";
 import { MONTHS_ES, dateToLocalInput, nowLocalInput } from "@/lib/datetime";
 import { CIE10_DENTAL_CODES } from "@/lib/entity/clinical-history/cie10-dental";
+// Misma normalización de autoría que la tarjeta y el drawer. El papel tenía su
+// propia copia y divergió: imprimía la ausencia de autor SIN la fecha.
+import {
+  NO_AUTHORSHIP_LABEL,
+  resolveAuthorship,
+} from "@/lib/utils/clinical-authorship";
 import type {
   ExamFindings,
   PatientVisitRecord,
@@ -36,9 +42,12 @@ import { orderEvolutionAppointments } from "./use-evolution-print";
  *    (sin registro / con registro pero sin nota / fallo técnico) se imprimen
  *    distinguidos, igual que en `VisitEntryCard`. Un fallo de carga jamás se
  *    imprime como "sin nota".
- * 2. IGNORA cualquier filtro activo en pantalla, y lo declara en su propio
- *    cuerpo. Un export selectivo silencioso es peor que uno que declara su
- *    recorte: quien recibe el papel no puede saber qué se quedó fuera.
+ * 2. DECLARA SU ALCANCE en su propio cuerpo. La copia completa ignora cualquier
+ *    filtro activo en pantalla y lo dice; el extracto (el host manda entonces
+ *    `partialNote`) declara el recorte en vez de afirmar completitud, y el pie
+ *    lo repite folio a folio. Un export selectivo silencioso es peor que uno
+ *    que declara su recorte: quien recibe el papel no puede saber qué se quedó
+ *    fuera.
  * 3. La hora va rotulada "agendada". El DTO del listado no trae la hora real
  *    de atención (`actualStartAt` no viaja), así que presentar la hora de
  *    agenda como hora de atención sería falso en un documento clínico-legal.
@@ -58,7 +67,13 @@ import { orderEvolutionAppointments } from "./use-evolution-print";
  * en páginas completas.
  *
  * Se monta sólo tras `useEffect` (nunca en SSR): sin HTML de servidor no hay
- * desajuste de hidratación con la fecha de generación.
+ * desajuste de hidratación con la fecha de generación. Y una vez montado NO se
+ * desmonta: la vista previa de Chrome re-rasteriza desde el DOM vivo cada vez
+ * que se cambia papel, escala o márgenes, así que un montaje condicional daría
+ * una previa en blanco. Lo que decide si el papel es este documento o la
+ * aplicación es la marca `data-print-active` que pone `useEvolutionPrint` justo
+ * antes de abrir el diálogo — sin ella, el CSS de impresión no apaga nada y un
+ * Ctrl+P imprime la pantalla como en cualquier otra vista.
  */
 
 /** Tope que el backend aplica al listado; es la única señal de truncamiento. */
@@ -69,7 +84,9 @@ const SCOPE_STATEMENT =
   "Documento generado desde Clinic Flow 360. Ordenado por fecha de atención · " +
   "No incluye consultas canceladas · Se conserva únicamente la última edición " +
   "de cada nota · Los comparativos de odontograma no se incluyen en esta " +
-  "impresión; están disponibles en el sistema por consulta.";
+  "impresión; están disponibles en el sistema por consulta · No incluye los " +
+  "archivos adjuntos del expediente (imágenes, radiografías y " +
+  "consentimientos), disponibles en el sistema.";
 
 const TRUNCATION_STATEMENT =
   "Se muestran las 100 consultas más recientes registradas; puede haber " +
@@ -123,6 +140,21 @@ const APPOINTMENT_TYPE_LABEL: Record<AppointmentType, string> = {
   routine: "Rutina",
 };
 
+/**
+ * Servicios que constan en la cita. Sólo el NOMBRE: `serviceCost` y
+ * `serviceCode` viajan en el mismo objeto y ninguno de los dos entra en la
+ * historia clínica (regla 5). `serviceName` singular es el campo legacy —el
+ * primer elemento de `services`—, así que sólo se usa si la lista no da nada.
+ */
+function collectServiceNames(appointment: Appointment): string[] {
+  const fromList = (appointment.services ?? [])
+    .map((service) => service.serviceName?.trim())
+    .filter((name): name is string => Boolean(name));
+  if (fromList.length > 0) return fromList;
+  const legacy = appointment.serviceName?.trim();
+  return legacy ? [legacy] : [];
+}
+
 /** Fecha larga en español a partir de "YYYY-MM-DD" (sin `new Date(str)`: eso es UTC). */
 function formatLongDate(date: string): string {
   const day = Number(date?.slice(8, 10));
@@ -151,17 +183,6 @@ function parseStamp(iso: string | undefined): StampMoment | null {
     parsed.getMinutes(),
   ).padStart(2, "0")}`;
   return { localDate, text: `${formatLongDate(localDate)} ${time}` };
-}
-
-/**
- * El backend sólo conserva el ÚLTIMO editor. Si ese campo no identifica a
- * nadie (`null`, vacío o el literal "anonymous") no hay constancia de autoría,
- * y NO se puede sustituir por `doctorName`.
- */
-function resolveAuthorship(updatedBy: string | undefined | null): string | null {
-  const value = updatedBy?.trim();
-  if (!value || value.toLowerCase() === "anonymous") return null;
-  return value;
 }
 
 const EXTRAORAL_LABELS: Array<[keyof NonNullable<ExamFindings["extraoral"]>, string]> = [
@@ -225,8 +246,19 @@ export interface EvolutionPrintDocumentProps {
    * antes que inventar un identificador, el folio se identifica por nombre.
    */
   patientDocumentId?: string | null;
-  /** Listado completo del backend, SIN filtrar por la UI. */
+  /**
+   * Citas que componen ESTE documento. Con un alcance recortado ("Imprimir
+   * selección") llega ya filtrado, así que su longitud no dice cuántas
+   * consultas tiene el paciente: para eso está `totalAppointmentsCount`.
+   */
   appointments: Appointment[];
+  /**
+   * Citas que devolvió el backend para el paciente, SIN filtrar por la UI. Es lo
+   * único que permite saber (a) que el listado llegó al tope del backend y hay
+   * consultas anteriores sin listar y (b) de cuántas consultas es este extracto.
+   * Contar `appointments` para eso diría "3 de 3" en un documento parcial.
+   */
+  totalAppointmentsCount?: number;
   /** Estados de carga por cita, tal como los deja `useEvolutionPrint`. */
   records: Record<string, VisitRecordState>;
   /**
@@ -243,6 +275,7 @@ export function EvolutionPrintDocument({
   patientName,
   patientDocumentId,
   appointments,
+  totalAppointmentsCount,
   records,
   partialNote,
 }: EvolutionPrintDocumentProps) {
@@ -268,9 +301,17 @@ export function EvolutionPrintDocument({
     [appointments],
   );
 
-  // El backend descarta la metadata de paginación: llegar justo al tope es lo
-  // único de lo que se deduce que hay consultas anteriores sin listar.
-  const truncated = appointments.length === BACKEND_PAGE_CAP;
+  // Sin el total sin filtrar no se puede afirmar ningún denominador: el array
+  // que llega puede venir ya recortado por el alcance elegido.
+  const registeredTotal =
+    typeof totalAppointmentsCount === "number" ? totalAppointmentsCount : null;
+
+  // El backend descarta la metadata de paginación: que el listado COMPLETO
+  // llegue justo al tope es lo único de lo que se deduce que hay consultas
+  // anteriores sin listar. Medirlo sobre las citas ya filtradas perdía el aviso
+  // en cuanto el documento se imprimía con un alcance recortado.
+  const truncated =
+    (registeredTotal ?? appointments.length) === BACKEND_PAGE_CAP;
 
   if (!mounted) return null;
 
@@ -278,13 +319,25 @@ export function EvolutionPrintDocument({
     ordered.length === 1
       ? "1 consulta incluida"
       : `${ordered.length} consultas incluidas`;
+  // Con recorte, el recuento lleva su denominador: "2 consultas incluidas" a
+  // secas no deja ver de cuánto es el extracto. Se dice "citas registradas"
+  // porque el total sin filtrar incluye las canceladas, que este documento no
+  // imprime (así lo declara el pie).
+  const countLine =
+    partialNote && registeredTotal !== null
+      ? `${countText} de ${registeredTotal} citas registradas para el paciente`
+      : countText;
 
   const document_ = (
     <div
       className={cn(
-        // Oculto en pantalla, visible sólo en el papel.
-        "evolution-print hidden print:block",
+        // Oculto en pantalla. En el papel sólo aparece cuando la impresión la
+        // ha disparado esta ficha: la marca `data-print-active` que pone
+        // `useEvolutionPrint` es lo que enciende su CSS. Sin ella, un Ctrl+P
+        // del usuario imprime la aplicación, no este documento a medio cargar.
+        "evolution-print hidden",
         truncated && "evolution-print--truncated",
+        partialNote && "evolution-print--partial",
       )}
       // Duplica en papel lo que ya está en la pantalla: fuera del árbol de
       // accesibilidad para no leerlo dos veces.
@@ -342,13 +395,26 @@ export function EvolutionPrintDocument({
                 <h1 className="evolution-print__title">
                   Evolución clínica registrada en este sistema
                 </h1>
-                <p className="evolution-print__intro-meta">{countText}</p>
-                {/* Declaración obligatoria: qué recorte NO se aplicó. */}
-                <p className="evolution-print__intro-meta">
-                  Este documento incluye todas las consultas que el sistema tiene
-                  registradas para el paciente: ignora cualquier filtro o
-                  búsqueda aplicados en pantalla al generarlo.
-                </p>
+                <p className="evolution-print__intro-meta">{countLine}</p>
+                {/* Declaración obligatoria de alcance. En la copia completa
+                    dice qué recorte NO se aplicó; en el extracto NO puede
+                    seguir afirmando completitud mientras su propio pie declara
+                    lo contrario, así que declara el recorte y remite al pie,
+                    que es donde el aviso va folio a folio (ADR-68). */}
+                {partialNote ? (
+                  <p className="evolution-print__intro-meta">
+                    Este documento es un EXTRACTO: incluye únicamente las
+                    consultas seleccionadas en pantalla al generarlo, no todas
+                    las que el sistema tiene registradas para el paciente. El
+                    alcance exacto consta al pie de cada folio.
+                  </p>
+                ) : (
+                  <p className="evolution-print__intro-meta">
+                    Este documento incluye todas las consultas que el sistema
+                    tiene registradas para el paciente: ignora cualquier filtro
+                    o búsqueda aplicados en pantalla al generarlo.
+                  </p>
+                )}
               </section>
             </td>
           </tr>
@@ -408,6 +474,7 @@ function PrintedVisitEntry({
   const typeLabel = appointment.type
     ? (APPOINTMENT_TYPE_LABEL[appointment.type] ?? appointment.type)
     : null;
+  const serviceNames = collectServiceNames(appointment);
 
   return (
     <article className="evolution-print__entry">
@@ -450,6 +517,20 @@ function PrintedVisitEntry({
         </span>
       </p>
 
+      {/* Mismo registro que la línea de arriba: lo que consta AGENDADO en la
+          cita. No dice "procedimiento realizado" ni "tratamiento efectuado"
+          porque el listado no prueba ejecución; sin esta línea, en cambio, una
+          endodoncia sin nota escrita salía en la copia legal diciendo sólo
+          "Sin nota de evolución registrada". Sin importes: regla 5. */}
+      {serviceNames.length > 0 ? (
+        <p className="evolution-print__meta">
+          Servicios de la cita:{" "}
+          <span className="evolution-print__strong">
+            {serviceNames.join(" · ")}
+          </span>
+        </p>
+      ) : null}
+
       <PrintedVisitBody appointment={appointment} state={state} />
     </article>
   );
@@ -477,9 +558,11 @@ function PrintedVisitBody({
   }
 
   if (state.status !== "ready") {
-    // Defensivo: el hook no llama a `window.print()` hasta que todas las citas
-    // están resueltas. Si aun así llegara aquí, se dice lo que pasó — jamás se
-    // deja el asiento en blanco ni se rotula como "sin nota".
+    // `idle` = nadie llegó a pedir ese registro. El hook resuelve el ALCANCE que
+    // se le pasó, que no tiene por qué ser lo que este documento pinta: si las
+    // dos listas divergen —una selección que sigue cambiando mientras se
+    // prepara— el asiento cae aquí. Se dice lo que pasó; jamás se deja en
+    // blanco ni se rotula "sin nota", que afirmaría algo falso del paciente.
     return (
       <p className="evolution-print__absence evolution-print__absence--alert">
         El registro de esta visita no estaba disponible al generar el documento
@@ -632,17 +715,25 @@ function PrintedStamp({
 
   return (
     <div className="evolution-print__stamp">
-      {author && stamp ? (
-        <p>
-          Última edición: <span className="evolution-print__strong">{author}</span>{" "}
-          · {stamp.text}
-        </p>
-      ) : author ? (
+      {/* La fecha NO cuelga de que haya autor. "anonymous" (o vacío) es ausencia
+          de constancia de AUTORÍA, no ausencia de edición, y el sello de tiempo
+          sigue siendo un dato real del registro: descartarlo en el papel —que es
+          la copia que sale de la clínica— borraría un dato que sí existe. Las
+          tres ramas son las mismas que las de la tarjeta en pantalla, a
+          propósito: si divergen, papel y pantalla afirman cosas distintas sobre
+          el mismo hecho registral. */}
+      {author ? (
         <p>
           Última edición: <span className="evolution-print__strong">{author}</span>
+          {stamp ? ` · ${stamp.text}` : ""}
+        </p>
+      ) : stamp ? (
+        <p>
+          <span className="evolution-print__absence">{NO_AUTHORSHIP_LABEL}</span> ·{" "}
+          {stamp.text}
         </p>
       ) : (
-        <p className="evolution-print__absence">Sin registro de autoría</p>
+        <p className="evolution-print__absence">{NO_AUTHORSHIP_LABEL}</p>
       )}
 
       {annotatedLate && stamp ? (

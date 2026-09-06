@@ -21,6 +21,7 @@ import { decodeJwtPayload } from "@/lib/auth/jwt";
 import { createAuthSession } from "@/lib/services/auth/session.service";
 import { clearAuthTokens, saveLoggedUser } from "@/lib/auth/token-storage";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
+import { useVisitNoteDrafts } from "@/lib/store/useVisitNoteDrafts";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -208,6 +209,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       clearOtpSession();
       clearAuthTokens();
+      // `router.push` no recarga la página: los stores en memoria sobreviven al
+      // cambio de usuario. Sin esto, el borrador de nota clínica sin guardar del
+      // profesional que sale se le sirve al siguiente que entra.
+      useVisitNoteDrafts.getState().clearAll();
       clearClinicBranding();
       router.push("/login");
       router.refresh();
@@ -216,6 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       clearOtpSession();
       clearAuthTokens();
+      useVisitNoteDrafts.getState().clearAll();
       clearClinicBranding();
       router.push("/login");
     }

@@ -13,7 +13,6 @@ import { getVisitEditability, isLockedVisit } from "./visit-editability";
 import { PATIENT_TABS, resolveTab, type PatientTab } from "./patient-tabs";
 import { localTodayInput, parseLocalValue } from "@/lib/datetime";
 import { formatVisitDate } from "@/lib/utils/visit-eligibility";
-import { usePendingActs } from "./use-pending-acts";
 import type { ConsultationCta } from "@/components/features/patients/clinical-history-page/continuity";
 import type { UpdateMedicalHistoryRequest } from "@/lib/entity/clinical-history";
 import type { Patient } from "@/lib/entity/patients";
@@ -63,6 +62,15 @@ export function useClinicalHistoryPage({
   const [patientLoading, setPatientLoading] = useState(true);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+  // Tres estados, no dos: "todavía no lo sé" (loading), "no hay citas" (lista
+  // vacía) y "no lo sé porque falló la lectura" (esto). Sin este último, un 500
+  // dejaba `appointments` en `[]` con la carga apagada, y de ahí salía un
+  // documento impreso que afirma "este paciente no tiene consultas registradas"
+  // bajo su nombre (ADR-61).
+  const [appointmentsError, setAppointmentsError] = useState<unknown>(null);
+  // La PRIMERA carga, distinta de un refetch: `appointmentsLoading` se enciende
+  // en cada `loadAppointments()` y atar el CTA a ella lo hacía parpadear.
+  const [appointmentsEverLoaded, setAppointmentsEverLoaded] = useState(false);
   // Status leído por id en el efecto de restauración. Hasta ahora se calculaba y
   // se tiraba; se conserva porque es el ÚNICO dato fiable cuando la cita no está
   // en la lista (capada a 100 y sin canceladas).
@@ -105,6 +113,14 @@ export function useClinicalHistoryPage({
     verifiedStatus,
   });
   const activeAppointmentIsTerminal = isLockedVisit(visitEditability);
+  // "Bloqueada para escribir" y "cerrada" NO son lo mismo. Una cita `scheduled`
+  // está bloqueada (todavía no hay fila de visita) pero sigue siendo un contexto
+  // VÁLIDO de la ficha: es la que se va a iniciar. Tratarla como cerrada hacía
+  // que la reconciliación borrase el `appointmentId` de la URL nada más entrar,
+  // y con él el `?finalize=1` con el que se cierra una cita desde el detalle (D1).
+  const activeAppointmentIsClosed =
+    visitEditability.kind === "locked" &&
+    visitEditability.reason !== "not-started";
 
   useEffect(() => {
     const persistedMatchesCurrentPatient = persistedPatientId === patientId;
@@ -252,8 +268,16 @@ export function useClinicalHistoryPage({
   // que NO se muestre un Workspace activo con el odontograma bloqueado en
   // silencio. Guardado por `!appointmentsLoading` para no purgar durante la carga
   // y solo dispara con un status terminal EXPLÍCITO de la lista (fail-open).
+  // Una cita agendada NO entra aquí: no está cerrada, está sin empezar.
+  //
+  // Y tampoco entra una lectura FALLIDA. Sin lista, `getVisitEditability` cae en
+  // `locked/not-listed`, que aquí valía como cerrada: un backend caído deshacía
+  // el fail-open del efecto de restauración tres pasos después —endConsultation,
+  // salto a Evolución y `router.replace` borrando el `?appointmentId=`— y el
+  // fallo técnico acababa renderizado como "esta consulta se acabó" (ADR-61).
   useEffect(() => {
-    if (appointmentsLoading || !activeAppointmentIsTerminal) return;
+    if (appointmentsLoading || appointmentsError || !activeAppointmentIsClosed)
+      return;
     // Solo purgar el store si REALMENTE apunta a esta cita (ownership guard):
     // no pisar una consulta activa distinta si se abre por URL una cita ya
     // finalizada. La navegación/reset de tab sí es incondicional.
@@ -270,7 +294,8 @@ export function useClinicalHistoryPage({
     }
   }, [
     appointmentsLoading,
-    activeAppointmentIsTerminal,
+    appointmentsError,
+    activeAppointmentIsClosed,
     activeAppointmentId,
     effectiveActiveAppointmentId,
     isActiveFor,
@@ -397,10 +422,19 @@ export function useClinicalHistoryPage({
       const nextAppointments =
         await appointmentsService.getPatientAppointments(patientId);
       setAppointments(nextAppointments);
+      setAppointmentsError(null);
     } catch (error) {
       notifyApiError("No se pudieron cargar las citas del paciente", error);
+      // El error NO se limpia al empezar el reintento, solo al conseguir la
+      // lista: mientras no se tenga, la vista no puede ofrecer imprimir ni abrir
+      // una consulta "porque no hay ninguna abierta" — no se sabe si la hay.
+      setAppointmentsError(error);
     } finally {
+      // Se apaga TAMBIÉN al fallar: dejarlo encendido clavaría la editabilidad
+      // en `unknown` (fail-open permanente, ADR-59) y la cinta en "Comprobando
+      // consultas…" para siempre.
       setAppointmentsLoading(false);
+      setAppointmentsEverLoaded(true);
     }
   }, [patientId]);
 
@@ -511,7 +545,28 @@ export function useClinicalHistoryPage({
     }
     // Ya hay consulta en curso: manda "Finalizar" desde la cinta.
     if (visitEditability.kind === "editable") return { kind: "hidden" };
-    if (appointmentsLoading) return { kind: "disabled" };
+    // No hay NINGUNA lista: la lectura falló y no quedó una anterior, así que no
+    // se sabe si el paciente ya tiene una consulta abierta y no se ofrece abrir
+    // otra. Ausente, no deshabilitada: un botón deshabilitado insinúa que en otro
+    // momento sí valdría, y aquí lo que falta es el dato, no el permiso.
+    // Con lista previa NO se oculta: el catch de `loadAppointments` no la borra,
+    // y el fallo del refetch no añade nada sobre lo que ya se leyó bien.
+    if (appointmentsError && appointments.length === 0) {
+      return { kind: "hidden" };
+    }
+    // Hay una cita en contexto y todavía no consta su status (`unknown` = id en
+    // la URL + lista en vuelo + sin `verifiedStatus`). Es la ventana que se abre
+    // justo al arrancar la consulta express: la lista aún es la VIEJA, sin la
+    // cita nueva, y calcular el CTA con ella ofrecía "+ Nueva Consulta" para un
+    // paciente al que se le acaba de abrir una — el clic sería la segunda cita
+    // `in_progress`. No reintroduce el parpadeo del refetch: sin cita en contexto
+    // la editabilidad es `no-visit`, no `unknown`.
+    if (visitEditability.kind === "unknown") return { kind: "disabled" };
+    // Solo la PRIMERA carga deshabilita. Con `appointmentsLoading` a secas el
+    // botón parpadeaba a "Comprobando consultas…" en cada refetch.
+    if (appointmentsLoading && !appointmentsEverLoaded) {
+      return { kind: "disabled" };
+    }
 
     const inProgress = appointments.find((a) => a.status === "in_progress");
     if (inProgress) {
@@ -565,48 +620,15 @@ export function useClinicalHistoryPage({
     };
   })();
 
-  // Actos pendientes del odontograma. Se gatea con la MISMA autoridad de módulo
-  // que la pestaña de plan: sin ella el backend responde 403 y pedirlo solo
-  // serviría para disparar el diálogo global de "Acceso Denegado" en cada
-  // apertura de la ficha.
-  const {
-    pendingActs,
-    loading: pendingActsLoading,
-    forbidden: pendingActsForbidden,
-    error: pendingActsError,
-    reload: reloadPendingActs,
-  } = usePendingActs(patientId, canViewTreatmentPlan);
-
-  // Tres estados, no dos. Sin el módulo NO se pide nada, así que la lista vacía
-  // no significa "no hay pendientes": significa que no se sabe. Lo mismo con un
-  // 403 o con un fallo de lectura. Descartar `error` aquí —como se hacía— dejaba
-  // que un 500 o un JSON corrupto del odontograma afirmasen "sin pendientes" a
-  // un clínico con todos los permisos, que es el camino más frecuente.
-  const pendingActsUnavailable =
-    !canViewTreatmentPlan || pendingActsForbidden || !!pendingActsError;
-  const pendingActsUnavailableReason: "forbidden" | "error" | undefined =
-    !canViewTreatmentPlan || pendingActsForbidden
-      ? "forbidden"
-      : pendingActsError
-        ? "error"
-        : undefined;
-
-  /** Próxima cita agendada, la más cercana en el futuro. */
-  const nextAppointment = (() => {
-    const today = localTodayInput();
-    const upcoming = appointments
-      .filter((a) => a.status === "scheduled" && a.date >= today)
-      .sort((a, b) =>
-        `${a.date} ${a.time ?? ""}`.localeCompare(`${b.date} ${b.time ?? ""}`),
-      )[0];
-    return upcoming
-      ? {
-          date: upcoming.date,
-          time: upcoming.time,
-          doctorName: upcoming.doctorName,
-        }
-      : null;
-  })();
+  // Los ACTOS PENDIENTES del odontograma se pedían aquí en cada apertura de la
+  // ficha (y otra vez tras cada finalización) para una franja de continuidad que
+  // dejó de montarse: `GET /odontograms/patient/{id}` sin un solo consumidor.
+  // Se retira ahora y no antes porque `consultationCta` —lo que de verdad hacía
+  // falta de ese bloque, con sus dos guards contra la consulta duplicada y su
+  // gate de permiso— YA está consumido en la acción primaria de la cabecera.
+  // `usePendingActs` y `ContinuityStrip` siguen en el árbol y quedan sin
+  // consumidor: retirarlos es una limpieza aparte, no una decisión de este
+  // arreglo.
 
   const openStartNow = useCallback(() => {
     setShowStartNow(true);
@@ -641,10 +663,9 @@ export function useClinicalHistoryPage({
     endConsultation();
     setActiveTab(PATIENT_TABS.EVOLUTION);
     void loadAppointments();
-    reloadPendingActs();
     router.replace(`/patients/${patientId}`);
     router.refresh();
-  }, [endConsultation, loadAppointments, reloadPendingActs, patientId, router]);
+  }, [endConsultation, loadAppointments, patientId, router]);
 
   const openMedicalHistoryDrawer = useCallback(() => {
     setMedicalHistoryDrawerOpen(true);
@@ -735,6 +756,7 @@ export function useClinicalHistoryPage({
     loadSnapshot,
     appointments,
     appointmentsLoading,
+    appointmentsError,
     visitEditability,
     loadAppointments,
     activeTab: effectiveActiveTab,
@@ -768,12 +790,7 @@ export function useClinicalHistoryPage({
     handleStartNow,
     handleStartScheduledConsultation,
     consultationCta,
-    nextAppointment,
     visitRibbonState,
-    pendingActs,
-    pendingActsLoading,
-    pendingActsUnavailable,
-    pendingActsUnavailableReason,
     handleViewVisitHistory,
     handleSaveMedicalHistory,
     handleViewOdontogram,
