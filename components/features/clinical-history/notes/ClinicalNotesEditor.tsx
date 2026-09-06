@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useVisitNoteDrafts } from "@/lib/store/useVisitNoteDrafts";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import UnderlineExtension from "@tiptap/extension-underline";
@@ -28,6 +29,12 @@ import {
 interface ClinicalNotesEditorProps {
   patientId: string;
   initialContent?: string;
+  /**
+   * Cita a la que pertenece la nota. Con ella el editor conserva el borrador no
+   * guardado si se le desmonta (cambio de pestaña). Sin ella el comportamiento
+   * es el de siempre: el texto vive solo en el estado local.
+   */
+  draftKey?: string;
   updatedAt?: string;
   updatedBy?: string;
   readOnly?: boolean;
@@ -55,13 +62,21 @@ function formatRelativeDate(dateStr: string): string {
 
 export function ClinicalNotesEditor({
   initialContent,
+  draftKey,
   updatedAt,
   updatedBy,
   readOnly = false,
   onSave,
   saving,
 }: ClinicalNotesEditorProps) {
-  const [content, setContent] = useState(initialContent ?? "");
+  // El borrador manda sobre la copia del servidor al montar: si hay texto sin
+  // guardar de esta misma cita, es lo último que escribió el clínico y lo que
+  // espera encontrar al volver. Guardar lo descarta.
+  const { setDraft, clearDraft } = useVisitNoteDrafts();
+  const restoredDraft = draftKey
+    ? useVisitNoteDrafts.getState().getDraft(draftKey)
+    : undefined;
+  const [content, setContent] = useState(restoredDraft ?? initialContent ?? "");
   /**
    * Cuando está activo el dictado pedirá al backend que estructure el audio
    * en formato SOAP (Subjetivo/Objetivo/Análisis/Plan) usando IA.
@@ -78,23 +93,32 @@ export function ClinicalNotesEditor({
         placeholder: "Escribe aquí las notas del historial...",
       }),
     ],
-    content: initialContent ?? "",
+    content: restoredDraft ?? initialContent ?? "",
     editable: !readOnly,
     onUpdate: ({ editor }) => {
-      setContent(editor.getHTML());
+      const html = editor.getHTML();
+      setContent(html);
+      // Cada pulsación se refleja en el borrador: es lo que sobrevive si Radix
+      // desmonta esta pestaña a mitad de una frase.
+      if (draftKey) setDraft(draftKey, html);
     },
   });
 
-  // Sync when initialContent changes (snapshot load)
+  // Sync when initialContent changes (snapshot load).
+  // NO se pisa un borrador sin guardar: la carga del servidor llega después del
+  // montaje, y sin este guard borraría justo el texto que el borrador acaba de
+  // restaurar.
   useEffect(() => {
-    if (editor && initialContent !== undefined) {
-      const current = editor.getHTML();
-      if (current !== initialContent) {
-        editor.commands.setContent(initialContent ?? "");
-        setContent(initialContent ?? "");
-      }
+    if (!editor || initialContent === undefined) return;
+    if (draftKey && useVisitNoteDrafts.getState().getDraft(draftKey) !== undefined) {
+      return;
     }
-  }, [initialContent, editor]);
+    const current = editor.getHTML();
+    if (current !== initialContent) {
+      editor.commands.setContent(initialContent ?? "");
+      setContent(initialContent ?? "");
+    }
+  }, [initialContent, editor, draftKey]);
 
   const {
     isRecording,
@@ -121,6 +145,10 @@ export function ClinicalNotesEditor({
 
   const handleSave = async () => {
     await onSave(content);
+    // Solo tras un guardado con ÉXITO: si `onSave` lanza (404, 409, red), el
+    // borrador se conserva. Perder el texto justo cuando el guardado falla sería
+    // el peor momento posible para descartarlo.
+    if (draftKey) clearDraft(draftKey);
   };
 
   const ToolbarButton = ({

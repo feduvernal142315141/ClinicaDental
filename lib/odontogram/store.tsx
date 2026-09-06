@@ -1270,6 +1270,18 @@ export function OdontogramStoreProvider({
 
   activeStoreApi = storeRef.current;
 
+  // El global sobrevivía al desmontaje del provider. Con las pestañas fijas eso
+  // dejaba a `getActiveStoreApi()` devolviendo el store del ÚLTIMO odontograma
+  // abierto en la sesión SPA — el de OTRO paciente si se había navegado entre
+  // fichas— sin lanzar, así que el try/catch de los consumidores no protegía.
+  useEffect(() => {
+    return () => {
+      if (activeStoreApi === storeRef.current) {
+        activeStoreApi = null;
+      }
+    };
+  }, []);
+
   return (
     <OdontogramStoreContext.Provider value={storeRef.current}>
       {children}

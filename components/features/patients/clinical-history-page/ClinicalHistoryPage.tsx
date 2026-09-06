@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef, useState } from "react";
+
 import { Stethoscope, ClipboardList, ListChecks, Images } from "lucide-react";
 import {
   Tabs,
@@ -77,6 +79,7 @@ export function ClinicalHistoryPage({
     canEditMedicalHistory,
     canEditPatient,
     canViewTreatmentPlan,
+    canViewClinicalHistory,
     handleStartConsultation,
     handleStartNow,
     handleViewVisitHistory,
@@ -93,7 +96,8 @@ export function ClinicalHistoryPage({
     visitRibbonState,
     pendingActs,
     pendingActsLoading,
-    pendingActsForbidden,
+    pendingActsUnavailable,
+    pendingActsUnavailableReason,
   } = useClinicalHistoryPage({
     patientId,
     initialTab,
@@ -110,6 +114,16 @@ export function ClinicalHistoryPage({
   // Impresión conforme. Va ANTES de los returns condicionales de carga: es un
   // hook y no puede quedar detrás de un early-return.
   const evolutionPrint = useEvolutionPrint({ patientId, appointments });
+
+  // El scroller real de la pestaña, para que el observer del feed mida contra él
+  // y no contra el viewport (que queda detrás de dos ancestros que recortan).
+  const evolutionScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Señal de "la nota de esta visita se acaba de guardar desde el editor". El
+  // feed la usa para refrescar esa tarjeta: si no, mostraría el texto anterior
+  // con su sello de última edición, justo debajo del editor que ya muestra el
+  // nuevo — dos versiones de la misma nota clínica en la misma pantalla.
+  const [notesSavedToken, setNotesSavedToken] = useState(0);
 
   if (patientLoading) {
     return (
@@ -226,6 +240,7 @@ export function ClinicalHistoryPage({
             scroll es este TabsContent (ADR-36). Tres barras de scroll a la vez
             ya se pagaron una vez. */}
         <TabsContent
+          ref={evolutionScrollRef}
           value={PATIENT_TABS.EVOLUTION}
           className="flex-1 min-h-0 mt-2 overflow-auto"
         >
@@ -242,11 +257,14 @@ export function ClinicalHistoryPage({
                   patientId={patientId}
                   activeAppointmentId={effectiveActiveAppointmentId}
                   canEdit={canEditMedicalHistory}
+                  onNotesSaved={() => setNotesSavedToken((t) => t + 1)}
                 />
               )}
 
               <ContinuityStrip
-                pendingActs={pendingActsForbidden ? undefined : pendingActs}
+                pendingActs={pendingActs}
+                pendingUnavailable={pendingActsUnavailable}
+                pendingUnavailableReason={pendingActsUnavailableReason}
                 pendingLoading={pendingActsLoading}
                 nextAppointment={nextAppointment}
                 cta={consultationCta}
@@ -260,6 +278,10 @@ export function ClinicalHistoryPage({
                 patientId={patientId}
                 appointments={appointments}
                 loading={appointmentsLoading}
+                canViewClinicalHistory={canViewClinicalHistory}
+                scrollRootRef={evolutionScrollRef}
+                invalidateAppointmentId={effectiveActiveAppointmentId}
+                invalidateToken={notesSavedToken}
                 onPrint={evolutionPrint.print}
                 printPreparing={evolutionPrint.preparing}
                 printProgress={evolutionPrint.progress}

@@ -25,6 +25,20 @@ export interface EvolutionColumnProps {
   appointments: Appointment[];
   loading: boolean;
   onPrint?: () => void;
+  /**
+   * El rol puede LEER la historia clínica. Sin esto el feed pedía el registro de
+   * cada visita y cada 403 abría el diálogo modal global.
+   */
+  canViewClinicalHistory?: boolean;
+  /** Contenedor con scroll real, para que el observer mida contra él. */
+  scrollRootRef?: React.RefObject<HTMLElement | null>;
+  /**
+   * Marca de tiempo del último guardado de notas hecho FUERA de este feed (el
+   * editor de la consulta en curso). Al cambiar, la tarjeta de esa visita se
+   * vuelve a pedir para no seguir mostrando el texto anterior.
+   */
+  invalidateAppointmentId?: string;
+  invalidateToken?: number;
   printPreparing?: boolean;
   printProgress?: { loaded: number; total: number };
 }
@@ -41,10 +55,26 @@ export function EvolutionColumn({
   appointments,
   loading,
   onPrint,
+  canViewClinicalHistory = true,
+  scrollRootRef,
+  invalidateAppointmentId,
+  invalidateToken,
   printPreparing,
   printProgress,
 }: EvolutionColumnProps) {
-  const { records, request, retry } = useVisitRecordsBatch(patientId);
+  const { records, request, retry, invalidate } = useVisitRecordsBatch(
+    patientId,
+    canViewClinicalHistory,
+  );
+
+  // El editor de la consulta en curso guarda por otra vía; sin esto la tarjeta
+  // de esa misma visita se quedaba congelada en el texto de la carga inicial.
+  useEffect(() => {
+    if (!invalidateToken || !invalidateAppointmentId) return;
+    invalidate(invalidateAppointmentId);
+    // `invalidate` es estable; el disparo lo marca el token.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invalidateToken, invalidateAppointmentId]);
 
   /**
    * El backend ordena por `createAt` — cuándo se AGENDÓ la cita, no cuándo se
@@ -95,7 +125,12 @@ export function EvolutionColumn({
           observer.unobserve(entry.target);
         }
       },
-      { rootMargin: OBSERVER_ROOT_MARGIN },
+      // Sin `root` la raíz es el viewport del documento, y entre las tarjetas y
+      // el viewport hay DOS ancestros que recortan (el TabsContent y el <main>).
+      // Los rectángulos de recorte intermedios se aplican sin expandir, así que
+      // el `rootMargin` no adelantaba nada: la precarga que promete el nombre no
+      // ocurría. Se toma el scroller real cuando el host lo proporciona.
+      { root: scrollRootRef?.current ?? null, rootMargin: OBSERVER_ROOT_MARGIN },
     );
     observerRef.current = observer;
     nodesRef.current.forEach((node) => observer.observe(node));
@@ -104,7 +139,10 @@ export function EvolutionColumn({
       observer.disconnect();
       observerRef.current = null;
     };
-  }, []);
+    // `scrollRootRef` es una ref estable del host: entra en las deps para
+    // silenciar la regla, pero su identidad no cambia entre renders, así que el
+    // observer no se reconstruye ni pierde los nodos ya observados.
+  }, [scrollRootRef]);
 
   const registerNode = useCallback((id: string, node: HTMLElement | null) => {
     const nodes = nodesRef.current;

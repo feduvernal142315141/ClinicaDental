@@ -511,6 +511,12 @@ function ClinicalNote({ html }: { html: string }) {
         ref={contentRef}
         className={cn(
           "prose prose-sm max-w-none text-ink dark:prose-invert",
+          // Un token sin espacios (una URL pegada, un código largo) desbordaba
+          // la caja y lo recortaba el `overflow-hidden` de la tarjeta, sin rueda
+          // ni scroll que lo alcanzara: contenido de la historia clínica
+          // invisible y sin ninguna señal. Las tablas se hacen scrollables por
+          // su cuenta por el mismo motivo.
+          "[overflow-wrap:anywhere] [&_table]:block [&_table]:overflow-x-auto",
           collapsed && "max-h-[22rem] overflow-hidden",
         )}
         dangerouslySetInnerHTML={{ __html: html }}

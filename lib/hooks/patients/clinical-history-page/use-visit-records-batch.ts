@@ -53,6 +53,15 @@ export interface UseVisitRecordsBatchResult {
   records: Record<string, VisitRecordState>;
   /** Encola la carga de una visita. Idempotente: sobre algo no-idle no hace nada. */
   request: (appointmentId: string) => void;
+  /**
+   * Descarta la copia cacheada de una visita y la vuelve a pedir. Necesario
+   * porque el editor de la consulta en curso escribe por otra vía (`PATCH
+   * .../notes` desde `useVisitRecord`): sin esto la tarjeta de esa misma
+   * consulta en el feed seguía mostrando el texto ANTERIOR, con su sello de
+   * "Última edición", justo debajo del editor que ya mostraba el nuevo. Dos
+   * versiones contradictorias de la misma nota clínica en la misma pantalla.
+   */
+  invalidate: (appointmentId: string) => void;
   /** Reintenta SOLO una visita en `failed`. Un `empty` (404) no se reintenta jamás. */
   retry: (appointmentId: string) => void;
 }
@@ -70,6 +79,13 @@ export interface UseVisitRecordsBatchResult {
  */
 export function useVisitRecordsBatch(
   patientId: string,
+  /**
+   * Sin autoridad de `clinical_history` no se pide NADA. El endpoint está bajo
+   * CLINICAL_HISTORY_AUTHORITY y el interceptor global abre un diálogo modal de
+   * "Acceso Denegado" en cada 403: con la carga anticipada eran ocho seguidos
+   * nada más abrir la ficha.
+   */
+  enabled: boolean = true,
 ): UseVisitRecordsBatchResult {
   const [records, setRecords] = useState<Record<string, VisitRecordState>>({});
 
@@ -178,13 +194,24 @@ export function useVisitRecordsBatch(
     [pump],
   );
 
+  const invalidate = useCallback(
+    (appointmentId: string) => {
+      if (!appointmentId) return;
+      recordsRef.current = { ...recordsRef.current, [appointmentId]: IDLE };
+      setRecords(recordsRef.current);
+      if (enabled) enqueue(appointmentId);
+    },
+    [enqueue, enabled],
+  );
+
   const request = useCallback(
     (appointmentId: string) => {
+      if (!enabled) return;
       const current = recordsRef.current[appointmentId] ?? IDLE;
       if (current.status !== "idle") return;
       enqueue(appointmentId);
     },
-    [enqueue],
+    [enqueue, enabled],
   );
 
   const retry = useCallback(
@@ -198,5 +225,5 @@ export function useVisitRecordsBatch(
     [enqueue],
   );
 
-  return { records, request, retry };
+  return { records, request, retry, invalidate };
 }

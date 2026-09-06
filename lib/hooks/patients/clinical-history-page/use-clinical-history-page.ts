@@ -334,6 +334,15 @@ export function useClinicalHistoryPage({
     can("clinical_history", PermissionAction.CREATE);
   const canEditPatient = isAdmin || can("patients", PermissionAction.EDIT);
 
+  // Lectura de la historia clínica. El endpoint de registro de visita está bajo
+  // CLINICAL_HISTORY_AUTHORITY, y un rol puede tener `patients` sin tenerlo. Sin
+  // este gate el feed disparaba un GET por visita y CADA 403 abría el diálogo
+  // modal global de "Acceso Denegado": ocho seguidos al montar la ficha.
+  // Autoridad de MÓDULO (`> 0`), como `canViewTreatmentPlan`, no `can(..., EDIT)`:
+  // esto es leer, no escribir.
+  const canViewClinicalHistory =
+    isAdmin || (permissionsObj["clinical_history"] ?? 0) > 0;
+
   // Plan de tratamiento: el backend lo protege con `hasAuthority('odontogram')`,
   // una autoridad de MÓDULO sin bits de acción — se concede en cuanto el rol
   // tiene el módulo con cualquier valor. Por eso NO se puede usar `can(...,
@@ -564,7 +573,23 @@ export function useClinicalHistoryPage({
     pendingActs,
     loading: pendingActsLoading,
     forbidden: pendingActsForbidden,
+    error: pendingActsError,
+    reload: reloadPendingActs,
   } = usePendingActs(patientId, canViewTreatmentPlan);
+
+  // Tres estados, no dos. Sin el módulo NO se pide nada, así que la lista vacía
+  // no significa "no hay pendientes": significa que no se sabe. Lo mismo con un
+  // 403 o con un fallo de lectura. Descartar `error` aquí —como se hacía— dejaba
+  // que un 500 o un JSON corrupto del odontograma afirmasen "sin pendientes" a
+  // un clínico con todos los permisos, que es el camino más frecuente.
+  const pendingActsUnavailable =
+    !canViewTreatmentPlan || pendingActsForbidden || !!pendingActsError;
+  const pendingActsUnavailableReason: "forbidden" | "error" | undefined =
+    !canViewTreatmentPlan || pendingActsForbidden
+      ? "forbidden"
+      : pendingActsError
+        ? "error"
+        : undefined;
 
   /** Próxima cita agendada, la más cercana en el futuro. */
   const nextAppointment = (() => {
@@ -609,14 +634,17 @@ export function useClinicalHistoryPage({
     setIsFinalizeModalOpen(false);
   }, []);
 
+  // Tras finalizar, el odontograma ha cambiado: sin recargar el índice la franja
+  // seguiría anunciando como pendientes actos que se acaban de ejecutar.
   const handleFinalizeSuccess = useCallback(() => {
     setIsFinalizeModalOpen(false);
     endConsultation();
     setActiveTab(PATIENT_TABS.EVOLUTION);
     void loadAppointments();
+    reloadPendingActs();
     router.replace(`/patients/${patientId}`);
     router.refresh();
-  }, [endConsultation, loadAppointments, patientId, router]);
+  }, [endConsultation, loadAppointments, reloadPendingActs, patientId, router]);
 
   const openMedicalHistoryDrawer = useCallback(() => {
     setMedicalHistoryDrawerOpen(true);
@@ -733,6 +761,7 @@ export function useClinicalHistoryPage({
     canEditMedicalHistory,
     canEditPatient,
     canViewTreatmentPlan,
+    canViewClinicalHistory,
     isAdmin,
     can,
     handleStartConsultation,
@@ -743,7 +772,8 @@ export function useClinicalHistoryPage({
     visitRibbonState,
     pendingActs,
     pendingActsLoading,
-    pendingActsForbidden,
+    pendingActsUnavailable,
+    pendingActsUnavailableReason,
     handleViewVisitHistory,
     handleSaveMedicalHistory,
     handleViewOdontogram,

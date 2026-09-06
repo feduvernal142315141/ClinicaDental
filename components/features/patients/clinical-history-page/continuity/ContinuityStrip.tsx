@@ -44,6 +44,14 @@ export interface PendingAct {
 
 export interface ContinuityStripProps {
   pendingActs?: PendingAct[];
+  /**
+   * No se pudo DETERMINAR qué queda pendiente: 403 del odontograma, fallo de
+   * lectura, o rol sin el módulo. NO es lo mismo que "no hay nada pendiente", y
+   * mezclarlos convierte un problema técnico en una afirmación clínica falsa.
+   */
+  pendingUnavailable?: boolean;
+  /** Motivo, para poder decir si es de permisos o de carga. */
+  pendingUnavailableReason?: "forbidden" | "error";
   pendingLoading?: boolean;
   nextAppointment?: { date: string; time?: string; doctorName?: string } | null;
   cta: ConsultationCta;
@@ -90,6 +98,8 @@ function withDoctorPrefix(name: string): string {
  */
 export function ContinuityStrip({
   pendingActs,
+  pendingUnavailable = false,
+  pendingUnavailableReason,
   pendingLoading = false,
   nextAppointment,
   cta,
@@ -120,7 +130,13 @@ export function ContinuityStrip({
 
   // Sin pendientes, sin próxima cita y sin nada que continuar → no se pinta
   // tarjeta vacía. Mientras carga tampoco se decide: evita el parpadeo.
-  if (!pendingLoading && !hasPending && !hasNext && !ctaNamesAVisit) {
+  if (
+    !pendingLoading &&
+    !pendingUnavailable &&
+    !hasPending &&
+    !hasNext &&
+    !ctaNamesAVisit
+  ) {
     return null;
   }
 
@@ -324,6 +340,17 @@ export function ContinuityStrip({
                 )}
               </ul>
             </>
+          ) : pendingUnavailable ? (
+            // Ni "hay" ni "no hay": NO SE SABE. Afirmar la ausencia aquí es el
+            // mismo defecto que ya se corrigió en la columna de antecedentes —
+            // un fallo de lectura presentado como hecho clínico— y esta franja
+            // se rotula "Estado actual", así que se lee como afirmación sobre el
+            // paciente justo mientras se decide el tratamiento.
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              {pendingUnavailableReason === "forbidden"
+                ? "No se puede determinar el plan pendiente con tu rol. Que no se muestre aquí no significa que el paciente no tenga tratamiento pendiente."
+                : "No se pudo leer el plan pendiente. Que no se muestre aquí no significa que el paciente no tenga tratamiento pendiente."}
+            </p>
           ) : (
             <p className="text-sm text-subtle">Sin actos pendientes del plan</p>
           )}

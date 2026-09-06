@@ -40,10 +40,10 @@ export interface VisitRibbonProps {
 }
 
 const ACTIVE_TONE =
-  "bg-emerald-500/15 text-emerald-700 ring-1 ring-emerald-400/25 dark:text-emerald-300";
+  "bg-emerald-500/15 text-emerald-800 ring-1 ring-emerald-400/25 dark:text-emerald-300";
 
 const HISTORIC_TONE =
-  "bg-amber-500/15 text-amber-700 ring-1 ring-amber-400/25 dark:text-amber-300";
+  "bg-amber-500/15 text-amber-800 ring-1 ring-amber-400/25 dark:text-amber-300";
 
 /** Objetivo táctil de 44px en pantallas de dedo, 40px con ratón. */
 const COARSE_TOUCH = "[@media(pointer:coarse)]:h-11";

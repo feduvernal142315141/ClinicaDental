@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { odontogramService } from "@/lib/services/odontogram";
 import type { ClinicalEvent } from "@/lib/odontogram/domain/odontogram/types/clinical-event.types";
 
@@ -42,6 +42,14 @@ export interface ClinicalEventLike {
 export interface PatientClinicalEventsIndex {
   /** visitId → eventos registrados en esa visita (preexistentes incluidos y marcados). */
   byVisit: Map<string, ClinicalEventLike[]>;
+  /**
+   * TODOS los eventos, incluidos los que no tienen `visitId` porque se
+   * registraron fuera de una consulta. Es la fuente correcta para "qué queda
+   * pendiente"; `byVisit` lo es para atribuir actos a una visita del feed.
+   */
+  allEvents: ClinicalEventLike[];
+  /** Vuelve a leer el odontograma. Llamar tras finalizar una consulta. */
+  reload: () => void;
   loading: boolean;
   /** 403: el rol no tiene el módulo odontograma. Es "sin acceso", no un error. */
   forbidden: boolean;
@@ -100,32 +108,44 @@ function toEventLike(raw: unknown): ClinicalEventLike | null {
  */
 function buildIndex(
   state: string,
-): { byVisit: Map<string, ClinicalEventLike[]>; error: string | null } {
+): {
+  byVisit: Map<string, ClinicalEventLike[]>;
+  allEvents: ClinicalEventLike[];
+  error: string | null;
+} {
   let parsed: unknown;
   try {
     parsed = JSON.parse(state);
   } catch {
-    return { byVisit: new Map(), error: PARSE_ERROR };
+    return { byVisit: new Map(), allEvents: [], error: PARSE_ERROR };
   }
 
   const rawEvents = (parsed as { clinicalEvents?: unknown } | null)
     ?.clinicalEvents;
   if (!Array.isArray(rawEvents)) {
     // Un odontograma sin eventos es legítimo (paciente sin procedimientos aún).
-    return { byVisit: new Map(), error: null };
+    return { byVisit: new Map(), allEvents: [], error: null };
   }
 
   const byVisit = new Map<string, ClinicalEventLike[]>();
+  const allEvents: ClinicalEventLike[] = [];
   for (const raw of rawEvents) {
     const event = toEventLike(raw);
-    // Sin visitId no se puede atribuir a ninguna visita del feed: se omite en vez
-    // de colgarlo de una visita arbitraria.
-    if (!event?.visitId) continue;
+    if (!event) continue;
+    allEvents.push(event);
+    // `byVisit` solo agrupa lo atribuible a una visita: sin `visitId` no se puede
+    // colgar de ninguna sin mentir. Pero el evento SÍ existe, y por eso viaja
+    // también en `allEvents`: el odontograma se puede editar FUERA de una
+    // consulta —volcar la ficha en papel de un paciente antiguo, un flujo
+    // soportado a propósito— y esos eventos nacen sin `visitId`. Derivar los
+    // pendientes solo de `byVisit` los hacía desaparecer del recuento, de modo
+    // que un plan lleno de actos se anunciaba como "sin pendientes".
+    if (!event.visitId) continue;
     const bucket = byVisit.get(event.visitId);
     if (bucket) bucket.push(event);
     else byVisit.set(event.visitId, [event]);
   }
-  return { byVisit, error: null };
+  return { byVisit, allEvents, error: null };
 }
 
 /**
@@ -140,6 +160,12 @@ export function usePatientClinicalEvents(
   patientId: string,
   enabled: boolean,
 ): PatientClinicalEventsIndex {
+  // Contador de generación: forzar su cambio re-dispara el efecto. El índice era
+  // una FOTO del arranque, así que tras finalizar una consulta la franja seguía
+  // anunciando como pendientes actos que se acababan de ejecutar.
+  const [generation, setGeneration] = useState(0);
+  const reload = useCallback(() => setGeneration((g) => g + 1), []);
+  const [allEvents, setAllEvents] = useState<ClinicalEventLike[]>([]);
   const [byVisit, setByVisit] =
     useState<Map<string, ClinicalEventLike[]>>(EMPTY_INDEX);
   const [loading, setLoading] = useState(false);
@@ -157,6 +183,7 @@ export function usePatientClinicalEvents(
   useEffect(() => {
     if (!enabled || !patientId) {
       setByVisit(EMPTY_INDEX);
+      setAllEvents([]);
       setLoading(false);
       setForbidden(false);
       setError(null);
@@ -175,16 +202,22 @@ export function usePatientClinicalEvents(
         if (!response?.state) {
           // Paciente sin odontograma todavía: ausencia real de datos, no un fallo.
           setByVisit(EMPTY_INDEX);
+        setAllEvents([]);
+          setAllEvents([]);
+      setAllEvents([]);
           return;
         }
         const result = buildIndex(response.state);
         setByVisit(result.byVisit);
+        setAllEvents(result.allEvents);
         setError(result.error);
       })
       .catch((err: unknown) => {
         if (cancelled || !mountedRef.current) return;
         const httpStatus = statusOf(err);
         setByVisit(EMPTY_INDEX);
+        setAllEvents([]);
+      setAllEvents([]);
         if (httpStatus === 403) {
           setForbidden(true);
           return;
@@ -203,10 +236,10 @@ export function usePatientClinicalEvents(
     return () => {
       cancelled = true;
     };
-  }, [patientId, enabled]);
+  }, [patientId, enabled, generation]);
 
   return useMemo(
-    () => ({ byVisit, loading, forbidden, error }),
-    [byVisit, loading, forbidden, error],
+    () => ({ byVisit, allEvents, loading, forbidden, error, reload }),
+    [byVisit, allEvents, loading, forbidden, error, reload],
   );
 }

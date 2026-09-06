@@ -25,6 +25,8 @@ interface ActiveConsultationNotesProps {
   patientId: string;
   activeAppointmentId: string;
   canEdit?: boolean;
+  /** Se llama tras guardar la nota, para que el feed refresque esa tarjeta. */
+  onNotesSaved?: () => void;
 }
 
 /** Tarjeta de sección con header iconográfico consistente (lenguaje único). */
@@ -84,6 +86,7 @@ export function ActiveConsultationNotes({
   patientId,
   activeAppointmentId,
   canEdit = false,
+  onNotesSaved,
 }: ActiveConsultationNotesProps) {
   const {
     visitRecord,
@@ -286,10 +289,16 @@ export function ActiveConsultationNotes({
         <ClinicalNotesEditor
           patientId={patientId}
           initialContent={visitRecord?.clinicalNotes}
+          draftKey={activeAppointmentId}
           updatedAt={visitRecord?.clinicalNotesUpdatedAt}
           updatedBy={visitRecord?.clinicalNotesUpdatedBy}
           readOnly={!canEdit}
-          onSave={handleSaveNotes}
+          onSave={async (html) => {
+            await handleSaveNotes(html);
+            // Solo tras un guardado con éxito: si lanza, el feed conserva su
+            // copia y el editor su borrador.
+            onNotesSaved?.();
+          }}
           saving={visitSaving}
         />
       </Section>

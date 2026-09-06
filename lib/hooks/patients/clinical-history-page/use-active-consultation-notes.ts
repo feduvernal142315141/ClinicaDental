@@ -186,28 +186,53 @@ export function useActiveConsultationNotes({
     }
   }, [visitRecord]);
 
-  // ─── Subscribe to odontogram store for ICDAS suggestions ──────────────────
+  // ─── Sugerencias ICDAS desde el odontograma ───────────────────────────────
   useEffect(() => {
-    // The odontogram store's activeStoreApi is set during render (before effects run)
-    // by OdontogramStoreProvider inside PatientOdontogramPanel (rendered as sibling).
-    // Wrap in try/catch in case the panel hasn't mounted (e.g. no active appointment).
+    // PELIGRO HISTÓRICO: este efecto leía el store del odontograma por un global
+    // de módulo que NO se anulaba al desmontar el provider. Cuando el editor y el
+    // odontograma vivían juntos en la pestaña Workspace daba igual, porque eran
+    // hermanos y el provider estaba siempre montado. Con las pestañas fijas ya no
+    // lo están: Radix desmonta la pestaña inactiva, y el global se quedaba
+    // apuntando al ÚLTIMO odontograma abierto en la sesión — el de otro paciente
+    // si se había navegado entre fichas. `getActiveStoreApi()` solo lanza si el
+    // global es null, así que el try/catch no atrapaba nada y las sugerencias
+    // CIE-10 salían con las piezas FDI del paciente equivocado; aceptarlas las
+    // persistía en la historia de ESTE.
+    //
+    // Dos cierres: el provider ya anula el global al desmontar (store.tsx), y
+    // aquí se comprueba además que el store que responde sea el de este paciente.
     let unsub: (() => void) | undefined;
 
-    try {
-      const currentState = useOdontogramStore.getState();
-      setIcdasSuggestions(computeIcdasSuggestions(currentState.clinicalEvents ?? []));
+    const acceptIfSamePatient = (state: {
+      clinicalEvents?: unknown[];
+      metadata?: { patientId?: string };
+    }) => {
+      if (state.metadata?.patientId && state.metadata.patientId !== patientId) {
+        setIcdasSuggestions([]);
+        return;
+      }
+      setIcdasSuggestions(
+        computeIcdasSuggestions(
+          (state.clinicalEvents ?? []) as Parameters<
+            typeof computeIcdasSuggestions
+          >[0],
+        ),
+      );
+    };
 
-      unsub = useOdontogramStore.subscribe((state) => {
-        setIcdasSuggestions(computeIcdasSuggestions(state.clinicalEvents ?? []));
-      });
+    try {
+      acceptIfSamePatient(useOdontogramStore.getState());
+      unsub = useOdontogramStore.subscribe(acceptIfSamePatient);
     } catch {
-      // Odontogram store not available — suggestions remain empty
+      // Sin odontograma montado no hay sugerencias. Es el estado correcto: vacío,
+      // no las del paciente anterior.
+      setIcdasSuggestions([]);
     }
 
     return () => {
       unsub?.();
     };
-  }, []);
+  }, [patientId]);
 
   // ─── Cleanup debounces on unmount ──────────────────────────────────────────
   useEffect(() => {

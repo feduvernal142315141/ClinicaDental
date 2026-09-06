@@ -86,7 +86,7 @@ export function EvolutionScopeHeader({
       </div>
 
       {truncated ? (
-        <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/15 px-3 py-2 text-xs text-amber-700 ring-1 ring-amber-400/25 dark:text-amber-300">
+        <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/15 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-400/25 dark:text-amber-300">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span>
             Se muestran las 100 consultas más recientes registradas; puede haber
