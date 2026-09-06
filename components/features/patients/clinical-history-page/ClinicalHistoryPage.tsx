@@ -308,7 +308,7 @@ export function ClinicalHistoryPage({
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="flex flex-col flex-1 min-h-0"
+        className="mt-5 flex flex-col flex-1 min-h-0"
       >
         {/* ── Franja de pestañas con scroll horizontal propio ──────────────
             El `TabsList` es `inline-flex` y no encoge: con cuatro pestañas con
@@ -366,11 +366,11 @@ export function ClinicalHistoryPage({
         <TabsContent
           ref={evolutionScrollRef}
           value={PATIENT_TABS.EVOLUTION}
-          className="flex-1 min-h-0 mt-2 overflow-auto"
+          className="flex-1 min-h-0 mt-5 overflow-auto"
         >
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] xl:items-start">
             {/* Columna izquierda (65%) — la evolución */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-5">
               {/* Compositor siempre visible, como el diseño.
                   El contrato de guardado NO es libre: `PATCH .../visits/{id}/notes`
                   responde 404 si la cita nunca se inició y 409 si está cerrada.
@@ -415,7 +415,7 @@ export function ClinicalHistoryPage({
             </div>
 
             {/* Columna derecha (35%) — antecedentes, planes y perfil */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-5">
               {snapshotLoading ? (
                 <div className="flex h-40 items-center justify-center">
                   <LoadingSpinner size="md" message="Cargando antecedentes..." />
@@ -454,7 +454,7 @@ export function ClinicalHistoryPage({
             antes de abrirlo. No quitar ese salto. */}
         <TabsContent
           value={PATIENT_TABS.ODONTOGRAM}
-          className="flex-1 min-h-0 mt-2 overflow-hidden flex flex-col"
+          className="flex-1 min-h-0 mt-5 overflow-hidden flex flex-col"
         >
           {/* ── Odontograma, con evolución al lado en pantallas muy anchas ──
               A partir de 1536px cabe documentar y dibujar a la vez, que es el
@@ -512,7 +512,7 @@ export function ClinicalHistoryPage({
           // superficies scrolleables encajadas (ADR-36).
           <TabsContent
             value={PATIENT_TABS.TREATMENT_PLAN}
-            className="flex-1 min-h-0 mt-2 overflow-hidden flex flex-col"
+            className="flex-1 min-h-0 mt-5 overflow-hidden flex flex-col"
           >
             <PatientTreatmentPlanPanel
               patientId={patientId}
@@ -528,7 +528,7 @@ export function ClinicalHistoryPage({
             lógica: no hay URL pública ni miniatura, y esa parte es delicada. */}
         <TabsContent
           value={PATIENT_TABS.FILES}
-          className="flex-1 min-h-0 mt-2 overflow-auto"
+          className="flex-1 min-h-0 mt-5 overflow-auto"
         >
           {/* SOLO archivos. Antes esta pestaña reutilizaba `PatientInfoColumn`,
               que arrastraba la foto del paciente, el bloque de contacto y

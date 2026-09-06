@@ -12,6 +12,7 @@ import { VisitEntryCard } from "./VisitEntryCard";
 import { EvolutionFilterBar } from "./EvolutionFilterBar";
 import { Button } from "@/components/ui";
 import { matchesQuery } from "@/lib/utils/text";
+import { cn } from "@/lib/utils/utils";
 import { CancelModal } from "@/components/features/appointments/scheduler/CancelModal";
 import { RescheduleModal } from "@/components/features/appointments/scheduler/RescheduleModal";
 import { usePermission } from "@/lib/hooks/use-permission";
@@ -433,7 +434,16 @@ export function EvolutionColumn({
             return (
               <div key={appointment.id}>
                 {showMonth ? (
-                  <div className="flex items-center gap-3 pb-2 pt-1">
+                  <div
+                    className={cn(
+                      "flex items-center gap-3 pb-2",
+                      // El primer grupo ya tiene el aire de la barra de filtros
+                      // encima; los siguientes necesitan separarse del último
+                      // asiento del mes anterior o la cronología se lee como un
+                      // bloque continuo.
+                      index === 0 ? "pt-0" : "pt-4",
+                    )}
+                  >
                     <span className="text-xs font-semibold uppercase tracking-wider text-subtle">
                       {formatMonthLabel(appointment.date)}
                     </span>
