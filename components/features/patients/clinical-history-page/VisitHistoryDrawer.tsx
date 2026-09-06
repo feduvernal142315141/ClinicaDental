@@ -28,16 +28,6 @@ interface VisitHistoryDrawerProps {
   onViewOdontogram?: (appointmentId: string) => void;
 }
 
-/**
- * Sello de la nota. Sólo se puede afirmar la ÚLTIMA EDICIÓN: el backend
- * sobreescribe la nota y no guarda versiones, así que aquí no hay autor, ni
- * firma, ni validación, ni historial.
- *
- * La fecha NO cuelga de que haya autor: `anonymous` (o un campo vacío) es
- * ausencia de constancia de autoría, no ausencia de edición, y la marca de
- * tiempo sigue siendo un dato real del registro. Y no se cae a `doctorName`: el
- * doctor de la cita es una asignación de agenda.
- */
 function NoteStamp({
   updatedAt,
   updatedBy,
@@ -47,15 +37,12 @@ function NoteStamp({
 }) {
   const author = resolveAuthorship(updatedBy);
   const parsed = updatedAt ? new Date(updatedAt) : null;
-  // Una cadena que el runtime no sabe parsear se muestra tal cual: "Invalid Date"
-  // en un sello clínico es peor que el dato crudo.
   const stamp = parsed
     ? Number.isNaN(parsed.getTime())
       ? updatedAt
       : parsed.toLocaleString("es-ES")
     : null;
   if (!author && !stamp) return null;
-
   return (
     <p className="mt-2 text-[10px] text-subtle">
       {author ? (
@@ -67,7 +54,6 @@ function NoteStamp({
     </p>
   );
 }
-
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <h4 className={cn(SECTION_LABEL_CLASS, "mb-2")}>
@@ -75,7 +61,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
     </h4>
   );
 }
-
 export function VisitHistoryDrawer({
   open,
   patientId,
@@ -102,7 +87,6 @@ export function VisitHistoryDrawer({
     onClose,
     onViewOdontogram,
   });
-
   return (
     <Sheet
       open={open}
@@ -124,7 +108,6 @@ export function VisitHistoryDrawer({
               : "Detalle de la visita seleccionada."}
           </SheetDescription>
         </SheetHeader>
-
         {loading ? (
           <div className="flex flex-1 justify-center items-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-brand" />
@@ -132,12 +115,9 @@ export function VisitHistoryDrawer({
         ) : (
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <div className="flex flex-col gap-6">
-              {/* Header info */}
               <section className="bg-hover rounded-lg p-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    {/* "de la cita": es la asignación de AGENDA, no constancia
-                        de quién atendió ni de quién escribió la nota. */}
                     <span className={cn(SECTION_LABEL_CLASS, "mb-1 block")}>
                       Doctor de la cita
                     </span>
@@ -157,8 +137,6 @@ export function VisitHistoryDrawer({
                   </div>
                 </div>
               </section>
-
-              {/* Motivo de consulta */}
               <section>
                 <SectionTitle>Motivo de consulta</SectionTitle>
                 <p className="text-sm text-foreground">
@@ -169,8 +147,6 @@ export function VisitHistoryDrawer({
                   )}
                 </p>
               </section>
-
-              {/* Dolor reportado */}
               <section>
                 <SectionTitle>Dolor reportado</SectionTitle>
                 {hasPain && pain ? (
@@ -214,8 +190,6 @@ export function VisitHistoryDrawer({
                   </p>
                 )}
               </section>
-
-              {/* Anamnesis congelada al momento de la visita */}
               <section>
                 <SectionTitle>Anamnesis (al momento de la visita)</SectionTitle>
                 {record?.medicalSnapshot ? (
@@ -266,8 +240,6 @@ export function VisitHistoryDrawer({
                   </p>
                 )}
               </section>
-
-              {/* Notas del médico */}
               <section>
                 <SectionTitle>
                   <span className="flex items-center gap-2">
@@ -292,8 +264,6 @@ export function VisitHistoryDrawer({
                   </p>
                 )}
               </section>
-
-              {/* Odontograma — comparativo antes/después de la visita */}
               <section>
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <SectionTitle>
@@ -318,8 +288,6 @@ export function VisitHistoryDrawer({
                   snapshots={odontogramSnapshots}
                 />
               </section>
-
-              {/* Archivos adjuntos */}
               <section>
                 <SectionTitle>
                   <span className="flex items-center gap-2">
@@ -343,10 +311,6 @@ export function VisitHistoryDrawer({
                     ))}
                   </ul>
                 ) : attachmentsError ? (
-                  /* Tercer estado: la lectura falló. Decir "sin archivos" aquí
-                     afirmaría que en esa visita no hubo radiografía ni
-                     consentimiento — un hecho clínico que nadie ha comprobado
-                     (ADR-61). */
                   <div className="flex flex-col items-center gap-1 py-6 text-center">
                     <AlertTriangle
                       className="h-5 w-5 text-subtle"

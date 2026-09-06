@@ -34,22 +34,11 @@ interface MedicalAntecedentsColumnProps {
   activeAppointmentId?: string;
   onEditClick?: () => void;
   canEdit?: boolean;
-  /** El backend devolvió 403 al pedir la historia clínica. */
   forbidden?: boolean;
-  /** Falló la carga de la historia clínica (5xx, red). */
   loadError?: string | null;
-  /** Reintenta la carga tras un fallo transitorio. */
   onRetry?: () => void;
 }
 
-/**
- * Fila de contadores de planes de tratamiento por estado de avance.
- *
- * Los tres números NO son decorativos: dicen cuánto trabajo hay abierto sobre
- * el paciente. Por eso, si la lectura falló (403/5xx/red), se pinta "—" y no
- * "0": un cero es una afirmación —"este paciente no tiene nada pendiente"— y
- * no se puede afirmar lo que no se ha podido leer.
- */
 function TreatmentStatusCounters({
   counts,
   loading,
@@ -63,7 +52,6 @@ function TreatmentStatusCounters({
   const unknownTitle = loadFailed
     ? "No se pudieron leer los planes de tratamiento de este paciente. El recuento no se está mostrando."
     : "Cargando los planes de tratamiento…";
-
   const items: { label: string; value: number; className: string }[] = [
     {
       label: "Pendiente",
@@ -81,7 +69,6 @@ function TreatmentStatusCounters({
       className: "text-emerald-600 dark:text-emerald-400",
     },
   ];
-
   return (
     <div className="grid grid-cols-3 gap-2.5">
       {items.map((item) => (
@@ -106,26 +93,12 @@ function TreatmentStatusCounters({
     </div>
   );
 }
-
-/**
- * Color de la alerta clínica → tono del pill del sistema.
- *
- * Las claves siguen siendo el vocabulario antd (`red`/`orange`/`blue`) porque
- * es lo que emite `ALERT_SEVERITY_COLORS`, todavía consumido por el cluster
- * antd heredado. Aquí se traduce una sola vez a los tonos del sistema en lugar
- * de reescribir la paleta a mano.
- */
 const ALERT_TONE: Record<string, StatusBadgeTone> = {
   red: "danger",
   orange: "warning",
-  // `progress` (sky) y NO `info`: `info` es el color de MARCA, se lee como
-  // elemento pulsable y es el único tono sin rampa `dark:` propia (depende de
-  // que `--brand` invierta, y en oscuro se queda en ~4,1:1). `progress`
-  // conserva la familia cromática original (sky) y sí trae `dark:text-sky-300`.
+
   blue: "progress",
 };
-
-/** Una celda de la rejilla de antecedentes. */
 function AntecedentCell({
   label,
   items,
@@ -136,12 +109,10 @@ function AntecedentCell({
   label: string;
   items?: string[];
   empty: string;
-  /** Color del valor cuando SÍ hay dato (rojo en alergias, ámbar en enfermedades). */
   valueClassName?: string;
   withWarningIcon?: boolean;
 }) {
   const hasItems = Boolean(items?.length);
-
   return (
     <div>
       <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-subtle/80">
@@ -151,8 +122,6 @@ function AntecedentCell({
         <p
           className={cn(
             "flex items-start gap-1 text-xs",
-            // Alergias y enfermedades van con peso: son las dos que cambian una
-            // decisión clínica. Medicamentos y cirugías se leen en tono normal.
             valueClassName ?? "text-ink",
           )}
         >
@@ -165,15 +134,11 @@ function AntecedentCell({
           <span>{items?.join(", ")}</span>
         </p>
       ) : (
-        // Sin cursiva: en una rejilla de cuatro celdas todas vacías, la cursiva
-        // gris hacía que el bloque entero pareciera deshabilitado en vez de
-        // simplemente sin datos.
         <p className="text-xs font-normal text-subtle/70">{empty}</p>
       )}
     </div>
   );
 }
-
 export function MedicalAntecedentsColumn({
   medicalHistory,
   patientHeader,
@@ -188,18 +153,11 @@ export function MedicalAntecedentsColumn({
     medicalHistory,
     patientHeader,
   });
-
-  // Planes de tratamiento: una sola carga alimenta los contadores y la lista.
   const {
     loading: plansLoading,
     loadFailed: plansLoadFailed,
     counts: planCounts,
   } = useTreatmentPlansPendingSection(patientId);
-
-  // Un fallo de lectura NUNCA puede renderizarse como dato clínico ausente. Sin
-  // este corte, un 403 dejaba `snapshot` en null y la columna afirmaba "Sin
-  // alergias registradas" sobre un paciente cuyos antecedentes no se han podido
-  // leer: una afirmación médica falsa nacida de un problema de permisos.
   if (forbidden || loadError) {
     return (
       <div className="flex flex-col gap-4">
@@ -226,16 +184,9 @@ export function MedicalAntecedentsColumn({
       </div>
     );
   }
-
   return (
     <div className="flex flex-col gap-4">
-      {/* Alertas — banner al tope */}
       {alertBadges.length > 0 && (
-        // Contenedor NEUTRO a propósito: la severidad la lleva cada pill, que
-        // ya viene en rojo/ámbar/azul. Un `variant="destructive"` sumaría su
-        // tinte al del pill (dos capas al 15% sobre el mismo fondo) y hundiría
-        // el texto ámbar a ~2,2:1, muy por debajo del mínimo AA — además de
-        // pintar de rojo alertas que son informativas.
         <Alert live={false} className="mt-3">
           <AlertTriangle />
           <AlertTitle>Alertas</AlertTitle>
@@ -251,15 +202,11 @@ export function MedicalAntecedentsColumn({
           </AlertDescription>
         </Alert>
       )}
-
-      {/* Contadores de planes — fuera de cualquier tarjeta contenedora */}
       <TreatmentStatusCounters
         counts={planCounts}
         loading={plansLoading}
         loadFailed={plansLoadFailed}
       />
-
-      {/* Antecedentes médicos */}
       <section className="bento shrink-0 p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -281,7 +228,6 @@ export function MedicalAntecedentsColumn({
             </Button>
           )}
         </div>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
           <AntecedentCell
             label="Alergias"
@@ -308,21 +254,11 @@ export function MedicalAntecedentsColumn({
           />
         </div>
       </section>
-
-      {/* Notas permanentes — SOLO LECTURA.
-          Es la única superficie donde estas notas se ven: sin ella una
-          advertencia como "anticoagulado, coordinar INR antes de exodoncia"
-          seguía en base de datos pero era invisible en la ficha. NO lleva
-          editor a propósito (ADR-65): el guardado era de reemplazo total y sin
-          versiones, y había un segundo editor indistinguible sobre la misma
-          nota. Va después del corte de `forbidden || loadError`, así que aquí
-          ya está descartado el fallo de lectura (ADR-61). */}
       <section className="bento shrink-0 p-4">
         <div className="mb-3 flex items-center gap-2">
           <NotebookText className="h-4 w-4 text-brand" aria-hidden="true" />
           <h3 className="text-sm font-semibold text-ink">Notas permanentes</h3>
         </div>
-
         {clinicalNote.kind === "no-record" ? (
           <p className="text-xs text-subtle/70">
             Este paciente todavía no tiene historia clínica registrada, así que
@@ -336,14 +272,9 @@ export function MedicalAntecedentsColumn({
         ) : (
           <>
             <div
-              // Mismas defensas que la nota de visita: un token sin espacios o
-              // una tabla ancha desbordaban la caja y el contenido clínico
-              // quedaba recortado sin ninguna señal.
               className="prose prose-sm max-w-none text-ink dark:prose-invert [overflow-wrap:anywhere] [&_table]:block [&_table]:overflow-x-auto"
               dangerouslySetInnerHTML={{ __html: clinicalNote.html }}
             />
-            {/* Sólo se puede afirmar la ÚLTIMA edición: el backend sobreescribe
-                la nota y no guarda versiones ni auditoría (ADR-62). */}
             <div className="mt-3 border-t border-hairline pt-2 text-[11px] text-subtle">
               {clinicalNote.author ? (
                 <span>

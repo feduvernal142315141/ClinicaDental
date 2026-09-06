@@ -13,14 +13,6 @@ import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 
 const endpoint = "/clinical-history/patients";
 
-// ---------------------------------------------------------------------------
-// Defensive parsing helpers (JSONB columns may arrive as raw JSON or null)
-// ---------------------------------------------------------------------------
-
-/**
- * Parsea defensivamente el campo `diagnoses` recibido del backend.
- * Si el valor no es un array válido devuelve undefined para no romper la UI.
- */
 function parseDiagnoses(raw: unknown): VisitDiagnosis[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   return raw.filter(
@@ -31,25 +23,13 @@ function parseDiagnoses(raw: unknown): VisitDiagnosis[] | undefined {
       typeof (d as Record<string, unknown>).label === "string",
   );
 }
-
-/**
- * Parsea defensivamente el campo `examFindings` recibido del backend.
- * Si el valor no es un objeto válido devuelve undefined.
- */
 function parseExamFindings(raw: unknown): ExamFindings | undefined {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw))
     return undefined;
   return raw as ExamFindings;
 }
-
-/**
- * Normaliza un PatientVisitRecord crudo del backend asegurando que los campos
- * JSONB nuevos (diagnoses, examFindings, currentPain.toothRef) sean seguros de leer.
- */
 function normalizeVisitRecord(raw: PatientVisitRecord): PatientVisitRecord {
   const rawRec = raw as unknown as Record<string, unknown>;
-  // Contrato backend: painAnatomy es TOP-LEVEL (columna painAnatomyJson). El
-  // dominio del front lo expone como currentPain.toothRef → remapear al leer.
   const painAnatomy = rawRec.painAnatomy as ToothRef | null | undefined;
   const toothRef =
     (raw.currentPain?.toothRef?.fdi ? raw.currentPain.toothRef : undefined) ??
@@ -65,11 +45,6 @@ function normalizeVisitRecord(raw: PatientVisitRecord): PatientVisitRecord {
         : undefined,
   };
 }
-
-/**
- * Get full clinical history snapshot for a patient
- * GET /clinical-history/patients/{patientId}/snapshot
- */
 async function getSnapshot(
   patientId: string,
 ): Promise<ClinicalHistorySnapshot> {
@@ -88,11 +63,6 @@ async function getSnapshot(
   (error as Error & { status?: number }).status = status;
   throw error;
 }
-
-/**
- * Update medical history for a patient
- * PUT /clinical-history/patients/{patientId}/medical-history
- */
 async function updateMedicalHistory(
   patientId: string,
   data: UpdateMedicalHistoryRequest,
@@ -101,36 +71,22 @@ async function updateMedicalHistory(
     `${endpoint}/${patientId}/medical-history`,
     data,
   );
-
   if (response?.status >= 200 && response?.status < 300) {
     return true;
   }
-
-
   handleServiceError(response, "Error al actualizar historia médica");
 }
-
-/**
- * Validate medical history for a patient
- * PATCH /clinical-history/patients/{patientId}/medical-history/validate
- */
 async function validateMedicalHistory(patientId: string): Promise<boolean> {
   const response = await servicePatch<undefined, boolean>(
     `${endpoint}/${patientId}/medical-history/validate`,
   );
-
   if (response?.status >= 200 && response?.status < 300) {
     return true;
   }
 
-
   handleServiceError(response, "Error al validar historia médica");
 }
 
-/**
- * Save clinical notes for a patient
- * PATCH /clinical-history/patients/{patientId}/notes
- */
 async function saveClinicalNotes(
   patientId: string,
   notes: string,
@@ -147,22 +103,10 @@ async function saveClinicalNotes(
   handleServiceError(response, "Error al guardar notas clínicas");
 }
 
-/**
- * Get visit record for a specific appointment
- * GET /clinical-history/patients/{patientId}/visits/{appointmentId}
- *
- * Los campos JSONB (diagnoses, examFindings, currentPain.toothRef) se parsean
- * defensivamente para evitar que datos malformados rompan la UI.
- */
 async function getVisitRecord(
   patientId: string,
   appointmentId: string,
 ): Promise<PatientVisitRecord> {
-  // El 404 aquí NO es un fallo: significa que la consulta nunca se inició, así
-  // que no existe fila de registro. La ficha lo pinta como "Sin registro de
-  // visita". Se declara esperado para que el interceptor no lo registre en rojo:
-  // el feed pide una visita por tarjeta y la consola se llenaba de errores
-  // indistinguibles de los de verdad.
   const response = await serviceGet<PatientVisitRecord>(
     `${endpoint}/${patientId}/visits/${appointmentId}`,
     { expectedStatuses: [404] },
@@ -175,17 +119,6 @@ async function getVisitRecord(
   }
   handleServiceError(response, "Error al cargar registro de visita");
 }
-
-/**
- * Upsert visit record (chief complaint + current pain)
- * PUT /clinical-history/patients/{patientId}/visits/{appointmentId}
- */
-/**
- * Adapta el payload del dominio (currentPain.toothRef anidado) al contrato del
- * backend, que espera `painAnatomy` como campo TOP-LEVEL (columna painAnatomyJson).
- * Los autosaves parciales sólo incluyen los campos provistos; el resto queda
- * ausente (null en el backend → merge null-aware conserva lo existente).
- */
 function toUpsertWirePayload(
   data: UpsertVisitRecordRequest,
 ): Record<string, unknown> {
@@ -200,7 +133,6 @@ function toUpsertWirePayload(
   }
   return payload;
 }
-
 async function upsertVisitRecord(
   patientId: string,
   appointmentId: string,
@@ -215,11 +147,6 @@ async function upsertVisitRecord(
   }
   handleServiceError(response, "Error al guardar registro de visita");
 }
-
-/**
- * Save visit clinical notes (HTML)
- * PATCH /clinical-history/patients/{patientId}/visits/{appointmentId}/notes
- */
 async function saveVisitNotes(
   patientId: string,
   appointmentId: string,
@@ -234,11 +161,6 @@ async function saveVisitNotes(
   }
   handleServiceError(response, "Error al guardar notas de visita");
 }
-
-/**
- * Get attachments for a specific visit, filtered by appointmentId.
- * GET /patients/{patientId}/attachments?appointmentId={appointmentId}
- */
 async function getVisitAttachments(
   patientId: string,
   appointmentId: string,
@@ -251,7 +173,6 @@ async function getVisitAttachments(
   }
   handleServiceError(response, "Error al cargar adjuntos de la visita");
 }
-
 export const clinicalHistoryService = {
   getSnapshot,
   updateMedicalHistory,

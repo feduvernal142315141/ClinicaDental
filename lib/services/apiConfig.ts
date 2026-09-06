@@ -2,7 +2,6 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { getAccessToken } from "@/lib/auth/token-client";
 import { normalizeError } from "@/lib/errors/normalize-error";
 
-// Tipos para los handlers que se pueden inyectar desde Redux u otros estados
 type InterceptorHandlers = {
   onLoadingStart?: () => void;
   onLoadingEnd?: () => void;
@@ -12,35 +11,16 @@ type InterceptorHandlers = {
   ) => void;
   onUnauthorized?: () => void;
   onForbidden?: () => void;
-  onActivity?: () => void; // Se llama en cada petición HTTP para resetear inactividad
+  onActivity?: () => void;
 };
 
-// Variable para almacenar los handlers (se pueden inyectar posteriormente desde Redux)
 let interceptorHandlers: InterceptorHandlers = {};
 
-// ============================================
-// ESTADO DE SESIÓN (manejo idempotente de 401)
-// ============================================
-
-// Promesa de refresh compartida: evita que N peticiones 401 concurrentes
-// disparen N llamadas a /api/auth/refresh. Todas esperan el mismo intento.
 let refreshPromise: Promise<boolean> | null = null;
 
-// Bandera para que la expiración de sesión se notifique/redirija UNA sola vez,
-// aunque varias peticiones fallen con 401 al mismo tiempo.
 let sessionExpiryHandled = false;
 
-/**
- * Indica si una expiración de sesión global ya está siendo manejada
- * (modal + redirección). Las features pueden consultarlo para no mostrar
- * sus propios toasts/errores redundantes ante un 401.
- */
 export const isSessionExpired = (): boolean => sessionExpiryHandled;
-
-/**
- * Intenta refrescar el access token una sola vez de forma compartida.
- * Si ya hay un refresh en curso, devuelve la misma promesa.
- */
 const tryRefreshOnce = (): Promise<boolean> => {
   if (!refreshPromise) {
     refreshPromise = fetch("/api/auth/refresh", {
@@ -55,18 +35,12 @@ const tryRefreshOnce = (): Promise<boolean> => {
   }
   return refreshPromise;
 };
-
-/**
- * Función para configurar los handlers de los interceptores
- * Esto permite inyectar dispatch de Redux u otras funciones de estado global
- */
 export const setInterceptorHandlers = (
   handlers: Partial<InterceptorHandlers>,
 ) => {
   interceptorHandlers = { ...interceptorHandlers, ...handlers };
 };
 
-// Crear instancia de axios
 const apiInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   timeout: 30000, // 30 segundos
@@ -75,18 +49,10 @@ const apiInstance = axios.create({
   },
 });
 
-// ============================================
-// INTERCEPTOR DE REQUEST
-// ============================================
 apiInstance.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    // Activar indicador de carga
     interceptorHandlers.onLoadingStart?.();
-
-    // Registrar actividad del usuario (resetea timer de inactividad)
     interceptorHandlers.onActivity?.();
-
-    // Obtener el access token desde cookie (flujo OTP/JWT backend)
     const accessToken = getAccessToken();
     if (accessToken) {
       const headers: unknown = config.headers;
@@ -99,102 +65,58 @@ apiInstance.interceptors.request.use(
         } as unknown;
       }
     }
-
     return config;
   },
   (error: AxiosError) => {
-    // Desactivar indicador de carga en caso de error
     interceptorHandlers.onLoadingEnd?.();
     return Promise.reject(error);
   },
 );
 
-// ============================================
-// INTERCEPTOR DE RESPONSE
-// ============================================
 apiInstance.interceptors.response.use(
   (response) => {
-    // Desactivar indicador de carga
     interceptorHandlers.onLoadingEnd?.();
-
     return response;
   },
   async (error: AxiosError) => {
-    // Desactivar indicador de carga
     interceptorHandlers.onLoadingEnd?.();
-
-    // Normalizar a AppError (mensaje seguro, sin fugas técnicas de Java).
     const appError = normalizeError(error);
-
     if (error.response) {
       const status = error.response.status;
-
-      // ============================================
-      // MANEJO DE 401 (idempotente, refresh compartido)
-      // ============================================
       if (status === 401) {
         const originalRequest = error.config as unknown;
         const url = String(originalRequest?.url ?? "");
 
-        // Endpoints de auth: un 401 significa credenciales/código inválidos
-        // o que el propio refresh falló. Se propaga en silencio al servicio
-        // que lo invocó (el formulario o el flujo de expiración lo maneja).
         const isAuthEndpoint =
           url.includes("/auth/login") ||
           url.includes("/auth/validate-otp") ||
           url.includes("/auth/refresh-token") ||
           url.includes("/api/auth/");
-
         if (isAuthEndpoint) {
           console.error("[401] Auth endpoint — propagado al servicio:", appError.technical);
           return Promise.reject(error);
         }
-
-        // Endpoint protegido: intentar UN refresh compartido entre peticiones.
         if (!originalRequest?._retry) {
           originalRequest._retry = true;
           const refreshed = await tryRefreshOnce();
           if (refreshed) {
-            // Sesión recuperada: el request interceptor tomará el nuevo token.
             sessionExpiryHandled = false;
             return apiInstance(originalRequest);
           }
         }
-
-        // Refresh falló o ya se reintentó: la sesión expiró de verdad.
-        // Notificar y redirigir UNA sola vez aunque caigan varios 401 a la vez.
         if (!sessionExpiryHandled) {
           sessionExpiryHandled = true;
           interceptorHandlers.onUnauthorized?.();
         }
         console.error("[401] Sesión expirada:", appError.technical);
-        // El usuario YA fue notificado (modal de sesión expirada + redirect):
-        // marcar el error para que GlobalErrorListeners no duplique el aviso.
         (error as { _interceptorHandled?: boolean })._interceptorHandled = true;
         return Promise.reject(error);
       }
-
-      // ============================================
-      // RESTO DE CÓDIGOS HTTP (403 / 404 / 4xx / 5xx)
-      // El toast lo emite la capa que INVOCA (hook/servicio) con un mensaje
-      // CONTEXTUAL; el interceptor solo normaliza, ejecuta side-effects globales
-      // y registra — así NO se duplica el toast. `GlobalErrorListeners` es la red
-      // de seguridad para errores que nadie atrapa.
-      // ============================================
       if (status === 403) {
         interceptorHandlers.onForbidden?.();
-        // onForbidden ya mostró "Acceso Denegado" al usuario: marcar el error
-        // para que GlobalErrorListeners no duplique el aviso.
+
         (error as { _interceptorHandled?: boolean })._interceptorHandled = true;
       }
-
-      // Un status que el llamador DECLARÓ esperado no es un error: es un
-      // estado legítimo del dominio. El caso real es
-      // `GET .../visits/{appointmentId}`, que devuelve 404 cuando la consulta
-      // nunca se inició — o sea "esta visita no tiene registro", que la ficha
-      // pinta como tal. Registrarlo en rojo llenaba la consola de cinco errores
-      // por cada paciente abierto y, peor, los volvía indistinguibles de un
-      // fallo de verdad.
       const expected = (
         error.config as { expectedStatuses?: number[] } | undefined
       )?.expectedStatuses;
@@ -204,27 +126,15 @@ apiInstance.interceptors.response.use(
           { technical: appError.technical, correlationId: appError.correlationId },
         );
       }
-
     } else if (appError.isTimeout) {
       console.error("[TIMEOUT]:", appError.technical);
-
     } else if (appError.isNetwork) {
       console.error("[NETWORK]:", appError.technical);
-
     } else {
       console.error("[CLIENT_ERROR]:", appError.technical);
     }
 
-    // OJO: NO marcar `_interceptorHandled` aquí. Para 400/404/409/422/5xx,
-    // timeout y network el interceptor NO muestra ningún toast (solo registra
-    // en consola); el flag se estampa ÚNICAMENTE en las ramas 401-sesión-expirada
-    // y 403, donde el usuario sí fue notificado. Así GlobalErrorListeners
-    // conserva su toast genérico de respaldo para promesas sin catch.
-
-    // Propagar el AxiosError original (no el AppError) para mantener
-    // compatibilidad con baseService.ts que hace err.response.
     return Promise.reject(error);
   },
 );
-
 export default apiInstance;

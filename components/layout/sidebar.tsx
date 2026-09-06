@@ -17,16 +17,8 @@ interface SidebarProps {
   onClose: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
-  /**
-   * Monta el pie de cuenta (Perfil · Soporte · Cerrar sesión) dentro del
-   * sidebar. Solo lo pide el layout a sangre de `/patients/[id]`, que oculta el
-   * `AppHeader`: sin esto, esa ruta se quedaría SIN forma de cerrar sesión,
-   * porque los tres viven únicamente ahí (y en el `MobileHeader` por debajo de
-   * `lg`). No se activa en el resto de rutas para no duplicar el menú.
-   */
   showAccountFooter?: boolean;
 }
-
 export function Sidebar({
   currentPath,
   isOpen,
@@ -41,26 +33,20 @@ export function Sidebar({
   const { mainMenuItems, secondaryMenuItems, isActiveRoute } =
     useSidebarNavigation();
   const [openGroups, setOpenGroups] = useState<string[]>([]);
-
   const handleNavigation = (path: string) => {
     router.push(path);
     onClose();
   };
-
   const toggleGroup = (path: string) =>
     setOpenGroups((prev) =>
       prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path],
     );
 
-  // Un grupo está abierto si el usuario lo abrió o si alguna ruta hija está activa.
   const isGroupOpen = (item: (typeof mainMenuItems)[number]) =>
     openGroups.includes(item.path) ||
     (item.children?.some((c) => isActiveRoute(currentPath, c.path)) ?? false);
-
   const renderItem = (item: (typeof mainMenuItems)[number]) => {
     if (item.children?.length) {
-      // En una constante local: el estrechamiento de `item.children?.length` se
-      // pierde dentro de los closures de los handlers.
       const children = item.children;
       const open = isGroupOpen(item);
       const parentActive = isActiveRoute(currentPath, item.path);
@@ -76,18 +62,11 @@ export function Sidebar({
             isCollapsed={isCollapsed}
             onClick={() =>
               isCollapsed
-                ? // Colapsada, el grupo navega. Se va al PRIMER HIJO VISIBLE, no
-                  // a `item.path`: ese path solo existe para resaltar el grupo
-                  // activo y no está respaldado por ningún permiso — "/settings"
-                  // redirige a "/settings/general", que un rol con acceso
-                  // limitado a Configuración no tiene por qué poder ver.
+                ?
                   handleNavigation(children[0].path)
                 : toggleGroup(item.path)
             }
           />
-          {/* Submenú siempre montado: colapsa con el truco grid 0fr → 1fr
-              (height auto fluido, sin "salto"). El padding vertical va dentro
-              del contenedor clipado para que pueda colapsar a 0. */}
           <div
             id={submenuId}
             data-open={open && !isCollapsed}
@@ -115,7 +94,6 @@ export function Sidebar({
         </div>
       );
     }
-
     return (
       <SidebarNavItem
         key={item.path}
@@ -127,10 +105,8 @@ export function Sidebar({
       />
     );
   };
-
   return (
     <>
-      {/* Velo móvil tokenizado + fundido suave */}
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-overlay backdrop-blur-[1px] motion-safe:animate-in motion-safe:fade-in-0 lg:hidden"
@@ -138,9 +114,6 @@ export function Sidebar({
           aria-hidden
         />
       )}
-
-      {/* Panel del sidebar. En móvil es un drawer (w-64 fijo, slide-in); en
-          desktop rellena el <aside> (w-full) que controla el ancho/colapso. */}
       <div
         className={cn(
           "fixed inset-y-0 left-0 z-50 h-full lg:static lg:z-auto",
@@ -148,11 +121,9 @@ export function Sidebar({
           "w-64 lg:w-full",
           "transform transition-transform duration-300 ease-emphasized motion-reduce:transition-none lg:transform-none",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-          // Fondo propio en móvil (drawer); en desktop lo provee el <aside>.
           "border-r border-hairline bg-surface lg:border-0 lg:bg-transparent",
         )}
       >
-        {/* Header: marca + control de colapso */}
         <div
           className={cn(
             "flex border-b border-hairline transition-all duration-300 ease-emphasized",
@@ -161,7 +132,6 @@ export function Sidebar({
               : "h-16 items-center justify-between gap-2 px-3",
           )}
         >
-          {/* Marca: isotipo (siempre) + wordmark con grid-fade */}
           <div
             className={cn(
               "flex min-w-0 items-center",
@@ -176,7 +146,6 @@ export function Sidebar({
               )}
             >
               {logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={logoUrl}
                   alt={`Logo de ${clinicName}`}
@@ -202,8 +171,6 @@ export function Sidebar({
               </div>
             </div>
           </div>
-
-          {/* Botón colapsar/expandir (nativo, tokens Bento — sin antd) */}
           {onToggleCollapse && (
             <button
               type="button"
@@ -223,8 +190,6 @@ export function Sidebar({
             </button>
           )}
         </div>
-
-        {/* Navegación */}
         <nav
           aria-label="Navegación principal"
           className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 [contain:layout_paint]"
@@ -239,11 +204,6 @@ export function Sidebar({
             </SidebarSection>
           )}
         </nav>
-
-        {/* Pie de cuenta — solo en el layout a sangre (ver `showAccountFooter`).
-            Se pinta FUERA del <nav> a propósito: no es navegación de la app,
-            es la sesión. En modo colapsado el propio SidebarFooter reduce a
-            avatar, así que no necesita un tratamiento aparte. */}
         {showAccountFooter && (
           <div
             className={cn(

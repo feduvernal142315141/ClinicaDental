@@ -1,17 +1,5 @@
 "use client";
 
-/**
- * useActiveConsultationNotes
- *
- * Hook que gestiona los datos de la consulta activa:
- *  - Motivo de consulta (onBlur save)
- *  - Dolor actual: objeto único (elimina race conditions del debounce)
- *    incluyendo toothRef anatómica (Fase D: dolor → diente FDI)
- *  - Diagnósticos CIE-10 (save inmediato) + sugerencias ICDAS del odontograma
- *  - Hallazgos del examen (extraoral/intraoral, debounce 1200 ms)
- *  - Notas clínicas (save explícito por el editor)
- */
-
 import { useEffect, useRef, useCallback, useState } from "react";
 import {
   projectToCanonicalSurface,
@@ -29,11 +17,6 @@ import type {
 import { suggestCie10FromIcdas } from "@/lib/entity/clinical-history/icdas-cie10-map";
 import { useOdontogramStore } from "@/lib/odontogram/store";
 import type { ClinicalEvent } from "@/components/odontogram/types";
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 const PAIN_TYPE_OPTIONS = [
   { value: "agudo", label: "Agudo" },
   { value: "pulsátil", label: "Pulsátil" },
@@ -43,10 +26,6 @@ const PAIN_TYPE_OPTIONS = [
   { value: "constante", label: "Constante" },
 ];
 
-/**
- * Letras de superficie que usa la historia clínica (ver `FdiToothPicker`).
- * Es su vocabulario, no el del odontograma: aquí se traduce una sola vez.
- */
 const CANONICAL_SURFACE_LETTER: Record<CanonicalSurface, string> = {
   mesial: "M",
   distal: "D",
@@ -54,46 +33,23 @@ const CANONICAL_SURFACE_LETTER: Record<CanonicalSurface, string> = {
   lingual: "L",
   oclusal: "O",
 };
-
 const PAIN_DEBOUNCE_MS = 800;
 const EXAM_DEBOUNCE_MS = 1200;
-
-// ---------------------------------------------------------------------------
-// ICDAS suggestions helper (reads from odontogram store imperatively)
-// ---------------------------------------------------------------------------
-
-/**
- * Calcula diagnósticos CIE-10 provisionales a partir de los eventos del
- * odontograma con puntuación ICDAS > 0.
- *
- * Lee la tienda de forma imperativa (no como hook) para evitar errores de
- * inicialización cuando el componente monta antes que el panel del odontograma.
- */
 function computeIcdasSuggestions(events: ClinicalEvent[]): VisitDiagnosis[] {
   const seen = new Set<string>();
   const result: VisitDiagnosis[] = [];
-
   for (const ev of events) {
     if (ev.type !== "diagnosis") continue;
-
     const icdas =
       (ev.diagnosisPayload?.surfaceDiagnosis?.icdasScore as 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined) ??
       ev.icdasScore;
-
     if (icdas == null || icdas === 0) continue;
-
     const fdi = String(ev.toothNumber);
-    // La historia clínica NO habla el vocabulario interno del odontograma: su
-    // selector de dientes usa las letras M/D/F/L/O. Sin proyectar, el registro
-    // persistido guardaría la celda cruda ("#16-mesialVestibular") y en la misma
-    // pantalla convivirían dos vocabularios. Se proyecta a la cara canónica: la
-    // historia habla de "la mesial", no de la vista desde la que se miró.
     const cell = ev.surfaces?.[0];
     const surface = cell
       ? CANONICAL_SURFACE_LETTER[projectToCanonicalSurface(cell)]
       : undefined;
     const toothRef: ToothRef = surface ? { fdi, surface } : { fdi };
-
     const suggestions = suggestCie10FromIcdas(icdas, toothRef);
     for (const s of suggestions) {
       const key = `${s.code}:${fdi}`;
@@ -103,14 +59,8 @@ function computeIcdasSuggestions(events: ClinicalEvent[]): VisitDiagnosis[] {
       }
     }
   }
-
   return result;
 }
-
-// ---------------------------------------------------------------------------
-// Hook types
-// ---------------------------------------------------------------------------
-
 interface PainState {
   location: string;
   intensity: number;
@@ -118,16 +68,10 @@ interface PainState {
   duration: string;
   toothRef: ToothRef | undefined;
 }
-
 interface UseActiveConsultationNotesParams {
   patientId: string;
   activeAppointmentId: string;
 }
-
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
-
 
 export function useActiveConsultationNotes({
   patientId,
@@ -143,10 +87,8 @@ export function useActiveConsultationNotes({
     saveExamFindings,
   } = useVisitRecord(patientId, activeAppointmentId);
 
-  // ─── Chief complaint ───────────────────────────────────────────────────────
   const [chiefComplaint, setChiefComplaint] = useState("");
 
-  // ─── Pain: single consolidated object (kills debounce race conditions) ─────
   const [pain, setPain] = useState<PainState>({
     location: "",
     intensity: 0,
@@ -154,22 +96,14 @@ export function useActiveConsultationNotes({
     duration: "",
     toothRef: undefined,
   });
-
-  // ─── Local exam findings (debounced) ───────────────────────────────────────
   const [localExamFindings, setLocalExamFindings] = useState<ExamFindings>({});
   const examFindingsInitialized = useRef(false);
-
-  // ─── ICDAS suggestions from odontogram ────────────────────────────────────
   const [icdasSuggestions, setIcdasSuggestions] = useState<VisitDiagnosis[]>([]);
 
-  // ─── Debounce refs ─────────────────────────────────────────────────────────
   const painDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const examDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // ─── Sync from server record on load ──────────────────────────────────────
   useEffect(() => {
     if (!visitRecord) return;
-
     setChiefComplaint(visitRecord.chiefComplaint ?? "");
     setPain({
       location: visitRecord.currentPain?.location ?? "",
@@ -178,31 +112,14 @@ export function useActiveConsultationNotes({
       duration: visitRecord.currentPain?.duration ?? "",
       toothRef: visitRecord.currentPain?.toothRef,
     });
-
-    // Sync exam findings only on first load (guard against overwriting local edits)
     if (!examFindingsInitialized.current) {
       setLocalExamFindings(visitRecord.examFindings ?? {});
       examFindingsInitialized.current = true;
     }
   }, [visitRecord]);
-
-  // ─── Sugerencias ICDAS desde el odontograma ───────────────────────────────
   useEffect(() => {
-    // PELIGRO HISTÓRICO: este efecto leía el store del odontograma por un global
-    // de módulo que NO se anulaba al desmontar el provider. Cuando el editor y el
-    // odontograma vivían juntos en la pestaña Workspace daba igual, porque eran
-    // hermanos y el provider estaba siempre montado. Con las pestañas fijas ya no
-    // lo están: Radix desmonta la pestaña inactiva, y el global se quedaba
-    // apuntando al ÚLTIMO odontograma abierto en la sesión — el de otro paciente
-    // si se había navegado entre fichas. `getActiveStoreApi()` solo lanza si el
-    // global es null, así que el try/catch no atrapaba nada y las sugerencias
-    // CIE-10 salían con las piezas FDI del paciente equivocado; aceptarlas las
-    // persistía en la historia de ESTE.
-    //
-    // Dos cierres: el provider ya anula el global al desmontar (store.tsx), y
-    // aquí se comprueba además que el store que responde sea el de este paciente.
-    let unsub: (() => void) | undefined;
 
+    let unsub: (() => void) | undefined;
     const acceptIfSamePatient = (state: {
       clinicalEvents?: unknown[];
       metadata?: { patientId?: string };
@@ -219,30 +136,22 @@ export function useActiveConsultationNotes({
         ),
       );
     };
-
     try {
       acceptIfSamePatient(useOdontogramStore.getState());
       unsub = useOdontogramStore.subscribe(acceptIfSamePatient);
     } catch {
-      // Sin odontograma montado no hay sugerencias. Es el estado correcto: vacío,
-      // no las del paciente anterior.
       setIcdasSuggestions([]);
     }
-
     return () => {
       unsub?.();
     };
   }, [patientId]);
-
-  // ─── Cleanup debounces on unmount ──────────────────────────────────────────
   useEffect(() => {
     return () => {
       if (painDebounceRef.current) clearTimeout(painDebounceRef.current);
       if (examDebounceRef.current) clearTimeout(examDebounceRef.current);
     };
   }, []);
-
-  // ─── Pain save (debounced 800 ms, single object) ───────────────────────────
   const schedulePainSave = useCallback(
     (p: PainState) => {
       if (painDebounceRef.current) clearTimeout(painDebounceRef.current);
@@ -263,7 +172,6 @@ export function useActiveConsultationNotes({
     },
     [saveVisitRecord],
   );
-
   const updatePain = useCallback(
     (patch: Partial<PainState>) => {
       setPain((prev) => {
@@ -274,8 +182,6 @@ export function useActiveConsultationNotes({
     },
     [schedulePainSave],
   );
-
-  // ─── Exam findings save (debounced 1200 ms) ────────────────────────────────
   const scheduleExamSave = useCallback(
     (findings: ExamFindings) => {
       if (examDebounceRef.current) clearTimeout(examDebounceRef.current);
@@ -285,49 +191,34 @@ export function useActiveConsultationNotes({
     },
     [saveExamFindings],
   );
-
-  // ─── Pain handlers ─────────────────────────────────────────────────────────
-
   const handlePainLocationChange = useCallback(
     (value: string) => updatePain({ location: value }),
     [updatePain],
   );
-
   const handlePainDurationChange = useCallback(
     (value: string) => updatePain({ duration: value }),
     [updatePain],
   );
-
   const handlePainIntensityChange = useCallback(
     (value: number) => updatePain({ intensity: value }),
     [updatePain],
   );
-
   const handlePainTypeChange = useCallback(
     (value?: string) => updatePain({ type: value }),
     [updatePain],
   );
-
   const handlePainToothRefChange = useCallback(
     (ref: ToothRef | null) => updatePain({ toothRef: ref ?? undefined }),
     [updatePain],
   );
-
-  // ─── Chief complaint handlers ──────────────────────────────────────────────
-
   const handleChiefComplaintChange = useCallback((value: string) => {
     setChiefComplaint(value);
   }, []);
-
   const handleChiefComplaintBlur = useCallback(() => {
     void saveVisitRecord({ chiefComplaint }, { silent: true });
   }, [chiefComplaint, saveVisitRecord]);
-
-  // ─── Diagnosis handlers ────────────────────────────────────────────────────
-
   const handleAddDiagnosis = useCallback(
     async (dx: VisitDiagnosis) => {
-      // Skip exact duplicate (same code + toothRef.fdi)
       const isDuplicate = diagnoses.some(
         (d) => d.code === dx.code && (d.toothRef?.fdi ?? null) === (dx.toothRef?.fdi ?? null),
       );
@@ -336,7 +227,6 @@ export function useActiveConsultationNotes({
     },
     [diagnoses, saveDiagnoses],
   );
-
   const handleRemoveDiagnosis = useCallback(
     async (index: number) => {
       const next = diagnoses.filter((_, i) => i !== index);
@@ -344,7 +234,6 @@ export function useActiveConsultationNotes({
     },
     [diagnoses, saveDiagnoses],
   );
-
   const handleToggleDiagnosisStatus = useCallback(
     async (index: number) => {
       const next = diagnoses.map((d, i) =>
@@ -359,9 +248,6 @@ export function useActiveConsultationNotes({
     },
     [diagnoses, saveDiagnoses],
   );
-
-  // ─── Exam findings handlers ─────────────────────────────────────────────────
-
   const handleUpdateExtraoral = useCallback(
     (field: keyof ExamFindingsExtraoral, value: string) => {
       setLocalExamFindings((prev) => {
@@ -375,7 +261,6 @@ export function useActiveConsultationNotes({
     },
     [scheduleExamSave],
   );
-
   const handleUpdateIntraoral = useCallback(
     (field: keyof ExamFindingsIntraoral, value: string) => {
       setLocalExamFindings((prev) => {
@@ -389,29 +274,19 @@ export function useActiveConsultationNotes({
     },
     [scheduleExamSave],
   );
-
-  // ─── Notes handler ──────────────────────────────────────────────────────────
-
   const handleSaveNotes = useCallback(
     async (html: string) => {
       await saveVisitNotes(html);
     },
     [saveVisitNotes],
   );
-
-  // ─── Return ─────────────────────────────────────────────────────────────────
-
   return {
-    // Record
     visitRecord,
     visitSaving,
-
-    // Chief complaint
     chiefComplaint,
     handleChiefComplaintChange,
     handleChiefComplaintBlur,
 
-    // Pain (consolidated single object)
     pain,
     painTypeOptions: PAIN_TYPE_OPTIONS,
     handlePainLocationChange,
@@ -420,19 +295,14 @@ export function useActiveConsultationNotes({
     handlePainTypeChange,
     handlePainToothRefChange,
 
-    // Diagnoses
     diagnoses,
     icdasSuggestions,
     handleAddDiagnosis,
     handleRemoveDiagnosis,
     handleToggleDiagnosisStatus,
-
-    // Exam findings
     localExamFindings,
     handleUpdateExtraoral,
     handleUpdateIntraoral,
-
-    // Notes
     handleSaveNotes,
   };
 }

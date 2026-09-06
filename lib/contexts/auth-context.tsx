@@ -27,25 +27,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  // Marca de la clínica (AuthProvider es hijo de ClinicBrandingProvider): al
-  // completar el login re-pedimos la marca ya autenticada (tenant-aware) y al
-  // salir la limpiamos, para que el shell/login reflejen la clínica correcta.
   const { refetch: refetchClinicBranding, clearBranding: clearClinicBranding } =
     useClinicBranding();
   const [user, setUser] = useState<AppUser | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // TODO: quitar normalizeRoleName cuando el backend sea consistente
   const normalizeRoleName = (rawRole: unknown): string => {
     if (typeof rawRole !== "string") return "doctor";
     const normalized = rawRole.trim().toLowerCase();
 
-    // Coincidencia EXACTA con los dos nombres que el backend reconoce como
-    // administrador (PermissionAuthorizationFilter / JwtAuthorizationFilter).
-    // Con `includes("admin")` un rol a medida como "Administrativo" se colaba
-    // como admin y `usePermission` le concedía TODO en la UI, aunque el backend
-    // luego respondiera 403 en cada pantalla.
     if (normalized === "admin" || normalized === "administrador") return "admin";
     if (normalized.includes("doctor")) return "doctor";
     if (normalized.includes("patient")) return "patient";
@@ -115,7 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       ignore = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -172,9 +162,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearOtpSession();
       hydrateUserFromAccessToken(tokens.accessToken);
 
-      // Ya autenticado: la petición ahora lleva token, así que GET /clinic/branding
-      // devuelve la clínica del usuario. Refrescamos para que el sidebar deje de
-      // mostrar la marca pre-auth/cacheada y pase a la de la clínica logueada.
       void refetchClinicBranding();
 
       if (shouldRedirect) {
@@ -209,9 +196,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       clearOtpSession();
       clearAuthTokens();
-      // `router.push` no recarga la página: los stores en memoria sobreviven al
-      // cambio de usuario. Sin esto, el borrador de nota clínica sin guardar del
-      // profesional que sale se le sirve al siguiente que entra.
       useVisitNoteDrafts.getState().clearAll();
       clearClinicBranding();
       router.push("/login");

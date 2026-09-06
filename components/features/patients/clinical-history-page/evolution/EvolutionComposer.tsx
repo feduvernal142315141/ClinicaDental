@@ -7,10 +7,8 @@ import { Switch } from "@/components/ui";
 import { cn } from "@/lib/utils/utils";
 import { draftToHtml, type ComposerMode } from "./use-evolution-composer";
 
-/** Objetivo táctil de 44px en pantallas de dedo (WCAG 2.2 — 2.5.8). */
 const COARSE_TOUCH = "[@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11";
 
-/** Botón icono fantasma del pie: 36px con ratón, 44px con dedo. */
 const ICON_BUTTON_CLASS = cn(
   "grid h-9 w-9 place-items-center rounded-lg text-subtle transition-colors",
   "hover:bg-hover hover:text-ink",
@@ -21,45 +19,17 @@ const ICON_BUTTON_CLASS = cn(
 
 export interface EvolutionComposerProps {
   mode: ComposerMode;
-  /** Borrador en TEXTO PLANO (el compositor no edita HTML). */
   value: string;
   onChange: (value: string) => void;
-  /**
-   * Guarda la nota de la visita en curso. Recibe el HTML ya escapado, listo
-   * para `clinicalNotes`. Solo se invoca en `mode.kind === "ready"`.
-   */
   onSave: (html: string) => Promise<void>;
-  /**
-   * Abre una consulta para poder registrar la evolución. El borrador NO se
-   * envía aquí: se conserva hasta que el host vuelve con la consulta abierta.
-   */
   onRequestConsultation: () => void;
   saving?: boolean;
   soapEnabled: boolean;
   onSoapToggle: (enabled: boolean) => void;
   onAttach?: () => void;
   onDictate?: () => void;
-  /** Contra qué registro se escribe. Lo compone `useEvolutionComposer`. */
   className?: string;
 }
-
-/**
- * Compositor "Escribir evolución de hoy…" — la caja SIEMPRE visible en lo alto
- * de la columna de evolución.
- *
- * Regla dura de este componente: **no guarda a ciegas**. El backend solo acepta
- * la nota de una visita ya iniciada (`PATCH …/visits/{appointmentId}/notes`
- * responde 404 sin fila y 409 si la visita está cerrada) y SOBREESCRIBE lo que
- * hubiera. Por eso el estado de "no hay consulta" no es un error tardío sino un
- * modo: el textarea sigue escribible y el botón cambia de significado.
- *
- * Nunca escribe en `PATCH /clinical-history/patients/{id}/notes` como plan B —
- * ese es OTRO registro, sin fecha y de reemplazo total: usarlo perdería la nota
- * permanente del paciente sin decírselo a nadie.
- *
- * Sin scroll propio (ADR-36): crece con su contenido dentro del scroller de la
- * vista.
- */
 export function EvolutionComposer({
   mode,
   value,
@@ -75,31 +45,20 @@ export function EvolutionComposer({
 }: EvolutionComposerProps) {
   const soapId = useId();
   const textareaId = useId();
-
-  // Reentrada: el `saving` del host puede tardar un render en llegar y el
-  // endpoint SOBREESCRIBE, así que dos envíos seguidos no son inocuos.
   const [submitting, setSubmitting] = useState(false);
   const busy = saving || submitting;
-
   const isEmpty = value.trim().length === 0;
-
   const handleSubmit = useCallback(async () => {
     if (busy || isEmpty) return;
-
     if (mode.kind === "needs-consultation") {
-      // El texto se queda donde está: lo guarda el hook, no este componente.
       onRequestConsultation();
       return;
     }
-
     if (mode.kind !== "ready") return;
-
     setSubmitting(true);
     try {
       await onSave(draftToHtml(value));
     } catch {
-      // El host es quien notifica el fallo (`notifyApiError`); aquí solo se
-      // suelta el botón para que se pueda reintentar sin recargar.
     } finally {
       setSubmitting(false);
     }
@@ -123,22 +82,15 @@ export function EvolutionComposer({
       </section>
     );
   }
-
   const isLoading = mode.kind === "loading";
-  // El botón dice SIEMPRE "Guardar". Sin consulta abierta, pulsarlo abre la
-  // consulta y guarda a continuación, sin que el usuario tenga que entender la
-  // diferencia. Lo que NO se salta es el paso donde se eligen doctor y motivo:
-  // `POST /appointments/start-now` crea un acto asistencial real, y crearlo con
-  // valores inventados metería una cita fantasma en la agenda de alguien.
+
   const saveLabel = "Guardar";
   const busyLabel = "Guardando…";
-
   return (
     <section
       className={cn("bento overflow-hidden", className)}
       aria-busy={isLoading || undefined}
     >
-      {/* ── Cabecera ───────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3 px-4 pt-3.5">
         <h2 className="text-sm font-semibold text-ink">
           Escribir evolución de hoy…
@@ -152,15 +104,11 @@ export function EvolutionComposer({
             checked={soapEnabled}
             onCheckedChange={onSoapToggle}
             disabled={isLoading}
-            // El rótulo tiene que decir que esto NO cambia lo que se guarda: el
-            // backend almacena `clinicalNotes` como UN string, sin bloques SOAP.
             aria-label="Estructurar el dictado como SOAP"
             title="Solo afecta al dictado: pide a la IA que estructure el audio en subjetivo, objetivo, apreciación y plan. La nota se guarda como un único texto."
           />
         </div>
       </div>
-
-      {/* ── Cuerpo ─────────────────────────────────────────────────────── */}
       {isLoading ? (
         <div className="px-4 py-4" aria-hidden="true">
           <div className="h-3 w-2/3 animate-pulse rounded bg-hover" />
@@ -182,9 +130,6 @@ export function EvolutionComposer({
           )}
           />
       )}
-
-
-      {/* ── Pie ────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3 border-t border-hairline px-3 py-2">
         <div className="flex items-center gap-1">
           <button
@@ -208,7 +153,6 @@ export function EvolutionComposer({
             <Mic className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
-
         <button
           type="button"
           onClick={() => void handleSubmit()}
@@ -228,5 +172,4 @@ export function EvolutionComposer({
     </section>
   );
 }
-
 export default EvolutionComposer;

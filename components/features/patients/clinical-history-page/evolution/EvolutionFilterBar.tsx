@@ -9,59 +9,22 @@ import { cn } from "@/lib/utils/utils";
 export interface EvolutionFilterBarProps {
   query: string;
   onQueryChange: (value: string) => void;
-  /** Años presentes en el historial, descendente. */
   years: number[];
-  /** `null` = todos los años. */
   selectedYear: number | null;
   onYearChange: (year: number | null) => void;
-  /** Doctores presentes en el historial. Con uno solo no se ofrece el filtro. */
   doctors: string[];
   selectedDoctor: string | null;
   onDoctorChange: (doctor: string | null) => void;
-  /** Rango de fechas `YYYY-MM-DD`; cadena vacía = sin límite por ese lado. */
   dateFrom: string;
   dateTo: string;
   onDateRangeChange: (range: { from: string; to: string }) => void;
-  /** Consultas que sobreviven al filtro. */
   resultCount: number;
-  /** Consultas totales antes de filtrar. */
   totalCount: number;
   onClear: () => void;
 }
 
 const ALL_DOCTORS = "__all__";
 
-/**
- * Búsqueda y filtros del historial de evolución.
- *
- * QUÉ SE BUSCA, Y POR QUÉ NO MÁS: el filtro corre sobre los datos de la CITA
- * —fecha, servicio, tipo, doctor y las NOTAS DE LA CITA—, que llegan completos
- * en la lista. La fecha se busca en TODAS las formas en que se escribe
- * ("agosto", "25/08/2026", "25 de agosto de 2026", "2026"), no solo en el
- * `YYYY-MM-DD` crudo: la tarjeta muestra "25 de agosto de 2026" y una búsqueda
- * que no encuentra lo que el usuario está leyendo se siente rota aunque
- * funcione.
- *
- * POR QUÉ NO DICE "MOTIVO": el campo que se busca es `appointment.notes`, que es
- * lo que el backend siembra como `chiefComplaint` y lo que la tarjeta pinta bajo
- * "Subjetivo". El "Motivo" del formulario de agenda es otro campo
- * (`appointment.reason`) que el comando de creación descarta antes de guardar:
- * no existe en el DTO y no se puede buscar. Prometer "motivo" en el rótulo era
- * ofrecer un filtro sobre un dato que nunca llega.
- *
- * NO busca dentro del texto de las notas de evolución ni de los diagnósticos,
- * aunque parezca lo natural: esos viven en el registro de cada visita, que se
- * carga perezosamente (una petición por tarjeta). Buscar ahí devolvería
- * resultados distintos según cuánto hubieras desplazado la página, y una
- * búsqueda que se salta consultas sin decirlo, en una historia clínica, es peor
- * que no tenerla. Por eso el rótulo lo declara también en negativo.
- *
- * NOTA sobre los nombres: llegan del backend tal cual estén guardados, a veces
- * en mayúsculas. NO se normalizan — reescribir el nombre de un profesional en un
- * registro clínico no es cosa de la vista, y capitalizar automáticamente rompe
- * apellidos legítimos (D'Souza, McDonald, de la Cruz). Se acota su peso visual
- * con tamaño y truncado, no tocando el dato.
- */
 export function EvolutionFilterBar({
   query,
   onQueryChange,
@@ -85,7 +48,6 @@ export function EvolutionFilterBar({
     selectedYear !== null ||
     selectedDoctor !== null ||
     hasDateRange;
-
   const doctorOptions = useMemo<SelectOption[]>(
     () => [
       { value: ALL_DOCTORS, label: "Todos los profesionales" },
@@ -93,16 +55,10 @@ export function EvolutionFilterBar({
     ],
     [doctors],
   );
-
   const showDoctorFilter = doctors.length > 1;
   const showYearFilter = years.length > 1;
-
   return (
     <section className="bento mb-3 px-3 py-2.5">
-      {/* ── Fila principal: buscador + profesional ────────────────────────
-          Una sola fila desde `sm`. El buscador se lleva el espacio libre y el
-          selector queda acotado: es un filtro secundario y a ancho completo
-          pesaba más que la búsqueda, que es la acción principal. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative min-w-0 flex-1">
           <Search
@@ -120,8 +76,6 @@ export function EvolutionFilterBar({
               "ring-1 ring-transparent transition-shadow",
               "placeholder:text-subtle focus-visible:outline-none",
               "focus-visible:bg-surface focus-visible:ring-brand/40",
-              // El nativo pinta su propia X de "search" en algunos navegadores,
-              // encima de la nuestra y con otro estilo.
               "[&::-webkit-search-cancel-button]:appearance-none",
             )}
           />
@@ -143,13 +97,6 @@ export function EvolutionFilterBar({
           </div>
         ) : null}
       </div>
-
-      {/* ── Rango de fechas ──────────────────────────────────────────────
-          Plegado por defecto: la mayoría de las búsquedas se resuelven con el
-          texto (que ya entiende "agosto", "25/08/2026" o "25 de agosto") o con
-          un chip de año. El rango es para la pregunta concreta —"qué le hice
-          entre marzo y mayo"— y no tiene por qué ocupar sitio el resto del
-          tiempo. */}
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -167,7 +114,6 @@ export function EvolutionFilterBar({
           <CalendarRange className="h-3.5 w-3.5" aria-hidden="true" />
           {hasDateRange ? "Rango activo" : "Rango de fechas"}
         </button>
-
         {showDateRange ? (
           <div className="w-full">
             <DateRangePicker
@@ -178,10 +124,6 @@ export function EvolutionFilterBar({
           </div>
         ) : null}
       </div>
-
-      {/* ── Años ─────────────────────────────────────────────────────────
-          Los años son el filtro que más se usa en un historial largo, así que
-          van a la vista y no escondidos en un desplegable. */}
       {showYearFilter ? (
         <div
           className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5"
@@ -209,11 +151,6 @@ export function EvolutionFilterBar({
           ))}
         </div>
       ) : null}
-
-      {/* ── Estado del filtro ────────────────────────────────────────────
-          El recuento aparece SIEMPRE que haya filtro, incluso con 0 resultados:
-          sin él, un filtro olvidado hace que el historial parezca más corto de
-          lo que es. */}
       {hasFilters ? (
         <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-hairline pt-2">
           <p className="min-w-0 text-xs text-subtle">
@@ -281,5 +218,4 @@ function YearChip({
     </button>
   );
 }
-
 export default EvolutionFilterBar;

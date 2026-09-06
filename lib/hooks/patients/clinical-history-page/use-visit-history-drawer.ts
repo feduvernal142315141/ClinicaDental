@@ -47,9 +47,6 @@ export function useVisitHistoryDrawer({
     reset: resetOdontogramSnapshots,
   } = useOdontogramVisitSnapshots();
   const [attachments, setAttachments] = useState<PatientAttachment[]>([]);
-  // Una lista vacía porque la lectura falló NO es "esta visita no tiene
-  // archivos". El drawer pintaba las dos igual, así que un 500 afirmaba que no
-  // hubo radiografías ni consentimiento en esa visita (ADR-61).
   const [attachmentsError, setAttachmentsError] = useState(false);
 
   useEffect(() => {

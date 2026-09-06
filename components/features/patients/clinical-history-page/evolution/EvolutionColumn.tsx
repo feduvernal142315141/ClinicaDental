@@ -19,13 +19,10 @@ import { RescheduleModal } from "@/components/features/appointments/scheduler/Re
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 
-/** Tope que el backend aplica al listado; es la única señal de truncamiento. */
 const BACKEND_PAGE_CAP = 100;
 
-/** Cuántas tarjetas piden su registro al montar, sin esperar al scroll. */
 const EAGER_COUNT = 8;
 
-/** Consultas que se pintan de entrada. El resto entra por "cargar más". */
 const VISIBLE_PAGE_SIZE = 6;
 
 const MONTHS_ES = [
@@ -33,20 +30,6 @@ const MONTHS_ES = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ] as const;
 
-/**
- * "Julio 2026" a partir de un `YYYY-MM-DD`. Se compone a mano en vez de con
- * `new Date(...)`: parsear esa cadena como fecha la interpreta en UTC y en
- * America/La_Paz (la zona por defecto de la clínica) devuelve el mes anterior
- * los días 1.
- */
-/**
- * Todas las formas en que un humano puede escribir una fecha, para que la
- * búsqueda encuentre lo que la tarjeta MUESTRA.
- *
- * `appointment.date` es `"2026-08-25"`, pero en pantalla pone "25 de agosto de
- * 2026". Buscando solo contra la cadena cruda, teclear "agosto" o "25/08" no
- * devolvía nada: la búsqueda no encontraba lo que el usuario estaba leyendo.
- */
 function dateHaystack(date?: string): string {
   if (!date) return "";
   const [year, month, day] = date.split("-");
@@ -61,7 +44,6 @@ function dateHaystack(date?: string): string {
     year,
   ].join(" ");
 }
-
 function formatMonthLabel(date?: string): string {
   if (!date) return "";
   const [year, month] = date.split("-");
@@ -69,73 +51,29 @@ function formatMonthLabel(date?: string): string {
   const name = MONTHS_ES[index];
   return name && year ? `${name} ${year}` : "";
 }
-
-/** Margen del observer: pide el registro bastante antes de que se vea. */
 const OBSERVER_ROOT_MARGIN = "600px";
-
 const IDLE_STATE: VisitRecordState = { status: "idle" };
-
 export interface EvolutionColumnProps {
   patientId: string;
   appointments: Appointment[];
   loading: boolean;
   onPrint?: () => void;
-  /**
-   * El rol puede LEER la historia clínica. Sin esto el feed pedía el registro de
-   * cada visita y cada 403 abría el diálogo modal global.
-   */
   canViewClinicalHistory?: boolean;
-  /**
-   * Recibe los ids de las consultas que sobreviven al filtro, o `null` cuando no
-   * hay filtro. Permite al host ofrecer "imprimir la selección" además del
-   * expediente completo.
-   */
   onSelectionChange?: (appointmentIds: string[] | null) => void;
-  /** Imprime solo lo filtrado. El host decide qué documento emite. */
+
   onPrintSelection?: () => void;
-  /** Se llama tras cancelar o reagendar, para que la lista deje de estar obsoleta. */
+
   onAppointmentsChanged?: () => void;
-  /**
-   * Fallo al LEER el listado de citas del paciente (no el registro de cada
-   * visita). Con un fallo aquí `appointments` llega vacío, y sin esta señal la
-   * columna afirmaba "Este paciente no tiene consultas registradas": una
-   * afirmación clínica falsa nacida de un problema técnico (ADR-61). `null` =
-   * el listado se leyó bien.
-   */
   appointmentsError?: unknown;
-  /** Contenedor con scroll real, para que el observer mida contra él. */
   scrollRootRef?: React.RefObject<HTMLElement | null>;
-  /**
-   * Marca de tiempo del último guardado de notas hecho FUERA de este feed (el
-   * editor de la consulta en curso). Al cambiar, la tarjeta de esa visita se
-   * vuelve a pedir para no seguir mostrando el texto anterior.
-   */
   invalidateAppointmentId?: string;
   invalidateToken?: number;
   printPreparing?: boolean;
   printProgress?: { loaded: number; total: number };
-  /**
-   * Adjuntos que el host atribuye a cada cita, indexados por `appointmentId`.
-   * Opcional a propósito: el listado de adjuntos del paciente NO devuelve
-   * `appointmentId`, así que sólo el host puede saber (si es que lo sabe) qué
-   * archivo pertenece a qué visita. Sin este mapa las tarjetas no pintan pills.
-   */
   attachmentsByAppointmentId?: Record<string, PatientAttachment[]>;
-  /**
-   * Acciones de LECTURA del menú "⋯" de cada tarjeta. Sin ninguna de las dos,
-   * la tarjeta no pinta el menú.
-   */
   onViewVisitOdontogram?: (appointment: Appointment) => void;
   onViewVisitAttachments?: (appointment: Appointment) => void;
 }
-
-/**
- * Columna izquierda de la pestaña "Evolución clínica": el listado cronológico
- * de consultas con su registro clínico, en modo LECTURA.
- *
- * No tiene scroll propio a propósito (ADR-36: una sola superficie con scroll
- * por vista, y aquí es un ancestro). Crece con su contenido.
- */
 export function EvolutionColumn({
   patientId,
   appointments,
@@ -155,9 +93,6 @@ export function EvolutionColumn({
   onPrintSelection,
   appointmentsError = null,
 }: EvolutionColumnProps) {
-  // Cancelar y reagendar son MUTACIONES sobre la agenda. Sin permiso no se pasan
-  // los handlers, así que los ítems del menú no existen en el DOM — ausentes, no
-  // deshabilitados: un control deshabilitado insinúa que en otro contexto valdría.
   const { isAdmin, can } = usePermission();
   const canManageAppointments =
     isAdmin || can("appointments", PermissionAction.EDIT);
@@ -167,30 +102,16 @@ export function EvolutionColumn({
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [visibleLimit, setVisibleLimit] = useState(VISIBLE_PAGE_SIZE);
-
   const [cancelAppt, setCancelAppt] = useState<Appointment | null>(null);
   const [rescheduleAppt, setRescheduleAppt] = useState<Appointment | null>(null);
-
   const { records, request, retry, invalidate } = useVisitRecordsBatch(
     patientId,
     canViewClinicalHistory,
   );
-
-  // El editor de la consulta en curso guarda por otra vía; sin esto la tarjeta
-  // de esa misma visita se quedaba congelada en el texto de la carga inicial.
   useEffect(() => {
     if (!invalidateToken || !invalidateAppointmentId) return;
     invalidate(invalidateAppointmentId);
-    // `invalidate` es estable; el disparo lo marca el token.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invalidateToken, invalidateAppointmentId]);
-
-  /**
-   * El backend ordena por `createAt` — cuándo se AGENDÓ la cita, no cuándo se
-   * atendió — así que reordenar en cliente por fecha+hora de atención no es
-   * cosmético: sin esto la evolución se lee en un orden que no es el clínico.
-   * La consulta en curso va siempre primera.
-   */
   const ordered = useMemo(() => {
     const visible = appointments.filter(
       (appointment) => appointment.status !== "cancelled",
@@ -204,7 +125,6 @@ export function EvolutionColumn({
       return bKey.localeCompare(aKey);
     });
   }, [appointments]);
-
   const years = useMemo(() => {
     const set = new Set<number>();
     for (const a of ordered) {
@@ -213,7 +133,6 @@ export function EvolutionColumn({
     }
     return [...set].sort((a, b) => b - a);
   }, [ordered]);
-
   const doctors = useMemo(() => {
     const set = new Set<string>();
     for (const a of ordered) {
@@ -223,12 +142,6 @@ export function EvolutionColumn({
     return [...set].sort((a, b) => a.localeCompare(b, "es"));
   }, [ordered]);
 
-  /**
-   * Filtrado en memoria sobre los datos de la CITA. Se usa `matchesQuery` de
-   * `lib/utils/text` —el normalizador canónico del repo— y no un `includes`
-   * propio: en español "extraccion" tiene que encontrar "Extracción", y quien
-   * busca en el sillón no escribe tildes.
-   */
   const filtered = useMemo(() => {
     const q = query.trim();
     return ordered.filter((a) => {
@@ -236,17 +149,10 @@ export function EvolutionColumn({
         return false;
       }
       if (selectedDoctor && a.doctorName?.trim() !== selectedDoctor) return false;
-      // Comparación de cadenas `YYYY-MM-DD`: es lexicográficamente ordenable y
-      // evita construir `Date`, que interpretaría la fecha en UTC y en
-      // America/La_Paz dejaría fuera el primer día del rango.
+
       if (dateFrom && (a.date ?? "") < dateFrom) return false;
       if (dateTo && (a.date ?? "") > dateTo) return false;
       if (!q) return true;
-      // `a.notes` y NO `a.reason`: `reason` no existe en el DTO de cita que
-      // devuelve el backend (el normalizador lo deja `undefined`), mientras que
-      // `notes` es lo que el backend siembra como `chiefComplaint` y lo que la
-      // tarjeta pinta bajo "Subjetivo". Buscando contra `reason` la búsqueda no
-      // encontraba el texto que el clínico estaba leyendo en pantalla.
       const haystack = [
         a.services?.[0]?.serviceName,
         a.notes,
@@ -259,7 +165,6 @@ export function EvolutionColumn({
       return matchesQuery(haystack, q);
     });
   }, [ordered, query, selectedYear, selectedDoctor, dateFrom, dateTo]);
-
   const hasFilters =
     query.trim().length > 0 ||
     selectedYear !== null ||
@@ -267,25 +172,16 @@ export function EvolutionColumn({
     dateFrom !== "" ||
     dateTo !== "";
 
-  /**
-   * Con un filtro puesto NO se pagina: el usuario ya acotó el conjunto y
-   * esconderle parte de lo que pidió detrás de un "cargar más" convierte un
-   * resultado de búsqueda en una verdad a medias.
-   */
   const visible = useMemo(
     () => (hasFilters ? filtered : filtered.slice(0, visibleLimit)),
     [filtered, hasFilters, visibleLimit],
   );
   const remaining = hasFilters ? 0 : filtered.length - visible.length;
 
-  // El host necesita saber qué hay filtrado para poder imprimir la selección.
-  // Se avisa con los IDS y no con las citas: así el efecto no se redispara por
-  // una identidad de array nueva con el mismo contenido.
   const selectionKey = hasFilters ? filtered.map((a) => a.id).join(",") : null;
   useEffect(() => {
     onSelectionChange?.(selectionKey ? selectionKey.split(",") : null);
   }, [selectionKey, onSelectionChange]);
-
   const clearFilters = useCallback(() => {
     setQuery("");
     setSelectedYear(null);
@@ -294,27 +190,16 @@ export function EvolutionColumn({
     setDateTo("");
     setVisibleLimit(VISIBLE_PAGE_SIZE);
   }, []);
-
-  // El backend descarta la metadata de paginación: llegar justo al tope es lo
-  // único de lo que se puede deducir que hay consultas anteriores sin listar.
   const truncated = appointments.length === BACKEND_PAGE_CAP;
-
-  // `request` puede cambiar de identidad en cada render del hook; guardarlo en
-  // una ref evita reconstruir el observer (y perder lo ya observado).
   const requestRef = useRef(request);
   requestRef.current = request;
-
   const observerRef = useRef<IntersectionObserver | null>(null);
   const nodesRef = useRef<Map<string, Element>>(new Map());
-
   useEffect(() => {
     if (typeof IntersectionObserver === "undefined") {
-      // Sin observer (entornos sin soporte): se piden todos, antes que dejar
-      // tarjetas colgadas en "idle" para siempre.
       nodesRef.current.forEach((_node, id) => requestRef.current(id));
       return;
     }
-
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -324,23 +209,14 @@ export function EvolutionColumn({
           observer.unobserve(entry.target);
         }
       },
-      // Sin `root` la raíz es el viewport del documento, y entre las tarjetas y
-      // el viewport hay DOS ancestros que recortan (el TabsContent y el <main>).
-      // Los rectángulos de recorte intermedios se aplican sin expandir, así que
-      // el `rootMargin` no adelantaba nada: la precarga que promete el nombre no
-      // ocurría. Se toma el scroller real cuando el host lo proporciona.
       { root: scrollRootRef?.current ?? null, rootMargin: OBSERVER_ROOT_MARGIN },
     );
     observerRef.current = observer;
     nodesRef.current.forEach((node) => observer.observe(node));
-
     return () => {
       observer.disconnect();
       observerRef.current = null;
     };
-    // `scrollRootRef` es una ref estable del host: entra en las deps para
-    // silenciar la regla, pero su identidad no cambia entre renders, así que el
-    // observer no se reconstruye ni pierde los nodos ya observados.
   }, [scrollRootRef]);
 
   const registerNode = useCallback((id: string, node: HTMLElement | null) => {
@@ -356,15 +232,11 @@ export function EvolutionColumn({
     }
   }, []);
 
-  // Se piden las tarjetas VISIBLES, no las primeras del historial completo: con
-  // un filtro puesto o tras "cargar más", las que hay que traer son otras. El
-  // tope evita que quitar el filtro sobre 500 consultas dispare 500 peticiones.
   useEffect(() => {
     for (const appointment of visible.slice(0, EAGER_COUNT)) {
       requestRef.current(appointment.id);
     }
   }, [visible]);
-
   if (loading && ordered.length === 0) {
     return (
       <div className="min-w-0">
@@ -383,10 +255,6 @@ export function EvolutionColumn({
       </div>
     );
   }
-
-  // TERCER ESTADO, distinto de "cargando" y de "no hay consultas": el listado no
-  // se pudo leer. Decir aquí "este paciente no tiene consultas registradas"
-  // convertiría un fallo técnico en una afirmación sobre el paciente (ADR-61).
   if (appointmentsError && ordered.length === 0) {
     return (
       <div className="min-w-0">
@@ -422,7 +290,6 @@ export function EvolutionColumn({
       </div>
     );
   }
-
   if (ordered.length === 0) {
     return (
       <div className="min-w-0">
@@ -435,7 +302,6 @@ export function EvolutionColumn({
       </div>
     );
   }
-
   return (
     <div className="min-w-0">
       <EvolutionScopeHeader
@@ -447,10 +313,6 @@ export function EvolutionColumn({
         onPrintSelection={hasFilters ? onPrintSelection : undefined}
         selectionCount={filtered.length}
       />
-
-      {/* El listado se leyó a medias: hay consultas en pantalla, pero pueden
-          faltar. Se avisa ENCIMA de la lista en vez de sustituirla, porque lo que
-          ya llegó es información real que no hay que esconder. */}
       {appointmentsError ? (
         <section className="bento mb-3 px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
@@ -478,10 +340,6 @@ export function EvolutionColumn({
           </div>
         </section>
       ) : null}
-
-      {/* Sin permiso de historia clínica NINGUNA tarjeta puede pedir su
-          registro: se dice una vez arriba, y cada tarjeta lo repite en su propio
-          cuerpo (donde antes se quedaba un esqueleto eterno). */}
       {!canViewClinicalHistory ? (
         <section className="bento mb-3 px-3 py-2.5">
           <div className="flex items-start gap-2">
@@ -497,7 +355,6 @@ export function EvolutionColumn({
           </div>
         </section>
       ) : null}
-
       <EvolutionFilterBar
         query={query}
         onQueryChange={setQuery}
@@ -517,7 +374,6 @@ export function EvolutionColumn({
         }}
         onClear={clearFilters}
       />
-
       {filtered.length === 0 ? (
         <section className="bento p-6">
           <p className="text-sm text-subtle">
@@ -528,24 +384,16 @@ export function EvolutionColumn({
       ) : (
         <div className="space-y-3">
           {visible.map((appointment, index) => {
-            // Separador de mes: se pinta al CAMBIAR de mes respecto a la
-            // tarjeta anterior. Rompe la monotonía del scroll y sitúa un
-            // tratamiento antiguo de un vistazo, sin tener que leer fechas.
             const monthKey = appointment.date?.slice(0, 7) ?? "";
             const previousMonthKey =
               index > 0 ? (visible[index - 1].date?.slice(0, 7) ?? "") : null;
             const showMonth = monthKey !== "" && monthKey !== previousMonthKey;
-
             return (
               <div key={appointment.id}>
                 {showMonth ? (
                   <div
                     className={cn(
                       "flex items-center gap-3 pb-2",
-                      // El primer grupo ya tiene el aire de la barra de filtros
-                      // encima; los siguientes necesitan separarse del último
-                      // asiento del mes anterior o la cronología se lee como un
-                      // bloque continuo.
                       index === 0 ? "pt-0" : "pt-4",
                     )}
                   >
@@ -555,7 +403,6 @@ export function EvolutionColumn({
                     <div className="h-px flex-1 bg-hairline" />
                   </div>
                 ) : null}
-
                 <div
                   data-appointment-id={appointment.id}
                   ref={(node) => registerNode(appointment.id, node)}
@@ -565,9 +412,6 @@ export function EvolutionColumn({
                   state={records[appointment.id] ?? IDLE_STATE}
                   onRetry={() => retry(appointment.id)}
                   canViewClinicalHistory={canViewClinicalHistory}
-                  // `ordered` ya pone primero la consulta en curso y, si no la hay,
-                  // la más reciente: esa es la que nace desplegada. El resto se
-                  // leen plegadas, con su resumen de una línea.
                   defaultExpanded={index === 0}
                   attachments={attachmentsByAppointmentId?.[appointment.id]}
                   onViewOdontogram={onViewVisitOdontogram}
@@ -579,10 +423,6 @@ export function EvolutionColumn({
               </div>
             );
           })}
-
-          {/* Pie de paginación: dice cuánto se está viendo del total ANTES de
-              ofrecer más. Sin ese recuento, un historial recortado se lee como
-              el historial completo. */}
           {remaining > 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 pb-6 pt-3">
               <p className="text-xs text-subtle">
@@ -604,10 +444,6 @@ export function EvolutionColumn({
           ) : null}
         </div>
       )}
-
-      {/* Modales de agenda. Al cerrarse con éxito avisan al host para que
-          recargue: sin eso la fila cancelada seguía pintada como "Agendada",
-          con sus acciones vivas, hasta recargar la página entera. */}
       {cancelAppt ? (
         <CancelModal
           appointment={cancelAppt}
@@ -633,5 +469,4 @@ export function EvolutionColumn({
     </div>
   );
 }
-
 export default EvolutionColumn;

@@ -25,11 +25,9 @@ interface ActiveConsultationNotesProps {
   patientId: string;
   activeAppointmentId: string;
   canEdit?: boolean;
-  /** Se llama tras guardar la nota, para que el feed refresque esa tarjeta. */
   onNotesSaved?: () => void;
 }
 
-/** Tarjeta de sección con header iconográfico consistente (lenguaje único). */
 function Section({
   icon: Icon,
   title,
@@ -64,7 +62,6 @@ function Section({
   );
 }
 
-/** Etiqueta de campo legible y consistente. */
 function FieldLabel({
   children,
   htmlFor,
@@ -123,7 +120,6 @@ export function ActiveConsultationNotes({
           ? "Error al guardar"
           : null;
 
-  /** Opciones de tipo de dolor con opción vacía para limpiar. */
   const painTypeSelectOptions = [
     { value: "", label: "Sin tipo" },
     ...painTypeOptions,
@@ -133,7 +129,6 @@ export function ActiveConsultationNotes({
 
   return (
     <div className="h-full min-h-0 space-y-4 overflow-y-auto pr-2 pb-4">
-      {/* ── Datos de esta consulta ─────────────────────────────────────── */}
       <Section
         icon={ClipboardList}
         title="Datos de esta consulta"
@@ -166,7 +161,6 @@ export function ActiveConsultationNotes({
           </>
         }
       >
-        {/* Motivo de consulta */}
         <div className="mb-4">
           <FieldLabel htmlFor="chief-complaint">Motivo de consulta</FieldLabel>
           <TextArea
@@ -180,7 +174,6 @@ export function ActiveConsultationNotes({
           />
         </div>
 
-        {/* Dolor actual */}
         <div className="rounded-xl border border-hairline bg-elevated p-3">
           <div className="mb-2.5 flex items-center gap-1.5">
             <Activity className="h-3.5 w-3.5 text-subtle" />
@@ -264,7 +257,6 @@ export function ActiveConsultationNotes({
         </div>
       </Section>
 
-      {/* ── Diagnóstico CIE-10 ─────────────────────────────────────────── */}
       <Section icon={Stethoscope} title="Diagnóstico CIE-10">
         <Cie10DiagnosisPicker
           diagnoses={diagnoses}
@@ -276,7 +268,6 @@ export function ActiveConsultationNotes({
         />
       </Section>
 
-      {/* ── Hallazgos del examen ───────────────────────────────────────── */}
       <ExamFindingsSection
         findings={localExamFindings}
         onUpdateExtraoral={handleUpdateExtraoral}
@@ -284,7 +275,6 @@ export function ActiveConsultationNotes({
         disabled={!canEdit}
       />
 
-      {/* ── Notas de esta consulta ─────────────────────────────────────── */}
       <Section icon={NotebookPen} title="Notas de esta consulta">
         <ClinicalNotesEditor
           patientId={patientId}
@@ -295,15 +285,12 @@ export function ActiveConsultationNotes({
           readOnly={!canEdit}
           onSave={async (html) => {
             await handleSaveNotes(html);
-            // Solo tras un guardado con éxito: si lanza, el feed conserva su
-            // copia y el editor su borrador.
             onNotesSaved?.();
           }}
           saving={visitSaving}
         />
       </Section>
 
-      {/* ── Lista para finalizar (informativa, no bloqueante) ──────────── */}
       <ReadinessChecklist
         diagnoses={diagnoses}
         examFindings={localExamFindings}

@@ -22,13 +22,8 @@ interface PatientInfoColumnProps {
   canEdit?: boolean;
   activeAppointmentId?: string;
   onEditPatient?: () => void;
-  /**
-   * Persiste la nueva URL de la foto (o "" al quitarla). Cuando se pasa —y hay
-   * permiso de edición— el avatar de la tarjeta se vuelve editable en sitio.
-   */
   onPhotoChange?: (photoUrl: string) => void;
 }
-
 function InfoRow({
   icon: Icon,
   value,
@@ -44,7 +39,6 @@ function InfoRow({
     </li>
   );
 }
-
 function SectionCard({
   title,
   children,
@@ -59,7 +53,6 @@ function SectionCard({
     </section>
   );
 }
-
 export function PatientInfoColumn({
   patient,
   medicalHistory,
@@ -78,32 +71,10 @@ export function PatientInfoColumn({
       patientHeader,
     });
 
-  // NOTA: aquí vivía la alerta "Antecedentes médicos sin revisar", retirada a
-  // propósito. Dependía de `medicalHistory.validatedAt`, cuyo ÚNICO escritor es
-  // `PATCH /clinical-history/patients/{id}/medical-history/validate`, que ya no
-  // tiene ningún llamador en el front: el último era `ClinicalHistoryPanel`, un
-  // componente antd huérfano borrado en el rediseño de esta ficha. El endpoint y
-  // `clinicalHistoryService.validateMedicalHistory` siguen existiendo, sin uso.
-  // Guardar antecedentes no escribe
-  // el flag, así que el aviso salía en la ficha de TODOS los pacientes y no había
-  // forma de cerrarlo, tuvieran los antecedentes completos o no.
-  //
-  // No se cablea un botón de "confirmar revisión" porque la atestación clínica
-  // (quién revisó y cuándo, congelada por visita) pertenece a la capa legal que
-  // está diferida junto con el consentimiento y la auditoría Envers. El aviso
-  // vuelve cuando esa capa se retome de verdad; hasta entonces prometía una
-  // revisión que el sistema no sabe registrar.
-  //
-  // Editar antecedentes NO se pierde: sigue disponible desde la propia columna de
-  // antecedentes (`MedicalAntecedentsColumn`, con su `onEditClick`).
-
   return (
     <div className="flex flex-col pr-3 gap-5 py-2">
-      {/* Profile card */}
+
       <section className="bento p-6 flex flex-col items-center text-center">
-        {/* Foto: editable en sitio cuando hay permiso, con el MISMO AvatarField
-            del formulario (y del avatar de doctor). Sin permiso, o sin handler,
-            se degrada a la imagen de solo lectura de siempre. */}
         {canEdit && onPhotoChange ? (
           <AvatarField
             value={patient.photoUrl ?? ""}
@@ -117,7 +88,6 @@ export function PatientInfoColumn({
         ) : (
           <div className="mb-3 h-20 w-20 overflow-hidden rounded-full border border-brand/25 bg-brand/15">
             {patient.photoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- URL externa (Cloudinary), sin loader de next/image
               <img
                 src={patient.photoUrl}
                 alt={`Foto de ${patient.name}`}
@@ -141,17 +111,11 @@ export function PatientInfoColumn({
             className="mt-4"
             onClick={() => onEditPatient?.()}
           >
-            {/* "Editar datos" y no "Editar Perfil": el botón abre la ficha de
-                datos, y "Perfil" hacía esperar una foto del paciente que el
-                sistema no soporta. Es además el texto que especificaba la HU
-                original (HU-CLIN-001), así que esto revierte una deriva. */}
             <Edit className="h-3.5 w-3.5 mr-1" />
             Editar datos
           </Button>
         )}
       </section>
-
-      {/* Contacto */}
       <SectionCard title="Contacto">
         <ul className="space-y-3">
           {contactItems.map((item) => (
@@ -163,8 +127,6 @@ export function PatientInfoColumn({
           ))}
         </ul>
       </SectionCard>
-
-      {/* Datos personales (de antecedentes) */}
       {personalItems.length > 0 && (
         <SectionCard title="Datos Personales">
           <ul className="space-y-3">
@@ -178,8 +140,6 @@ export function PatientInfoColumn({
           </ul>
         </SectionCard>
       )}
-
-      {/* Clínico (de patientHeader) */}
       {clinicalItems.length > 0 && (
         <SectionCard title="Clínico">
           <ul className="space-y-3">
@@ -193,8 +153,6 @@ export function PatientInfoColumn({
           </ul>
         </SectionCard>
       )}
-
-      {/* Archivos */}
       <SectionCard title="Archivos">
         <PatientAttachmentsSection
           patientId={patient.id}

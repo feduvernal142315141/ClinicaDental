@@ -30,29 +30,16 @@ export interface VisitTimelineProps {
   onViewVisitHistory?: (appointment: Appointment) => void;
   onStartConsultation?: (appointmentId: string) => void;
   onNewConsultation?: () => void;
-  /**
-   * Recarga la lista tras cancelar o reagendar. Sin esto la fila cancelada
-   * seguía pintada como "Agendada", con sus botones activos, hasta recargar.
-   */
   onAppointmentsChanged?: () => void;
 }
-
 interface StatusConfig {
   dotClass: string;
-  /** Tono del `StatusBadge` del pill de estado. */
+
   tone: StatusBadgeTone;
   lineClass: string;
   label: string;
   icon: React.ReactNode;
 }
-
-/**
- * OJO — divergencia de color **conservada a propósito**: en esta cronología
- * "En curso" es VERDE (`success`) y "Completada" es AZUL (`progress`), al revés
- * que en `TreatmentStatusOverview` / `TreatmentPlansPendingSection`. Unificarlo
- * cambiaría lo que se comunica (verde = visita activa aquí), así que es una
- * decisión de producto, no de este pase visual.
- */
 function getStatusConfig(status: AppointmentStatus): StatusConfig {
   switch (status) {
     case "in_progress":
@@ -100,7 +87,6 @@ function getStatusConfig(status: AppointmentStatus): StatusConfig {
       };
   }
 }
-
 const MONTH_SHORT = [
   "Ene",
   "Feb",
@@ -115,7 +101,6 @@ const MONTH_SHORT = [
   "Nov",
   "Dic",
 ] as const;
-
 function formatVisitDate(dateStr: string): string {
   try {
     const [year, monthStr, dayStr] = dateStr.split("-");
@@ -127,7 +112,6 @@ function formatVisitDate(dateStr: string): string {
     return dateStr;
   }
 }
-
 export function VisitTimeline({
   appointments,
   loading,
@@ -137,41 +121,15 @@ export function VisitTimeline({
   onNewConsultation,
   onAppointmentsChanged,
 }: VisitTimelineProps) {
-  // Cancelar y reagendar son MUTACIONES sobre la agenda y hasta ahora se
-  // pintaban para cualquiera que pudiera abrir la ficha: este componente no
-  // importaba `usePermission` en absoluto. Se ocultan, no se deshabilitan: un
-  // control deshabilitado insinúa que en otro contexto sería posible.
   const { isAdmin, can } = usePermission();
   const canManageAppointments =
     isAdmin || can("appointments", PermissionAction.EDIT);
-
   const [cancelAppt, setCancelAppt] = useState<Appointment | null>(null);
   const [rescheduleAppt, setRescheduleAppt] = useState<Appointment | null>(
     null,
   );
 
-  // Fecha LOCAL, no UTC. `new Date().toISOString().slice(0,10)` devuelve el día
-  // en UTC: en America/La_Paz (UTC-4, la zona por defecto de la clínica) a
-  // partir de las 20:00 locales la cita de HOY dejaba de reconocerse y el botón
-  // degradaba de "Continuar Consulta" a "Iniciar Nueva Consulta", con lo que el
-  // usuario creaba una consulta express DUPLICADA en vez de usar su cita.
-  //
-  // Se recalcula con la lista en vez de memorizarse con deps vacías: así una
-  // pestaña abierta cruzando la medianoche no se queda anclada al día anterior.
   const today = localTodayInput();
-
-  /**
-   * Orden:
-   * 1. in_progress (consulta en curso) — siempre primero
-   * 2. scheduled — próximas, la MÁS CERCANA primero
-   * 3. completed/cancelled/no_show — pasadas, la más reciente primero
-   *
-   * Los dos bloques no pueden compartir comparador: para una cita futura
-   * "más reciente" es la más LEJANA, así que el orden descendente enterraba la
-   * próxima cita del paciente —el dato que más se busca— al fondo del bloque.
-   * Se desempata por hora: comparando solo `date`, dos citas del mismo día
-   * quedaban en orden arbitrario.
-   */
   const sorted = useMemo<Appointment[]>(() => {
     const statusOrder = (s: AppointmentStatus): number => {
       if (s === "in_progress") return 0;
@@ -187,7 +145,6 @@ export function VisitTimeline({
         : stamp(b).localeCompare(stamp(a));
     });
   }, [appointments]);
-
   const inProgress = appointments.find((a) => a.status === "in_progress");
   const todayScheduled = appointments.find(
     (a) => a.status === "scheduled" && a.date === today,
@@ -195,10 +152,8 @@ export function VisitTimeline({
   const startableAppt = inProgress ?? todayScheduled ?? null;
   const canStartExisting = !!startableAppt && !!onStartConsultation;
   const canNewConsultation = !!onNewConsultation;
-
   return (
     <div className="flex flex-col gap-3">
-      {/* ── CTA: continuar o nueva consulta ─────────────────────────────── */}
       <button
         type="button"
         onClick={() => {
@@ -218,13 +173,10 @@ export function VisitTimeline({
           {canStartExisting ? "Continuar Consulta" : "Iniciar Nueva Consulta"}
         </span>
       </button>
-
-      {/* ── Cronología ──────────────────────────────────────────────────── */}
       <section className="bento overflow-hidden">
         <div className="px-5 py-3 border-b border-hairline shrink-0">
           <h3 className={SECTION_LABEL_CLASS}>Cronología de visitas</h3>
         </div>
-
         {loading ? (
           <div className="flex justify-center py-8">
             <LoadingSpinner size="md" message="Cargando visitas..." />
@@ -249,10 +201,8 @@ export function VisitTimeline({
                 const canCancel =
                   appt.status === "scheduled" && canManageAppointments;
                 const isLast = idx === sorted.length - 1;
-
                 return (
                   <li key={appt.id} className="relative flex gap-3 min-w-0">
-                    {/* Dot + connector */}
                     <div className="relative flex flex-col items-center shrink-0 w-5">
                       <div
                         className={`relative z-10 w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-white ${cfg.dotClass} ${isActive ? "ring-2 ring-brand ring-offset-2" : ""}`}
@@ -265,12 +215,9 @@ export function VisitTimeline({
                         />
                       )}
                     </div>
-
-                    {/* Content */}
                     <div
                       className={`flex-1 min-w-0 ${isLast ? "pb-0" : "pb-5"}`}
                     >
-                      {/* Header row */}
                       <div className="flex items-start gap-2 justify-between flex-wrap">
                         <p className="text-xs font-semibold text-foreground leading-snug">
                           {formatVisitDate(appt.date)}
@@ -289,14 +236,10 @@ export function VisitTimeline({
                           {cfg.label}
                         </StatusBadge>
                       </div>
-
-                      {/* Descriptor */}
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">
                         {appt.serviceName ?? appt.reason ?? "Consulta general"}
                         {appt.doctorName ? ` · Dr. ${appt.doctorName}` : ""}
                       </p>
-
-                      {/* Acciones */}
                       {(canView || canCancel) && (
                         <div className="mt-1.5 flex items-center gap-3 flex-wrap">
                           {canView && (
@@ -337,8 +280,6 @@ export function VisitTimeline({
           </div>
         )}
       </section>
-
-      {/* Modals */}
       {cancelAppt && (
         <CancelModal
           appointment={cancelAppt}

@@ -101,12 +101,6 @@ export function AppointmentDetail({
       okType: "primary",
       cancelText: "Cancelar",
       onOk: async () => {
-        // Este botón se pinta para una cita AGENDADA cuya hora ya pasó: la que
-        // se atendió sin pulsar "Iniciar". Una cita `scheduled` no tiene fila
-        // `PatientVisitRecord` —la crea `PATCH /appointments/{id}/start`—, así
-        // que navegar sin iniciarla dejaba a la ficha sin consulta en curso y
-        // el modal de cierre no llegaba a abrirse (D1). Mismo camino que
-        // `app/(authenticated)/appointments/page.tsx`.
         if (appointment.status !== "in_progress") {
           try {
             const result = await appointmentsService.startAppointment(

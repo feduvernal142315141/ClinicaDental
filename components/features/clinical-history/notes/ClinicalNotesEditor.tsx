@@ -38,11 +38,6 @@ import {
 interface ClinicalNotesEditorProps {
   patientId: string;
   initialContent?: string;
-  /**
-   * Cita a la que pertenece la nota. Con ella el editor conserva el borrador no
-   * guardado si se le desmonta (cambio de pestaña). Sin ella el comportamiento
-   * es el de siempre: el texto vive solo en el estado local.
-   */
   draftKey?: string;
   updatedAt?: string;
   updatedBy?: string;
@@ -50,7 +45,6 @@ interface ClinicalNotesEditorProps {
   onSave: (html: string) => Promise<void>;
   saving: boolean;
 }
-
 function formatRelativeDate(dateStr: string): string {
   try {
     const date = new Date(dateStr);
@@ -68,12 +62,6 @@ function formatRelativeDate(dateStr: string): string {
     return dateStr;
   }
 }
-
-/**
- * ¿La copia del servidor es POSTERIOR al sello con el que nació el borrador?
- * Sin sello previo pero con sello del servidor la respuesta es sí: el borrador
- * se escribió sobre una visita que entonces no tenía nota guardada.
- */
 function isServerNewer(
   draftBase: string | undefined,
   serverStamp: string | undefined,
@@ -87,16 +75,6 @@ function isServerNewer(
   }
   return server > base;
 }
-
-/**
- * Lee el borrador de esta cita SOLO si es de quien está mirando.
- *
- * La limpieza en `logout()` es la defensa principal; esto cubre la sesión que
- * muere sin pasar por ahí (token expirado). Un borrador sin `userId` se trata
- * como propio: solo puede haberlo escrito esta misma pestaña sin sesión legible,
- * y dejar de restaurarlo perdería texto sin guardar, que es justo lo que el
- * store existe para evitar.
- */
 function readOwnDraft(
   draftKey: string | undefined,
   userId: string | undefined,
@@ -107,7 +85,6 @@ function readOwnDraft(
   if (draft.userId && userId && draft.userId !== userId) return undefined;
   return draft;
 }
-
 export function ClinicalNotesEditor({
   initialContent,
   draftKey,
@@ -117,56 +94,28 @@ export function ClinicalNotesEditor({
   onSave,
   saving,
 }: ClinicalNotesEditorProps) {
-  // El borrador manda sobre la copia del servidor al montar: si hay texto sin
-  // guardar de esta misma cita, es lo último que escribió el clínico y lo que
-  // espera encontrar al volver. Guardar lo descarta.
   const { user } = useAuth();
   const { setDraft, clearDraft } = useVisitNoteDrafts();
   const restoredDraft = readOwnDraft(draftKey, user?.id);
   const [content, setContent] = useState(
     restoredDraft?.html ?? initialContent ?? "",
   );
-  /**
-   * Sello del que salió el borrador vivo. Se fija UNA vez —al restaurarlo o al
-   * sincronizar desde el servidor— y NO se reescribe con cada tecla: si se
-   * resellara, un guardado ajeno posterior quedaría absorbido y la divergencia
-   * ya no podría detectarse.
-   */
   const draftBaseRef = useRef<string | undefined>(
     restoredDraft ? restoredDraft.baseUpdatedAt : updatedAt,
   );
-  /**
-   * `onUpdate` se crea una sola vez con el editor: sin esta ref sellaría los
-   * borradores con la cita y el usuario del primer render.
-   */
   const draftMetaRef = useRef<{ key?: string; userId?: string }>({
     key: draftKey,
     userId: user?.id,
   });
   draftMetaRef.current = { key: draftKey, userId: user?.id };
-  /**
-   * Copia del servidor que NO está en el editor porque hay un borrador encima y
-   * el servidor cambió por debajo. No se aplica sola ni se descarta sola: se
-   * declara y decide el clínico.
-   */
   const [serverDivergence, setServerDivergence] = useState<{
     html: string;
     updatedAt?: string;
   } | null>(null);
-  /**
-   * Cuando está activo el dictado pedirá al backend que estructure el audio
-   * en formato SOAP (Subjetivo/Objetivo/Análisis/Plan) usando IA.
-   * Desactivado por defecto — la transcripción cruda es la opción segura.
-   */
   const [useSoapStructuring, setUseSoapStructuring] = useState(false);
-
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      // `StarterKit` de TipTap v3 YA incluye Underline (verificado en
-      // node_modules/@tiptap/starter-kit: `underline` está en sus opciones).
-      // Añadir @tiptap/extension-underline encima registraba el mismo nombre dos
-      // veces y el editor avisaba en consola en cada montaje.
       StarterKit,
       Placeholder.configure({
         placeholder: "Escribe aquí las notas del historial...",
@@ -177,9 +126,6 @@ export function ClinicalNotesEditor({
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       setContent(html);
-      // Cada pulsación se refleja en el borrador: es lo que sobrevive si Radix
-      // desmonta esta pestaña a mitad de una frase. Va sellado con su punto de
-      // partida y con su dueño; ver `VisitNoteDraft`.
       const { key, userId } = draftMetaRef.current;
       if (key) {
         setDraft(key, {
@@ -191,12 +137,6 @@ export function ClinicalNotesEditor({
     },
   });
 
-  // Sync when initialContent changes (snapshot load).
-  // NO se pisa un borrador sin guardar: la carga del servidor llega después del
-  // montaje, y sin este guard borraría justo el texto que el borrador acaba de
-  // restaurar. Pero tampoco se descarta la copia del servidor en silencio: si
-  // trae una edición POSTERIOR al sello del borrador, alguien escribió por otra
-  // vía y eso se declara en pantalla en vez de quedar enterrado.
   useEffect(() => {
     if (!editor || initialContent === undefined) return;
     const draft = readOwnDraft(draftKey, draftMetaRef.current.userId);
@@ -213,17 +153,10 @@ export function ClinicalNotesEditor({
     draftBaseRef.current = updatedAt;
     const current = editor.getHTML();
     if (current !== initialContent) {
-      // `emitUpdate: false` NO es cosmético: en TipTap v3 `setContent` emite
-      // `onUpdate` por defecto, así que esta misma línea fabricaba un borrador
-      // con el texto DEL SERVIDOR en cada apertura, sin una sola pulsación.
-      // Desde ese borrador fantasma el guard de arriba cortaba la
-      // sincronización para el resto de la sesión y lo que se hubiera anexado
-      // por otra vía desaparecía al siguiente guardado.
       editor.commands.setContent(initialContent ?? "", { emitUpdate: false });
       setContent(initialContent ?? "");
     }
   }, [initialContent, editor, draftKey, updatedAt]);
-
   const {
     isRecording,
     isProcessing,
@@ -238,7 +171,6 @@ export function ClinicalNotesEditor({
       editor?.commands.focus();
     },
   });
-
   const handleMicToggle = () => {
     if (isRecording) {
       stopRecording();
@@ -246,20 +178,12 @@ export function ClinicalNotesEditor({
       startRecording();
     }
   };
-
   const handleSave = async () => {
     await onSave(content);
-    // Solo tras un guardado con ÉXITO: si `onSave` lanza (404, 409, red), el
-    // borrador se conserva. Perder el texto justo cuando el guardado falla sería
-    // el peor momento posible para descartarlo.
     if (draftKey) clearDraft(draftKey);
     setServerDivergence(null);
   };
 
-  /**
-   * Única vía por la que el borrador se descarta sin guardarlo, y siempre por
-   * decisión explícita del clínico tras leer qué pierde.
-   */
   const handleUseServerVersion = () => {
     if (!editor || !serverDivergence) return;
     editor.commands.setContent(serverDivergence.html, { emitUpdate: false });
@@ -268,9 +192,7 @@ export function ClinicalNotesEditor({
     if (draftKey) clearDraft(draftKey);
     setServerDivergence(null);
   };
-
   const author = resolveAuthorship(updatedBy);
-
   const ToolbarButton = ({
     onClick,
     active,
@@ -292,10 +214,8 @@ export function ClinicalNotesEditor({
       {children}
     </button>
   );
-
   return (
     <div className="flex flex-col gap-2">
-      {/* Toolbar */}
       {!readOnly && editor && (
         <div className="flex flex-wrap items-center gap-0.5 rounded-lg border border-hairline bg-elevated px-2 py-1.5">
           <ToolbarButton
@@ -343,7 +263,6 @@ export function ClinicalNotesEditor({
             onToggle={handleMicToggle}
           />
           <span className="mx-1 h-4 w-px shrink-0 bg-hairline" />
-          {/* Opt-in: estructuración SOAP por IA — OFF por defecto */}
           <div className="flex items-center gap-1.5">
             <Switch
               id="soap-toggle"
@@ -381,10 +300,6 @@ export function ClinicalNotesEditor({
           </div>
         </div>
       )}
-
-      {/* Divergencia con el servidor. Va ENCIMA del editor y no detrás de un
-          toast: es la advertencia de que guardar reemplaza una nota que no
-          estás viendo, y tiene que seguir en pantalla mientras se escribe. */}
       {serverDivergence && (
         <div
           role="alert"
@@ -430,13 +345,9 @@ export function ClinicalNotesEditor({
           </div>
         </div>
       )}
-
-      {/* Editor area */}
       <div className="min-h-[160px] rounded-xl border border-hairline bg-elevated px-3 py-2.5 text-sm text-ink transition-colors focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/30 [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[140px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-subtle [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-4 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-4 [&_.ProseMirror_h2]:text-base [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:mt-2">
         <EditorContent editor={editor} />
       </div>
-
-      {/* Status preview — shown while dictating or processing */}
       {isRecording && (
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5 rounded-lg border border-dashed border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-sm italic text-rose-600 dark:text-rose-400">
@@ -462,15 +373,8 @@ export function ClinicalNotesEditor({
             : "Procesando dictado..."}
         </div>
       )}
-
-      {/* Footer */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          {/* El sello NO desaparece por no haber autor: el literal "anonymous"
-              (o un campo vacío) es ausencia de CONSTANCIA de autoría, no
-              ausencia de edición, y la fecha sigue siendo un dato real del
-              registro. Tampoco se cae a `doctorName`: el doctor de la cita es
-              una asignación de agenda, no prueba de quién escribió. */}
           {(author || updatedAt) && (
             <p className="text-xs text-subtle">
               {author ? (
@@ -481,7 +385,6 @@ export function ClinicalNotesEditor({
               {updatedAt ? ` · ${formatRelativeDate(updatedAt)}` : ""}
             </p>
           )}
-          {/* Indicador de origen del último dictado */}
           {lastTranscriptSource && (
             <span
               className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md font-medium ${
