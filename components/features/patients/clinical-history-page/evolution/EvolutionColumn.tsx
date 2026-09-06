@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useVisitRecordsBatch,
   type VisitRecordState,
@@ -9,6 +9,10 @@ import type { Appointment } from "@/lib/entity/appointment/appointments";
 import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 import { EvolutionScopeHeader } from "./EvolutionScopeHeader";
 import { VisitEntryCard } from "./VisitEntryCard";
+import { CancelModal } from "@/components/features/appointments/scheduler/CancelModal";
+import { RescheduleModal } from "@/components/features/appointments/scheduler/RescheduleModal";
+import { usePermission } from "@/lib/hooks/use-permission";
+import { PermissionAction } from "@/lib/permissions/permission-actions";
 
 /** Tope que el backend aplica al listado; es la única señal de truncamiento. */
 const BACKEND_PAGE_CAP = 100;
@@ -31,6 +35,8 @@ export interface EvolutionColumnProps {
    * cada visita y cada 403 abría el diálogo modal global.
    */
   canViewClinicalHistory?: boolean;
+  /** Se llama tras cancelar o reagendar, para que la lista deje de estar obsoleta. */
+  onAppointmentsChanged?: () => void;
   /** Contenedor con scroll real, para que el observer mida contra él. */
   scrollRootRef?: React.RefObject<HTMLElement | null>;
   /**
@@ -78,7 +84,17 @@ export function EvolutionColumn({
   attachmentsByAppointmentId,
   onViewVisitOdontogram,
   onViewVisitAttachments,
+  onAppointmentsChanged,
 }: EvolutionColumnProps) {
+  // Cancelar y reagendar son MUTACIONES sobre la agenda. Sin permiso no se pasan
+  // los handlers, así que los ítems del menú no existen en el DOM — ausentes, no
+  // deshabilitados: un control deshabilitado insinúa que en otro contexto valdría.
+  const { isAdmin, can } = usePermission();
+  const canManageAppointments =
+    isAdmin || can("appointments", PermissionAction.EDIT);
+  const [cancelAppt, setCancelAppt] = useState<Appointment | null>(null);
+  const [rescheduleAppt, setRescheduleAppt] = useState<Appointment | null>(null);
+
   const { records, request, retry, invalidate } = useVisitRecordsBatch(
     patientId,
     canViewClinicalHistory,
@@ -241,10 +257,38 @@ export function EvolutionColumn({
               attachments={attachmentsByAppointmentId?.[appointment.id]}
               onViewOdontogram={onViewVisitOdontogram}
               onViewAttachments={onViewVisitAttachments}
+              onReschedule={canManageAppointments ? setRescheduleAppt : undefined}
+              onCancel={canManageAppointments ? setCancelAppt : undefined}
             />
           </div>
         ))}
       </div>
+
+      {/* Modales de agenda. Al cerrarse con éxito avisan al host para que
+          recargue: sin eso la fila cancelada seguía pintada como "Agendada",
+          con sus acciones vivas, hasta recargar la página entera. */}
+      {cancelAppt ? (
+        <CancelModal
+          appointment={cancelAppt}
+          isOpen
+          onClose={() => setCancelAppt(null)}
+          onSuccess={() => {
+            setCancelAppt(null);
+            onAppointmentsChanged?.();
+          }}
+        />
+      ) : null}
+      {rescheduleAppt ? (
+        <RescheduleModal
+          appointment={rescheduleAppt}
+          isOpen
+          onClose={() => setRescheduleAppt(null)}
+          onSuccess={() => {
+            setRescheduleAppt(null);
+            onAppointmentsChanged?.();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

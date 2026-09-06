@@ -115,6 +115,32 @@ export function useVisitRecordsBatch(
 
   useEffect(() => {
     mountedRef.current = true;
+
+    // RESCATE DE PETICIONES HUÉRFANAS.
+    // El cleanup de abajo incrementa la generación, así que las respuestas en
+    // vuelo del ciclo anterior se descartan al escribir. Eso es correcto —no se
+    // toca el estado de un componente desmontado—, pero deja las entradas que ya
+    // estaban marcadas `loading` sin nadie que las resuelva: `request()` es
+    // idempotente y sale por la puerta ante cualquier estado que no sea `idle`,
+    // así que jamás se vuelven a pedir.
+    //
+    // Pasa SIEMPRE en desarrollo con StrictMode (monta → desmonta → monta), y en
+    // producción en cualquier remonte. El síntoma es una tarjeta de consulta con
+    // el esqueleto puesto para siempre: ni nota, ni "sin registro", ni error.
+    // Devolverlas a `idle` permite que el consumidor las vuelva a encolar.
+    let rescued = false;
+    const next = { ...recordsRef.current };
+    for (const [id, state] of Object.entries(next)) {
+      if (state.status === "loading") {
+        next[id] = IDLE;
+        rescued = true;
+      }
+    }
+    if (rescued) {
+      recordsRef.current = next;
+      setRecords(next);
+    }
+
     return () => {
       // Cancelación: las respuestas en vuelo seguirán llegando, pero ni ellas ni
       // la cola pueden tocar el estado de un componente desmontado.

@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/primitives/shadcn/tabs";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { cn } from "@/lib/utils/utils";
-import { PatientInfoColumn } from "./PatientInfoColumn";
 import { MedicalAntecedentsColumn } from "./MedicalAntecedentsColumn";
 import { ActiveConsultationNotes } from "./ActiveConsultationNotes";
 import { VisitHistoryDrawer } from "./VisitHistoryDrawer";
@@ -34,6 +33,7 @@ import {
   PATIENT_TAB_TRIGGER_CLASS,
 } from "./patient-tabs-style";
 import { PatientImagesCard } from "./PatientImagesCard";
+import { PatientAttachmentsSection } from "@/components/features/patients/attachments/PatientAttachmentsSection";
 import { EvolutionComposer } from "./evolution/EvolutionComposer";
 import { useEvolutionComposer, draftToHtml } from "./evolution/use-evolution-composer";
 import { notifyApiError } from "@/lib/utils/notify-error";
@@ -62,6 +62,7 @@ export function ClinicalHistoryPage({
     snapshotForbidden,
     snapshotError,
     loadSnapshot,
+    loadAppointments,
     activeTab,
     setActiveTab,
     showStartNow,
@@ -92,7 +93,6 @@ export function ClinicalHistoryPage({
     handleBackToCurrentOdontogram,
     handleFinalizeSuccess,
     handleEditPatientSuccess,
-    handlePatientPhotoChange,
     handleViewVisitOdontogram,
     handleSelectHistoricVisit,
     visitRibbonState,
@@ -383,6 +383,7 @@ export function ClinicalHistoryPage({
                 scrollRootRef={evolutionScrollRef}
                 invalidateAppointmentId={effectiveActiveAppointmentId}
                 invalidateToken={notesSavedToken}
+                onAppointmentsChanged={loadAppointments}
                 onPrint={evolutionPrint.print}
                 printPreparing={evolutionPrint.preparing}
                 printProgress={evolutionPrint.progress}
@@ -505,19 +506,16 @@ export function ClinicalHistoryPage({
           value={PATIENT_TABS.FILES}
           className="flex-1 min-h-0 mt-2 overflow-auto"
         >
-          <div className="max-w-3xl">
-            <PatientInfoColumn
-              patient={patient}
-              medicalHistory={snapshot?.medicalHistory ?? null}
-              patientHeader={snapshot?.patientHeader ?? null}
+          {/* SOLO archivos. Antes esta pestaña reutilizaba `PatientInfoColumn`,
+              que arrastraba la foto del paciente, el bloque de contacto y
+              "Editar datos": nada de eso es un archivo, y el perfil ya vive en la
+              cabecera y en su propia pantalla de edición. */}
+          <div className="max-w-4xl">
+            <PatientAttachmentsSection
+              patientId={patientId}
               canUpload={canManageAttachments}
               canDelete={canManageAttachments}
-              canEdit={canEditPatient}
               activeAppointmentId={effectiveActiveAppointmentId}
-              onEditPatient={openEditPatient}
-              onPhotoChange={
-                canEditPatient ? handlePatientPhotoChange : undefined
-              }
             />
           </div>
         </TabsContent>

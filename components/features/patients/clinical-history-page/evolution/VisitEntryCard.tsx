@@ -4,6 +4,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
+  CalendarClock,
+  CalendarX,
   ChevronDown,
   FileText,
   Image as ImageIcon,
@@ -17,6 +19,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   StatusBadge,
   type StatusBadgeTone,
@@ -252,6 +255,17 @@ export interface VisitEntryCardProps {
   /** Acciones de LECTURA del menú "⋯". Sin handlers no se pinta el menú. */
   onViewOdontogram?: (appointment: Appointment) => void;
   onViewAttachments?: (appointment: Appointment) => void;
+  /**
+   * Acciones sobre la AGENDA. Van al final del menú y separadas de las de
+   * lectura porque cambian una cita real. El host es quien comprueba el permiso
+   * (`appointments:EDIT`): si no lo hay, no pasa los handlers y no se pintan —
+   * ausentes, no deshabilitados.
+   *
+   * Solo tienen sentido sobre una cita `scheduled`; la tarjeta lo comprueba y no
+   * las ofrece sobre una consulta ya finalizada o no asistida.
+   */
+  onReschedule?: (appointment: Appointment) => void;
+  onCancel?: (appointment: Appointment) => void;
 }
 
 /** Altura a partir de la cual la nota se pliega (px). */
@@ -282,6 +296,8 @@ export function VisitEntryCard({
   attachments,
   onViewOdontogram,
   onViewAttachments,
+  onReschedule,
+  onCancel,
 }: VisitEntryCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const bodyId = useId();
@@ -297,7 +313,11 @@ export function VisitEntryCard({
   // texto accesible: es la asignación de AGENDA, no constancia de quién atendió
   // ni de quién escribió la nota (cualquiera puede iniciar la cita de otro).
   const doctorLabel = `Doctor de la cita: ${doctorName}`;
-  const hasMenu = Boolean(onViewOdontogram || onViewAttachments);
+  const canManageThisAppointment =
+    appointment.status === "scheduled" && Boolean(onReschedule || onCancel);
+  const hasMenu = Boolean(
+    onViewOdontogram || onViewAttachments || canManageThisAppointment,
+  );
 
   const summary =
     state.status === "ready"
@@ -392,6 +412,30 @@ export function VisitEntryCard({
                   <Paperclip className="h-4 w-4" aria-hidden="true" />
                   Ver archivos del paciente
                 </DropdownMenuItem>
+              ) : null}
+
+              {/* Agenda. Solo sobre una cita AGENDADA: reprogramar o cancelar
+                  una consulta ya finalizada no es una operación que exista. */}
+              {appointment.status === "scheduled" && (onReschedule || onCancel) ? (
+                <>
+                  <DropdownMenuSeparator />
+                  {onReschedule ? (
+                    <DropdownMenuItem onClick={() => onReschedule(appointment)}>
+                      <CalendarClock className="h-4 w-4" aria-hidden="true" />
+                      Reagendar cita
+                    </DropdownMenuItem>
+                  ) : null}
+                  {/* Destructiva al final, y en rojo. */}
+                  {onCancel ? (
+                    <DropdownMenuItem
+                      onClick={() => onCancel(appointment)}
+                      className="text-rose-600 focus:text-rose-600 dark:text-rose-400 dark:focus:text-rose-400"
+                    >
+                      <CalendarX className="h-4 w-4" aria-hidden="true" />
+                      Cancelar cita
+                    </DropdownMenuItem>
+                  ) : null}
+                </>
               ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
