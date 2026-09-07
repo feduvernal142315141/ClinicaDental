@@ -406,6 +406,22 @@ function VisitEntryBody({
       </div>
     );
   }
+  if (
+    appointment.status === "scheduled" &&
+    (state.status === "idle" ||
+      state.status === "loading" ||
+      state.status === "empty")
+  ) {
+    return (
+      <div className="space-y-3.5">
+        {services}
+        <p className="text-xs italic text-subtle">
+          Consulta agendada — pendiente de atención
+        </p>
+      </div>
+    );
+  }
+
   if (state.status === "loading") {
     return (
       <div className="space-y-3.5">

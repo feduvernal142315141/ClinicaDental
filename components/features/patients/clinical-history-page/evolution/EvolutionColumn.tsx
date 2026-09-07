@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  appointmentHasVisitRecord,
   useVisitRecordsBatch,
   type VisitRecordState,
 } from "@/lib/hooks/patients/clinical-history-page/use-visit-records-batch";
@@ -104,9 +105,20 @@ export function EvolutionColumn({
   const [visibleLimit, setVisibleLimit] = useState(VISIBLE_PAGE_SIZE);
   const [cancelAppt, setCancelAppt] = useState<Appointment | null>(null);
   const [rescheduleAppt, setRescheduleAppt] = useState<Appointment | null>(null);
+  const withoutVisitRecord = useMemo(
+    () =>
+      new Set(
+        appointments
+          .filter((appointment) => !appointmentHasVisitRecord(appointment.status))
+          .map((appointment) => appointment.id),
+      ),
+    [appointments],
+  );
+
   const { records, request, retry, invalidate } = useVisitRecordsBatch(
     patientId,
     canViewClinicalHistory,
+    withoutVisitRecord,
   );
   useEffect(() => {
     if (!invalidateToken || !invalidateAppointmentId) return;

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clinicalHistoryService } from "@/lib/services/clinical-history";
 import type { PatientVisitRecord } from "@/lib/entity/clinical-history";
+import type { AppointmentStatus } from "@/lib/entity/appointment/appointments";
 
 export type VisitRecordState =
   | { status: "idle" }
@@ -12,12 +13,22 @@ export type VisitRecordState =
   | { status: "failed"; message: string };
 const MAX_CONCURRENT = 4;
 const IDLE: VisitRecordState = { status: "idle" };
+const EMPTY_SET: ReadonlySet<string> = new Set<string>();
 const GENERIC_FAILURE = "No se pudo cargar el registro de esta visita";
 const FORBIDDEN_FAILURE = "No tiene permisos para ver el registro de esta visita";
+
+export function appointmentHasVisitRecord(status: AppointmentStatus): boolean {
+  return status !== "scheduled";
+}
 function statusOf(error: unknown): number | undefined {
-  if (typeof error === "object" && error !== null && "status" in error) {
-    const raw = (error as { status?: unknown }).status;
-    return typeof raw === "number" ? raw : undefined;
+  if (typeof error === "object" && error !== null) {
+    const candidate = error as {
+      status?: unknown;
+      response?: { status?: unknown } | null;
+    };
+    const fromAxios = candidate.response?.status;
+    if (typeof fromAxios === "number") return fromAxios;
+    if (typeof candidate.status === "number") return candidate.status;
   }
   return undefined;
 }
@@ -34,7 +45,10 @@ export interface UseVisitRecordsBatchResult {
 export function useVisitRecordsBatch(
   patientId: string,
   enabled: boolean = true,
+  withoutVisitRecord?: ReadonlySet<string>,
 ): UseVisitRecordsBatchResult {
+  const withoutRecordRef = useRef<ReadonlySet<string>>(withoutVisitRecord ?? EMPTY_SET);
+  withoutRecordRef.current = withoutVisitRecord ?? EMPTY_SET;
   const [records, setRecords] = useState<Record<string, VisitRecordState>>({});
   const recordsRef = useRef<Record<string, VisitRecordState>>({});
   const queueRef = useRef<string[]>([]);
@@ -122,6 +136,16 @@ export function useVisitRecordsBatch(
   const enqueue = useCallback(
     (appointmentId: string) => {
       if (!appointmentId || !patientRef.current) return;
+
+      if (withoutRecordRef.current.has(appointmentId)) {
+        recordsRef.current = {
+          ...recordsRef.current,
+          [appointmentId]: { status: "empty" },
+        };
+        setRecords(recordsRef.current);
+        return;
+      }
+
       recordsRef.current = {
         ...recordsRef.current,
         [appointmentId]: { status: "loading" },
