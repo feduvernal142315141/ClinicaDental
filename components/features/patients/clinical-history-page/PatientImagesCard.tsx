@@ -21,7 +21,6 @@ import { notify } from "@/lib/utils/notify";
 import { notifyApiError } from "@/lib/utils/notify-error";
 import { toLocalDate } from "@/lib/datetime";
 import { usePatientAttachments } from "@/lib/hooks/patientAttachments/usePatientAttachments";
-import { ATTACHMENT_CATEGORIES } from "@/lib/entity/patientAttachment";
 import type {
   AttachmentCategory,
   PatientAttachment,
@@ -80,6 +79,7 @@ function AttachmentTile({
               aria-hidden="true"
             />
           ) : blobUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={blobUrl}
               alt=""

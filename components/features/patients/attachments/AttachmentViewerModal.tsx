@@ -11,7 +11,6 @@ import {
   ZoomOut,
   RotateCw,
   RotateCcw,
-  Maximize2,
   FileText,
   FileSpreadsheet,
   Film,
@@ -23,11 +22,9 @@ import {
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { cn } from "@/lib/utils/utils";
-import { notify } from "@/lib/utils/notify";
 import { notifyApiError } from "@/lib/utils/notify-error";
 import { patientAttachmentsService } from "@/lib/services/patientAttachments/patientAttachments.service";
 import {
-  ATTACHMENT_CATEGORIES,
   ATTACHMENT_CATEGORY_COLORS,
   type PatientAttachment,
 } from "@/lib/entity/patientAttachment";
@@ -38,6 +35,7 @@ import {
   getAttachmentMediaType,
   getFileExtension,
   MEDIA_TYPE_STYLES,
+  attachmentCategoryLabel,
 } from "@/lib/utils/attachment-helpers";
 import { useAttachmentBlob } from "./use-attachment-thumbnail";
 
@@ -188,9 +186,7 @@ export function AttachmentViewerModal({
 
   if (!open || !current) return null;
 
-  const categoryLabel =
-    ATTACHMENT_CATEGORIES.find((c) => c.value === current.category)?.label ??
-    current.category;
+  const categoryLabel = attachmentCategoryLabel(current.category);
   const categoryClassName = ATTACHMENT_CATEGORY_COLORS[current.category];
   const mediaStyle = MEDIA_TYPE_STYLES[mediaType];
   const ext = getFileExtension(current.fileName).toUpperCase() || "ARCHIVO";
@@ -331,6 +327,7 @@ export function AttachmentViewerModal({
             </div>
           ) : !blobUrl ? null : mediaType === "image" ? (
             <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={blobUrl}
                 alt={displayFileName(current.fileName)}

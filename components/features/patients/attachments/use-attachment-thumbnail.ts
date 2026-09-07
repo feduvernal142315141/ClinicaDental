@@ -3,39 +3,56 @@
 import { useEffect, useState } from "react";
 import { patientAttachmentsService } from "@/lib/services/patientAttachments/patientAttachments.service";
 
-const blobCache = new Map<string, { url: string; refCount: number }>();
-
-export function getCachedBlobUrl(patientId: string, attachmentId: string): string | null {
-  const key = `${patientId}:${attachmentId}`;
-  return blobCache.get(key)?.url ?? null;
+interface CacheEntry {
+  promise: Promise<string>;
+  url: string | null;
+  refCount: number;
 }
 
-export async function fetchAttachmentBlobUrl(
-  patientId: string,
-  attachmentId: string,
-): Promise<string> {
-  const key = `${patientId}:${attachmentId}`;
-  const existing = blobCache.get(key);
+const cache = new Map<string, CacheEntry>();
+
+const keyOf = (patientId: string, attachmentId: string) => `${patientId}:${attachmentId}`;
+
+function acquire(patientId: string, attachmentId: string): Promise<string> {
+  const key = keyOf(patientId, attachmentId);
+  const existing = cache.get(key);
   if (existing) {
     existing.refCount += 1;
-    return existing.url;
+    return existing.promise;
   }
 
-  const blob = await patientAttachmentsService.downloadAttachment(patientId, attachmentId);
-  const url = URL.createObjectURL(blob);
-  blobCache.set(key, { url, refCount: 1 });
-  return url;
+  const entry: CacheEntry = { url: null, refCount: 1, promise: Promise.resolve("") };
+  entry.promise = patientAttachmentsService
+    .downloadAttachment(patientId, attachmentId)
+    .then((blob) => {
+      const url = URL.createObjectURL(blob);
+      entry.url = url;
+      if (entry.refCount <= 0) {
+        URL.revokeObjectURL(url);
+        cache.delete(key);
+      }
+      return url;
+    })
+    .catch((err) => {
+      cache.delete(key);
+      throw err;
+    });
+
+  cache.set(key, entry);
+  return entry.promise;
 }
 
-export function releaseAttachmentBlobUrl(patientId: string, attachmentId: string): void {
-  const key = `${patientId}:${attachmentId}`;
-  const entry = blobCache.get(key);
+function release(patientId: string, attachmentId: string): void {
+  const key = keyOf(patientId, attachmentId);
+  const entry = cache.get(key);
   if (!entry) return;
 
   entry.refCount -= 1;
-  if (entry.refCount <= 0) {
+  if (entry.refCount > 0) return;
+
+  if (entry.url) {
     URL.revokeObjectURL(entry.url);
-    blobCache.delete(key);
+    cache.delete(key);
   }
 }
 
@@ -44,43 +61,42 @@ export function useAttachmentBlob(
   attachmentId: string,
   enabled = true,
 ) {
-  const [blobUrl, setBlobUrl] = useState<string | null>(() =>
-    getCachedBlobUrl(patientId, attachmentId),
-  );
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!enabled || !patientId || !attachmentId) return;
-
-    const cached = getCachedBlobUrl(patientId, attachmentId);
-    if (cached) {
-      setBlobUrl(cached);
+    if (!enabled || !patientId || !attachmentId) {
+      setBlobUrl(null);
+      setLoading(false);
+      setError(null);
       return;
     }
 
-    let isMounted = true;
+    let alive = true;
     setLoading(true);
     setError(null);
 
-    fetchAttachmentBlobUrl(patientId, attachmentId)
+    const pending = acquire(patientId, attachmentId);
+    pending
       .then((url) => {
-        if (isMounted) {
-          setBlobUrl(url);
-          setLoading(false);
-        }
+        if (!alive) return;
+        setBlobUrl(url);
+        setLoading(false);
       })
-      .catch((err) => {
-        if (isMounted) {
-          setError(
-            err instanceof Error ? err.message : "Error al cargar archivo",
-          );
-          setLoading(false);
-        }
+      .catch((err: unknown) => {
+        if (!alive) return;
+        setBlobUrl(null);
+        setError(err instanceof Error ? err.message : "No se pudo cargar el archivo");
+        setLoading(false);
       });
 
     return () => {
-      isMounted = false;
+      alive = false;
+      pending.then(
+        () => release(patientId, attachmentId),
+        () => undefined,
+      );
     };
   }, [patientId, attachmentId, enabled]);
 
