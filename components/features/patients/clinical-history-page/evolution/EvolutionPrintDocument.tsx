@@ -17,8 +17,8 @@ import type {
 import type {
   Appointment,
   AppointmentStatus,
-  AppointmentType,
 } from "@/lib/entity/appointment/appointments";
+import { APPOINTMENT_TYPE_LABEL } from "@/lib/entity/appointment/appointments";
 import type { VisitRecordState } from "@/lib/hooks/patients/clinical-history-page/use-visit-records-batch";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
 import { orderEvolutionAppointments } from "./use-evolution-print";
@@ -60,13 +60,6 @@ function getVisitStatusLabel(status: AppointmentStatus): string {
       return "Consulta agendada";
   }
 }
-const APPOINTMENT_TYPE_LABEL: Record<AppointmentType, string> = {
-  consultation: "Consulta",
-  control: "Control",
-  emergency: "Urgencia",
-  follow_up: "Seguimiento",
-  routine: "Rutina",
-};
 
 function collectServiceNames(appointment: Appointment): string[] {
   const fromList = (appointment.services ?? [])

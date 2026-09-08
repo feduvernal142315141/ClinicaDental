@@ -7,6 +7,7 @@ import {
   type VisitRecordState,
 } from "@/lib/hooks/patients/clinical-history-page/use-visit-records-batch";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
+import { APPOINTMENT_TYPE_LABEL } from "@/lib/entity/appointment/appointments";
 import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 import { EvolutionScopeHeader } from "./EvolutionScopeHeader";
 import { VisitEntryCard } from "./VisitEntryCard";
@@ -166,9 +167,9 @@ export function EvolutionColumn({
       if (dateTo && (a.date ?? "") > dateTo) return false;
       if (!q) return true;
       const haystack = [
-        a.services?.[0]?.serviceName,
+        ...(a.services ?? []).map((service) => service.serviceName),
         a.notes,
-        a.type,
+        a.type ? APPOINTMENT_TYPE_LABEL[a.type] : null,
         a.doctorName,
         dateHaystack(a.date),
       ]

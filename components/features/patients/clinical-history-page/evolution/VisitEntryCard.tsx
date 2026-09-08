@@ -40,8 +40,8 @@ import type {
 import type {
   Appointment,
   AppointmentStatus,
-  AppointmentType,
 } from "@/lib/entity/appointment/appointments";
+import { APPOINTMENT_TYPE_LABEL } from "@/lib/entity/appointment/appointments";
 import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 import type { VisitRecordState } from "@/lib/hooks/patients/clinical-history-page/use-visit-records-batch";
 
@@ -73,13 +73,6 @@ function getVisitStatusConfig(status: AppointmentStatus): VisitStatusConfig {
       return { label: "Consulta agendada", tone: "warning" };
   }
 }
-const APPOINTMENT_TYPE_LABEL: Record<AppointmentType, string> = {
-  consultation: "Consulta",
-  control: "Control",
-  emergency: "Urgencia",
-  follow_up: "Seguimiento",
-  routine: "Rutina",
-};
 function formatLongDate(date: string): string {
   const day = Number(date?.slice(8, 10));
   const monthIndex = Number(date?.slice(5, 7)) - 1;
