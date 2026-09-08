@@ -44,6 +44,11 @@ import {
   ToothTypeService,
   CariesRiskService,
 } from "@/lib/odontogram/domain/odontogram/services";
+import {
+  PALMER_QUADRANT_LABEL,
+  positionOf,
+  toToothLabel,
+} from "@/lib/odontogram/notation";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui";
 import {
@@ -64,17 +69,19 @@ interface ToothModalProps {
   ) => void;
 }
 
+/**
+ * "Molar primer superior derecho". El nombre del cuadrante NO se escribe aquí:
+ * viene del mapa canónico de `@/lib/odontogram/notation`, ya en minúsculas
+ * porque va dentro de frase. El ordinal (`primer`, `segundo`…) sí es propio de
+ * esta descripción y no está duplicado en ningún otro sitio.
+ */
 function getToothDescription(toothNumber: number): string {
-  const quadrant = Math.floor(toothNumber / 10);
-  const position = toothNumber % 10;
+  const position = positionOf(toothNumber);
 
   const type = ToothTypeService.getToothTypeName(toothNumber);
 
-  let location = "";
-  if (quadrant === 1) location = "superior derecho";
-  else if (quadrant === 2) location = "superior izquierdo";
-  else if (quadrant === 3) location = "inferior izquierdo";
-  else if (quadrant === 4) location = "inferior derecho";
+  const quadrant = toToothLabel(toothNumber, "palmer").quadrant;
+  const location = quadrant ? PALMER_QUADRANT_LABEL[quadrant] : "";
 
   let positionName = "";
   if (position === 1) positionName = "central";
