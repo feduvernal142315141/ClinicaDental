@@ -9,6 +9,7 @@ import { useGeneralSettingsForm } from "@/lib/hooks/settings";
 import { ClinicInfoFields } from "@/components/features/settings/clinic-info-fields";
 import { ScheduleEditor } from "@/components/features/settings/schedule-editor";
 import { PolicyFields } from "@/components/features/settings/policy-fields";
+import { OdontogramFields } from "@/components/features/settings/odontogram-fields";
 
 /** Scrollea suavemente hacia el primer campo inválido tras un submit fallido. */
 function scrollToFirstInvalidField() {
@@ -32,7 +33,7 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle: string })
 function GeneralSettingsSkeleton() {
   return (
     <div className="space-y-6">
-      {[0, 1, 2].map((i) => (
+      {[0, 1, 2, 3].map((i) => (
         <div key={i} className="bento space-y-4 p-6">
           <div className="h-5 w-48 animate-pulse rounded-md bg-hover" />
           <div className="h-4 w-72 animate-pulse rounded-md bg-hover" />
@@ -163,6 +164,14 @@ export function GeneralSettings() {
               subtitle="Parámetros activos para disponibilidad, creación, actualización y reagenda de citas futuras."
             />
             <PolicyFields disabled={disabled} />
+          </section>
+
+          <section className="bento p-6">
+            <SectionHeader
+              title="Odontograma"
+              subtitle="Nomenclatura con la que se numeran las piezas dentales en pantalla, historia clínica e impresos."
+            />
+            <OdontogramFields control={form.control} disabled={disabled} />
           </section>
 
           {/* Barra de acciones sticky ESTÁNDAR del proyecto (FormActionBar). En

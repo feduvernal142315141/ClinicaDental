@@ -12,12 +12,12 @@ import {
   Switch,
 } from "@/components/ui/atomic/forms";
 import type { GeneralSettingsFormValues } from "@/lib/hooks/settings";
+import { Req } from "@/components/features/settings/clinic-info-fields";
 
 interface PolicyFieldsProps {
   disabled?: boolean;
 }
 
-const Req = () => <span className="text-rose-500">*</span>;
 
 /** Convierte el string de un `<input type="number">` a number|undefined. */
 function toNumberOrUndefined(raw: string): number | undefined {

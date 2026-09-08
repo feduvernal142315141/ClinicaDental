@@ -1,6 +1,7 @@
 "use client";
 
 import { OdontogramLegend } from "./odontogramLeyend";
+import { QUADRANT_ROWS } from "./chart-constants";
 import { ToothSVGMultiView } from "./tooth-svg-multi-view";
 import { ResponsiveOdontogramWrapper } from "./responsive-odontogram-wrapper";
 import type { Tooth } from "./types";
@@ -13,13 +14,10 @@ interface OdontogramGridProps {
 }
 
 export function OdontogramGrid({ onToothClick }: OdontogramGridProps) {
-  const upperRight = [18, 17, 16, 15, 14, 13, 12, 11];
-  const upperLeft = [21, 22, 23, 24, 25, 26, 27, 28];
-  const lowerLeft = [31, 32, 33, 34, 35, 36, 37, 38];
-  const lowerRight = [48, 47, 46, 45, 44, 43, 42, 41];
+  const { upperRight, upperLeft, lowerLeft, lowerRight } = QUADRANT_ROWS;
 
   const renderToothRow = (
-    toothNumbers: number[],
+    toothNumbers: readonly number[],
     view: "frontal" | "oclusal" | "lateral",
   ) => {
     // Proportions adapted to the professional SVG designs.

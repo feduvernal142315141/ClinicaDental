@@ -8,27 +8,13 @@ import { ToothSymbolService } from "@/lib/odontogram/domain/odontogram/services/
 import { OdontogramColorService } from "@/lib/odontogram/domain/odontogram/services/OdontogramColorService";
 import type { ToothViewPaths, SurfacePath } from "./teeth-svg-types";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
+import { THEME } from "./chart-constants";
 
 interface ToothSVGMultiViewProps {
   toothNumber: number;
   view: "frontal" | "oclusal" | "lateral";
 }
 
-/* ---- Colores del tema – diseño profesional ---- */
-const THEME = {
-  /** Color base de superficie sin tratamiento */
-  surfaceDefault: "#FFFFFF",
-  /** Stroke del contorno principal */
-  outlineStroke: "#4A5568",
-  /** Fill de las raíces */
-  rootFill: "#F7FAFC",
-  /** Stroke de las raíces */
-  rootStroke: "#718096",
-  /** Stroke de líneas de detalle */
-  highlightStroke: "#C4B89A",
-  /** Fill hover feedback */
-  hoverOpacity: 0.85,
-} as const;
 
 function _ToothSVGMultiView({ toothNumber, view }: ToothSVGMultiViewProps) {
   const isClient = typeof window !== "undefined";
