@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { requiredText } from "@/lib/validation/fields";
 import { CLINIC_SCHEDULE_DAYS } from "@/lib/entity/settings";
+import { TOOTH_NOTATIONS } from "@/lib/odontogram/notation";
 
 /**
  * Esquema del formulario de Opciones Generales (RHF + zod).
@@ -49,6 +50,11 @@ export const generalSettingsFormSchema = z
       .optional(),
     timezone: z.string().min(1, "La zona horaria es requerida"),
     currency: z.string().min(1, "La moneda es requerida"),
+    // Derivado de la tupla `as const` del módulo de notación: una sola lista
+    // de nomenclaturas en el repo (mismo patrón que SERVICE_TYPE_VALUES).
+    toothNotation: z.enum(TOOTH_NOTATIONS, {
+      message: "La nomenclatura dental es requerida",
+    }),
     logoUrl: z.string().nullable().optional(),
     schedule: scheduleSchema,
     // minimumAdvanceNoticePeriod y cancellationLimitPerMonth eran opcionales

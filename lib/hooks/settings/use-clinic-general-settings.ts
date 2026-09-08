@@ -13,6 +13,7 @@ import {
   DEFAULT_CLINIC_GENERAL_SETTINGS,
   DEFAULT_CLINIC_SCHEDULE,
 } from "@/lib/entity/settings";
+import { isToothNotation } from "@/lib/odontogram/notation";
 import { notify } from "@/lib/utils/notify";
 
 function normalizeSchedule(schedule?: Partial<ClinicSchedule> | null): ClinicSchedule {
@@ -37,6 +38,13 @@ function normalizeSettings(settings: ClinicGeneralSettings): ClinicGeneralSettin
     ...DEFAULT_CLINIC_GENERAL_SETTINGS,
     ...settings,
     schedule: normalizeSchedule(settings.schedule),
+    // El spread NO rescata un `null` explícito: una clave presente con valor
+    // null pisa el defecto. Con la columna en NULL el GET devuelve null, el
+    // z.enum del form lo rechaza y se bloquea el submit de TODA la
+    // configuración, no sólo este campo. De ahí la coerción explícita.
+    toothNotation: isToothNotation(settings.toothNotation)
+      ? settings.toothNotation
+      : DEFAULT_CLINIC_GENERAL_SETTINGS.toothNotation,
   };
 }
 
