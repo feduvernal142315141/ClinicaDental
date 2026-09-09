@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useClinicGeneralSettings } from "@/lib/hooks/settings/use-clinic-general-settings";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
+import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import {
@@ -72,6 +73,7 @@ export function useGeneralSettingsForm() {
   const { settings, loading, saving, error, reload, saveSettings } =
     useClinicGeneralSettings();
   const { updateBranding } = useClinicBranding();
+  const { setNotation } = useToothNotation();
   const { can, isAdmin } = usePermission();
 
   const canEdit = isAdmin || can("general_option", PermissionAction.EDIT);
@@ -149,9 +151,12 @@ export function useGeneralSettingsForm() {
       // en todo el sistema", así que el contexto de marca debe enterarse.
       if (saved) {
         updateBranding({ name: payload.name, logoUrl: payload.logoUrl });
+        // Misma promesa para la nomenclatura: la carta, las tablas y la
+        // impresión deben renumerar sin recargar la aplicación.
+        setNotation(payload.toothNotation);
       }
     },
-    [saveSettings, updateBranding],
+    [saveSettings, setNotation, updateBranding],
   );
 
   return {

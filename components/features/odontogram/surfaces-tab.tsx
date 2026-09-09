@@ -20,8 +20,10 @@ import { getDesignedToothPaths } from "./teeth-svg-adapter";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
 import {
   PALMER_QUADRANT_LABEL,
+  ToothNotationLabel,
   toToothLabel,
 } from "@/lib/odontogram/notation";
+import { useOdontogramStore } from "@/lib/odontogram/store";
 import {
   X,
   CheckSquare,
@@ -96,6 +98,8 @@ export function SurfacesTab({
   );
   const isInitialized = useRef<number | null>(null);
   const pendingInit = useRef(false);
+  /** Nomenclatura de la clínica: solo afecta a lo PINTADO en la cabecera. */
+  const notation = useOdontogramStore((state) => state.notation);
   const anterior = ToothTypeService.isAnterior(tooth.number);
   // Una exodoncia INDICADA no bloquea: la pieza sigue en boca y normalmente es
   // justo la que hay que diagnosticar para justificar la extracción.
@@ -407,7 +411,7 @@ export function SurfacesTab({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-bold leading-tight">
-            Diente {tooth.number}
+            Diente <ToothNotationLabel fdi={tooth.number} notation={notation} />
           </h3>
           <p className="text-xs text-muted-foreground">
             {anterior ? "Anterior" : "Posterior"} ·{" "}

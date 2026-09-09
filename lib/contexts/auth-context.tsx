@@ -21,6 +21,7 @@ import { decodeJwtPayload } from "@/lib/auth/jwt";
 import { createAuthSession } from "@/lib/services/auth/session.service";
 import { clearAuthTokens, saveLoggedUser } from "@/lib/auth/token-storage";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
+import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
 import { useVisitNoteDrafts } from "@/lib/store/useVisitNoteDrafts";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,6 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { refetch: refetchClinicBranding, clearBranding: clearClinicBranding } =
     useClinicBranding();
+  const {
+    refetch: refetchToothNotation,
+    clearNotation: clearToothNotation,
+  } = useToothNotation();
   const [user, setUser] = useState<AppUser | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -163,6 +168,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hydrateUserFromAccessToken(tokens.accessToken);
 
       void refetchClinicBranding();
+      // La nomenclatura dental es por clínica: hasta aquí no había sesión y no
+      // se pudo pedir. Ahora sí, y el token ya identifica al tenant.
+      void refetchToothNotation();
 
       if (shouldRedirect) {
         router.push("/dashboard");
@@ -198,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearAuthTokens();
       useVisitNoteDrafts.getState().clearAll();
       clearClinicBranding();
+      clearToothNotation();
       router.push("/login");
       router.refresh();
     } catch (error) {
@@ -207,6 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearAuthTokens();
       useVisitNoteDrafts.getState().clearAll();
       clearClinicBranding();
+      clearToothNotation();
       router.push("/login");
     }
   };

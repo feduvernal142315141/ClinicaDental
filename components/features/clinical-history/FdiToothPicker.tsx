@@ -1,17 +1,25 @@
 "use client";
 
 /**
- * FdiToothPicker — selector compacto de diente FDI + cara anatómica.
+ * FdiToothPicker — selector compacto de diente + cara anatómica.
  *
- * NO importa lib/odontogram internals. Usa los números FDI estándar de la
- * dentición adulta (ISO 3950) directamente en este archivo.
+ * NO importa lib/odontogram internals: sólo la subruta pública de nomenclatura.
+ * Lo que SELECCIONA y GUARDA es siempre el FDI (ISO 3950), la identidad de la
+ * pieza; la notación de la clínica cambia únicamente lo que se PINTA.
  *
- * Salida visual: "16-M" (diente FDI + inicial de cara) o "21" si solo diente.
+ * Salida visual: la pieza en la notación vigente + la inicial de la cara.
  */
 
 import { useState, useId, useRef, useEffect } from "react";
 import { MapPin, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import { useToothLabel } from "@/lib/contexts/tooth-notation-context";
+import { ToothNotationLabel } from "@/lib/odontogram/notation";
+import {
+  toothNotationLabel,
+  toothPlainText,
+  toothRefText,
+} from "@/lib/utils/clinical-tooth-text";
 import type { ToothRef } from "@/lib/entity/clinical-history";
 
 // ---------------------------------------------------------------------------
@@ -32,12 +40,6 @@ const SURFACE_OPTIONS: Array<{ code: string; label: string }> = [
   { code: "L", label: "Lingual/Palat." },
   { code: "O", label: "Oclusal/Incis." },
 ];
-
-/** Formatea la referencia para mostrar en el trigger: "16-M" o "16". */
-function formatToothRef(ref: ToothRef | undefined): string | null {
-  if (!ref) return null;
-  return ref.surface ? `${ref.fdi}-${ref.surface}` : ref.fdi;
-}
 
 // ---------------------------------------------------------------------------
 // Prop types
@@ -64,6 +66,8 @@ export function FdiToothPicker({
 }: FdiToothPickerProps) {
   const uid = useId();
   const popoverId = `fdi-picker-${uid}`;
+  const { notation, plain } = useToothLabel();
+  const notationName = toothNotationLabel(notation);
 
   const [open, setOpen] = useState(false);
   const [selectedFdi, setSelectedFdi] = useState<string | null>(null);
@@ -112,7 +116,9 @@ export function FdiToothPicker({
     onChange(null);
   };
 
-  const display = formatToothRef(value);
+  // Forma PLANA, no dígitos: el trigger es lo único que queda a la vista una
+  // vez cerrado el popover, y en Palmer «6» no dice qué pieza es.
+  const display = toothRefText(value, plain);
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
@@ -123,7 +129,11 @@ export function FdiToothPicker({
         disabled={disabled}
         aria-expanded={open}
         aria-controls={popoverId}
-        aria-label="Selector de diente FDI"
+        aria-label={
+          display
+            ? `Selector de diente, numeración ${notationName}, ${display} seleccionado`
+            : `Selector de diente, numeración ${notationName}`
+        }
         className={cn(
           "flex w-full items-center gap-2 rounded-xl border bg-elevated px-3 py-2 text-left text-sm text-ink outline-none transition-colors",
           "focus:border-brand focus:ring-2 focus:ring-brand/30",
@@ -178,7 +188,7 @@ export function FdiToothPicker({
                           key={fdi}
                           type="button"
                           onClick={() => handleSelectTooth(fdi)}
-                          aria-label={`Diente ${fdi}`}
+                          aria-label={`Diente ${plain(fdi)}`}
                           className={cn(
                             "w-8 h-7 rounded-lg text-xs font-mono font-medium border transition-colors",
                             isActive
@@ -186,7 +196,9 @@ export function FdiToothPicker({
                               : "bg-elevated border-hairline text-ink hover:border-brand hover:text-brand",
                           )}
                         >
-                          {fdi}
+                          {/* Glifo: aquí el dígito Palmer sí es legible, va con
+                              su corchete y dentro de su cuadrante rotulado. */}
+                          <ToothNotationLabel fdi={fdi} notation={notation} />
                         </button>
                       );
                     })}
@@ -209,7 +221,7 @@ export function FdiToothPicker({
                   ← Cambiar diente
                 </button>
                 <span className="text-xs font-mono font-semibold text-ink">
-                  Diente {selectedFdi}
+                  Diente {toothPlainText(selectedFdi, plain) ?? selectedFdi}
                 </span>
               </div>
               <p className="text-[10px] font-semibold text-subtle uppercase tracking-wider mb-2">

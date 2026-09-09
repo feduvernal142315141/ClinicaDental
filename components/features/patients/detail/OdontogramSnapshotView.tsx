@@ -5,6 +5,7 @@ import {
   OdontogramModule,
   createHistoricOdontogramAdapter,
 } from "@/lib/odontogram";
+import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
 
 interface OdontogramSnapshotViewProps {
   patientId: string;
@@ -33,6 +34,10 @@ export function OdontogramSnapshotView({
   state,
   currency,
 }: OdontogramSnapshotViewProps) {
+  // La nomenclatura NO necesita el trato de `currency` (prop desde el padre):
+  // su contexto está cacheado y no hace un GET por instancia, así que cada
+  // panel puede leerla directamente sin multiplicar peticiones.
+  const { notation } = useToothNotation();
   const adapter = useMemo(
     () => createHistoricOdontogramAdapter(state),
     [state],
@@ -45,6 +50,7 @@ export function OdontogramSnapshotView({
       adapter={adapter}
       readOnly
       currency={currency}
+      notation={notation}
       showHeader={false}
       initialTab="odontogram"
     />

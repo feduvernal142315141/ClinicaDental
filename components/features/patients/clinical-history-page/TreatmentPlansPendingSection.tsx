@@ -3,6 +3,8 @@
 import { CheckCircle2, Stethoscope, ArrowUpRight } from "lucide-react";
 import { StatusBadge, type StatusBadgeTone } from "@/components/ui";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
+import { useToothLabel } from "@/lib/contexts/tooth-notation-context";
+import { toothPlainText } from "@/lib/utils/clinical-tooth-text";
 import type {
   DerivedPlanStatus,
   PendingPlanView,
@@ -31,6 +33,9 @@ export function TreatmentPlansPendingSection({
   loading,
   onViewOdontogram,
 }: TreatmentPlansPendingSectionProps) {
+  // Antes de los returns tempranos: el hook no puede quedar bajo una condición.
+  const { plain } = useToothLabel();
+
   if (loading) {
     return (
       <div className="py-2">
@@ -52,6 +57,8 @@ export function TreatmentPlansPendingSection({
     <div className="space-y-2">
       {plans.map((plan) => {
         const meta = STATUS_META[plan.status];
+        // Forma PLANA: la línea es prosa y en Palmer «diente 6» son cuatro piezas.
+        const toothText = toothPlainText(plan.linkedDiagnosis?.toothFdi, plain);
         return (
           <div
             key={plan.id}
@@ -78,9 +85,7 @@ export function TreatmentPlansPendingSection({
                     {plan.linkedDiagnosis.code}
                   </span>{" "}
                   {plan.linkedDiagnosis.label}
-                  {plan.linkedDiagnosis.toothFdi
-                    ? ` · diente ${plan.linkedDiagnosis.toothFdi}`
-                    : ""}
+                  {toothText ? ` · diente ${toothText}` : ""}
                 </span>
               </div>
             )}

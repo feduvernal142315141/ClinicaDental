@@ -4,6 +4,10 @@ import type {
   PlanItemStatus,
   TreatmentPlanItem,
 } from "@/lib/entity/odontogram";
+import {
+  formatToothListPlain,
+  type ToothNotation,
+} from "@/lib/odontogram/notation";
 
 /**
  * Vocabulario visual de las líneas del plan: etiqueta en español y tono del
@@ -112,13 +116,22 @@ export function getSessionBlockReason(
 /**
  * Sobre qué actúa la línea, en prosa: "diente 16", "dientes 16, 17", "general".
  * Es lo que distingue dos líneas del mismo servicio en el mismo plan.
+ *
+ * `teeth` son FDI —la identidad de la pieza— y `notation` solo decide cómo se
+ * ESCRIBEN. Se usa la forma PLANA (`formatToothListPlain`) y no la compacta
+ * porque esto es prosa: en Palmer, 16/26/36 se escriben todos "6" y una lista
+ * de dígitos sueltos ("dientes 6, 6, 6") no identifica ninguna pieza. La forma
+ * plana dice "6 superior derecho, 6 superior izquierdo…", que es lo único
+ * defendible en el diálogo que saca una línea del presupuesto.
  */
 export function describePlanItemScope(
   item: Pick<TreatmentPlanItem, "general">,
   teeth: number[],
+  notation: ToothNotation,
 ): string {
   if (item.general || teeth.length === 0) return "general";
-  return `${teeth.length === 1 ? "diente" : "dientes"} ${teeth.join(", ")}`;
+  const label = teeth.length === 1 ? "diente" : "dientes";
+  return `${label} ${formatToothListPlain(teeth, notation)}`;
 }
 
 /**
@@ -130,8 +143,9 @@ export function describePlanItemScope(
 export function describePlanItem(
   item: Pick<TreatmentPlanItem, "serviceName" | "general">,
   teeth: number[],
+  notation: ToothNotation,
 ): string {
-  return `${item.serviceName}, ${describePlanItemScope(item, teeth)}`;
+  return `${item.serviceName}, ${describePlanItemScope(item, teeth, notation)}`;
 }
 
 /**

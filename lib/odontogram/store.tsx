@@ -18,6 +18,10 @@ import type {
 import { OdontogramColorService } from "@/lib/odontogram/domain/odontogram/services/OdontogramColorService";
 import { ClinicalEventStateMachine } from "@/lib/odontogram/domain/odontogram/services/ClinicalEventStateMachine";
 import { SYMBOL_COLORS } from "@/lib/odontogram/domain/odontogram/constants/odontogram-colors.constants";
+import {
+  DEFAULT_TOOTH_NOTATION,
+  type ToothNotation,
+} from "@/lib/odontogram/notation";
 
 const globalStatusVisualState = (
   status: ToothGlobalStatus,
@@ -158,6 +162,11 @@ export interface OdontogramModuleProps {
   readOnly?: boolean;
 
   currency?: string;
+  /**
+   * Nomenclatura dental de la clínica (presentación). El host la resuelve del
+   * contexto y la propaga; el dato del snapshot sigue siendo FDI SIEMPRE.
+   */
+  notation?: ToothNotation;
   showHeader?: boolean;
   initialTab?:
     | "odontogram"
@@ -176,9 +185,12 @@ export interface OdontogramModuleProps {
 interface OdontogramState extends OdontogramSnapshot {
   readOnly: boolean;
   currency: string;
+  /** Notación en la que se PINTAN las piezas. Nunca entra al snapshot. */
+  notation: ToothNotation;
   replaceSnapshot: (snapshot: OdontogramSnapshot) => void;
   setReadOnly: (readOnly: boolean) => void;
   setCurrency: (currency: string) => void;
+  setNotation: (notation: ToothNotation) => void;
   updateToothGlobalStatus: (
     toothNumber: number,
     status: ToothGlobalStatus,
@@ -584,11 +596,13 @@ const createOdontogramStore = ({
   clinicId,
   readOnly = false,
   currency = "USD",
+  notation = DEFAULT_TOOTH_NOTATION,
 }: {
   patientId: string;
   clinicId?: string;
   readOnly?: boolean;
   currency?: string;
+  notation?: ToothNotation;
 }) => {
   const initialSnapshot = createEmptySnapshot({ patientId, clinicId });
 
@@ -596,6 +610,7 @@ const createOdontogramStore = ({
     ...initialSnapshot,
     readOnly,
     currency,
+    notation,
     replaceSnapshot: (snapshot) => {
       set(() => ({
         ...normalizeSnapshot(
@@ -605,13 +620,24 @@ const createOdontogramStore = ({
         ),
         readOnly: get().readOnly,
         currency: get().currency,
+        notation: get().notation,
       }));
     },
-    setReadOnly: (nextReadOnly) => {
-      set({ readOnly: nextReadOnly });
+    // IDEMPOTENTES a propósito: `set` con objeto nuevo NOTIFICA aunque el valor
+    // no cambie, y el suscriptor sin selector del autosave (OdontogramModule)
+    // dispararía un PUT que nadie pidió — subiendo `version` y re-sellando
+    // `updatedAt` de un registro clínico. Si el valor es el mismo, no se avisa.
+    setReadOnly: (next) => {
+      if (get().readOnly === next) return;
+      set({ readOnly: next });
     },
     setCurrency: (next) => {
+      if (get().currency === next) return;
       set({ currency: next });
+    },
+    setNotation: (next) => {
+      if (get().notation === next) return;
+      set({ notation: next });
     },
     updateToothDiagnosis: (toothNumber, diagnosis) => {
       if (get().readOnly) return;
@@ -1000,6 +1026,7 @@ const createOdontogramStore = ({
         }),
         readOnly: state.readOnly,
         currency: state.currency,
+        notation: state.notation,
       }));
     },
     getTooth: (toothNumber) =>
@@ -1020,12 +1047,14 @@ export function OdontogramStoreProvider({
   clinicId,
   readOnly = false,
   currency = "USD",
+  notation = DEFAULT_TOOTH_NOTATION,
   children,
 }: {
   patientId: string;
   clinicId?: string;
   readOnly?: boolean;
   currency?: string;
+  notation?: ToothNotation;
   children: React.ReactNode;
 }) {
   const storeRef = useRef<OdontogramStoreApi | null>(null);
@@ -1039,6 +1068,7 @@ export function OdontogramStoreProvider({
       clinicId,
       readOnly,
       currency,
+      notation,
     });
   }
 
@@ -1046,8 +1076,9 @@ export function OdontogramStoreProvider({
     if (!storeRef.current) return;
     storeRef.current.getState().setReadOnly(readOnly);
     storeRef.current.getState().setCurrency(currency);
+    storeRef.current.getState().setNotation(notation);
     activeStoreApi = storeRef.current;
-  }, [currency, readOnly, storeKey]);
+  }, [currency, notation, readOnly, storeKey]);
   activeStoreApi = storeRef.current;
   useEffect(() => {
     return () => {

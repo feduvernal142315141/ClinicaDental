@@ -29,6 +29,8 @@ import {
   projectToCanonicalSurface,
 } from "./types";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services";
+import { ToothNotationLabel } from "@/lib/odontogram/notation";
+import { useOdontogramStore } from "@/lib/odontogram/store";
 
 interface PerformedTabProps {
   tooth: Tooth;
@@ -283,6 +285,8 @@ export function PerformedTab({
   onSave,
   onPlansChange,
 }: PerformedTabProps) {
+  /** Nomenclatura de la clínica: solo afecta a lo PINTADO en la cabecera. */
+  const notation = useOdontogramStore((state) => state.notation);
   const [selectedPlanIds, setSelectedPlanIds] = useState<Set<string>>(
     new Set(),
   );
@@ -555,7 +559,12 @@ export function PerformedTab({
         <div className="space-y-1">
           <h3 className="flex items-center gap-2 text-lg font-bold text-ink">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
-            Realizado · Diente {tooth.number}
+            {/* El número va DENTRO del mismo hijo flex que su palabra: el
+                `gap-2` separa el icono del título, no «Diente» de su pieza. */}
+            <span>
+              Realizado · Diente{" "}
+              <ToothNotationLabel fdi={tooth.number} notation={notation} />
+            </span>
           </h3>
           <p className="text-sm text-subtle">
             {ToothTypeService.getToothTypeName(tooth.number)} ·{" "}

@@ -59,6 +59,8 @@ import {
 import { ODONTOGRAM_STATE_COLORS } from "@/lib/odontogram/domain/odontogram/constants/odontogram-colors.constants";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
 import { isToothPhysicallyAbsent } from "@/lib/odontogram/domain/odontogram/constants/tooth-status.constants";
+import { ToothNotationLabel } from "@/lib/odontogram/notation";
+import { useOdontogramStore } from "@/lib/odontogram/store";
 
 interface DiagnosisTabProps {
   tooth: Tooth;
@@ -129,6 +131,8 @@ export function DiagnosisTab({
   onDiagnosesChange,
   onToothDiagnosisChange,
 }: DiagnosisTabProps) {
+  /** Nomenclatura de la clínica: solo afecta a lo PINTADO en la cabecera. */
+  const notation = useOdontogramStore((state) => state.notation);
   const [activeSurface, setActiveSurface] = useState<ToothSurface | null>(
     selectedSurfaces.length > 0 ? selectedSurfaces[0] : null,
   );
@@ -389,7 +393,8 @@ export function DiagnosisTab({
       <div className="flex items-start justify-between">
         <div>
           <h3 className="text-lg font-bold">
-            Diagnóstico · Diente {tooth.number}
+            Diagnóstico · Diente{" "}
+            <ToothNotationLabel fdi={tooth.number} notation={notation} />
           </h3>
           {/* Contador PROYECTADO a superficies canónicas ADA: una MOD son 3
               superficies aunque se hayan marcado 5 celdas. El granular va en el

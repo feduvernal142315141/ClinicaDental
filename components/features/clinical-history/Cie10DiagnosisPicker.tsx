@@ -14,6 +14,8 @@
 import { useState, useCallback, useRef, useId, useEffect } from "react";
 import { Search, Plus, X, CircleCheck, Clock, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import { useToothLabel } from "@/lib/contexts/tooth-notation-context";
+import { toothPlainText, toothRefText } from "@/lib/utils/clinical-tooth-text";
 import { searchCie10 } from "@/lib/entity/clinical-history/cie10-dental";
 import { cie10ToVisitDiagnosis } from "@/lib/entity/clinical-history/cie10-dental";
 import type { VisitDiagnosis, DiagnosisStatus } from "@/lib/entity/clinical-history";
@@ -60,6 +62,7 @@ export function Cie10DiagnosisPicker({
 }: Cie10DiagnosisPickerProps) {
   const uid = useId();
   const listId = `cie10-results-${uid}`;
+  const { plain } = useToothLabel();
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Cie10DentalCode[]>([]);
@@ -199,27 +202,34 @@ export function Cie10DiagnosisPicker({
             </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {pendingSuggestions.map((sug, i) => (
-              <button
-                key={`${sug.code}-${sug.toothRef?.fdi ?? i}`}
-                type="button"
-                disabled={disabled}
-                onClick={() => handleAddSuggestion(sug)}
-                aria-label={`Agregar diagnóstico sugerido ${sug.code} ${sug.label}${sug.toothRef ? ` (diente ${sug.toothRef.fdi})` : ""}`}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium transition-colors",
-                  "border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-200 hover:border-amber-400",
-                  "dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-300 dark:hover:bg-amber-900/60",
-                  "disabled:opacity-50 disabled:cursor-not-allowed",
-                )}
-              >
-                <span className="font-mono">{sug.code}</span>
-                {sug.toothRef && (
-                  <span className="text-[10px] opacity-70">#{sug.toothRef.fdi}</span>
-                )}
-                <Plus className="h-3 w-3 opacity-60" />
-              </button>
-            ))}
+            {pendingSuggestions.map((sug, i) => {
+              // Forma PLANA: en Palmer el dígito desnudo no identifica la pieza,
+              // y de este chip sale un diagnóstico que se firma.
+              const toothText = toothPlainText(sug.toothRef?.fdi, plain);
+              return (
+                <button
+                  key={`${sug.code}-${sug.toothRef?.fdi ?? i}`}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => handleAddSuggestion(sug)}
+                  aria-label={`Agregar diagnóstico sugerido ${sug.code} ${sug.label}${toothText ? ` (diente ${toothText})` : ""}`}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium transition-colors",
+                    "border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-200 hover:border-amber-400",
+                    "dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-300 dark:hover:bg-amber-900/60",
+                    "disabled:opacity-50 disabled:cursor-not-allowed",
+                  )}
+                >
+                  <span className="font-mono">{sug.code}</span>
+                  {toothText && (
+                    <span className="text-[10px] opacity-70">
+                      pieza {toothText}
+                    </span>
+                  )}
+                  <Plus className="h-3 w-3 opacity-60" />
+                </button>
+              );
+            })}
           </div>
           <p className="text-[10px] text-amber-700/70 dark:text-amber-400/60">
             Diagnósticos provisionales basados en hallazgos ICDAS del odontograma.
@@ -234,7 +244,9 @@ export function Cie10DiagnosisPicker({
             Diagnósticos registrados ({diagnoses.length})
           </p>
           <ul className="space-y-1.5" aria-label="Diagnósticos de la visita">
-            {diagnoses.map((dx, index) => (
+            {diagnoses.map((dx, index) => {
+              const toothText = toothRefText(dx.toothRef, plain);
+              return (
               <li
                 key={`${dx.code}-${index}`}
                 className="flex items-start gap-2 rounded-xl border border-hairline bg-elevated px-3 py-2"
@@ -266,10 +278,9 @@ export function Cie10DiagnosisPicker({
                 <div className="flex-1 min-w-0">
                   <span className="font-mono text-xs font-bold text-brand">{dx.code}</span>
                   <span className="text-xs text-ink ml-1.5">{dx.label}</span>
-                  {dx.toothRef && (
+                  {toothText && (
                     <span className="ml-1.5 text-[10px] text-subtle font-mono">
-                      #{dx.toothRef.fdi}
-                      {dx.toothRef.surface ? `-${dx.toothRef.surface}` : ""}
+                      pieza {toothText}
                     </span>
                   )}
                   {dx.source === "odontogram" && (
@@ -290,7 +301,8 @@ export function Cie10DiagnosisPicker({
                   <X className="h-3.5 w-3.5" />
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </div>
       )}

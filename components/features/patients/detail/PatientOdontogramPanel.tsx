@@ -8,6 +8,7 @@ import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useOdontogramByVisit } from "@/lib/hooks/odontogram/useOdontogramByVisit";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings";
+import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
 import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
 import {
   OdontogramReadOnlyOverlay,
@@ -85,6 +86,10 @@ export function PatientOdontogramPanel({
   const { user } = useAuth();
 
   const { settings } = useClinicGeneralSettings();
+  // Nomenclatura desde el contexto (cacheado, un solo GET por sesión), no
+  // desde `settings`: cada consumidor de useClinicGeneralSettings dispara su
+  // propia petición.
+  const { notation } = useToothNotation();
   const clinicId = patient.clinicId ?? "";
   const [isTransitioning, setIsTransitioning] = useState(false);
   const {
@@ -215,6 +220,7 @@ export function PatientOdontogramPanel({
             currency={
               settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency
             }
+            notation={notation}
             showHeader={false}
             initialTab="odontogram"
             onSaveStart={

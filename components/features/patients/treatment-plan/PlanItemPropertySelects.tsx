@@ -16,6 +16,7 @@ import {
   type PlanItemStatus,
   type UpdatePlanItemRequest,
 } from "@/lib/entity/odontogram";
+import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
 import type { PlanItemRow } from "@/lib/hooks/odontogram";
 import { notify } from "@/lib/utils/notify";
 import {
@@ -69,9 +70,11 @@ export function PlanItemStatusSelect({
   onUpdate,
 }: PropertySelectBaseProps) {
   const { item } = row;
+  // Solo para el nombre accesible: la pieza se identifica siempre por su FDI.
+  const { notation } = useToothNotation();
   const status: PlanItemStatus = item.status ?? "plan";
   const meta = PLAN_ITEM_STATUS_META[status];
-  const label = describePlanItem(item, row.teeth);
+  const label = describePlanItem(item, row.teeth, notation);
 
   const handleChange = (next: string) => {
     if (next === status) return; // Re-elegir lo vigente no es un cambio.
@@ -134,9 +137,10 @@ export function PlanItemPrioritySelect({
   onUpdate,
 }: PropertySelectBaseProps) {
   const { item } = row;
+  const { notation } = useToothNotation();
   const priority: PlanItemPriority = item.priority ?? "media";
   const meta = PLAN_ITEM_PRIORITY_META[priority];
-  const label = describePlanItem(item, row.teeth);
+  const label = describePlanItem(item, row.teeth, notation);
 
   const handleChange = (next: string) => {
     if (next === priority) return;

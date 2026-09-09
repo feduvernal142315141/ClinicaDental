@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui";
 import { buttonVariants } from "@/components/ui/primitives/shadcn/button";
+import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
 import type { PlanItemRow } from "@/lib/hooks/odontogram";
 import { notify } from "@/lib/utils/notify";
 import { cn } from "@/lib/utils/utils";
@@ -62,6 +63,8 @@ export function PlanItemRowActions({
   onRemove,
 }: PlanItemRowActionsProps) {
   const { item } = row;
+  // Nomenclatura de la clínica: es PRESENTACIÓN. `row.teeth` sigue siendo FDI.
+  const { notation } = useToothNotation();
   const [dialog, setDialog] = useState<RowDialog | null>(null);
   /**
    * Diálogo elegido en el menú, todavía sin abrir. Es un ref y no estado porque
@@ -70,7 +73,7 @@ export function PlanItemRowActions({
    */
   const pendingDialogRef = useRef<RowDialog | null>(null);
 
-  const label = describePlanItem(item, row.teeth);
+  const label = describePlanItem(item, row.teeth, notation);
 
   /**
    * ¿Hay ya un cambio en vuelo sobre ESTA línea? El hook descarta el segundo
@@ -164,7 +167,8 @@ export function PlanItemRowActions({
               ¿Quitar esta línea del presupuesto?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-subtle">
-              «{item.serviceName}» ({describePlanItemScope(item, row.teeth)})
+              «{item.serviceName}» (
+              {describePlanItemScope(item, row.teeth, notation)})
               dejará de aparecer en el plan y su importe saldrá del total.
               <br />
               <strong className="font-semibold text-ink">

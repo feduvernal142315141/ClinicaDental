@@ -58,6 +58,10 @@ function OdontogramModuleContent({
     handlers,
   } = useOdontogramModule();
   const readOnly = useOdontogramStore((state) => state.readOnly);
+  // Nomenclatura elegida por la clínica. Solo alimenta el TEXTO de la tarjeta:
+  // `event.toothNumber` sigue siendo el FDI en todo lo demás (superficies,
+  // clave de lista, click).
+  const notation = useOdontogramStore((state) => state.notation);
   const [activeTab, setActiveTab] = useState(initialTab);
 
   const {
@@ -103,6 +107,7 @@ function OdontogramModuleContent({
               <OdontogramEventCard
                 key={event.id}
                 toothNumber={event.toothNumber}
+                notation={notation}
                 // La tarjeta pinta lo que le llegue, así que la traducción se
                 // hace aquí: sin ella el listado enseñaría el CÓDIGO interno
                 // ("mesialVestibular") en vez de la etiqueta clínica. La

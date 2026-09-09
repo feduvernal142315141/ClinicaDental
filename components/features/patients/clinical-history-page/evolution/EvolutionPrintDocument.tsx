@@ -21,6 +21,12 @@ import type {
 import { APPOINTMENT_TYPE_LABEL } from "@/lib/entity/appointment/appointments";
 import type { VisitRecordState } from "@/lib/hooks/patients/clinical-history-page/use-visit-records-batch";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
+import { useToothLabel } from "@/lib/contexts/tooth-notation-context";
+import {
+  formatPain,
+  toothNotationLabel,
+  toothRefText,
+} from "@/lib/utils/clinical-tooth-text";
 import { orderEvolutionAppointments } from "./use-evolution-print";
 
 const BACKEND_PAGE_CAP = 100;
@@ -121,18 +127,6 @@ function collectFindings(
   }
   return rows;
 }
-function formatPain(pain: PatientVisitRecord["currentPain"]): string | null {
-  if (!pain) return null;
-  const parts: string[] = [];
-  if (typeof pain.intensity === "number" && !Number.isNaN(pain.intensity)) {
-    parts.push(`${pain.intensity}/10`);
-  }
-  if (pain.type?.trim()) parts.push(pain.type.trim());
-  if (pain.duration?.trim()) parts.push(pain.duration.trim());
-  if (pain.location?.trim()) parts.push(pain.location.trim());
-  if (pain.toothRef?.fdi) parts.push(`pieza ${pain.toothRef.fdi}`);
-  return parts.length > 0 ? parts.join(" · ") : null;
-}
 function formatLocalStamp(localInput: string): string {
   return `${formatLongDate(localInput.slice(0, 10))} ${localInput.slice(11, 16)}`;
 }
@@ -155,6 +149,11 @@ export function EvolutionPrintDocument({
   partialNote,
 }: EvolutionPrintDocumentProps) {
   const { name: clinicName } = useClinicBranding();
+  // El portal va a `document.body`, pero sigue DENTRO del árbol de React: el
+  // contexto llega igual que el de marca. Aun así el documento sólo usa la
+  // forma PLANA — a un glifo Palmer impreso la hoja de estilos puede comerle
+  // el corchete, y un corchete perdido es OTRA pieza.
+  const { notation } = useToothLabel();
   const [mounted, setMounted] = useState(false);
   const [generatedAt, setGeneratedAt] = useState<string>("");
   useEffect(() => {
@@ -210,6 +209,11 @@ export function EvolutionPrintDocument({
               Generado el {formatLocalStamp(generatedAt)}
             </p>
           ) : null}
+          {/* Sin esto, un impreso leído años después no sabe qué numeración
+              usan sus piezas. */}
+          <p className="evolution-print__header-meta">
+            Numeración dental: {toothNotationLabel(notation)}
+          </p>
         </div>
       </header>
       <footer className="evolution-print__footer">
@@ -386,9 +390,10 @@ function PrintedRecordBands({
   appointment: Appointment;
   record: PatientVisitRecord;
 }) {
+  const { plain } = useToothLabel();
   const diagnoses = record.diagnoses?.filter((d) => d?.code || d?.label) ?? [];
   const chiefComplaint = record.chiefComplaint?.trim();
-  const painText = formatPain(record.currentPain);
+  const painText = formatPain(record.currentPain, plain);
   const extraoral = collectFindings(
     record.examFindings?.extraoral as Record<string, string | undefined> | undefined,
     EXTRAORAL_LABELS as Array<[string, string]>,
@@ -404,26 +409,25 @@ function PrintedRecordBands({
         <section className="evolution-print__band">
           <h2 className="evolution-print__band-title">Diagnósticos</h2>
           <ul className="evolution-print__diagnoses">
-            {diagnoses.map((diagnosis, index) => (
-              <li key={`${diagnosis.code}-${index}`}>
-                <span className="evolution-print__strong">
-                  {diagnosis.code} — {resolveDiagnosisLabel(diagnosis)}
-                </span>{" "}
-                <span className="evolution-print__hint">
-                  {diagnosis.status === "confirmed" ? "Confirmado" : "Provisional"}
-                  {diagnosis.toothRef?.fdi
-                    ? ` · Pieza ${diagnosis.toothRef.fdi}${
-                        diagnosis.toothRef.surface
-                          ? ` · ${diagnosis.toothRef.surface}`
-                          : ""
-                      }`
-                    : ""}
-                  {diagnosis.source === "odontogram"
-                    ? " · derivado del odontograma"
-                    : ""}
-                </span>
-              </li>
-            ))}
+            {diagnoses.map((diagnosis, index) => {
+              const toothText = toothRefText(diagnosis.toothRef, plain);
+              return (
+                <li key={`${diagnosis.code}-${index}`}>
+                  <span className="evolution-print__strong">
+                    {diagnosis.code} — {resolveDiagnosisLabel(diagnosis)}
+                  </span>{" "}
+                  <span className="evolution-print__hint">
+                    {diagnosis.status === "confirmed"
+                      ? "Confirmado"
+                      : "Provisional"}
+                    {toothText ? ` · Pieza ${toothText}` : ""}
+                    {diagnosis.source === "odontogram"
+                      ? " · derivado del odontograma"
+                      : ""}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </section>
       ) : null}

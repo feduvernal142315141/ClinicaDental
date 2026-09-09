@@ -32,6 +32,8 @@ import {
   NO_AUTHORSHIP_LABEL,
   resolveAuthorship,
 } from "@/lib/utils/clinical-authorship";
+import { formatPain, toothRefText } from "@/lib/utils/clinical-tooth-text";
+import { useToothLabel } from "@/lib/contexts/tooth-notation-context";
 import type {
   ExamFindings,
   PatientVisitRecord,
@@ -533,9 +535,10 @@ function VisitRecordBands({
   record: PatientVisitRecord;
   attachments?: PatientAttachment[];
 }) {
+  const { plain } = useToothLabel();
   const diagnoses = record.diagnoses?.filter((d) => d?.code || d?.label) ?? [];
   const chiefComplaint = record.chiefComplaint?.trim();
-  const painText = formatPain(record.currentPain);
+  const painText = formatPain(record.currentPain, plain);
   const extraoral = collectFindings(
     record.examFindings?.extraoral as Record<string, string | undefined> | undefined,
     EXTRAORAL_LABELS as Array<[string, string]>,
@@ -596,17 +599,18 @@ function VisitRecordBands({
         <section>
           <h3 className={BLOCK_LABEL_CLASS}>Apreciación</h3>
           <ul className="space-y-1.5">
-            {diagnoses.map((diagnosis, index) => (
+            {diagnoses.map((diagnosis, index) => {
+              // Forma PLANA, la misma que imprime el documento: la tarjeta en
+              // pantalla y el papel deben nombrar la pieza igual.
+              const toothText = toothRefText(diagnosis.toothRef, plain);
+              return (
               <li
                 key={`${diagnosis.code}-${index}`}
                 className="flex flex-wrap items-center gap-2 rounded-lg border border-hairline bg-surface px-3 py-2 text-xs"
               >
-                {diagnosis.toothRef?.fdi ? (
-                  <span className="rounded-md bg-brand/10 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-brand">
-                    Pieza {diagnosis.toothRef.fdi}
-                    {diagnosis.toothRef.surface
-                      ? ` · ${diagnosis.toothRef.surface}`
-                      : ""}
+                {toothText ? (
+                  <span className="rounded-md bg-brand/10 px-1.5 py-0.5 text-[11px] font-bold text-brand">
+                    Pieza {toothText}
                   </span>
                 ) : null}
                 <span className="font-semibold text-ink">{diagnosis.code}</span>
@@ -626,7 +630,8 @@ function VisitRecordBands({
                   {diagnosis.status === "confirmed" ? "Confirmado" : "Provisional"}
                 </span>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </section>
       ) : null}
@@ -664,18 +669,6 @@ function FindingsGroup({
       </dl>
     </div>
   );
-}
-function formatPain(pain: PatientVisitRecord["currentPain"]): string | null {
-  if (!pain) return null;
-  const parts: string[] = [];
-  if (typeof pain.intensity === "number" && !Number.isNaN(pain.intensity)) {
-    parts.push(`${pain.intensity}/10`);
-  }
-  if (pain.type?.trim()) parts.push(pain.type.trim());
-  if (pain.duration?.trim()) parts.push(pain.duration.trim());
-  if (pain.location?.trim()) parts.push(pain.location.trim());
-  if (pain.toothRef?.fdi) parts.push(`pieza ${pain.toothRef.fdi}`);
-  return parts.length > 0 ? parts.join(" · ") : null;
 }
 function VisitAttachments({ attachments }: { attachments?: PatientAttachment[] }) {
   if (!attachments || attachments.length === 0) return null;

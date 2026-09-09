@@ -18,6 +18,11 @@ import { Cie10DiagnosisPicker } from "@/components/features/clinical-history/Cie
 import { ExamFindingsSection } from "@/components/features/clinical-history/ExamFindingsSection";
 import { FdiToothPicker } from "@/components/features/clinical-history/FdiToothPicker";
 import { ReadinessChecklist } from "@/components/features/clinical-history/ReadinessChecklist";
+import { useToothLabel } from "@/lib/contexts/tooth-notation-context";
+import {
+  toothNotationLabel,
+  toothRefText,
+} from "@/lib/utils/clinical-tooth-text";
 import { useActiveConsultationNotes } from "@/lib/hooks/patients/clinical-history-page/use-active-consultation-notes";
 import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
 
@@ -110,6 +115,9 @@ export function ActiveConsultationNotes({
   } = useActiveConsultationNotes({ patientId, activeAppointmentId });
 
   const { status: autosaveStatus } = useAutosaveStatus();
+
+  const { notation, plain } = useToothLabel();
+  const painToothText = toothRefText(pain.toothRef, plain);
 
   const autosaveLabel =
     autosaveStatus === "saving"
@@ -239,17 +247,18 @@ export function ActiveConsultationNotes({
             </div>
 
             <div className="col-span-2">
-              <FieldLabel>Diente afectado (referencia FDI)</FieldLabel>
+              <FieldLabel>
+                Diente afectado (numeración {toothNotationLabel(notation)})
+              </FieldLabel>
               <FdiToothPicker
                 value={pain.toothRef}
                 onChange={handlePainToothRefChange}
                 disabled={!canEdit}
                 placeholder="Seleccionar diente / cara…"
               />
-              {pain.toothRef && (
+              {painToothText && (
                 <p className="mt-1.5 text-[11px] text-subtle">
-                  Diente {pain.toothRef.fdi}
-                  {pain.toothRef.surface ? ` — ${pain.toothRef.surface}` : ""}
+                  Diente {painToothText}
                 </p>
               )}
             </div>

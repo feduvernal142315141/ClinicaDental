@@ -17,6 +17,8 @@ import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner"
 import type { UseAddToPlanCatalogResult } from "@/lib/hooks/odontogram";
 import type { AddPlanItemRequest } from "@/lib/entity/odontogram";
 import type { ServiceListItem } from "@/lib/entity/services";
+import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
+import type { ToothNotation } from "@/lib/odontogram/notation";
 import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
 import { notify } from "@/lib/utils/notify";
 import { PlanToothSelector, formatSelectedTeeth } from "./PlanToothSelector";
@@ -76,6 +78,9 @@ export function AddToPlanPanel({
 }: AddToPlanPanelProps) {
   const uid = useId();
   const hintId = `${uid}-hint`;
+  // Solo para ESCRIBIR las piezas en el resumen. Lo elegido, lo ordenado y lo
+  // enviado siguen siendo FDI.
+  const { notation } = useToothNotation();
 
   const [scope, setScope] = useState<AddToPlanScope>("general");
   // Una selección POR PESTAÑA: cambiar de pestaña no puede tirar en silencio lo
@@ -141,6 +146,11 @@ export function AddToPlanPanel({
   );
   const selectedCount = toothSelected.length + generalSelected.length;
 
+  // Orden de ENVÍO: numérico por FDI. Es el que fija `itemOrder` en el servidor
+  // y con el que la tabla y el presupuesto impreso quedarán ordenados, así que
+  // no se toca aunque la nomenclatura pintada numere al revés (en Universal el
+  // cuadrante 1 se escribe 8…1 de arriba abajo). Se ordena la identidad, nunca
+  // el texto.
   const orderedTeeth = useMemo(
     () => Array.from(teeth).sort((a, b) => a - b),
     [teeth],
@@ -376,6 +386,7 @@ export function AddToPlanPanel({
                   toothLineCount,
                   generalLineCount,
                   teeth,
+                  notation,
                 )} Importe orientativo: el definitivo lo congela el servidor con la tarifa del catálogo.`}
             </p>
           </div>
@@ -408,16 +419,18 @@ function sumServiceCost(services: ServiceListItem[]): number {
  *
  * El desglose no es cosmético: el envío se lleva SIEMPRE las dos pestañas y
  * solo una está a la vista, así que el recuento tiene que nombrar de dónde sale
- * cada parte.
+ * cada parte. Las piezas van en forma plana (`formatSelectedTeeth`): es prosa,
+ * y en Palmer una lista de dígitos sueltos no diría sobre qué se presupuesta.
  */
 function describePendingLines(
   toothLines: number,
   generalLines: number,
   teeth: ReadonlySet<number>,
+  notation: ToothNotation,
 ): string {
   const total = toothLines + generalLines;
   const lines = `${total} ${total === 1 ? "línea" : "líneas"}`;
-  const teethLabel = `${teeth.size === 1 ? "la pieza" : "las piezas"} ${formatSelectedTeeth(teeth)}`;
+  const teethLabel = `${teeth.size === 1 ? "la pieza" : "las piezas"} ${formatSelectedTeeth(teeth, notation)}`;
 
   if (toothLines > 0 && generalLines > 0) {
     return `Se añadirán ${lines}: ${toothLines} sobre ${teethLabel} y ${generalLines} ${

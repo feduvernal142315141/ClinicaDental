@@ -46,6 +46,8 @@ import {
 } from "@/lib/odontogram/domain/odontogram/services";
 import {
   PALMER_QUADRANT_LABEL,
+  ToothNotationLabel,
+  formatToothPlain,
   positionOf,
   toToothLabel,
 } from "@/lib/odontogram/notation";
@@ -196,6 +198,7 @@ export function ToothModal({
     deleteClinicalEvent,
     clinicalEvents,
     metadata,
+    notation,
     readOnly,
   } = useOdontogramStore();
   const odontogramConfirm = useOdontogramConfirm();
@@ -639,6 +642,15 @@ export function ToothModal({
 
   if (!tooth) return null;
 
+  /**
+   * La pieza EN PROSA, en la nomenclatura de la clínica. Los toasts, los
+   * `confirm` y los errores de validación la usan en esta forma y no en la
+   * compacta: en Palmer el dígito desnudo («6») es ambiguo entre cuatro piezas
+   * y ahí no hay corchete que lo desambigüe. `tooth.number` sigue siendo el FDI
+   * y no se toca — es la identidad con la que se leen y escriben los eventos.
+   */
+  const toothPlain = formatToothPlain(tooth.number, notation);
+
   /** Eventos del diente que constituyen una MARCA viva sobre una cara. */
   const collectToothMarkEvents = () =>
     getToothEvents(tooth.number).filter((event) => {
@@ -701,7 +713,7 @@ export function ToothModal({
         // borraban en duro y el autosave lo persistía 300 ms después, sin
         // pantalla que lo restaurase.
         notify.info("Marcas de visitas anteriores", {
-          description: `El diente ${tooth.number} tiene marcas registradas en visitas anteriores. No se eliminan desde aquí: son el registro clínico de otra visita.`,
+          description: `El diente ${toothPlain} tiene marcas registradas en visitas anteriores. No se eliminan desde aquí: son el registro clínico de otra visita.`,
         });
         return;
       }
@@ -709,7 +721,7 @@ export function ToothModal({
       const count = markedSurfaces.size;
       odontogramConfirm({
         title: "¿Marcar la pieza como sana?",
-        description: `El diente ${tooth.number} tiene ${count} cara${
+        description: `El diente ${toothPlain} tiene ${count} cara${
           count === 1 ? "" : "s"
         } con marcas registradas en esta visita (hallazgos, planes o tratamientos). «Sano» significa que la pieza no tiene nada: si continúas, esas marcas se eliminarán.`,
         okText: "Sí, marcar como sana",
@@ -731,7 +743,7 @@ export function ToothModal({
     if (hasUnsavedChanges) {
       odontogramConfirm({
         title: "¿Cerrar sin guardar?",
-        description: `Tienes cambios sin guardar en el diente ${tooth.number}. Si cierras ahora, se perderán estos cambios.`,
+        description: `Tienes cambios sin guardar en el diente ${toothPlain}. Si cierras ahora, se perderán estos cambios.`,
         okText: "Cerrar sin guardar",
         cancelText: "Volver",
         danger: true,
@@ -793,13 +805,13 @@ export function ToothModal({
 
         if (!currentDiagnosisRecord?.pulpalStatus) {
           errors.push(
-            `El diente ${tooth.number} requiere estado pulpar cuando existe ICDAS ${diagnosis.icdasScore}.`,
+            `El diente ${toothPlain} requiere estado pulpar cuando existe ICDAS ${diagnosis.icdasScore}.`,
           );
         }
 
         if (!currentDiagnosisRecord?.periapicalStatus) {
           errors.push(
-            `El diente ${tooth.number} requiere estado periapical cuando existe ICDAS ${diagnosis.icdasScore}.`,
+            `El diente ${toothPlain} requiere estado periapical cuando existe ICDAS ${diagnosis.icdasScore}.`,
           );
         }
       }
@@ -1625,8 +1637,14 @@ export function ToothModal({
               </div>
             )}
             <div className="flex flex-col">
-              <span className="text-lg font-bold leading-tight tabular-nums">
-                Diente {tooth.number}
+              {/* Glifo: forma compacta y, en Palmer, con su corchete de
+                  cuadrante. El «Diente» va FUERA de la etiqueta para no
+                  duplicar el prefijo — el nombre accesible del glifo ya es la
+                  forma plana, así que el lector oye «Diente 6 superior
+                  derecho». */}
+              <span className="flex items-center gap-1 text-lg font-bold leading-tight tabular-nums">
+                Diente
+                <ToothNotationLabel fdi={tooth.number} notation={notation} />
               </span>
               <span className="text-xs text-subtle font-normal">
                 {getToothDescription(tooth.number)}

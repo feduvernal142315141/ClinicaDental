@@ -5,6 +5,8 @@ import { QUADRANT_ROWS } from "./chart-constants";
 import { ToothSVGMultiView } from "./tooth-svg-multi-view";
 import { ResponsiveOdontogramWrapper } from "./responsive-odontogram-wrapper";
 import type { Tooth } from "./types";
+import { useOdontogramStore } from "@/lib/odontogram/store";
+import { ToothNotationLabel } from "@/lib/odontogram/notation";
 
 interface OdontogramGridProps {
   teeth: Tooth[];
@@ -15,6 +17,24 @@ interface OdontogramGridProps {
 
 export function OdontogramGrid({ onToothClick }: OdontogramGridProps) {
   const { upperRight, upperLeft, lowerLeft, lowerRight } = QUADRANT_ROWS;
+  const notation = useOdontogramStore((state) => state.notation);
+
+  /**
+   * La tira de números bajo cada arcada. `num` es el FDI —identidad de la
+   * pieza, y por eso sigue siendo la `key` y el argumento de `onToothClick`—;
+   * lo único que cambia de nomenclatura es lo PINTADO. Se usa el glifo (forma
+   * compacta) porque aquí la posición en la carta ya da el cuadrante y, en
+   * Palmer, `ToothNotationLabel` añade además su corchete.
+   */
+  const renderNumberRow = (toothNumbers: readonly number[]) => (
+    <div className="flex gap-0.5">
+      {toothNumbers.map((num) => (
+        <div key={num} className="w-[3.2rem] text-center">
+          <ToothNotationLabel fdi={num} notation={notation} prefix="Diente" />
+        </div>
+      ))}
+    </div>
+  );
 
   const renderToothRow = (
     toothNumbers: readonly number[],
@@ -79,21 +99,9 @@ export function OdontogramGrid({ onToothClick }: OdontogramGridProps) {
 
             {/* Números de dientes */}
             <div className="flex justify-center gap-3 text-xs text-center font-mono text-muted-foreground">
-              <div className="flex gap-0.5">
-                {upperRight.map((num) => (
-                  <div key={num} className="w-[3.2rem] text-center">
-                    {num}
-                  </div>
-                ))}
-              </div>
+              {renderNumberRow(upperRight)}
               <div className="w-px" />
-              <div className="flex gap-0.5">
-                {upperLeft.map((num) => (
-                  <div key={num} className="w-[3.2rem] text-center">
-                    {num}
-                  </div>
-                ))}
-              </div>
+              {renderNumberRow(upperLeft)}
             </div>
           </div>
 
@@ -128,21 +136,9 @@ export function OdontogramGrid({ onToothClick }: OdontogramGridProps) {
 
             {/* Números de dientes */}
             <div className="flex justify-center gap-3 text-xs text-center font-mono text-muted-foreground">
-              <div className="flex gap-0.5">
-                {lowerRight.map((num) => (
-                  <div key={num} className="w-[3.2rem] text-center">
-                    {num}
-                  </div>
-                ))}
-              </div>
+              {renderNumberRow(lowerRight)}
               <div className="w-px" />
-              <div className="flex gap-0.5">
-                {lowerLeft.map((num) => (
-                  <div key={num} className="w-[3.2rem] text-center">
-                    {num}
-                  </div>
-                ))}
-              </div>
+              {renderNumberRow(lowerLeft)}
             </div>
           </div>
         </div>
