@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CalendarClock, ChevronDown, ListChecks, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils/utils";
+import { useToothLabel } from "@/lib/contexts/tooth-notation-context";
 import { parseLocalValue } from "@/lib/datetime";
 import { formatVisitDate } from "@/lib/utils/visit-eligibility";
 import { SECTION_LABEL_CLASS } from "../section-label";
@@ -21,7 +22,12 @@ export type ConsultationCta =
   | { kind: "start" };
 export interface PendingAct {
   id: string;
-  toothFdi?: string;
+  /**
+   * FDI de la pieza: el NÚMERO, que es la identidad. El texto en la
+   * nomenclatura de la clínica se construye aquí, al pintar; quien produce
+   * estos actos (`usePendingActs`) los deduplica por este número.
+   */
+  toothFdi?: number;
   label: string;
   scheduled?: boolean;
 }
@@ -62,6 +68,10 @@ export function ContinuityStrip({
   onStartNow,
   onViewPending,
 }: ContinuityStripProps) {
+  // Antes de cualquier return temprano: un hook no puede quedar bajo condición.
+  // Forma PLANA ("Diente 6 superior izquierdo"): la ficha es prosa y en Palmer
+  // el dígito suelto es ambiguo entre cuatro piezas.
+  const { describe } = useToothLabel();
   const [expanded, setExpanded] = useState(false);
   const [starting, setStarting] = useState(false);
   const mounted = useRef(true);
@@ -218,9 +228,10 @@ export function ContinuityStrip({
               </p>
               <ul className="mt-2 flex flex-wrap gap-1.5">
                 {visibleActs.map((act) => {
-                  const text = act.toothFdi
-                    ? `${act.toothFdi} · ${act.label}`
-                    : act.label;
+                  const text =
+                    act.toothFdi !== undefined
+                      ? `${describe([act.toothFdi])} · ${act.label}`
+                      : act.label;
                   const chipClass = cn(
                     "inline-flex max-w-full items-center rounded-full border border-hairline",
                     "bg-elevated px-2.5 py-1 text-xs text-ink",

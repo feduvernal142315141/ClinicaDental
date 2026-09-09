@@ -42,7 +42,8 @@ export function SchedulePlanModal({
   // Nomenclatura de la clínica: SOLO para el resumen que se pinta abajo. Las
   // notas que viajan a la cita se siguen escribiendo en FDI a propósito — un
   // texto ya guardado no puede cambiar de significado si la clínica cambia de
-  // nomenclatura.
+  // nomenclatura. Por eso la nota se marca «(FDI)»: es autodescriptiva, no
+  // traducible.
   const notation = useOdontogramStore((state) => state.notation);
 
   const [doctorId, setDoctorId] = useState("");
@@ -144,7 +145,7 @@ export function SchedulePlanModal({
         type: "follow_up",
         status: "scheduled",
         notes: pendingPlans
-          .map((p) => `Diente ${p.toothNumber}: ${p.displayName}`)
+          .map((p) => `Pieza ${p.toothNumber} (FDI): ${p.displayName}`)
           .join("; "),
       });
 
