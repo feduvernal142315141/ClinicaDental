@@ -71,9 +71,6 @@ export function FinalizarCitaModal({
   const clinicalEvents = useOdontogramStore((state) => state.clinicalEvents);
   // Moneda de la clínica inyectada por el host en el store (solo presentación).
   const currency = useOdontogramStore((state) => state.currency);
-  // Nomenclatura de la clínica, por el mismo carril y con el mismo alcance: aquí
-  // se firma lo que se hizo y lo que queda, así que las piezas se nombran en
-  // forma INEQUÍVOCA (`plain`) — en Palmer, "6" solo no distingue cuatro dientes.
   const notation = useOdontogramStore((state) => state.notation);
 
   const performedEvents = useMemo(

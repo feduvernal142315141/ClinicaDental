@@ -19,18 +19,11 @@ export function OdontogramGrid({ onToothClick }: OdontogramGridProps) {
   const { upperRight, upperLeft, lowerLeft, lowerRight } = QUADRANT_ROWS;
   const notation = useOdontogramStore((state) => state.notation);
 
-  /**
-   * La tira de números bajo cada arcada. `num` es el FDI —identidad de la
-   * pieza, y por eso sigue siendo la `key` y el argumento de `onToothClick`—;
-   * lo único que cambia de nomenclatura es lo PINTADO. Se usa el glifo (forma
-   * compacta) porque aquí la posición en la carta ya da el cuadrante y, en
-   * Palmer, `ToothNotationLabel` añade además su corchete.
-   */
-  const renderNumberRow = (toothNumbers: readonly number[]) => (
+  const renderNumberRow = (fdiNumbers: readonly number[]) => (
     <div className="flex gap-0.5">
-      {toothNumbers.map((num) => (
-        <div key={num} className="w-[3.2rem] text-center">
-          <ToothNotationLabel fdi={num} notation={notation} prefix="Diente" />
+      {fdiNumbers.map((fdi) => (
+        <div key={fdi} className="w-[3.2rem] text-center">
+          <ToothNotationLabel fdi={fdi} notation={notation} prefix="Diente" />
         </div>
       ))}
     </div>

@@ -171,7 +171,7 @@ export function GeneralSettings() {
               title="Odontograma"
               subtitle="Nomenclatura con la que se numeran las piezas dentales en pantalla, historia clínica e impresos."
             />
-            <OdontogramFields control={form.control} disabled={disabled} />
+            <OdontogramFields disabled={disabled} />
           </section>
 
           {/* Barra de acciones sticky ESTÁNDAR del proyecto (FormActionBar). En

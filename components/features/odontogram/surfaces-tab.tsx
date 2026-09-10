@@ -61,12 +61,6 @@ interface SurfacesTabProps {
   onSurfaceStatesChange?: (states: SurfaceState[]) => void;
 }
 
-/**
- * Nombre del cuadrante para la cabecera. El mapa vive UNA sola vez en
- * `@/lib/odontogram/notation` (en minúsculas, porque su uso dominante es dentro
- * de frase); aquí solo se capitaliza para encabezar la línea. No reintroducir
- * el mapa: si hace falta el texto en otro sitio, se importa el canónico.
- */
 function getQuadrantName(toothNumber: number): string {
   const quadrant = toToothLabel(toothNumber, "palmer").quadrant;
   if (!quadrant) return "";
@@ -98,7 +92,6 @@ export function SurfacesTab({
   );
   const isInitialized = useRef<number | null>(null);
   const pendingInit = useRef(false);
-  /** Nomenclatura de la clínica: solo afecta a lo PINTADO en la cabecera. */
   const notation = useOdontogramStore((state) => state.notation);
   const anterior = ToothTypeService.isAnterior(tooth.number);
   // Una exodoncia INDICADA no bloquea: la pieza sigue en boca y normalmente es

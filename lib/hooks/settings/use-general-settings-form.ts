@@ -110,7 +110,6 @@ export function useGeneralSettingsForm() {
       phone: settings.phone ?? null,
       timezone: settings.timezone,
       currency: settings.currency,
-      // Ya viene coercionado por normalizeSettings: nunca null.
       toothNotation: settings.toothNotation,
       logoUrl: settings.logoUrl ?? null,
       schedule: scheduleToFormValues(settings.schedule),
@@ -151,8 +150,6 @@ export function useGeneralSettingsForm() {
       // en todo el sistema", así que el contexto de marca debe enterarse.
       if (saved) {
         updateBranding({ name: payload.name, logoUrl: payload.logoUrl });
-        // Misma promesa para la nomenclatura: la carta, las tablas y la
-        // impresión deben renumerar sin recargar la aplicación.
         setNotation(payload.toothNotation);
       }
     },

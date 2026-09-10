@@ -149,10 +149,6 @@ export function EvolutionPrintDocument({
   partialNote,
 }: EvolutionPrintDocumentProps) {
   const { name: clinicName } = useClinicBranding();
-  // El portal va a `document.body`, pero sigue DENTRO del árbol de React: el
-  // contexto llega igual que el de marca. Aun así el documento sólo usa la
-  // forma PLANA — a un glifo Palmer impreso la hoja de estilos puede comerle
-  // el corchete, y un corchete perdido es OTRA pieza.
   const { notation } = useToothLabel();
   const [mounted, setMounted] = useState(false);
   const [generatedAt, setGeneratedAt] = useState<string>("");
@@ -209,8 +205,6 @@ export function EvolutionPrintDocument({
               Generado el {formatLocalStamp(generatedAt)}
             </p>
           ) : null}
-          {/* Sin esto, un impreso leído años después no sabe qué numeración
-              usan sus piezas. */}
           <p className="evolution-print__header-meta">
             Numeración dental: {toothNotationLabel(notation)}
           </p>

@@ -33,7 +33,6 @@ export function TreatmentPlansPendingSection({
   loading,
   onViewOdontogram,
 }: TreatmentPlansPendingSectionProps) {
-  // Antes de los returns tempranos: el hook no puede quedar bajo una condición.
   const { plain } = useToothLabel();
 
   if (loading) {
@@ -57,7 +56,6 @@ export function TreatmentPlansPendingSection({
     <div className="space-y-2">
       {plans.map((plan) => {
         const meta = STATUS_META[plan.status];
-        // Forma PLANA: la línea es prosa y en Palmer «diente 6» son cuatro piezas.
         const toothText = toothPlainText(plan.linkedDiagnosis?.toothFdi, plain);
         return (
           <div

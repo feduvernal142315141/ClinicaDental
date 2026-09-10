@@ -12,6 +12,3 @@ export type {
   OdontogramSnapshot,
   OdontogramSnapshotMetadata,
 } from "./store";
-// Solo el TIPO: los helpers y el glifo se importan de "@/lib/odontogram/notation",
-// para no arrastrar el módulo entero a quien solo formatea un número.
-export type { ToothNotation } from "./notation/types";

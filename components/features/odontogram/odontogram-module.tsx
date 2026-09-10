@@ -58,9 +58,6 @@ function OdontogramModuleContent({
     handlers,
   } = useOdontogramModule();
   const readOnly = useOdontogramStore((state) => state.readOnly);
-  // Nomenclatura elegida por la clínica. Solo alimenta el TEXTO de la tarjeta:
-  // `event.toothNumber` sigue siendo el FDI en todo lo demás (superficies,
-  // clave de lista, click).
   const notation = useOdontogramStore((state) => state.notation);
   const [activeTab, setActiveTab] = useState(initialTab);
 

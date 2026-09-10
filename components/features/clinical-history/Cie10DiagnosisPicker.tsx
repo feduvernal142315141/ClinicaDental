@@ -203,8 +203,6 @@ export function Cie10DiagnosisPicker({
           </div>
           <div className="flex flex-wrap gap-1.5">
             {pendingSuggestions.map((sug, i) => {
-              // Forma PLANA: en Palmer el dígito desnudo no identifica la pieza,
-              // y de este chip sale un diagnóstico que se firma.
               const toothText = toothPlainText(sug.toothRef?.fdi, plain);
               return (
                 <button

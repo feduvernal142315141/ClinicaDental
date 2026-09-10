@@ -20,8 +20,6 @@ import {
   TIMEZONE_SELECT_OPTIONS,
 } from "@/components/features/settings/regional-select-options";
 
-/** Marcador de campo obligatorio del formulario de Opciones Generales.
- *  Exportado para que las demás secciones no escriban su propio asterisco. */
 export const Req = () => <span className="text-rose-500">*</span>;
 
 /**

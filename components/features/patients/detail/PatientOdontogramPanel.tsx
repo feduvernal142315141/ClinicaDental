@@ -86,9 +86,6 @@ export function PatientOdontogramPanel({
   const { user } = useAuth();
 
   const { settings } = useClinicGeneralSettings();
-  // Nomenclatura desde el contexto (cacheado, un solo GET por sesión), no
-  // desde `settings`: cada consumidor de useClinicGeneralSettings dispara su
-  // propia petición.
   const { notation } = useToothNotation();
   const clinicId = patient.clinicId ?? "";
   const [isTransitioning, setIsTransitioning] = useState(false);

@@ -25,7 +25,6 @@ export interface UseClinicalHistoryPageParams {
   openFinalizeOnLoad?: boolean;
 }
 
-export const TREATMENT_PLAN_TAB = PATIENT_TABS.TREATMENT_PLAN;
 export function useClinicalHistoryPage({
   patientId,
   initialTab = "historia-clinica",

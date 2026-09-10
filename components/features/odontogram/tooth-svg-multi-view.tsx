@@ -15,7 +15,6 @@ interface ToothSVGMultiViewProps {
   view: "frontal" | "oclusal" | "lateral";
 }
 
-
 function _ToothSVGMultiView({ toothNumber, view }: ToothSVGMultiViewProps) {
   const isClient = typeof window !== "undefined";
 

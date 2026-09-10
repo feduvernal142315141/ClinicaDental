@@ -78,8 +78,6 @@ export function AddToPlanPanel({
 }: AddToPlanPanelProps) {
   const uid = useId();
   const hintId = `${uid}-hint`;
-  // Solo para ESCRIBIR las piezas en el resumen. Lo elegido, lo ordenado y lo
-  // enviado siguen siendo FDI.
   const { notation } = useToothNotation();
 
   const [scope, setScope] = useState<AddToPlanScope>("general");
@@ -146,11 +144,6 @@ export function AddToPlanPanel({
   );
   const selectedCount = toothSelected.length + generalSelected.length;
 
-  // Orden de ENVÍO: numérico por FDI. Es el que fija `itemOrder` en el servidor
-  // y con el que la tabla y el presupuesto impreso quedarán ordenados, así que
-  // no se toca aunque la nomenclatura pintada numere al revés (en Universal el
-  // cuadrante 1 se escribe 8…1 de arriba abajo). Se ordena la identidad, nunca
-  // el texto.
   const orderedTeeth = useMemo(
     () => Array.from(teeth).sort((a, b) => a - b),
     [teeth],
@@ -419,8 +412,7 @@ function sumServiceCost(services: ServiceListItem[]): number {
  *
  * El desglose no es cosmético: el envío se lleva SIEMPRE las dos pestañas y
  * solo una está a la vista, así que el recuento tiene que nombrar de dónde sale
- * cada parte. Las piezas van en forma plana (`formatSelectedTeeth`): es prosa,
- * y en Palmer una lista de dígitos sueltos no diría sobre qué se presupuesta.
+ * cada parte.
  */
 function describePendingLines(
   toothLines: number,

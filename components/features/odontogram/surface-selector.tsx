@@ -36,7 +36,6 @@ interface SurfaceSelectorProps {
   } | null;
 }
 
-
 type SelectorView = "frontal" | "oclusal" | "lateral";
 
 /* Orden canónico de lectura odontológica M · O/I · D · V · P/L · C. Rige el

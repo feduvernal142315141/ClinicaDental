@@ -39,11 +39,6 @@ export function SchedulePlanModal({
   onScheduled,
 }: SchedulePlanModalProps) {
   const patientId = useOdontogramStore((state) => state.metadata.patientId);
-  // Nomenclatura de la clínica: SOLO para el resumen que se pinta abajo. Las
-  // notas que viajan a la cita se siguen escribiendo en FDI a propósito — un
-  // texto ya guardado no puede cambiar de significado si la clínica cambia de
-  // nomenclatura. Por eso la nota se marca «(FDI)»: es autodescriptiva, no
-  // traducible.
   const notation = useOdontogramStore((state) => state.notation);
 
   const [doctorId, setDoctorId] = useState("");

@@ -22,11 +22,6 @@ export type ConsultationCta =
   | { kind: "start" };
 export interface PendingAct {
   id: string;
-  /**
-   * FDI de la pieza: el NÚMERO, que es la identidad. El texto en la
-   * nomenclatura de la clínica se construye aquí, al pintar; quien produce
-   * estos actos (`usePendingActs`) los deduplica por este número.
-   */
   toothFdi?: number;
   label: string;
   scheduled?: boolean;
@@ -68,9 +63,6 @@ export function ContinuityStrip({
   onStartNow,
   onViewPending,
 }: ContinuityStripProps) {
-  // Antes de cualquier return temprano: un hook no puede quedar bajo condición.
-  // Forma PLANA ("Diente 6 superior izquierdo"): la ficha es prosa y en Palmer
-  // el dígito suelto es ambiguo entre cuatro piezas.
   const { describe } = useToothLabel();
   const [expanded, setExpanded] = useState(false);
   const [starting, setStarting] = useState(false);

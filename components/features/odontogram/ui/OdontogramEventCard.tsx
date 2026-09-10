@@ -9,9 +9,8 @@ import {
 } from "@/lib/odontogram/notation";
 
 export interface OdontogramEventCardProps {
-  /** Número FDI del diente, e.g. 11. Es la IDENTIDAD de la pieza, no su texto. */
+  /** Número del diente, e.g. 11 */
   toothNumber: number;
-  /** Nomenclatura de la clínica. La inyecta el módulo desde la tienda. */
   notation: ToothNotation;
   /** Superficies afectadas */
   surfaces?: string[];
@@ -61,12 +60,6 @@ export function OdontogramEventCard({
         <div className="mb-2 flex items-start justify-between">
           <div className="space-y-0.5">
             <p className="text-lg font-semibold text-ink">
-              {/*
-                El glifo Palmer necesita su corchete para no ser ambiguo: en esa
-                nomenclatura 16/26/36/46 se escriben todos "6". `ToothNotationLabel`
-                lo dibuja y deja el nombre accesible en forma inequívoca
-                ("6 superior derecho"), además del FDI en el `title`.
-              */}
               Diente <ToothNotationLabel fdi={toothNumber} notation={notation} />
             </p>
             {surfaces.length > 0 && (

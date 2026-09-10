@@ -131,7 +131,6 @@ export function DiagnosisTab({
   onDiagnosesChange,
   onToothDiagnosisChange,
 }: DiagnosisTabProps) {
-  /** Nomenclatura de la clínica: solo afecta a lo PINTADO en la cabecera. */
   const notation = useOdontogramStore((state) => state.notation);
   const [activeSurface, setActiveSurface] = useState<ToothSurface | null>(
     selectedSurfaces.length > 0 ? selectedSurfaces[0] : null,

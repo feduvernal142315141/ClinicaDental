@@ -70,7 +70,6 @@ export function PlanItemStatusSelect({
   onUpdate,
 }: PropertySelectBaseProps) {
   const { item } = row;
-  // Solo para el nombre accesible: la pieza se identifica siempre por su FDI.
   const { notation } = useToothNotation();
   const status: PlanItemStatus = item.status ?? "plan";
   const meta = PLAN_ITEM_STATUS_META[status];

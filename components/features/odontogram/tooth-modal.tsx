@@ -71,12 +71,6 @@ interface ToothModalProps {
   ) => void;
 }
 
-/**
- * "Molar primer superior derecho". El nombre del cuadrante NO se escribe aquí:
- * viene del mapa canónico de `@/lib/odontogram/notation`, ya en minúsculas
- * porque va dentro de frase. El ordinal (`primer`, `segundo`…) sí es propio de
- * esta descripción y no está duplicado en ningún otro sitio.
- */
 function getToothDescription(toothNumber: number): string {
   const position = positionOf(toothNumber);
 
@@ -642,13 +636,6 @@ export function ToothModal({
 
   if (!tooth) return null;
 
-  /**
-   * La pieza EN PROSA, en la nomenclatura de la clínica. Los toasts, los
-   * `confirm` y los errores de validación la usan en esta forma y no en la
-   * compacta: en Palmer el dígito desnudo («6») es ambiguo entre cuatro piezas
-   * y ahí no hay corchete que lo desambigüe. `tooth.number` sigue siendo el FDI
-   * y no se toca — es la identidad con la que se leen y escriben los eventos.
-   */
   const toothPlain = formatToothPlain(tooth.number, notation);
 
   /** Eventos del diente que constituyen una MARCA viva sobre una cara. */
@@ -1637,11 +1624,6 @@ export function ToothModal({
               </div>
             )}
             <div className="flex flex-col">
-              {/* Glifo: forma compacta y, en Palmer, con su corchete de
-                  cuadrante. El «Diente» va FUERA de la etiqueta para no
-                  duplicar el prefijo — el nombre accesible del glifo ya es la
-                  forma plana, así que el lector oye «Diente 6 superior
-                  derecho». */}
               <span className="flex items-center gap-1 text-lg font-bold leading-tight tabular-nums">
                 Diente
                 <ToothNotationLabel fdi={tooth.number} notation={notation} />

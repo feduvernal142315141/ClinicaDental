@@ -600,8 +600,6 @@ function VisitRecordBands({
           <h3 className={BLOCK_LABEL_CLASS}>Apreciación</h3>
           <ul className="space-y-1.5">
             {diagnoses.map((diagnosis, index) => {
-              // Forma PLANA, la misma que imprime el documento: la tarjeta en
-              // pantalla y el papel deben nombrar la pieza igual.
               const toothText = toothRefText(diagnosis.toothRef, plain);
               return (
               <li

@@ -50,8 +50,6 @@ export const generalSettingsFormSchema = z
       .optional(),
     timezone: z.string().min(1, "La zona horaria es requerida"),
     currency: z.string().min(1, "La moneda es requerida"),
-    // Derivado de la tupla `as const` del módulo de notación: una sola lista
-    // de nomenclaturas en el repo (mismo patrón que SERVICE_TYPE_VALUES).
     toothNotation: z.enum(TOOTH_NOTATIONS, {
       message: "La nomenclatura dental es requerida",
     }),

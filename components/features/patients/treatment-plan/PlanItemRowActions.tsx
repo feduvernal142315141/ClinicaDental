@@ -63,7 +63,6 @@ export function PlanItemRowActions({
   onRemove,
 }: PlanItemRowActionsProps) {
   const { item } = row;
-  // Nomenclatura de la clínica: es PRESENTACIÓN. `row.teeth` sigue siendo FDI.
   const { notation } = useToothNotation();
   const [dialog, setDialog] = useState<RowDialog | null>(null);
   /**

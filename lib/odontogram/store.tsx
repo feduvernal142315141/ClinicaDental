@@ -162,10 +162,6 @@ export interface OdontogramModuleProps {
   readOnly?: boolean;
 
   currency?: string;
-  /**
-   * Nomenclatura dental de la clínica (presentación). El host la resuelve del
-   * contexto y la propaga; el dato del snapshot sigue siendo FDI SIEMPRE.
-   */
   notation?: ToothNotation;
   showHeader?: boolean;
   initialTab?:
@@ -185,7 +181,6 @@ export interface OdontogramModuleProps {
 interface OdontogramState extends OdontogramSnapshot {
   readOnly: boolean;
   currency: string;
-  /** Notación en la que se PINTAN las piezas. Nunca entra al snapshot. */
   notation: ToothNotation;
   replaceSnapshot: (snapshot: OdontogramSnapshot) => void;
   setReadOnly: (readOnly: boolean) => void;
@@ -623,10 +618,6 @@ const createOdontogramStore = ({
         notation: get().notation,
       }));
     },
-    // IDEMPOTENTES a propósito: `set` con objeto nuevo NOTIFICA aunque el valor
-    // no cambie, y el suscriptor sin selector del autosave (OdontogramModule)
-    // dispararía un PUT que nadie pidió — subiendo `version` y re-sellando
-    // `updatedAt` de un registro clínico. Si el valor es el mismo, no se avisa.
     setReadOnly: (next) => {
       if (get().readOnly === next) return;
       set({ readOnly: next });

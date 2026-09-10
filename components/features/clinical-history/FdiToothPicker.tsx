@@ -1,15 +1,5 @@
 "use client";
 
-/**
- * FdiToothPicker — selector compacto de diente + cara anatómica.
- *
- * NO importa lib/odontogram internals: sólo la subruta pública de nomenclatura.
- * Lo que SELECCIONA y GUARDA es siempre el FDI (ISO 3950), la identidad de la
- * pieza; la notación de la clínica cambia únicamente lo que se PINTA.
- *
- * Salida visual: la pieza en la notación vigente + la inicial de la cara.
- */
-
 import { useState, useId, useRef, useEffect } from "react";
 import { MapPin, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
@@ -116,8 +106,6 @@ export function FdiToothPicker({
     onChange(null);
   };
 
-  // Forma PLANA, no dígitos: el trigger es lo único que queda a la vista una
-  // vez cerrado el popover, y en Palmer «6» no dice qué pieza es.
   const display = toothRefText(value, plain);
 
   return (
@@ -193,11 +181,11 @@ export function FdiToothPicker({
                             "w-8 h-7 rounded-lg text-xs font-mono font-medium border transition-colors",
                             isActive
                               ? "bg-brand text-white border-brand"
-                              : "bg-elevated border-hairline text-ink hover:border-brand hover:text-brand",
+                              : notation === "palmer"
+                                ? "border-transparent bg-elevated text-ink hover:bg-hover hover:text-brand"
+                                : "bg-elevated border-hairline text-ink hover:border-brand hover:text-brand",
                           )}
                         >
-                          {/* Glifo: aquí el dígito Palmer sí es legible, va con
-                              su corchete y dentro de su cuadrante rotulado. */}
                           <ToothNotationLabel fdi={fdi} notation={notation} />
                         </button>
                       );

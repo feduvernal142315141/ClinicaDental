@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/ui";
 import { useToothLabel } from "@/lib/contexts/tooth-notation-context";
 import { ToothNotationLabel } from "@/lib/odontogram/notation";
 import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
+import { notationDrawsBracket } from "@/lib/utils/clinical-tooth-text";
 import { cn } from "@/lib/utils/utils";
 import type { PlanItemGroup, PlanItemRow } from "@/lib/hooks/odontogram";
 import {
@@ -85,9 +86,6 @@ function humanizeSurface(code: string): string {
 
 function ToothScopeCell({ row }: { row: PlanItemRow }) {
   const { teeth, surfaces } = row;
-  // `describe` es la forma PLANA ("Diente 6 superior derecho"): esta línea es
-  // el texto que identifica la pieza en un presupuesto que se firma, y una
-  // lista de dígitos Palmer ("Dientes 6, 6") no identifica nada.
   const { notation, describe } = useToothLabel();
   const label = teeth.length === 0 ? "Pieza sin especificar" : describe(teeth);
   const surfacesLabel = surfaces.map(humanizeSurface).join(", ");
@@ -95,24 +93,13 @@ function ToothScopeCell({ row }: { row: PlanItemRow }) {
   return (
     <div className="flex items-start gap-2.5">
       {/* El cuadro repite la pieza que ya dice la etiqueta: se oculta al lector
-          de pantalla para no leer "16, Diente 16". Por eso aquí va el GLIFO
-          (forma compacta, con el corchete Palmer) y al lado la forma plana: son
-          la misma pieza escrita para el ojo y para el oído, no dos datos.
+          de pantalla para no leer "16, Diente 16".
 
           Con varias piezas lleva el "+N". El cuadro es el ancla con la que se
           escanea la columna, y un puente sobre 15-16-17 pintado como un simple
           "15" se lee como una línea de UNA pieza: en un presupuesto que el
           paciente firma, la pieza equivocada es un problema clínico y
           contractual. La lista completa sigue en la etiqueta de al lado.
-
-          EL MARCO SE APAGA EN PALMER (`border-transparent`, no `border-none`:
-          conserva el píxel y el cuadro no se mueve al cambiar de
-          nomenclatura). El corchete de Palmer ES un marco parcial dibujado con
-          `border` alrededor del dígito; dentro de un cuadro que ya tiene borde
-          en las cuatro caras quedarían dos filetes paralelos a 6 px, y el
-          corchete —lo único que distingue la 16 de la 26— se leería como
-          adorno del cuadro. Con el marco apagado, el relleno `bg-canvas` sigue
-          haciendo de ancla y la única línea del cuadro es el corchete.
 
           `bg-canvas` y no `bg-elevated`: en tema claro `--elevated` y
           `--surface` son EL MISMO blanco (globals.css:50-51), así que sobre el
@@ -121,7 +108,9 @@ function ToothScopeCell({ row }: { row: PlanItemRow }) {
         aria-hidden="true"
         className={cn(
           "mt-0.5 inline-flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center gap-0.5 rounded-lg border bg-canvas px-1.5 text-xs font-semibold tabular-nums text-ink",
-          notation === "palmer" ? "border-transparent" : "border-hairline",
+          notationDrawsBracket(notation)
+            ? "border-transparent"
+            : "border-hairline",
         )}
       >
         {teeth.length === 0 ? (

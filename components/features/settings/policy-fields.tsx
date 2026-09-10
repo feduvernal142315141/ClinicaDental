@@ -18,7 +18,6 @@ interface PolicyFieldsProps {
   disabled?: boolean;
 }
 
-
 /** Convierte el string de un `<input type="number">` a number|undefined. */
 function toNumberOrUndefined(raw: string): number | undefined {
   return raw === "" ? undefined : Number(raw);

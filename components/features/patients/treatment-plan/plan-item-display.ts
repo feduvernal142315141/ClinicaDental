@@ -116,13 +116,6 @@ export function getSessionBlockReason(
 /**
  * Sobre qué actúa la línea, en prosa: "diente 16", "dientes 16, 17", "general".
  * Es lo que distingue dos líneas del mismo servicio en el mismo plan.
- *
- * `teeth` son FDI —la identidad de la pieza— y `notation` solo decide cómo se
- * ESCRIBEN. Se usa la forma PLANA (`formatToothListPlain`) y no la compacta
- * porque esto es prosa: en Palmer, 16/26/36 se escriben todos "6" y una lista
- * de dígitos sueltos ("dientes 6, 6, 6") no identifica ninguna pieza. La forma
- * plana dice "6 superior derecho, 6 superior izquierdo…", que es lo único
- * defendible en el diálogo que saca una línea del presupuesto.
  */
 export function describePlanItemScope(
   item: Pick<TreatmentPlanItem, "general">,

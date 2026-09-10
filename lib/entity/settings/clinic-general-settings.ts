@@ -35,12 +35,6 @@ export interface ClinicGeneralSettings {
   reminderTime?: number | null;
   /** URL absoluta del logo de la clínica (subido a Cloudinary). */
   logoUrl?: string | null;
-  /**
-   * Nomenclatura dental que la clínica lee en pantalla. OBLIGATORIA a
-   * propósito: así olvidar la línea en el payload de guardado es un error de
-   * `tsc` y no una reversión silenciosa de la elección de la clínica.
-   * Es presentación: el dato guardado sigue siendo FDI siempre.
-   */
   toothNotation: ToothNotation;
 }
 
@@ -89,8 +83,5 @@ export const DEFAULT_CLINIC_GENERAL_SETTINGS: ClinicGeneralSettings = {
   sendReminders: false,
   reminderTime: 1440,
   logoUrl: null,
-  // FDI/ISO 3950, el estándar internacional (= DEFAULT_TOOTH_NOTATION del
-  // módulo de notación, escrito como literal para que esta capa de entidades
-  // no arrastre runtime del odontograma).
   toothNotation: "fdi",
 };
