@@ -22,6 +22,12 @@ import {
   DEFAULT_TOOTH_NOTATION,
   type ToothNotation,
 } from "@/lib/odontogram/notation";
+import {
+  DEFAULT_DENTITION,
+  isDentitionType,
+  teethFor,
+  type DentitionType,
+} from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 
 const globalStatusVisualState = (
   status: ToothGlobalStatus,
@@ -125,7 +131,7 @@ const legacyVisualStateToGlobalStatus = (
       return null;
   }
 };
-export const ODONTOGRAM_SCHEMA_VERSION = 3;
+export const ODONTOGRAM_SCHEMA_VERSION = 4;
 export const LEGACY_SURFACE_SCHEMA_VERSION = 2;
 export interface OdontogramSnapshotMetadata {
   version: number;
@@ -137,6 +143,8 @@ export interface OdontogramSnapshotMetadata {
 }
 export interface OdontogramSnapshot {
   schemaVersion: number;
+  // Ausente en el wire = snapshot legado (v<=3): lo resuelve `normalizeSnapshot`.
+  dentition?: DentitionType;
   teeth: Tooth[];
   clinicalEvents: ClinicalEvent[];
   treatmentPlans: TreatmentPlan[];
@@ -163,6 +171,7 @@ export interface OdontogramModuleProps {
 
   currency?: string;
   notation?: ToothNotation;
+  defaultDentition?: DentitionType;
   showHeader?: boolean;
   initialTab?:
     | "odontogram"
@@ -182,10 +191,15 @@ interface OdontogramState extends OdontogramSnapshot {
   readOnly: boolean;
   currency: string;
   notation: ToothNotation;
+  dentition: DentitionType;
+  // Default del host (edad del paciente): presentación, no se persiste.
+  defaultDentition: DentitionType;
   replaceSnapshot: (snapshot: OdontogramSnapshot) => void;
   setReadOnly: (readOnly: boolean) => void;
   setCurrency: (currency: string) => void;
   setNotation: (notation: ToothNotation) => void;
+  setDentition: (dentition: DentitionType) => void;
+  setDefaultDentition: (dentition: DentitionType) => void;
   updateToothGlobalStatus: (
     toothNumber: number,
     status: ToothGlobalStatus,
@@ -218,12 +232,6 @@ interface OdontogramState extends OdontogramSnapshot {
   getSnapshot: () => OdontogramSnapshot;
 }
 export type OdontogramStoreApi = StoreApi<OdontogramState>;
-const quadrants = [
-  [11, 12, 13, 14, 15, 16, 17, 18],
-  [21, 22, 23, 24, 25, 26, 27, 28],
-  [31, 32, 33, 34, 35, 36, 37, 38],
-  [41, 42, 43, 44, 45, 46, 47, 48],
-];
 const PERFORMED_CATEGORY_SYMBOL: Record<string, string> = {
   restaurador: "restoration",
   endodoncia: "endodontics",
@@ -509,31 +517,37 @@ const normalizeTooth = (
     ),
   };
 };
-const initializeTeeth = (): Tooth[] => {
-  const allTeeth: Tooth[] = [];
-  quadrants.forEach((quadrant) => {
-    quadrant.forEach((number) => {
-      allTeeth.push({
-        number,
-        globalStatus: "healthy",
-        treatments: [],
-        surfaceTreatments: [],
-        surfaceConditions: [],
-        history: [],
-      });
-    });
-  });
-  return allTeeth;
+const blankTooth = (number: number): Tooth => ({
+  number,
+  globalStatus: "healthy",
+  treatments: [],
+  surfaceTreatments: [],
+  surfaceConditions: [],
+  history: [],
+});
+const initializeTeeth = (dentition: DentitionType): Tooth[] =>
+  teethFor(dentition).map(blankTooth);
+// La dentición solo suma espacios: cambiarla nunca borra dientes ya
+// registrados (ni sus eventos), solo añade los que falten.
+const withTeethFor = (teeth: Tooth[], dentition: DentitionType): Tooth[] => {
+  const present = new Set(teeth.map((tooth) => tooth.number));
+  const missing = teethFor(dentition)
+    .filter((number) => !present.has(number))
+    .map(blankTooth);
+  return missing.length > 0 ? [...teeth, ...missing] : teeth;
 };
 export const createEmptySnapshot = ({
   patientId,
   clinicId,
+  dentition,
 }: {
   patientId: string;
   clinicId?: string;
+  dentition?: DentitionType;
 }): OdontogramSnapshot => ({
   schemaVersion: ODONTOGRAM_SCHEMA_VERSION,
-  teeth: initializeTeeth(),
+  dentition,
+  teeth: initializeTeeth(dentition ?? DEFAULT_DENTITION),
   clinicalEvents: [],
   treatmentPlans: [],
   metadata: {
@@ -547,21 +561,36 @@ const normalizeSnapshot = (
   snapshot: OdontogramSnapshot | null | undefined,
   patientId: string,
   clinicId?: string,
+  defaultDentition: DentitionType = DEFAULT_DENTITION,
 ): OdontogramSnapshot => {
-  const fallback = createEmptySnapshot({ patientId, clinicId });
   if (!snapshot) {
-    return fallback;
+    return createEmptySnapshot({
+      patientId,
+      clinicId,
+      dentition: defaultDentition,
+    });
   }
   const normalizedEvents = (snapshot.clinicalEvents ?? []).map(
     normalizeClinicalEvent,
   );
-  const normalizedTeethSource = snapshot.teeth?.length
-    ? snapshot.teeth
-    : fallback.teeth;
+  // Un snapshot PERSISTIDO sin dentición es v≤3 por construcción (v4 siempre
+  // la serializa) y antes de v4 solo existía la permanente. El vacío de
+  // `createEmptySnapshot` sí es v4 sin dentición: ahí manda el default del
+  // host. El 4 es literal a propósito: si el esquema sube a 5, un v4 sin
+  // dentición debe seguir tomando el default, no "permanent".
+  const dentition = isDentitionType(snapshot.dentition)
+    ? snapshot.dentition
+    : (snapshot.schemaVersion ?? 1) < 4
+      ? "permanent"
+      : defaultDentition;
 
   return {
-    schemaVersion: snapshot.schemaVersion ?? ODONTOGRAM_SCHEMA_VERSION,
-    teeth: normalizedTeethSource.map((tooth) =>
+    schemaVersion: ODONTOGRAM_SCHEMA_VERSION,
+    dentition,
+    teeth: withTeethFor(
+      Array.isArray(snapshot.teeth) ? snapshot.teeth : [],
+      dentition,
+    ).map((tooth) =>
       normalizeTooth(tooth, normalizedEvents),
     ),
     clinicalEvents: normalizedEvents,
@@ -578,6 +607,7 @@ const normalizeSnapshot = (
 };
 const buildSnapshot = (state: OdontogramState): OdontogramSnapshot => ({
   schemaVersion: state.schemaVersion,
+  dentition: state.dentition,
   teeth: state.teeth,
   clinicalEvents: state.clinicalEvents,
   treatmentPlans: state.treatmentPlans,
@@ -592,30 +622,40 @@ const createOdontogramStore = ({
   readOnly = false,
   currency = "USD",
   notation = DEFAULT_TOOTH_NOTATION,
+  defaultDentition = DEFAULT_DENTITION,
 }: {
   patientId: string;
   clinicId?: string;
   readOnly?: boolean;
   currency?: string;
   notation?: ToothNotation;
+  defaultDentition?: DentitionType;
 }) => {
-  const initialSnapshot = createEmptySnapshot({ patientId, clinicId });
+  const initialSnapshot = createEmptySnapshot({
+    patientId,
+    clinicId,
+    dentition: defaultDentition,
+  });
 
   return createStore<OdontogramState>((set, get) => ({
     ...initialSnapshot,
     readOnly,
     currency,
     notation,
+    dentition: defaultDentition,
+    defaultDentition,
     replaceSnapshot: (snapshot) => {
       set(() => ({
         ...normalizeSnapshot(
           snapshot,
           get().metadata.patientId,
           get().metadata.clinicId,
+          get().defaultDentition,
         ),
         readOnly: get().readOnly,
         currency: get().currency,
         notation: get().notation,
+        defaultDentition: get().defaultDentition,
       }));
     },
     setReadOnly: (next) => {
@@ -629,6 +669,17 @@ const createOdontogramStore = ({
     setNotation: (next) => {
       if (get().notation === next) return;
       set({ notation: next });
+    },
+    setDentition: (next) => {
+      if (get().readOnly || get().dentition === next) return;
+      set((state) => ({
+        dentition: next,
+        teeth: withTeethFor(state.teeth, next),
+      }));
+    },
+    setDefaultDentition: (next) => {
+      if (get().defaultDentition === next) return;
+      set({ defaultDentition: next });
     },
     updateToothDiagnosis: (toothNumber, diagnosis) => {
       if (get().readOnly) return;
@@ -1014,10 +1065,12 @@ const createOdontogramStore = ({
         ...createEmptySnapshot({
           patientId: state.metadata.patientId,
           clinicId: state.metadata.clinicId,
+          dentition: state.dentition,
         }),
         readOnly: state.readOnly,
         currency: state.currency,
         notation: state.notation,
+        defaultDentition: state.defaultDentition,
       }));
     },
     getTooth: (toothNumber) =>
@@ -1039,6 +1092,7 @@ export function OdontogramStoreProvider({
   readOnly = false,
   currency = "USD",
   notation = DEFAULT_TOOTH_NOTATION,
+  defaultDentition = DEFAULT_DENTITION,
   children,
 }: {
   patientId: string;
@@ -1046,6 +1100,7 @@ export function OdontogramStoreProvider({
   readOnly?: boolean;
   currency?: string;
   notation?: ToothNotation;
+  defaultDentition?: DentitionType;
   children: React.ReactNode;
 }) {
   const storeRef = useRef<OdontogramStoreApi | null>(null);
@@ -1060,6 +1115,7 @@ export function OdontogramStoreProvider({
       readOnly,
       currency,
       notation,
+      defaultDentition,
     });
   }
 
@@ -1068,8 +1124,9 @@ export function OdontogramStoreProvider({
     storeRef.current.getState().setReadOnly(readOnly);
     storeRef.current.getState().setCurrency(currency);
     storeRef.current.getState().setNotation(notation);
+    storeRef.current.getState().setDefaultDentition(defaultDentition);
     activeStoreApi = storeRef.current;
-  }, [currency, notation, readOnly, storeKey]);
+  }, [currency, defaultDentition, notation, readOnly, storeKey]);
   activeStoreApi = storeRef.current;
   useEffect(() => {
     return () => {
