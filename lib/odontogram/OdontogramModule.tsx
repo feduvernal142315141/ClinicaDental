@@ -15,6 +15,7 @@ function OdontogramModuleRuntime({
   patientId,
   clinicId,
   adapter,
+  dictationAdapter,
   showHeader = true,
   initialTab,
   onChange,
@@ -150,7 +151,11 @@ function OdontogramModuleRuntime({
         </div>
       ) : null}
 
-      <OdontogramModuleView initialTab={initialTab} showHeader={showHeader} />
+      <OdontogramModuleView
+        initialTab={initialTab}
+        showHeader={showHeader}
+        dictationAdapter={dictationAdapter}
+      />
 
       {visitId && patientId && clinicId ? (
         <FinalizarCitaModal
@@ -171,6 +176,7 @@ export function OdontogramModule({
   patientId,
   clinicId,
   adapter,
+  dictationAdapter,
   readOnly = false,
   currency,
   notation,
@@ -199,6 +205,7 @@ export function OdontogramModule({
         patientId={patientId}
         clinicId={clinicId}
         adapter={adapter}
+        dictationAdapter={dictationAdapter}
         showHeader={showHeader}
         initialTab={initialTab}
         onChange={onChange}

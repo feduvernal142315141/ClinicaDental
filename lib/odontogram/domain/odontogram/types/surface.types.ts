@@ -225,11 +225,13 @@ export type DiagnosisFindingKind =
   | "caries"
   | "non-carious-lesion"
   | "support-only";
+export type IcdasSource = "dictated" | "dictation-default" | "existing";
 
 export interface SurfaceDiagnosis {
   surface: ToothSurface;
   surfaceRef?: SurfaceRef;
   icdasScore: ICDASScore;
+  icdasSource?: IcdasSource;
   cariesType?: CariesType;
   cariesActivity?: CariesActivity;
   nonCariousLesions: NonCariousLesion[];

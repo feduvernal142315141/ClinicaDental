@@ -36,6 +36,8 @@ import { PlanTab } from "./plan-tab";
 import { PerformedTab } from "./performed-tab";
 
 import { SchedulePlanModal } from "./schedule-plan-modal";
+import { ToothDictationPanel } from "./tooth-dictation-panel";
+import { useOdontogramDictationAvailable } from "./odontogram-dictation-session";
 import {
   ODONTOGRAM_SCHEMA_VERSION,
   useOdontogramStore,
@@ -64,6 +66,15 @@ interface ToothModalProps {
   isOpen: boolean;
   /** Cara clicada en la grilla, para preseleccionarla al abrir el modal. */
   initialSurface?: ToothSurface | null;
+  /**
+   * Notifica la pieza/caras con foco mientras el modal está abierto, y `null`
+   * al cerrarse o desmontarse. Lo consume el dictado por voz para resolver
+   * "esa", "ahí", "la misma pieza" (HU-DICT-011). El modal no sabe nada del
+   * dictado: solo publica su foco.
+   */
+  onFocusChange?: (
+    focus: { toothNumber: number; surfaces: ToothSurface[] } | null,
+  ) => void;
   onClose: () => void;
   onUpdateGlobalStatus: (
     toothNumber: number,
@@ -185,6 +196,7 @@ export function ToothModal({
   tooth,
   isOpen,
   initialSurface,
+  onFocusChange,
   onClose,
   onUpdateGlobalStatus,
 }: ToothModalProps) {
@@ -201,6 +213,11 @@ export function ToothModal({
     readOnly,
   } = useOdontogramStore();
   const odontogramConfirm = useOdontogramConfirm();
+  // Solo para saber si hay dictado disponible: el control compacto se pinta
+  // solo. Sin sesión no se reserva sitio para él en la cabecera pegajosa. Es un
+  // booleano, no la sesión: suscribirse a la sesión repintaría el modal entero
+  // una vez por segundo mientras se graba.
+  const hasDictation = useOdontogramDictationAvailable();
 
   // Riesgo de caries a nivel PACIENTE (CAMBRA/ICCMS lite), calculado desde la
   // carga/actividad de lesiones del odontograma (ya no es un valor fijo "medio").
@@ -228,6 +245,13 @@ export function ToothModal({
   // inicializa una vez por diente, así que vaciar el estado del padre no basta
   // para que suelte su selección (y su barrida al guardar recrearía lo borrado).
   const [surfacesResetKey, setSurfacesResetKey] = useState(0);
+  /**
+   * Sube cuando un dictado por voz cambia ESTE diente con el modal abierto
+   * (HU-DICT-029). Se procesa dentro del efecto de carga para releer el store y
+   * repintar la pestaña Superficies en el mismo commit.
+   */
+  const [dictationSyncToken, setDictationSyncToken] = useState(0);
+  const dictationSyncedRef = useRef(0);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [schedulePlans, setSchedulePlans] = useState<ProcedurePlan[]>([]);
   const performedProcedures = useMemo(() => {
@@ -345,6 +369,32 @@ export function ToothModal({
 
   const initializedToothRef = useRef<string | null>(null);
 
+  // El foco se publica por REF para que cambiar el callback (una lambda nueva
+  // en cada render del padre) no vuelva a disparar la notificación.
+  const onFocusChangeRef = useRef(onFocusChange);
+  onFocusChangeRef.current = onFocusChange;
+  const focusedToothNumber = tooth?.number ?? null;
+
+  useEffect(() => {
+    if (!isOpen || focusedToothNumber === null) {
+      onFocusChangeRef.current?.(null);
+      return;
+    }
+    onFocusChangeRef.current?.({
+      toothNumber: focusedToothNumber,
+      surfaces: selectedSurfaces,
+    });
+  }, [isOpen, focusedToothNumber, selectedSurfaces]);
+
+  // Desmontar el modal (cambio de paciente, salir de la pantalla) también borra
+  // el foco: un foco fantasma haría que el dictado escribiera en otra pieza.
+  useEffect(
+    () => () => {
+      onFocusChangeRef.current?.(null);
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!isOpen || !tooth) {
       if (!isOpen) initializedToothRef.current = null;
@@ -366,6 +416,12 @@ export function ToothModal({
       // tab reemite las suyas un commit después, y hasta entonces las anteriores
       // apagarían el chip «Sano» de un diente que no las tiene.
       setPendingMarkedSurfaces(new Set());
+      // Y por el mismo motivo se vacía la ref: `SurfacesTab` NO reemite al
+      // montar (su `pendingInit` se salta la primera propagación), así que sin
+      // esto las caras marcadas en la pieza anterior seguirían aquí — y tanto
+      // el guardado (que materializa plantillas desde esta ref) como el
+      // refresco por dictado las escribirían en el diente equivocado.
+      surfaceStatesRef.current = [];
     }
 
     {
@@ -455,7 +511,34 @@ export function ToothModal({
           ? loadedSurfaces
           : Array.from(new Set<ToothSurface>([...loadedSurfaces, ...prev])),
       );
-      setInitialSurfaceStates(computedStates);
+
+      /**
+       * Un dictado aplicado sobre ESTA pieza (HU-DICT-029). `SurfacesTab` se
+       * inicializa UNA sola vez por diente, así que recalcular los estados no
+       * basta: hay que remontarlo o el doctor seguiría viendo las caras de
+       * antes del dictado. El remonte se agenda en el mismo commit que publica
+       * los estados nuevos, así que el tab nace ya con ellos.
+       */
+      const isDictationResync = dictationSyncedRef.current !== dictationSyncToken;
+      if (isDictationResync) {
+        dictationSyncedRef.current = dictationSyncToken;
+        setSurfacesResetKey((key) => key + 1);
+      }
+
+      // Remontar no puede tirar el trabajo en curso: las caras que el clínico
+      // marcó y aún no ha guardado no están en los eventos del store, así que
+      // se reinyectan. Donde el store ya dice algo de esa cara (lo dictado
+      // incluido), manda el store.
+      const preservedStates = isDictationResync
+        ? surfaceStatesRef.current.filter(
+            (state) => !loadedSurfaces.includes(state.surface),
+          )
+        : [];
+      setInitialSurfaceStates(
+        preservedStates.length > 0
+          ? [...computedStates, ...preservedStates]
+          : computedStates,
+      );
 
       // Cargar diagnósticos
       const loadedDiagnoses = new Map<ToothSurface, SurfaceDiagnosis>();
@@ -537,7 +620,24 @@ export function ToothModal({
 
       setPlans(loadedPlans);
     }
-  }, [isOpen, tooth, getToothEvents, clinicalEvents.length, initialSurface]);
+  }, [
+    isOpen,
+    tooth,
+    getToothEvents,
+    clinicalEvents.length,
+    initialSurface,
+    dictationSyncToken,
+  ]);
+
+  /**
+   * El dictado escribe en el store, no en el estado del modal. Este efecto de
+   * carga ya se dispara con el cambio de `tooth` (el store recrea la pieza
+   * afectada), pero la pestaña Superficies necesita además el remonte: por eso
+   * el aviso pasa por su propio token.
+   */
+  const handleDictationApplied = useCallback(() => {
+    setDictationSyncToken((token) => token + 1);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1583,6 +1683,27 @@ export function ToothModal({
     return null;
   })();
 
+  /**
+   * Cabecera pegajosa del modal: aviso de estado + control de dictado.
+   *
+   * El dictado va aquí a propósito (HU-DICT-029). Con guantes puestos y las
+   * manos en la boca del paciente, un botón que se va con el scroll de la
+   * pestaña es un botón que no se usa; y arriba es además donde el foco de
+   * teclado lo alcanza primero dentro del diálogo. Fondo propio: el contenedor
+   * `sticky` del modal no lo trae y el contenido pasaría por debajo.
+   */
+  const stickyHeader =
+    topBanner || hasDictation ? (
+      <div className="space-y-2 bg-surface pb-1">
+        {topBanner}
+        <ToothDictationPanel
+          toothNumber={tooth.number}
+          surfaces={selectedSurfaces}
+          onApplied={handleDictationApplied}
+        />
+      </div>
+    ) : null;
+
   return (
     <>
       <OdontogramModal
@@ -1639,7 +1760,7 @@ export function ToothModal({
             </div>
           </div>
         }
-        topBanner={topBanner}
+        topBanner={stickyHeader}
         footer={
           readOnly ? (
             <div className="flex justify-end pt-3 border-t">

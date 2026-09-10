@@ -5,6 +5,7 @@ import { Loader2, RotateCcw } from "lucide-react";
 import {
   OdontogramModule,
   createApiOdontogramAdapter,
+  createApiOdontogramDictationAdapter,
   createHistoricOdontogramAdapter,
   type OdontogramSnapshot,
 } from "@/lib/odontogram";
@@ -14,6 +15,7 @@ import { useAuth } from "@/lib/contexts/auth-context";
 import { useOdontogramByVisit } from "@/lib/hooks/odontogram/useOdontogramByVisit";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings";
 import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
+import { useOdontogramDictationAvailability } from "@/lib/hooks/speech/use-odontogram-dictation-availability";
 import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
 import {
   OdontogramReadOnlyOverlay,
@@ -146,6 +148,15 @@ export function PatientOdontogramPanel({
     [user?.id, clinicId, activeAppointmentId],
   );
 
+  const dictationAdapter = useMemo(
+    () => createApiOdontogramDictationAdapter(),
+    [],
+  );
+
+  // Sin snapshot NO se cae al adapter en vivo: pintaría el odontograma de HOY
+  // bajo la fecha de una visita pasada, o sea una afirmación clínica falsa sobre
+  // el paciente. Con "" el adapter no puede parsear y devuelve null, y el módulo
+  // monta un odontograma vacío (nunca el del presente).
   const historicAdapter = useMemo(
     () => createHistoricOdontogramAdapter(historicSnapshot?.state ?? ""),
     [historicSnapshot],
@@ -195,6 +206,28 @@ export function PatientOdontogramPanel({
     isAdmin ||
     can("odontogram", PermissionAction.EDIT) ||
     can("odontogram", PermissionAction.CREATE);
+
+  // El endpoint de voz conserva la autoridad de historia clínica. La acción se
+  // ofrece solo cuando el usuario puede editar el odontograma Y llamar al
+  // endpoint; así evitamos mostrar un botón que terminaría necesariamente en 403.
+  const canUseClinicalDictation =
+    isAdmin ||
+    can("clinical_history", PermissionAction.EDIT) ||
+    can("clinical_history", PermissionAction.CREATE);
+
+  // Interruptor por clínica: el control ni se monta si el dictado está apagado
+  // (o si sus recursos no cargaron en el backend). Se consulta desde el host
+  // para no romper la frontera del módulo, y solo cuando tendría sentido
+  // ofrecerlo. Solo un `enabled: false` explícito lo apaga: un 404 (backend sin
+  // desplegar todavía) o un corte de red dejan el control montado, porque el POST
+  // ya se defiende solo con un 503 explicado. Ocultarlo por un fallo transitorio
+  // haría desaparecer la función sin que nadie pueda saber por qué.
+  const isDictationEnabled = useOdontogramDictationAvailability(
+    !isHistoricMode && canUseClinicalDictation,
+  );
+
+  // Solo lectura por: modo histórico, visita finalizada o falta de permiso.
+  // "Sin consulta" ya NO bloquea: el permiso es lo único que manda.
   const readOnly = isHistoricMode || isNonEditableVisit || !canEditClinical;
   const readOnlyReason: OdontogramReadOnlyReason | null = isHistoricMode
     ? null
@@ -258,6 +291,11 @@ export function PatientOdontogramPanel({
         patientId={patient.id}
         clinicId={clinicId}
         adapter={adapter}
+        dictationAdapter={
+          !isHistoricMode && canUseClinicalDictation && isDictationEnabled
+            ? dictationAdapter
+            : undefined
+        }
         readOnly={readOnly}
         currency={
           settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency

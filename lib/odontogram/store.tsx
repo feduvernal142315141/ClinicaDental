@@ -28,6 +28,7 @@ import {
   teethFor,
   type DentitionType,
 } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
+import type { OdontogramDictationAdapter } from "@/lib/odontogram/application/dictation";
 
 const globalStatusVisualState = (
   status: ToothGlobalStatus,
@@ -167,6 +168,8 @@ export interface OdontogramModuleProps {
   patientId: string;
   clinicId?: string;
   adapter: OdontogramAdapter;
+  /** Intérprete de audio opcional, inyectado por el host mediante un adapter. */
+  dictationAdapter?: OdontogramDictationAdapter;
   readOnly?: boolean;
 
   currency?: string;
