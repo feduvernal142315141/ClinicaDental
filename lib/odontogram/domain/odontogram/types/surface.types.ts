@@ -244,10 +244,10 @@ export function isAnteriorToothNumber(toothNumber: number): boolean {
   return position >= 1 && position <= 3;
 }
 
-/** Maxilar = cuadrantes 1 y 2 (FDI/ISO 3950). */
+/** Maxilar = cuadrantes 1 y 2 (permanentes) y 5 y 6 (temporales), FDI/ISO 3950. */
 export function isMaxillaryToothNumber(toothNumber: number): boolean {
   const quadrant = Math.floor(toothNumber / 10);
-  return quadrant === 1 || quadrant === 2;
+  return quadrant === 1 || quadrant === 2 || quadrant === 5 || quadrant === 6;
 }
 
 // ── Funciones puras del contrato de superficies ──────────────────────────────

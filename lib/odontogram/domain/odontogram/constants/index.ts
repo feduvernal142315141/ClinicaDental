@@ -7,3 +7,4 @@ export * from "./treatment.constants";
 export * from "./clinical-event.constants";
 export * from "./odontogram-colors.constants";
 export * from "./visual-priority.constants";
+export * from "./dentition.constants";

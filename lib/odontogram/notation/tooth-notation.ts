@@ -1,3 +1,7 @@
+import {
+  isPermanentFdi,
+  isPrimaryFdi,
+} from "../domain/odontogram/constants/dentition.constants";
 import { ToothTypeService } from "../domain/odontogram/services/ToothTypeService";
 
 import type { PalmerQuadrant, ToothLabelParts, ToothNotation } from "./types";
@@ -25,6 +29,36 @@ const PALMER_QUADRANT_BY_FDI: Record<number, PalmerQuadrant> = {
   2: "superior-izquierdo",
   3: "inferior-izquierdo",
   4: "inferior-derecho",
+  5: "superior-derecho",
+  6: "superior-izquierdo",
+  7: "inferior-izquierdo",
+  8: "inferior-derecho",
+};
+
+// Universal para temporales: letras A-T en el mismo recorrido horario que los
+// números 1-32 de los permanentes (A = 55, T = 85). Tabla literal a propósito:
+// no hay fórmula que no haya que leer dos veces.
+const UNIVERSAL_PRIMARY_LETTER: Record<number, string> = {
+  55: "A",
+  54: "B",
+  53: "C",
+  52: "D",
+  51: "E",
+  61: "F",
+  62: "G",
+  63: "H",
+  64: "I",
+  65: "J",
+  75: "K",
+  74: "L",
+  73: "M",
+  72: "N",
+  71: "O",
+  81: "P",
+  82: "Q",
+  83: "R",
+  84: "S",
+  85: "T",
 };
 
 function quadrantOf(fdi: number): number {
@@ -33,13 +67,6 @@ function quadrantOf(fdi: number): number {
 
 export function positionOf(fdi: number): number {
   return fdi % 10;
-}
-
-function isPermanentFdi(fdi: number): boolean {
-  if (!Number.isInteger(fdi)) return false;
-  const quadrant = quadrantOf(fdi);
-  const position = positionOf(fdi);
-  return quadrant >= 1 && quadrant <= 4 && position >= 1 && position <= 8;
 }
 
 function toUniversal(quadrant: number, position: number): number {
@@ -61,7 +88,7 @@ export function toToothLabel(
 ): ToothLabelParts {
   const canonical = String(fdi);
 
-  if (!isPermanentFdi(fdi)) {
+  if (!isPermanentFdi(fdi) && !isPrimaryFdi(fdi)) {
     return { digits: canonical, plain: canonical, fdi: canonical };
   }
 
@@ -69,13 +96,18 @@ export function toToothLabel(
   const position = positionOf(fdi);
 
   if (notation === "universal") {
-    const universal = String(toUniversal(quadrant, position));
+    const universal = isPrimaryFdi(fdi)
+      ? UNIVERSAL_PRIMARY_LETTER[fdi]
+      : String(toUniversal(quadrant, position));
     return { digits: universal, plain: universal, fdi: canonical };
   }
 
   if (notation === "palmer") {
     const palmerQuadrant = PALMER_QUADRANT_BY_FDI[quadrant];
-    const digits = String(position);
+    // Palmer marca el temporal con letra A-E por posición (1 → A, 5 → E).
+    const digits = isPrimaryFdi(fdi)
+      ? String.fromCharCode(64 + position)
+      : String(position);
     return {
       digits,
       quadrant: palmerQuadrant,

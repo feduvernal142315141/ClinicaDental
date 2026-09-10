@@ -89,7 +89,12 @@ function getToothDescription(toothNumber: number): string {
   else if (position === 7) positionName = "segundo";
   else if (position === 8) positionName = "tercer";
 
-  return `${type} ${positionName} ${location}`.trim();
+  if (!positionName) return `${type} ${location}`.trim();
+  // Orden natural en español: el ordinal precede al tipo ("Primer molar
+  // temporal"), pero el descriptor del incisivo lo sigue ("Incisivo central").
+  return position >= 4
+    ? `${positionName.charAt(0).toUpperCase()}${positionName.slice(1)} ${type.toLowerCase()} ${location}`.trim()
+    : `${type} ${positionName} ${location}`.trim();
 }
 
 function getDefaultVitalityTests(): VitalityTest[] {
