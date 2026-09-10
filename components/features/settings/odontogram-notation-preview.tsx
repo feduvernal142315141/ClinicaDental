@@ -2,11 +2,9 @@
 
 import type { ReactElement } from "react";
 
-import {
-  QUADRANT_ROWS,
-  THEME,
-} from "@/components/features/odontogram/chart-constants";
+import { THEME } from "@/components/features/odontogram/chart-constants";
 import { getDesignedToothPaths } from "@/components/features/odontogram/teeth-svg-adapter";
+import { PERMANENT_ROWS } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 import { ToothNotationLabel, formatToothPlain } from "@/lib/odontogram/notation";
 import type { ToothNotation } from "@/lib/odontogram/notation";
 
@@ -117,7 +115,7 @@ export function OdontogramNotationPreview({
 }: {
   notation: ToothNotation;
 }): ReactElement {
-  const { upperRight, upperLeft, lowerLeft, lowerRight } = QUADRANT_ROWS;
+  const { upperRight, upperLeft, lowerLeft, lowerRight } = PERMANENT_ROWS;
 
   return (
     <div

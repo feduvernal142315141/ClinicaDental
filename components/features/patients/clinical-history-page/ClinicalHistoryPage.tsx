@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clinicalHistoryService } from "@/lib/services/clinical-history";
 import type { ClinicalHistoryAlert } from "@/lib/entity/clinical-history";
+import { calculateAge } from "@/lib/entity/patients/patients-utils";
+import {
+  dentitionForAge,
+  isDentitionType,
+  type DentitionType,
+} from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 
 import {
   Stethoscope,
@@ -43,7 +49,10 @@ import {
 import { PatientImagesCard } from "./PatientImagesCard";
 import { PatientAttachmentsSection } from "@/components/features/patients/attachments/PatientAttachmentsSection";
 import { EvolutionComposer } from "./evolution/EvolutionComposer";
-import { useEvolutionComposer, draftToHtml } from "./evolution/use-evolution-composer";
+import {
+  useEvolutionComposer,
+  draftToHtml,
+} from "./evolution/use-evolution-composer";
 import { notifyApiError } from "@/lib/utils/notify-error";
 import { notify } from "@/lib/utils/notify";
 import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
@@ -144,9 +153,9 @@ export function ClinicalHistoryPage({
     canWriteClinicalHistory: canEditMedicalHistory,
   });
 
-  const pendingComposerSaveRef = useRef<{ appointmentId: string | null } | null>(
-    null,
-  );
+  const pendingComposerSaveRef = useRef<{
+    appointmentId: string | null;
+  } | null>(null);
   const handleSaveEvolutionDraft = useCallback(
     async (html: string) => {
       if (composer.mode.kind !== "ready") return;
@@ -226,7 +235,6 @@ export function ClinicalHistoryPage({
     const mh = snapshot?.medicalHistory;
     if (!mh) return [];
     return [
-
       ...(mh.allergies ?? []).map((value, i) => ({
         id: `derived-allergy-${i}`,
         message: `Alergia: ${value}`,
@@ -239,11 +247,31 @@ export function ClinicalHistoryPage({
       })),
     ];
   }, [snapshot, snapshotForbidden, snapshotError]);
-  const alertsUnknownReason: "forbidden" | "error" | undefined = snapshotForbidden
-    ? "forbidden"
-    : snapshotError
-      ? "error"
-      : undefined;
+  const alertsUnknownReason: "forbidden" | "error" | undefined =
+    snapshotForbidden ? "forbidden" : snapshotError ? "error" : undefined;
+  // Regla de edad desde el dominio: hasta ~5 años temporal, ~6-12 mixta,
+  // desde ~13 permanente. `patient?.` porque este hook corre antes de los
+  // early-returns de carga/"no encontrado" (regla de hooks).
+  const defaultDentition = useMemo<DentitionType>(() => {
+    const dob = patient?.dateOfBirth;
+    if (!dob || !Number.isFinite(Date.parse(dob))) return "permanent";
+    const { years } = calculateAge(dob);
+    return years >= 0 ? dentitionForAge(years) : "permanent";
+  }, [patient?.dateOfBirth]);
+  // Ligada al paciente: la página no se desmonta al navegar entre fichas
+  // (mismo segmento dinámico), y una dentición de A no puede filtrarse a B.
+  const [liveDentitionEntry, setLiveDentitionEntry] = useState<{
+    patientId: string;
+    value: DentitionType;
+  } | null>(null);
+  const liveDentition =
+    liveDentitionEntry?.patientId === patientId
+      ? liveDentitionEntry.value
+      : null;
+  const handleDentitionChange = useCallback(
+    (value: DentitionType) => setLiveDentitionEntry({ patientId, value }),
+    [patientId],
+  );
   if (patientLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -258,6 +286,18 @@ export function ClinicalHistoryPage({
       </div>
     );
   }
+  const dentitionFromSnapshot = isDentitionType(
+    snapshot?.patientHeader?.odontogramDentition,
+  )
+    ? snapshot.patientHeader.odontogramDentition
+    : undefined;
+  // Sin valor mientras el snapshot clínico no ha cargado: la cabecera lo
+  // omite y los pickers caen a permanente, en vez de ofrecer temporales a
+  // una ficha que quizá esté guardada en permanente.
+  const dentition =
+    liveDentition ??
+    dentitionFromSnapshot ??
+    (snapshot ? defaultDentition : undefined);
   const primaryConsultationAction = (() => {
     switch (consultationCta.kind) {
       case "hidden":
@@ -344,6 +384,7 @@ export function ClinicalHistoryPage({
         alerts={headerAlerts}
         alertsUnknown={!!alertsUnknownReason}
         alertsUnknownReason={alertsUnknownReason}
+        dentition={dentition}
         canEdit={canEditPatient}
         onEdit={openEditPatient}
         primaryAction={primaryConsultationAction}
@@ -351,7 +392,9 @@ export function ClinicalHistoryPage({
       <VisitRibbon
         state={visitRibbonState}
         autosaveSlot={
-          visitRibbonState?.kind === "active" ? <VisitAutosaveIndicator /> : null
+          visitRibbonState?.kind === "active" ? (
+            <VisitAutosaveIndicator />
+          ) : null
         }
         onFinalize={
           visitRibbonState?.kind === "active" ? openFinalizeModal : undefined
@@ -370,21 +413,33 @@ export function ClinicalHistoryPage({
       >
         <div className="shrink-0 overflow-x-auto">
           <TabsList className={PATIENT_TABS_LIST_CLASS}>
-            <TabsTrigger value={PATIENT_TABS.EVOLUTION} className={PATIENT_TAB_TRIGGER_CLASS}>
+            <TabsTrigger
+              value={PATIENT_TABS.EVOLUTION}
+              className={PATIENT_TAB_TRIGGER_CLASS}
+            >
               <ClipboardList className="h-4 w-4" />
               Evolución Clínica
             </TabsTrigger>
-            <TabsTrigger value={PATIENT_TABS.ODONTOGRAM} className={PATIENT_TAB_TRIGGER_CLASS}>
+            <TabsTrigger
+              value={PATIENT_TABS.ODONTOGRAM}
+              className={PATIENT_TAB_TRIGGER_CLASS}
+            >
               <Stethoscope className="h-4 w-4" />
               Odontograma
             </TabsTrigger>
             {canViewTreatmentPlan && (
-              <TabsTrigger value={PATIENT_TABS.TREATMENT_PLAN} className={PATIENT_TAB_TRIGGER_CLASS}>
+              <TabsTrigger
+                value={PATIENT_TABS.TREATMENT_PLAN}
+                className={PATIENT_TAB_TRIGGER_CLASS}
+              >
                 <ListChecks className="h-4 w-4" />
                 Plan de Tratamiento
               </TabsTrigger>
             )}
-            <TabsTrigger value={PATIENT_TABS.FILES} className={PATIENT_TAB_TRIGGER_CLASS}>
+            <TabsTrigger
+              value={PATIENT_TABS.FILES}
+              className={PATIENT_TAB_TRIGGER_CLASS}
+            >
               <Images className="h-4 w-4" />
               Imágenes y Archivos
             </TabsTrigger>
@@ -423,7 +478,6 @@ export function ClinicalHistoryPage({
                   appointmentsUnknown
                     ? undefined
                     : () => {
-
                         const frozen = printSelectionIds;
                         setFrozenSelectionIds(frozen);
                         setPrintScope("selection");
@@ -450,7 +504,10 @@ export function ClinicalHistoryPage({
             <div className="flex flex-col gap-5">
               {snapshotLoading ? (
                 <div className="flex h-40 items-center justify-center">
-                  <LoadingSpinner size="md" message="Cargando antecedentes..." />
+                  <LoadingSpinner
+                    size="md"
+                    message="Cargando antecedentes..."
+                  />
                 </div>
               ) : (
                 <MedicalAntecedentsColumn
@@ -481,11 +538,14 @@ export function ClinicalHistoryPage({
           <div
             className={cn(
               "flex-1 min-h-0 flex flex-col",
-              showSideEvolution && "2xl:grid 2xl:grid-cols-[1fr_420px] 2xl:gap-4",
+              showSideEvolution &&
+                "2xl:grid 2xl:grid-cols-[1fr_420px] 2xl:gap-4",
             )}
           >
             <PatientOdontogramPanel
               patient={patient}
+              defaultDentition={defaultDentition}
+              onDentitionChange={handleDentitionChange}
               activeAppointmentId={effectiveActiveAppointmentId}
               historicAppointmentId={historicAppointmentId}
               onClearHistoric={handleBackToCurrentOdontogram}
@@ -498,16 +558,14 @@ export function ClinicalHistoryPage({
             />
             {showConsultationPanel && effectiveActiveAppointmentId && (
               <aside
-                className={cn(
-                  "min-h-0",
-                  showSideEvolution && "overflow-auto",
-                )}
+                className={cn("min-h-0", showSideEvolution && "overflow-auto")}
                 aria-label="Registro de la consulta en curso"
               >
                 <ActiveConsultationNotes
                   patientId={patientId}
                   activeAppointmentId={effectiveActiveAppointmentId}
                   canEdit={canEditMedicalHistory}
+                  dentition={dentition}
                   onNotesSaved={() =>
                     setLastSaved((previousSaved) => ({
                       appointmentId: effectiveActiveAppointmentId,
@@ -527,6 +585,7 @@ export function ClinicalHistoryPage({
             <PatientTreatmentPlanPanel
               patientId={patientId}
               patientName={patient.name}
+              dentition={dentition}
             />
           </TabsContent>
         )}

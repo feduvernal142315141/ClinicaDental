@@ -6,21 +6,28 @@ import { cn } from "@/lib/utils/utils";
 import { useToothLabel } from "@/lib/contexts/tooth-notation-context";
 import { ToothNotationLabel } from "@/lib/odontogram/notation";
 import {
+  notationDrawsBracket,
   toothNotationLabel,
   toothPlainText,
   toothRefText,
 } from "@/lib/utils/clinical-tooth-text";
 import type { ToothRef } from "@/lib/entity/clinical-history";
+import {
+  DEFAULT_DENTITION,
+  quadrantRowsFor,
+  type QuadrantRows,
+  type DentitionType,
+} from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 
 // ---------------------------------------------------------------------------
-// Constantes FDI (dentición adulta)
+// Rótulos de cuadrante (las filas de dientes salen de quadrantRowsFor)
 // ---------------------------------------------------------------------------
 
-const FDI_QUADRANT: Record<string, number[]> = {
-  "Superior derecho": [18, 17, 16, 15, 14, 13, 12, 11],
-  "Superior izquierdo": [21, 22, 23, 24, 25, 26, 27, 28],
-  "Inferior izquierdo": [31, 32, 33, 34, 35, 36, 37, 38],
-  "Inferior derecho": [41, 42, 43, 44, 45, 46, 47, 48],
+const QUADRANT_LABEL: Record<keyof QuadrantRows, string> = {
+  upperRight: "Superior derecho",
+  upperLeft: "Superior izquierdo",
+  lowerLeft: "Inferior izquierdo",
+  lowerRight: "Inferior derecho",
 };
 
 const SURFACE_OPTIONS: Array<{ code: string; label: string }> = [
@@ -41,6 +48,7 @@ export interface FdiToothPickerProps {
   disabled?: boolean;
   className?: string;
   placeholder?: string;
+  dentition?: DentitionType;
 }
 
 // ---------------------------------------------------------------------------
@@ -53,8 +61,10 @@ export function FdiToothPicker({
   disabled = false,
   className,
   placeholder = "Diente / cara…",
+  dentition = DEFAULT_DENTITION,
 }: FdiToothPickerProps) {
   const uid = useId();
+  const rowSets = quadrantRowsFor(dentition);
   const popoverId = `fdi-picker-${uid}`;
   const { notation, plain } = useToothLabel();
   const notationName = toothNotationLabel(notation);
@@ -130,7 +140,12 @@ export function FdiToothPicker({
         )}
       >
         <MapPin className="h-3.5 w-3.5 shrink-0 text-subtle" />
-        <span className={cn("flex-1 font-mono text-xs", display ? "text-ink" : "text-subtle")}>
+        <span
+          className={cn(
+            "flex-1 font-mono text-xs",
+            display ? "text-ink" : "text-subtle",
+          )}
+        >
           {display ?? placeholder}
         </span>
         {display && !disabled && (
@@ -138,7 +153,9 @@ export function FdiToothPicker({
             role="button"
             tabIndex={0}
             onClick={handleClear}
-            onKeyDown={(e) => e.key === "Enter" && handleClear(e as unknown as React.MouseEvent)}
+            onKeyDown={(e) =>
+              e.key === "Enter" && handleClear(e as unknown as React.MouseEvent)
+            }
             aria-label="Limpiar diente"
             className="rounded p-0.5 text-subtle hover:text-destructive transition-colors cursor-pointer"
           >
@@ -157,7 +174,7 @@ export function FdiToothPicker({
       {open && (
         <div
           id={popoverId}
-          className="absolute left-0 z-50 mt-1 w-max min-w-full rounded-xl border border-hairline bg-surface shadow-bento p-3"
+          className="absolute left-0 z-50 mt-1 max-h-[60vh] w-max min-w-full overflow-y-auto rounded-xl border border-hairline bg-surface shadow-bento p-3"
         >
           {!selectedFdi ? (
             /* Step 1: cuadrícula de dientes */
@@ -165,34 +182,47 @@ export function FdiToothPicker({
               <p className="text-[10px] font-semibold text-subtle uppercase tracking-wider mb-2">
                 Selecciona el diente
               </p>
-              {Object.entries(FDI_QUADRANT).map(([label, teeth]) => (
-                <div key={label}>
-                  <p className="text-[9px] text-subtle mb-1">{label}</p>
-                  <div className="flex flex-wrap gap-1">
-                    {teeth.map((fdi) => {
-                      const isActive = value?.fdi === String(fdi);
-                      return (
-                        <button
-                          key={fdi}
-                          type="button"
-                          onClick={() => handleSelectTooth(fdi)}
-                          aria-label={`Diente ${plain(fdi)}`}
-                          className={cn(
-                            "w-8 h-7 rounded-lg text-xs font-mono font-medium border transition-colors",
-                            isActive
-                              ? "bg-brand text-white border-brand"
-                              : notation === "palmer"
-                                ? "border-transparent bg-elevated text-ink hover:bg-hover hover:text-brand"
-                                : "bg-elevated border-hairline text-ink hover:border-brand hover:text-brand",
-                          )}
-                        >
-                          <ToothNotationLabel fdi={fdi} notation={notation} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+              {(Object.keys(QUADRANT_LABEL) as (keyof QuadrantRows)[]).flatMap(
+                (quadrantKey) =>
+                  rowSets.map((rowSet) => {
+                    const label =
+                      QUADRANT_LABEL[quadrantKey] +
+                      (dentition === "mixed" && rowSet.primary
+                        ? " · temporales"
+                        : "");
+                    return (
+                      <div key={`${quadrantKey}-${rowSet.primary}`}>
+                        <p className="text-[9px] text-subtle mb-1">{label}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {rowSet.rows[quadrantKey].map((fdi) => {
+                            const isActive = value?.fdi === String(fdi);
+                            return (
+                              <button
+                                key={fdi}
+                                type="button"
+                                onClick={() => handleSelectTooth(fdi)}
+                                aria-label={`Diente ${plain(fdi)}`}
+                                className={cn(
+                                  "w-8 h-7 rounded-lg text-xs font-mono font-medium border transition-colors",
+                                  isActive
+                                    ? "bg-brand text-white border-brand"
+                                    : notationDrawsBracket(notation)
+                                      ? "border-transparent bg-elevated text-ink hover:bg-hover hover:text-brand"
+                                      : "bg-elevated border-hairline text-ink hover:border-brand hover:text-brand",
+                                )}
+                              >
+                                <ToothNotationLabel
+                                  fdi={fdi}
+                                  notation={notation}
+                                />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }),
+              )}
               <p className="text-[9px] text-subtle mt-2">
                 Haz clic una vez para ver caras, dos veces para solo diente.
               </p>
@@ -223,7 +253,9 @@ export function FdiToothPicker({
                     onClick={() => handleSelectSurface(s.code)}
                     className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-ink border border-hairline bg-elevated hover:border-brand hover:text-brand transition-colors text-left"
                   >
-                    <span className="font-mono text-xs font-bold w-4">{s.code}</span>
+                    <span className="font-mono text-xs font-bold w-4">
+                      {s.code}
+                    </span>
                     <span>{s.label}</span>
                   </button>
                 ))}

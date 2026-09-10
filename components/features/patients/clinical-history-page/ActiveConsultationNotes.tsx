@@ -25,12 +25,14 @@ import {
 } from "@/lib/utils/clinical-tooth-text";
 import { useActiveConsultationNotes } from "@/lib/hooks/patients/clinical-history-page/use-active-consultation-notes";
 import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
+import type { DentitionType } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 
 interface ActiveConsultationNotesProps {
   patientId: string;
   activeAppointmentId: string;
   canEdit?: boolean;
   onNotesSaved?: () => void;
+  dentition?: DentitionType;
 }
 
 function Section({
@@ -89,6 +91,7 @@ export function ActiveConsultationNotes({
   activeAppointmentId,
   canEdit = false,
   onNotesSaved,
+  dentition,
 }: ActiveConsultationNotesProps) {
   const {
     visitRecord,
@@ -255,6 +258,7 @@ export function ActiveConsultationNotes({
                 onChange={handlePainToothRefChange}
                 disabled={!canEdit}
                 placeholder="Seleccionar diente / cara…"
+                dentition={dentition}
               />
               {painToothText && (
                 <p className="mt-1.5 text-[11px] text-subtle">

@@ -39,6 +39,8 @@ export interface ClinicalHistoryPatientHeader {
   alerts: ClinicalHistoryAlert[];
   lastVisit?: string;
   nextAppointment?: string;
+  /** null = sin fila de odontograma; "permanent" = fila legacy; si no, el valor guardado. */
+  odontogramDentition?: string | null;
 }
 
 // ---------------------------------------------------------------------------

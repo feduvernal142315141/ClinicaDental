@@ -59,4 +59,6 @@ export { OdontogramVisitContextBar } from "./OdontogramVisitContextBar";
 export { OdontogramHistoricFrame } from "./OdontogramHistoricFrame";
 export { VisitPickerRow } from "./VisitPickerRow";
 
+export { DentitionSwitch } from "./DentitionSwitch";
+
 export { RISK_TONE } from "./risk-tone";

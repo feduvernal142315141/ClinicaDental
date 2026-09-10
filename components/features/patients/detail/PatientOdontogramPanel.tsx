@@ -2,7 +2,12 @@
 
 import { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
-import { OdontogramModule, createApiOdontogramAdapter, createHistoricOdontogramAdapter } from "@/lib/odontogram";
+import {
+  OdontogramModule,
+  createApiOdontogramAdapter,
+  createHistoricOdontogramAdapter,
+  type OdontogramSnapshot,
+} from "@/lib/odontogram";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useAuth } from "@/lib/contexts/auth-context";
@@ -27,12 +32,15 @@ import type { Appointment } from "@/lib/entity/appointment/appointments";
 import type { VisitEditability } from "@/lib/hooks/patients/clinical-history-page/visit-editability";
 import { notify } from "@/lib/utils/notify";
 import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
+import type { DentitionType } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 
 interface PatientOdontogramPanelProps {
   patient: {
     id: string;
     clinicId?: string;
   };
+  defaultDentition: DentitionType;
+  onDentitionChange?: (dentition: DentitionType) => void;
   activeAppointmentId?: string;
   historicAppointmentId?: string;
   onClearHistoric?: () => void;
@@ -72,6 +80,8 @@ function readOnlyReasonFor(
 }
 export function PatientOdontogramPanel({
   patient,
+  defaultDentition,
+  onDentitionChange,
   activeAppointmentId,
   historicAppointmentId,
   onClearHistoric,
@@ -166,7 +176,6 @@ export function PatientOdontogramPanel({
         description: (
           <span className="flex items-center gap-1.5">
             <RotateCcw
-
               className="h-3.5 w-3.5 shrink-0 animate-spin [animation-direction:reverse] [animation-duration:3s] motion-reduce:animate-none"
               aria-hidden
             />
@@ -192,60 +201,82 @@ export function PatientOdontogramPanel({
     : !canEditClinical
       ? "no-permission"
       : readOnlyReasonFor(visitEditability);
-  const isOutOfConsultationEditing = !readOnly && !isHistoricMode && !activeAppointmentId;
+  const isOutOfConsultationEditing =
+    !readOnly && !isHistoricMode && !activeAppointmentId;
 
-  const tracksAutosaveStatus = !readOnly && !isHistoricMode && !!activeAppointmentId;
+  const tracksAutosaveStatus =
+    !readOnly && !isHistoricMode && !!activeAppointmentId;
 
   const adapter = isHistoricMode ? historicAdapter : apiAdapter;
   const showSpinner = isTransitioning || (isHistoricMode && historicLoading);
+
+  // Callbacks estables: OdontogramModule re-ejecuta su efecto de carga si
+  // cambia la identidad de onError, y se re-suscribe si cambian
+  // onChange/onSaveStart/onSaveSuccess — ambos cleanups cancelan el guardado
+  // armado. Por eso el flag va en un ref y las deps quedan vacías.
+  const tracksAutosaveRef = useRef(tracksAutosaveStatus);
+  useEffect(() => {
+    tracksAutosaveRef.current = tracksAutosaveStatus;
+  });
+  const handleSaveStart = useCallback(() => {
+    if (tracksAutosaveRef.current) {
+      useAutosaveStatus.getState().markSaving();
+    }
+  }, []);
+  const handleSaveSuccess = useCallback(() => {
+    if (tracksAutosaveRef.current) {
+      useAutosaveStatus.getState().markSaved();
+    }
+  }, []);
+  const handleError = useCallback(() => {
+    if (tracksAutosaveRef.current) {
+      useAutosaveStatus.getState().markError();
+    }
+    notify.error("No se pudo sincronizar el odontograma", {
+      description:
+        "Tus últimos cambios podrían no haberse guardado. Revisa tu conexión y vuelve a intentarlo; si continúa, contacta a soporte.",
+    });
+  }, []);
+  const handleSnapshotChange = useCallback(
+    (snapshot: OdontogramSnapshot) => {
+      if (snapshot.dentition) onDentitionChange?.(snapshot.dentition);
+    },
+    [onDentitionChange],
+  );
 
   const historicUnavailable =
     isHistoricMode && !historicLoading && !isTransitioning && !historicSnapshot;
   const historicFailed = historicUnavailable && !!historicError;
   const odontogramBlock = (
     <div className="flex-1 min-h-0 relative flex flex-col">
-        {showSpinner && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-canvas/60 backdrop-blur-sm">
-            <Loader2 className="h-8 w-8 animate-spin text-brand" />
-          </div>
-        )}
-          <OdontogramModule
-            patientId={patient.id}
-            clinicId={clinicId}
-            adapter={adapter}
-            readOnly={readOnly}
-            currency={
-              settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency
-            }
-            notation={notation}
-            showHeader={false}
-            initialTab="odontogram"
-            onSaveStart={
-              tracksAutosaveStatus
-                ? () => useAutosaveStatus.getState().markSaving()
-                : undefined
-            }
-            onSaveSuccess={
-              tracksAutosaveStatus
-                ? () => useAutosaveStatus.getState().markSaved()
-                : undefined
-            }
-            onError={() => {
-              if (tracksAutosaveStatus) {
-                useAutosaveStatus.getState().markError();
-              }
-              notify.error("No se pudo sincronizar el odontograma", {
-                description:
-                  "Tus últimos cambios podrían no haberse guardado. Revisa tu conexión y vuelve a intentarlo; si continúa, contacta a soporte.",
-              });
-            }}
-            finalizeOpen={finalizeOpen}
-            onFinalizeClose={onFinalizeClose}
-            onFinalizeSuccess={onFinalizeSuccess}
-          />
-        {readOnly && !isHistoricMode && readOnlyReason && (
-          <OdontogramReadOnlyOverlay reason={readOnlyReason} />
-        )}
+      {showSpinner && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-canvas/60 backdrop-blur-sm">
+          <Loader2 className="h-8 w-8 animate-spin text-brand" />
+        </div>
+      )}
+      <OdontogramModule
+        patientId={patient.id}
+        clinicId={clinicId}
+        adapter={adapter}
+        readOnly={readOnly}
+        currency={
+          settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency
+        }
+        notation={notation}
+        showHeader={false}
+        initialTab="odontogram"
+        defaultDentition={defaultDentition}
+        onChange={isHistoricMode ? undefined : handleSnapshotChange}
+        onSaveStart={handleSaveStart}
+        onSaveSuccess={handleSaveSuccess}
+        onError={handleError}
+        finalizeOpen={finalizeOpen}
+        onFinalizeClose={onFinalizeClose}
+        onFinalizeSuccess={onFinalizeSuccess}
+      />
+      {readOnly && !isHistoricMode && readOnlyReason && (
+        <OdontogramReadOnlyOverlay reason={readOnlyReason} />
+      )}
     </div>
   );
   return (

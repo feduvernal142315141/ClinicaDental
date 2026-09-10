@@ -135,7 +135,7 @@ export interface TreatmentPlanResponse {
 export interface TreatmentPlanDiagnosisRef {
   code: string;
   label: string;
-  /** Diente FDI (11-48) asociado al diagnóstico, si aplica. */
+  /** Diente FDI (11-48 permanentes, 51-85 temporales) asociado al diagnóstico, si aplica. */
   toothFdi?: string;
 }
 

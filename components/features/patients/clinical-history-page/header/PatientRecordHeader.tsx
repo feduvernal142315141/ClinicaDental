@@ -9,6 +9,10 @@ import type {
   AlertSeverity,
   ClinicalHistoryAlert,
 } from "@/lib/entity/clinical-history";
+import {
+  DENTITION_CATALOG,
+  type DentitionType,
+} from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 import { cn } from "@/lib/utils/utils";
 
 export interface PatientRecordHeaderProps {
@@ -22,6 +26,7 @@ export interface PatientRecordHeaderProps {
   alerts?: ClinicalHistoryAlert[];
   alertsUnknown?: boolean;
   alertsUnknownReason?: "forbidden" | "error";
+  dentition?: DentitionType;
   canEdit?: boolean;
   onEdit?: () => void;
   primaryAction?: React.ReactNode;
@@ -63,6 +68,7 @@ export function PatientRecordHeader({
   alerts,
   alertsUnknown = false,
   alertsUnknownReason,
+  dentition,
   canEdit = false,
   onEdit,
   primaryAction,
@@ -70,14 +76,18 @@ export function PatientRecordHeader({
 
   const metaItems = React.useMemo(() => {
     const birthLabel = birthDate ? formatDate(birthDate) : "";
+    const dentitionLabel = dentition
+      ? DENTITION_CATALOG.find((entry) => entry.value === dentition)?.label
+      : undefined;
     return [
       typeof age === "number" && Number.isFinite(age) ? formatAge(age) : "",
       gender?.trim() ?? "",
       birthLabel,
       phone?.trim() ?? "",
       email?.trim() ?? "",
+      dentitionLabel ? `Odontograma: ${dentitionLabel}` : "",
     ].filter((item): item is string => item.length > 0);
-  }, [age, gender, birthDate, phone, email]);
+  }, [age, gender, birthDate, phone, email, dentition]);
   const { visibleAlerts, hiddenAlerts } = React.useMemo(() => {
     const sorted = [...(alerts ?? [])].sort(
       (a, b) => ALERT_WEIGHT[a.severity] - ALERT_WEIGHT[b.severity],

@@ -19,6 +19,7 @@ import type { AddPlanItemRequest } from "@/lib/entity/odontogram";
 import type { ServiceListItem } from "@/lib/entity/services";
 import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
 import type { ToothNotation } from "@/lib/odontogram/notation";
+import type { DentitionType } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
 import { notify } from "@/lib/utils/notify";
 import { PlanToothSelector, formatSelectedTeeth } from "./PlanToothSelector";
@@ -40,6 +41,7 @@ interface AddToPlanPanelProps {
   onAdd: (items: AddPlanItemRequest[]) => Promise<number | null>;
   /** Se llama SOLO cuando el servidor confirmó. El host cierra el panel. */
   onAdded: () => void;
+  dentition?: DentitionType;
 }
 
 /**
@@ -75,6 +77,7 @@ export function AddToPlanPanel({
   currency,
   onAdd,
   onAdded,
+  dentition,
 }: AddToPlanPanelProps) {
   const uid = useId();
   const hintId = `${uid}-hint`;
@@ -301,6 +304,7 @@ export function AddToPlanPanel({
             onToggle={toggleTooth}
             onClear={clearTeeth}
             disabled={submitting}
+            dentition={dentition}
           />
           <ServicePickerList
             services={toothServices}

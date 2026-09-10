@@ -14,19 +14,27 @@ import {
 } from "@/lib/odontogram/notation";
 import { notationDrawsBracket } from "@/lib/utils/clinical-tooth-text";
 import { cn } from "@/lib/utils/utils";
+import {
+  DEFAULT_DENTITION,
+  quadrantRowsFor,
+  type QuadrantRows,
+  type DentitionType,
+} from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 
-const FDI_QUADRANTS: ReadonlyArray<{ label: string; teeth: number[] }> = [
-  { label: "Superior derecho", teeth: [18, 17, 16, 15, 14, 13, 12, 11] },
-  { label: "Superior izquierdo", teeth: [21, 22, 23, 24, 25, 26, 27, 28] },
-  { label: "Inferior izquierdo", teeth: [31, 32, 33, 34, 35, 36, 37, 38] },
-  { label: "Inferior derecho", teeth: [48, 47, 46, 45, 44, 43, 42, 41] },
-];
+// Rótulos de cuadrante; las filas de dientes salen de quadrantRowsFor.
+const QUADRANT_LABEL: Record<keyof QuadrantRows, string> = {
+  upperRight: "Superior derecho",
+  upperLeft: "Superior izquierdo",
+  lowerLeft: "Inferior izquierdo",
+  lowerRight: "Inferior derecho",
+};
 
 interface PlanToothSelectorProps {
   selected: ReadonlySet<number>;
   onToggle: (fdi: number) => void;
   onClear: () => void;
   disabled?: boolean;
+  dentition?: DentitionType;
 }
 
 /** "16, 17, 26" — orden numérico, estable e igual al que verá en la tabla. */
@@ -46,7 +54,8 @@ export function formatSelectedTeeth(
  * Selección MÚLTIPLE de piezas FDI para la pestaña "Sobre una pieza".
  *
  * Va dentro de un desplegable abierto por defecto y no como bloque fijo: la
- * rejilla ocupa cuatro filas y, en el panel lateral de un móvil, empujaría la
+ * rejilla ocupa cuatro filas (ocho en dentición mixta) y, en el panel lateral
+ * de un móvil, empujaría la
  * lista de servicios fuera de la pantalla. El resumen del disparador ("Piezas:
  * 16, 17") mantiene visible lo elegido aunque esté plegado, que es lo único que
  * hay que poder comprobar sin abrirlo.
@@ -61,9 +70,11 @@ export function PlanToothSelector({
   onToggle,
   onClear,
   disabled = false,
+  dentition = DEFAULT_DENTITION,
 }: PlanToothSelectorProps) {
   const { notation, describe } = useToothLabel();
   const summary = formatSelectedTeeth(selected, notation);
+  const rowSets = quadrantRowsFor(dentition);
 
   return (
     <Collapsible
@@ -108,42 +119,52 @@ export function PlanToothSelector({
           aria-label="Piezas dentales por cuadrante"
           className="space-y-2 border-t border-hairline px-3 py-2.5"
         >
-          {FDI_QUADRANTS.map((quadrant) => (
-            <div key={quadrant.label}>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-subtle">
-                {quadrant.label}
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {quadrant.teeth.map((fdi) => {
-                  const isActive = selected.has(fdi);
-                  return (
-                    <button
-                      key={fdi}
-                      type="button"
-                      aria-pressed={isActive}
-                      aria-label={describe([fdi])}
-                      disabled={disabled}
-                      onClick={() => onToggle(fdi)}
-                      // 32×32: por encima del mínimo de 24×24 de WCAG 2.2
-                      // (2.5.8) incluso con el dedo sobre el iPad del sillón.
-                      className={cn(
-                        "inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium tabular-nums transition-colors",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
-                        "disabled:cursor-not-allowed disabled:opacity-50",
-                        isActive
-                          ? "border-brand-strong bg-brand-strong text-white"
-                          : notationDrawsBracket(notation)
-                            ? "border-transparent bg-surface text-ink hover:bg-hover hover:text-brand"
-                            : "border-hairline bg-surface text-ink hover:border-brand hover:text-brand",
-                      )}
-                    >
-                      <ToothNotationLabel fdi={fdi} notation={notation} />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+          {(Object.keys(QUADRANT_LABEL) as (keyof QuadrantRows)[]).flatMap(
+            (quadrantKey) =>
+              rowSets.map((rowSet) => {
+                const label =
+                  QUADRANT_LABEL[quadrantKey] +
+                  (dentition === "mixed" && rowSet.primary
+                    ? " · temporales"
+                    : "");
+                return (
+                  <div key={`${quadrantKey}-${rowSet.primary}`}>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-subtle">
+                      {label}
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {rowSet.rows[quadrantKey].map((fdi) => {
+                        const isActive = selected.has(fdi);
+                        return (
+                          <button
+                            key={fdi}
+                            type="button"
+                            aria-pressed={isActive}
+                            aria-label={describe([fdi])}
+                            disabled={disabled}
+                            onClick={() => onToggle(fdi)}
+                            // 32×32: por encima del mínimo de 24×24 de WCAG 2.2
+                            // (2.5.8) incluso con el dedo sobre el iPad del sillón.
+                            className={cn(
+                              "inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium tabular-nums transition-colors",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
+                              "disabled:cursor-not-allowed disabled:opacity-50",
+                              isActive
+                                ? "border-brand-strong bg-brand-strong text-white"
+                                : notationDrawsBracket(notation)
+                                  ? "border-transparent bg-surface text-ink hover:bg-hover hover:text-brand"
+                                  : "border-hairline bg-surface text-ink hover:border-brand hover:text-brand",
+                            )}
+                          >
+                            <ToothNotationLabel fdi={fdi} notation={notation} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }),
+          )}
         </div>
       </CollapsibleContent>
     </Collapsible>
