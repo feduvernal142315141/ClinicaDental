@@ -28,14 +28,14 @@ import type {
 import {
   displayFileName,
   getAttachmentMediaType,
+  MAX_ATTACHMENT_SIZE_BYTES,
+  MAX_ATTACHMENT_SIZE_MB,
 } from "@/lib/utils/attachment-helpers";
 import { useAttachmentBlob } from "../attachments/use-attachment-thumbnail";
 import { AttachmentViewerModal } from "../attachments/AttachmentViewerModal";
 
 const ACCEPTED_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.gif,.svg,.bmp,.mp4,.webm,.mov,.pdf,.xlsx,.xls,.csv,.doc,.docx,.txt";
-const MAX_SIZE_MB = 50;
-const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
 const UPLOAD_CATEGORY: AttachmentCategory = "imagen_clinica";
 
@@ -145,9 +145,9 @@ export function PatientImagesCard({
     async (file: File | undefined | null) => {
       if (!file) return;
       setFileError(null);
-      if (file.size > MAX_SIZE_BYTES) {
+      if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
         setFileError(
-          `El archivo supera los ${MAX_SIZE_MB} MB. Elige uno más pequeño e inténtalo de nuevo.`,
+          `El archivo supera los ${MAX_ATTACHMENT_SIZE_MB} MB. Elige uno más pequeño e inténtalo de nuevo.`,
         );
         return;
       }
@@ -283,7 +283,7 @@ export function PatientImagesCard({
                 }}
               />
               <p className="mt-2 text-[10px] text-subtle">
-                Imágenes y videos clínicos — máx. {MAX_SIZE_MB} MB
+                Imágenes y videos clínicos — máx. {MAX_ATTACHMENT_SIZE_MB} MB
               </p>
               {fileError && (
                 <p

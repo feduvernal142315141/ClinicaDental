@@ -23,6 +23,8 @@ import { clearAuthTokens, saveLoggedUser } from "@/lib/auth/token-storage";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
 import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
 import { useVisitNoteDrafts } from "@/lib/store/useVisitNoteDrafts";
+import { clinicGeneralSettingsService } from "@/lib/services/settings/clinic-general-settings.service";
+import { clearPatientAttachmentsCache } from "@/lib/hooks/patientAttachments/usePatientAttachments";
 import { resolveClinicSlug } from "@/lib/auth/clinic-slug";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -184,8 +186,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hydrateUserFromAccessToken(tokens.accessToken);
 
       void refetchClinicBranding();
-      // La nomenclatura dental es por clínica: hasta aquí no había sesión y no
-      // se pudo pedir. Ahora sí, y el token ya identifica al tenant.
       void refetchToothNotation();
 
       if (shouldRedirect) {
@@ -212,28 +212,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    const clearSessionAndRedirectToLogin = () => {
+      setUser(null);
+      clearOtpSession();
+      clearAuthTokens();
+      useVisitNoteDrafts.getState().clearAll();
+      clearClinicBranding();
+      clearToothNotation();
+      clinicGeneralSettingsService.clearCache();
+      clearPatientAttachmentsCache();
+      router.push("/login");
+    };
+
     try {
       await fetch("/api/auth/logout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
-      setUser(null);
-      clearOtpSession();
-      clearAuthTokens();
-      useVisitNoteDrafts.getState().clearAll();
-      clearClinicBranding();
-      clearToothNotation();
-      router.push("/login");
+      clearSessionAndRedirectToLogin();
       router.refresh();
     } catch (error) {
       console.error("Error during logout:", error);
-      setUser(null);
-      clearOtpSession();
-      clearAuthTokens();
-      useVisitNoteDrafts.getState().clearAll();
-      clearClinicBranding();
-      clearToothNotation();
-      router.push("/login");
+      clearSessionAndRedirectToLogin();
     }
   };
 
