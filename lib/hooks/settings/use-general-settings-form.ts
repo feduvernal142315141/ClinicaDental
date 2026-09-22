@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useClinicGeneralSettings } from "@/lib/hooks/settings/use-clinic-general-settings";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
+import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import {
@@ -72,6 +73,7 @@ export function useGeneralSettingsForm() {
   const { settings, loading, saving, error, reload, saveSettings } =
     useClinicGeneralSettings();
   const { updateBranding } = useClinicBranding();
+  const { setNotation } = useToothNotation();
   const { can, isAdmin } = usePermission();
 
   const canEdit = isAdmin || can("general_option", PermissionAction.EDIT);
@@ -85,6 +87,7 @@ export function useGeneralSettingsForm() {
       phone: null,
       timezone: DEFAULT_CLINIC_GENERAL_SETTINGS.timezone,
       currency: DEFAULT_CLINIC_GENERAL_SETTINGS.currency,
+      toothNotation: DEFAULT_CLINIC_GENERAL_SETTINGS.toothNotation,
       logoUrl: null,
       schedule: scheduleToFormValues(DEFAULT_CLINIC_SCHEDULE),
       minimumAdvanceNoticePeriod: 120,
@@ -107,6 +110,7 @@ export function useGeneralSettingsForm() {
       phone: settings.phone ?? null,
       timezone: settings.timezone,
       currency: settings.currency,
+      toothNotation: settings.toothNotation,
       logoUrl: settings.logoUrl ?? null,
       schedule: scheduleToFormValues(settings.schedule),
       minimumAdvanceNoticePeriod: settings.minimumAdvanceNoticePeriod ?? 120,
@@ -128,6 +132,7 @@ export function useGeneralSettingsForm() {
         phone: values.phone?.trim() || null,
         timezone: values.timezone,
         currency: values.currency,
+        toothNotation: values.toothNotation,
         logoUrl: values.logoUrl || null,
         schedule: scheduleToPayload(values.schedule),
         minimumAdvanceNoticePeriod: values.minimumAdvanceNoticePeriod ?? null,
@@ -145,9 +150,10 @@ export function useGeneralSettingsForm() {
       // en todo el sistema", así que el contexto de marca debe enterarse.
       if (saved) {
         updateBranding({ name: payload.name, logoUrl: payload.logoUrl });
+        setNotation(payload.toothNotation);
       }
     },
-    [saveSettings, updateBranding],
+    [saveSettings, setNotation, updateBranding],
   );
 
   return {

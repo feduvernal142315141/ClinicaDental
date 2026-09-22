@@ -17,6 +17,9 @@ import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner"
 import type { UseAddToPlanCatalogResult } from "@/lib/hooks/odontogram";
 import type { AddPlanItemRequest } from "@/lib/entity/odontogram";
 import type { ServiceListItem } from "@/lib/entity/services";
+import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
+import type { ToothNotation } from "@/lib/odontogram/notation";
+import type { DentitionType } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
 import { notify } from "@/lib/utils/notify";
 import { PlanToothSelector, formatSelectedTeeth } from "./PlanToothSelector";
@@ -38,6 +41,7 @@ interface AddToPlanPanelProps {
   onAdd: (items: AddPlanItemRequest[]) => Promise<number | null>;
   /** Se llama SOLO cuando el servidor confirmó. El host cierra el panel. */
   onAdded: () => void;
+  dentition?: DentitionType;
 }
 
 /**
@@ -73,9 +77,11 @@ export function AddToPlanPanel({
   currency,
   onAdd,
   onAdded,
+  dentition,
 }: AddToPlanPanelProps) {
   const uid = useId();
   const hintId = `${uid}-hint`;
+  const { notation } = useToothNotation();
 
   const [scope, setScope] = useState<AddToPlanScope>("general");
   // Una selección POR PESTAÑA: cambiar de pestaña no puede tirar en silencio lo
@@ -298,6 +304,7 @@ export function AddToPlanPanel({
             onToggle={toggleTooth}
             onClear={clearTeeth}
             disabled={submitting}
+            dentition={dentition}
           />
           <ServicePickerList
             services={toothServices}
@@ -376,6 +383,7 @@ export function AddToPlanPanel({
                   toothLineCount,
                   generalLineCount,
                   teeth,
+                  notation,
                 )} Importe orientativo: el definitivo lo congela el servidor con la tarifa del catálogo.`}
             </p>
           </div>
@@ -414,10 +422,11 @@ function describePendingLines(
   toothLines: number,
   generalLines: number,
   teeth: ReadonlySet<number>,
+  notation: ToothNotation,
 ): string {
   const total = toothLines + generalLines;
   const lines = `${total} ${total === 1 ? "línea" : "líneas"}`;
-  const teethLabel = `${teeth.size === 1 ? "la pieza" : "las piezas"} ${formatSelectedTeeth(teeth)}`;
+  const teethLabel = `${teeth.size === 1 ? "la pieza" : "las piezas"} ${formatSelectedTeeth(teeth, notation)}`;
 
   if (toothLines > 0 && generalLines > 0) {
     return `Se añadirán ${lines}: ${toothLines} sobre ${teethLabel} y ${generalLines} ${

@@ -23,6 +23,7 @@ import { appointmentsService } from "@/lib/services/appointments/appointments.se
 import { doctorsService } from "@/lib/services/doctors/doctors.service";
 import { notifyApiError } from "@/lib/utils/notify-error";
 import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
+import { formatToothPlain } from "@/lib/odontogram/notation";
 import {
   useOdontogramStore,
   type OdontogramAdapter,
@@ -70,6 +71,7 @@ export function FinalizarCitaModal({
   const clinicalEvents = useOdontogramStore((state) => state.clinicalEvents);
   // Moneda de la clínica inyectada por el host en el store (solo presentación).
   const currency = useOdontogramStore((state) => state.currency);
+  const notation = useOdontogramStore((state) => state.notation);
 
   const performedEvents = useMemo(
     () =>
@@ -285,7 +287,7 @@ export function FinalizarCitaModal({
                   className="flex items-center justify-between text-sm"
                 >
                   <span>
-                    Diente {ev.toothNumber} —{" "}
+                    Diente {formatToothPlain(ev.toothNumber, notation)} —{" "}
                     {ev.serviceName ?? ev.procedureName ?? "Procedimiento"}
                   </span>
                   {ev.cost ? (
@@ -313,7 +315,7 @@ export function FinalizarCitaModal({
                   className="flex items-center justify-between text-sm"
                 >
                   <span>
-                    Diente {ev.toothNumber} —{" "}
+                    Diente {formatToothPlain(ev.toothNumber, notation)} —{" "}
                     {ev.serviceName ?? ev.procedureName ?? "Procedimiento"}
                   </span>
                   <div className="flex items-center gap-1.5">

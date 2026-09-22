@@ -42,9 +42,20 @@ function getDownloadUrl(patientId: string, attachmentId: string): string {
   return `${base}/patients/${patientId}/attachments/${attachmentId}/download`;
 }
 
+async function downloadAttachment(
+  patientId: string,
+  attachmentId: string,
+): Promise<Blob> {
+  const response = await apiInstance.get<Blob>(
+    `/patients/${patientId}/attachments/${attachmentId}/download`,
+    { responseType: "blob" },
+  );
+  return response.data;
+}
 export const patientAttachmentsService = {
   getAttachments,
   uploadAttachment,
   deleteAttachment,
   getDownloadUrl,
+  downloadAttachment,
 };

@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import {
+  useVisitNoteDrafts,
+  type VisitNoteDraft,
+} from "@/lib/store/useVisitNoteDrafts";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import UnderlineExtension from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
+  AlertTriangle,
   Bold,
   Italic,
   Underline,
@@ -16,6 +20,12 @@ import {
   Sparkles,
   Info,
 } from "lucide-react";
+import { Button } from "@/components/ui";
+import { useAuth } from "@/lib/contexts/auth-context";
+import {
+  NO_AUTHORSHIP_LABEL,
+  resolveAuthorship,
+} from "@/lib/utils/clinical-authorship";
 import { MicButton } from "@/components/ui/atomic/MicButton";
 import { useGroqDictation } from "@/lib/hooks/speech/use-groq-dictation";
 import { Switch } from "@/components/ui/atomic/forms/switch";
@@ -28,13 +38,13 @@ import {
 interface ClinicalNotesEditorProps {
   patientId: string;
   initialContent?: string;
+  draftKey?: string;
   updatedAt?: string;
   updatedBy?: string;
   readOnly?: boolean;
   onSave: (html: string) => Promise<void>;
   saving: boolean;
 }
-
 function formatRelativeDate(dateStr: string): string {
   try {
     const date = new Date(dateStr);
@@ -52,50 +62,101 @@ function formatRelativeDate(dateStr: string): string {
     return dateStr;
   }
 }
-
+function isServerNewer(
+  draftBase: string | undefined,
+  serverStamp: string | undefined,
+): boolean {
+  if (!serverStamp) return false;
+  if (!draftBase) return true;
+  const base = Date.parse(draftBase);
+  const server = Date.parse(serverStamp);
+  if (Number.isNaN(base) || Number.isNaN(server)) {
+    return draftBase !== serverStamp;
+  }
+  return server > base;
+}
+function readOwnDraft(
+  draftKey: string | undefined,
+  userId: string | undefined,
+): VisitNoteDraft | undefined {
+  if (!draftKey) return undefined;
+  const draft = useVisitNoteDrafts.getState().getDraft(draftKey);
+  if (!draft) return undefined;
+  if (draft.userId && userId && draft.userId !== userId) return undefined;
+  return draft;
+}
 export function ClinicalNotesEditor({
   initialContent,
+  draftKey,
   updatedAt,
   updatedBy,
   readOnly = false,
   onSave,
   saving,
 }: ClinicalNotesEditorProps) {
-  const [content, setContent] = useState(initialContent ?? "");
-  /**
-   * Cuando está activo el dictado pedirá al backend que estructure el audio
-   * en formato SOAP (Subjetivo/Objetivo/Análisis/Plan) usando IA.
-   * Desactivado por defecto — la transcripción cruda es la opción segura.
-   */
+  const { user } = useAuth();
+  const { setDraft, clearDraft } = useVisitNoteDrafts();
+  const restoredDraft = readOwnDraft(draftKey, user?.id);
+  const [content, setContent] = useState(
+    restoredDraft?.html ?? initialContent ?? "",
+  );
+  const draftBaseRef = useRef<string | undefined>(
+    restoredDraft ? restoredDraft.baseUpdatedAt : updatedAt,
+  );
+  const draftMetaRef = useRef<{ key?: string; userId?: string }>({
+    key: draftKey,
+    userId: user?.id,
+  });
+  draftMetaRef.current = { key: draftKey, userId: user?.id };
+  const [serverDivergence, setServerDivergence] = useState<{
+    html: string;
+    updatedAt?: string;
+  } | null>(null);
   const [useSoapStructuring, setUseSoapStructuring] = useState(false);
-
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit,
-      UnderlineExtension,
       Placeholder.configure({
         placeholder: "Escribe aquí las notas del historial...",
       }),
     ],
-    content: initialContent ?? "",
+    content: restoredDraft?.html ?? initialContent ?? "",
     editable: !readOnly,
     onUpdate: ({ editor }) => {
-      setContent(editor.getHTML());
+      const html = editor.getHTML();
+      setContent(html);
+      const { key, userId } = draftMetaRef.current;
+      if (key) {
+        setDraft(key, {
+          html,
+          baseUpdatedAt: draftBaseRef.current,
+          userId,
+        });
+      }
     },
   });
 
-  // Sync when initialContent changes (snapshot load)
   useEffect(() => {
-    if (editor && initialContent !== undefined) {
-      const current = editor.getHTML();
-      if (current !== initialContent) {
-        editor.commands.setContent(initialContent ?? "");
-        setContent(initialContent ?? "");
-      }
+    if (!editor || initialContent === undefined) return;
+    const draft = readOwnDraft(draftKey, draftMetaRef.current.userId);
+    if (draft !== undefined) {
+      const diverged =
+        isServerNewer(draft.baseUpdatedAt, updatedAt) &&
+        (initialContent ?? "") !== draft.html;
+      setServerDivergence(
+        diverged ? { html: initialContent ?? "", updatedAt } : null,
+      );
+      return;
     }
-  }, [initialContent, editor]);
-
+    setServerDivergence(null);
+    draftBaseRef.current = updatedAt;
+    const current = editor.getHTML();
+    if (current !== initialContent) {
+      editor.commands.setContent(initialContent ?? "", { emitUpdate: false });
+      setContent(initialContent ?? "");
+    }
+  }, [initialContent, editor, draftKey, updatedAt]);
   const {
     isRecording,
     isProcessing,
@@ -110,7 +171,6 @@ export function ClinicalNotesEditor({
       editor?.commands.focus();
     },
   });
-
   const handleMicToggle = () => {
     if (isRecording) {
       stopRecording();
@@ -118,11 +178,21 @@ export function ClinicalNotesEditor({
       startRecording();
     }
   };
-
   const handleSave = async () => {
     await onSave(content);
+    if (draftKey) clearDraft(draftKey);
+    setServerDivergence(null);
   };
 
+  const handleUseServerVersion = () => {
+    if (!editor || !serverDivergence) return;
+    editor.commands.setContent(serverDivergence.html, { emitUpdate: false });
+    setContent(serverDivergence.html);
+    draftBaseRef.current = serverDivergence.updatedAt;
+    if (draftKey) clearDraft(draftKey);
+    setServerDivergence(null);
+  };
+  const author = resolveAuthorship(updatedBy);
   const ToolbarButton = ({
     onClick,
     active,
@@ -144,10 +214,8 @@ export function ClinicalNotesEditor({
       {children}
     </button>
   );
-
   return (
     <div className="flex flex-col gap-2">
-      {/* Toolbar */}
       {!readOnly && editor && (
         <div className="flex flex-wrap items-center gap-0.5 rounded-lg border border-hairline bg-elevated px-2 py-1.5">
           <ToolbarButton
@@ -195,7 +263,6 @@ export function ClinicalNotesEditor({
             onToggle={handleMicToggle}
           />
           <span className="mx-1 h-4 w-px shrink-0 bg-hairline" />
-          {/* Opt-in: estructuración SOAP por IA — OFF por defecto */}
           <div className="flex items-center gap-1.5">
             <Switch
               id="soap-toggle"
@@ -233,13 +300,54 @@ export function ClinicalNotesEditor({
           </div>
         </div>
       )}
-
-      {/* Editor area */}
+      {serverDivergence && (
+        <div
+          role="alert"
+          className="rounded-lg bg-amber-500/15 px-3 py-2.5 text-xs text-amber-700 ring-1 ring-amber-400/25 dark:text-amber-300"
+        >
+          <div className="flex items-start gap-2">
+            <AlertTriangle
+              className="mt-0.5 h-3.5 w-3.5 shrink-0"
+              aria-hidden="true"
+            />
+            <div className="min-w-0">
+              <p className="font-medium">
+                Esta nota cambió en el servidor mientras tenías texto sin guardar
+              </p>
+              <p className="mt-1 leading-relaxed opacity-90">
+                Lo que ves en el editor es tu borrador sin guardar. En el
+                servidor hay una versión más reciente
+                {serverDivergence.updatedAt
+                  ? ` (${formatRelativeDate(serverDivergence.updatedAt)})`
+                  : ""}{" "}
+                que no está aquí: si guardas ahora, la reemplazarás por completo
+                y no se podrá recuperar.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUseServerVersion}
+                >
+                  Traer la versión del servidor y descartar mi borrador
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setServerDivergence(null)}
+                >
+                  Seguir con mi borrador
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="min-h-[160px] rounded-xl border border-hairline bg-elevated px-3 py-2.5 text-sm text-ink transition-colors focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/30 [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[140px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-subtle [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-4 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-4 [&_.ProseMirror_h2]:text-base [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:mt-2">
         <EditorContent editor={editor} />
       </div>
-
-      {/* Status preview — shown while dictating or processing */}
       {isRecording && (
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5 rounded-lg border border-dashed border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-sm italic text-rose-600 dark:text-rose-400">
@@ -265,17 +373,18 @@ export function ClinicalNotesEditor({
             : "Procesando dictado..."}
         </div>
       )}
-
-      {/* Footer */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          {updatedBy && (
+          {(author || updatedAt) && (
             <p className="text-xs text-subtle">
-              Guardado por {updatedBy}
+              {author ? (
+                <>Guardado por {author}</>
+              ) : (
+                <span className="italic">{NO_AUTHORSHIP_LABEL}</span>
+              )}
               {updatedAt ? ` · ${formatRelativeDate(updatedAt)}` : ""}
             </p>
           )}
-          {/* Indicador de origen del último dictado */}
           {lastTranscriptSource && (
             <span
               className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md font-medium ${

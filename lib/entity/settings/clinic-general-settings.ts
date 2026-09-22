@@ -1,3 +1,5 @@
+import type { ToothNotation } from "@/lib/odontogram/notation";
+
 export type ClinicScheduleDayKey =
   | "monday"
   | "tuesday"
@@ -33,6 +35,7 @@ export interface ClinicGeneralSettings {
   reminderTime?: number | null;
   /** URL absoluta del logo de la clínica (subido a Cloudinary). */
   logoUrl?: string | null;
+  toothNotation: ToothNotation;
 }
 
 export type UpdateClinicGeneralSettingsRequest = Omit<
@@ -80,4 +83,5 @@ export const DEFAULT_CLINIC_GENERAL_SETTINGS: ClinicGeneralSettings = {
   sendReminders: false,
   reminderTime: 1440,
   logoUrl: null,
+  toothNotation: "fdi",
 };

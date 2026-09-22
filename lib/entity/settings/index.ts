@@ -3,3 +3,4 @@ export * from "./clinic-branding";
 export * from "./currencies";
 export * from "./currency-meta";
 export * from "./timezones";
+export * from "./tooth-notations";

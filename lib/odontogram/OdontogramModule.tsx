@@ -15,6 +15,7 @@ function OdontogramModuleRuntime({
   patientId,
   clinicId,
   adapter,
+  dictationAdapter,
   showHeader = true,
   initialTab,
   onChange,
@@ -24,7 +25,10 @@ function OdontogramModuleRuntime({
   finalizeOpen,
   onFinalizeClose,
   onFinalizeSuccess,
-}: Omit<OdontogramModuleProps, "readOnly" | "currency">) {
+}: Omit<
+  OdontogramModuleProps,
+  "readOnly" | "currency" | "notation" | "defaultDentition"
+>) {
   const storeApi = useOdontogramStoreApi();
   const visitId = useOdontogramStore((state) => state.metadata.visitId);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,11 +83,21 @@ function OdontogramModuleRuntime({
   }, [adapter, clinicId, onError, patientId, storeApi]);
 
   useEffect(() => {
-    const unsubscribe = storeApi.subscribe((state) => {
+    const unsubscribe = storeApi.subscribe((state, prev) => {
       // No autosave durante la hidratación, en solo-lectura (histórico / visita
       // finalizada / sin permiso) NI tras un fallo de carga: evita PUTs no deseados,
       // con visita stale, o que sobrescriban lo persistido con un estado vacío.
       if (hydratingRef.current || state.readOnly || loadFailedRef.current) return;
+
+      if (
+        state.schemaVersion === prev.schemaVersion &&
+        state.dentition === prev.dentition &&
+        state.teeth === prev.teeth &&
+        state.clinicalEvents === prev.clinicalEvents &&
+        state.treatmentPlans === prev.treatmentPlans &&
+        state.metadata === prev.metadata
+      )
+        return;
 
       const snapshot = state.getSnapshot();
       onChange?.(snapshot);
@@ -137,7 +151,11 @@ function OdontogramModuleRuntime({
         </div>
       ) : null}
 
-      <OdontogramModuleView initialTab={initialTab} showHeader={showHeader} />
+      <OdontogramModuleView
+        initialTab={initialTab}
+        showHeader={showHeader}
+        dictationAdapter={dictationAdapter}
+      />
 
       {visitId && patientId && clinicId ? (
         <FinalizarCitaModal
@@ -158,8 +176,11 @@ export function OdontogramModule({
   patientId,
   clinicId,
   adapter,
+  dictationAdapter,
   readOnly = false,
   currency,
+  notation,
+  defaultDentition,
   showHeader = true,
   initialTab = "odontogram",
   onChange,
@@ -177,11 +198,14 @@ export function OdontogramModule({
       clinicId={clinicId}
       readOnly={readOnly}
       currency={currency}
+      notation={notation}
+      defaultDentition={defaultDentition}
     >
       <OdontogramModuleRuntime
         patientId={patientId}
         clinicId={clinicId}
         adapter={adapter}
+        dictationAdapter={dictationAdapter}
         showHeader={showHeader}
         initialTab={initialTab}
         onChange={onChange}

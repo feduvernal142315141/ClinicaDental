@@ -19,6 +19,12 @@ import type { AppliedTemplateRecord } from "./template-picker";
 import { getDesignedToothPaths } from "./teeth-svg-adapter";
 import { ToothTypeService } from "@/lib/odontogram/domain/odontogram/services/ToothTypeService";
 import {
+  PALMER_QUADRANT_LABEL,
+  ToothNotationLabel,
+  toToothLabel,
+} from "@/lib/odontogram/notation";
+import { useOdontogramStore } from "@/lib/odontogram/store";
+import {
   X,
   CheckSquare,
   Square,
@@ -55,18 +61,11 @@ interface SurfacesTabProps {
   onSurfaceStatesChange?: (states: SurfaceState[]) => void;
 }
 
-function isAnterior(toothNumber: number): boolean {
-  const position = toothNumber % 10;
-  return position >= 1 && position <= 3;
-}
-
 function getQuadrantName(toothNumber: number): string {
-  const quadrant = Math.floor(toothNumber / 10);
-  if (quadrant === 1) return "Superior derecho";
-  if (quadrant === 2) return "Superior izquierdo";
-  if (quadrant === 3) return "Inferior izquierdo";
-  if (quadrant === 4) return "Inferior derecho";
-  return "";
+  const quadrant = toToothLabel(toothNumber, "palmer").quadrant;
+  if (!quadrant) return "";
+  const label = PALMER_QUADRANT_LABEL[quadrant];
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 export function SurfacesTab({
@@ -93,7 +92,8 @@ export function SurfacesTab({
   );
   const isInitialized = useRef<number | null>(null);
   const pendingInit = useRef(false);
-  const anterior = isAnterior(tooth.number);
+  const notation = useOdontogramStore((state) => state.notation);
+  const anterior = ToothTypeService.isAnterior(tooth.number);
   // Una exodoncia INDICADA no bloquea: la pieza sigue en boca y normalmente es
   // justo la que hay que diagnosticar para justificar la extracción.
   // Dos motivos DISTINTOS para no poder marcar caras, y no se pueden mezclar:
@@ -404,7 +404,7 @@ export function SurfacesTab({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-bold leading-tight">
-            Diente {tooth.number}
+            Diente <ToothNotationLabel fdi={tooth.number} notation={notation} />
           </h3>
           <p className="text-xs text-muted-foreground">
             {anterior ? "Anterior" : "Posterior"} ·{" "}

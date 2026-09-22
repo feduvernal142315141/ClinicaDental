@@ -4,6 +4,10 @@ import type {
   PlanItemStatus,
   TreatmentPlanItem,
 } from "@/lib/entity/odontogram";
+import {
+  formatToothListPlain,
+  type ToothNotation,
+} from "@/lib/odontogram/notation";
 
 /**
  * Vocabulario visual de las líneas del plan: etiqueta en español y tono del
@@ -116,9 +120,11 @@ export function getSessionBlockReason(
 export function describePlanItemScope(
   item: Pick<TreatmentPlanItem, "general">,
   teeth: number[],
+  notation: ToothNotation,
 ): string {
   if (item.general || teeth.length === 0) return "general";
-  return `${teeth.length === 1 ? "diente" : "dientes"} ${teeth.join(", ")}`;
+  const label = teeth.length === 1 ? "diente" : "dientes";
+  return `${label} ${formatToothListPlain(teeth, notation)}`;
 }
 
 /**
@@ -130,8 +136,9 @@ export function describePlanItemScope(
 export function describePlanItem(
   item: Pick<TreatmentPlanItem, "serviceName" | "general">,
   teeth: number[],
+  notation: ToothNotation,
 ): string {
-  return `${item.serviceName}, ${describePlanItemScope(item, teeth)}`;
+  return `${item.serviceName}, ${describePlanItemScope(item, teeth, notation)}`;
 }
 
 /**

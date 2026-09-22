@@ -4,11 +4,10 @@ import { usePathname } from "next/navigation";
 import { isPublicRoute } from "@/lib/constants/routes.constants";
 import { AppShell } from "@/components/layout/app-shell";
 
-/**
- * Decide si renderizar el shell de la app (sidebar + header) o no.
- * Rutas públicas (login, recuperar contraseña, OTP) y la raíz se renderizan
- * sin chrome; el resto va dentro del AppShell shadcn.
- */
+const BLEED_ROUTE = /^\/patients\/(?!new$)[^/]+$/;
+function isBleedRoute(pathname: string): boolean {
+  return BLEED_ROUTE.test(pathname);
+}
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/";
 
@@ -16,5 +15,5 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  return <AppShell>{children}</AppShell>;
+  return <AppShell bleed={isBleedRoute(pathname)}>{children}</AppShell>;
 }

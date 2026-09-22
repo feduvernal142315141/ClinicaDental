@@ -18,16 +18,23 @@ import { Cie10DiagnosisPicker } from "@/components/features/clinical-history/Cie
 import { ExamFindingsSection } from "@/components/features/clinical-history/ExamFindingsSection";
 import { FdiToothPicker } from "@/components/features/clinical-history/FdiToothPicker";
 import { ReadinessChecklist } from "@/components/features/clinical-history/ReadinessChecklist";
+import { useToothLabel } from "@/lib/contexts/tooth-notation-context";
+import {
+  toothNotationLabel,
+  toothRefText,
+} from "@/lib/utils/clinical-tooth-text";
 import { useActiveConsultationNotes } from "@/lib/hooks/patients/clinical-history-page/use-active-consultation-notes";
 import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
+import type { DentitionType } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 
 interface ActiveConsultationNotesProps {
   patientId: string;
   activeAppointmentId: string;
   canEdit?: boolean;
+  onNotesSaved?: () => void;
+  dentition?: DentitionType;
 }
 
-/** Tarjeta de sección con header iconográfico consistente (lenguaje único). */
 function Section({
   icon: Icon,
   title,
@@ -62,7 +69,6 @@ function Section({
   );
 }
 
-/** Etiqueta de campo legible y consistente. */
 function FieldLabel({
   children,
   htmlFor,
@@ -84,6 +90,8 @@ export function ActiveConsultationNotes({
   patientId,
   activeAppointmentId,
   canEdit = false,
+  onNotesSaved,
+  dentition,
 }: ActiveConsultationNotesProps) {
   const {
     visitRecord,
@@ -111,6 +119,9 @@ export function ActiveConsultationNotes({
 
   const { status: autosaveStatus } = useAutosaveStatus();
 
+  const { notation, plain } = useToothLabel();
+  const painToothText = toothRefText(pain.toothRef, plain);
+
   const autosaveLabel =
     autosaveStatus === "saving"
       ? "Guardando…"
@@ -120,7 +131,6 @@ export function ActiveConsultationNotes({
           ? "Error al guardar"
           : null;
 
-  /** Opciones de tipo de dolor con opción vacía para limpiar. */
   const painTypeSelectOptions = [
     { value: "", label: "Sin tipo" },
     ...painTypeOptions,
@@ -130,7 +140,6 @@ export function ActiveConsultationNotes({
 
   return (
     <div className="h-full min-h-0 space-y-4 overflow-y-auto pr-2 pb-4">
-      {/* ── Datos de esta consulta ─────────────────────────────────────── */}
       <Section
         icon={ClipboardList}
         title="Datos de esta consulta"
@@ -163,7 +172,6 @@ export function ActiveConsultationNotes({
           </>
         }
       >
-        {/* Motivo de consulta */}
         <div className="mb-4">
           <FieldLabel htmlFor="chief-complaint">Motivo de consulta</FieldLabel>
           <TextArea
@@ -177,7 +185,6 @@ export function ActiveConsultationNotes({
           />
         </div>
 
-        {/* Dolor actual */}
         <div className="rounded-xl border border-hairline bg-elevated p-3">
           <div className="mb-2.5 flex items-center gap-1.5">
             <Activity className="h-3.5 w-3.5 text-subtle" />
@@ -243,17 +250,19 @@ export function ActiveConsultationNotes({
             </div>
 
             <div className="col-span-2">
-              <FieldLabel>Diente afectado (referencia FDI)</FieldLabel>
+              <FieldLabel>
+                Diente afectado (numeración {toothNotationLabel(notation)})
+              </FieldLabel>
               <FdiToothPicker
                 value={pain.toothRef}
                 onChange={handlePainToothRefChange}
                 disabled={!canEdit}
                 placeholder="Seleccionar diente / cara…"
+                dentition={dentition}
               />
-              {pain.toothRef && (
+              {painToothText && (
                 <p className="mt-1.5 text-[11px] text-subtle">
-                  Diente {pain.toothRef.fdi}
-                  {pain.toothRef.surface ? ` — ${pain.toothRef.surface}` : ""}
+                  Diente {painToothText}
                 </p>
               )}
             </div>
@@ -261,7 +270,6 @@ export function ActiveConsultationNotes({
         </div>
       </Section>
 
-      {/* ── Diagnóstico CIE-10 ─────────────────────────────────────────── */}
       <Section icon={Stethoscope} title="Diagnóstico CIE-10">
         <Cie10DiagnosisPicker
           diagnoses={diagnoses}
@@ -273,7 +281,6 @@ export function ActiveConsultationNotes({
         />
       </Section>
 
-      {/* ── Hallazgos del examen ───────────────────────────────────────── */}
       <ExamFindingsSection
         findings={localExamFindings}
         onUpdateExtraoral={handleUpdateExtraoral}
@@ -281,20 +288,22 @@ export function ActiveConsultationNotes({
         disabled={!canEdit}
       />
 
-      {/* ── Notas de esta consulta ─────────────────────────────────────── */}
       <Section icon={NotebookPen} title="Notas de esta consulta">
         <ClinicalNotesEditor
           patientId={patientId}
           initialContent={visitRecord?.clinicalNotes}
+          draftKey={activeAppointmentId}
           updatedAt={visitRecord?.clinicalNotesUpdatedAt}
           updatedBy={visitRecord?.clinicalNotesUpdatedBy}
           readOnly={!canEdit}
-          onSave={handleSaveNotes}
+          onSave={async (html) => {
+            await handleSaveNotes(html);
+            onNotesSaved?.();
+          }}
           saving={visitSaving}
         />
       </Section>
 
-      {/* ── Lista para finalizar (informativa, no bloqueante) ──────────── */}
       <ReadinessChecklist
         diagnoses={diagnoses}
         examFindings={localExamFindings}

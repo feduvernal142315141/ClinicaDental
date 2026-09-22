@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { THEME } from "./chart-constants";
 import type {
   ToothSurface,
   SurfaceState,
@@ -34,15 +35,6 @@ interface SurfaceSelectorProps {
     color: string;
   } | null;
 }
-
-/* ---- Tema visual idéntico al odontograma principal ---- */
-const THEME = {
-  surfaceDefault: "#FFFFFF",
-  outlineStroke: "#4A5568",
-  rootFill: "#F7FAFC",
-  rootStroke: "#718096",
-  highlightStroke: "#C4B89A",
-} as const;
 
 type SelectorView = "frontal" | "oclusal" | "lateral";
 

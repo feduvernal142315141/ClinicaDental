@@ -35,6 +35,7 @@ import {
   type PlanItemRow,
 } from "@/lib/hooks/odontogram";
 import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
+import type { DentitionType } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 import { AddToPlanPanel } from "./AddToPlanPanel";
 import { PlanItemRowActions } from "./PlanItemRowActions";
 import {
@@ -125,6 +126,7 @@ interface PatientTreatmentPlanPanelProps {
   patientId: string;
   /** Solo para el `<caption>` de la tabla; los datos los trae el hook. */
   patientName: string;
+  dentition?: DentitionType;
 }
 
 /**
@@ -147,6 +149,7 @@ interface PatientTreatmentPlanPanelProps {
 export function PatientTreatmentPlanPanel({
   patientId,
   patientName,
+  dentition,
 }: PatientTreatmentPlanPanelProps) {
   const {
     toothGroup,
@@ -227,6 +230,7 @@ export function PatientTreatmentPlanPanel({
       currency={currency}
       onAdd={addItems}
       onAdded={closeAddPanel}
+      dentition={dentition}
     />
   );
 

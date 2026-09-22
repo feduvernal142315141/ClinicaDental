@@ -3,10 +3,15 @@
 import { Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui";
 import { cn } from "@/lib/utils/utils";
+import {
+  ToothNotationLabel,
+  type ToothNotation,
+} from "@/lib/odontogram/notation";
 
 export interface OdontogramEventCardProps {
   /** Número del diente, e.g. 11 */
   toothNumber: number;
+  notation: ToothNotation;
   /** Superficies afectadas */
   surfaces?: string[];
   /** Nombre visible del evento / procedimiento */
@@ -37,6 +42,7 @@ const TAG_CLASSES: Record<OdontogramEventCardProps["tagColor"], string> = {
  */
 export function OdontogramEventCard({
   toothNumber,
+  notation,
   surfaces = [],
   displayName,
   typeLabel,
@@ -54,7 +60,7 @@ export function OdontogramEventCard({
         <div className="mb-2 flex items-start justify-between">
           <div className="space-y-0.5">
             <p className="text-lg font-semibold text-ink">
-              Diente {toothNumber}
+              Diente <ToothNotationLabel fdi={toothNumber} notation={notation} />
             </p>
             {surfaces.length > 0 && (
               <p className="text-sm text-subtle">

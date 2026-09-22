@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, DragEvent, KeyboardEvent } from "react";
-import { Upload as UploadIcon, X, FileText, Image as ImageIcon, AlertCircle } from "lucide-react";
+import {
+  Upload as UploadIcon,
+  X,
+  FileText,
+  AlertCircle,
+  Film,
+  FileSpreadsheet,
+  File as FileIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { ATTACHMENT_CATEGORIES, type AttachmentCategory } from "@/lib/entity/patientAttachment";
 import { notify } from "@/lib/utils/notify";
@@ -9,14 +17,16 @@ import { Modal } from "@/components/ui/primitives/custom";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Select } from "@/components/ui/controls/select";
 import TextArea from "@/components/ui/atomic/forms/textarea";
+import {
+  getAttachmentMediaType,
+  getFileExtension,
+  formatFileSize,
+} from "@/lib/utils/attachment-helpers";
 
-// ── Constantes de validación ───────────────────────────────────────────────
-const ACCEPTED_MIME = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-const ACCEPTED_ACCEPT = ".jpg,.jpeg,.png,.webp,.pdf";
-const MAX_SIZE_MB = 10;
+const ACCEPTED_ACCEPT =
+  ".jpg,.jpeg,.png,.webp,.gif,.svg,.bmp,.mp4,.webm,.mov,.pdf,.xlsx,.xls,.csv,.doc,.docx,.txt,.rtf,.odt";
+const MAX_SIZE_MB = 50;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
-
-// ── Sub-componente: zona de arrastre accesible ─────────────────────────────
 
 interface FileDropProps {
   file: File | null;
@@ -31,7 +41,6 @@ function FileDrop({ file, onSelect, onRemove, error, disabled }: FileDropProps) 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Limpiar URL al quitar el archivo o al desmontar
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -87,10 +96,12 @@ function FileDrop({ file, onSelect, onRemove, error, disabled }: FileDropProps) 
     }
   };
 
-  // ── Vista: archivo seleccionado ──────────────────────────────────────────
   if (file) {
+    const mediaType = getAttachmentMediaType(file.name, file.type);
+    const ext = getFileExtension(file.name).toUpperCase() || "ARCHIVO";
+
     return (
-      <div className="relative rounded-xl border border-hairline bg-elevated p-4">
+      <div className="relative rounded-2xl border border-hairline bg-elevated p-4">
         <button
           type="button"
           onClick={handleRemove}
@@ -107,21 +118,33 @@ function FileDrop({ file, onSelect, onRemove, error, disabled }: FileDropProps) 
             <img
               src={previewUrl}
               alt="Vista previa del archivo"
-              className="max-h-28 rounded-lg object-contain"
+              className="max-h-28 rounded-lg object-contain shadow-sm"
             />
-            <span className="flex items-center gap-1 text-xs text-subtle">
-              <ImageIcon className="h-3.5 w-3.5 shrink-0" />
-              <span className="max-w-[200px] truncate">{file.name}</span>
+            <span className="flex items-center gap-1.5 text-xs text-subtle">
+              <span className="rounded bg-brand/15 px-1 py-0.2 font-mono text-[10px] font-bold text-brand">
+                {ext}
+              </span>
+              <span className="max-w-[200px] truncate font-medium text-ink">{file.name}</span>
+              <span>· {formatFileSize(file.size)}</span>
             </span>
           </div>
         ) : (
           <div className="flex items-center gap-3 pt-1">
-            <div className="rounded-lg bg-brand/10 p-2.5">
-              <FileText className="h-6 w-6 text-brand" />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface shadow-sm border border-hairline">
+              {mediaType === "video" && <Film className="h-6 w-6 text-violet-500" />}
+              {mediaType === "pdf" && <FileText className="h-6 w-6 text-rose-500" />}
+              {mediaType === "spreadsheet" && <FileSpreadsheet className="h-6 w-6 text-emerald-500" />}
+              {mediaType === "document" && <FileText className="h-6 w-6 text-sky-500" />}
+              {mediaType === "other" && <FileIcon className="h-6 w-6 text-subtle" />}
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-ink">{file.name}</p>
-              <p className="text-xs text-subtle">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-semibold text-ink">{file.name}</p>
+                <span className="rounded bg-elevated px-1.5 py-0.2 font-mono text-[10px] font-bold text-subtle border">
+                  {ext}
+                </span>
+              </div>
+              <p className="text-xs text-subtle">{formatFileSize(file.size)}</p>
             </div>
           </div>
         )}
@@ -129,7 +152,6 @@ function FileDrop({ file, onSelect, onRemove, error, disabled }: FileDropProps) 
     );
   }
 
-  // ── Vista: zona vacía ─────────────────────────────────────────────────────
   return (
     <div className="space-y-1.5">
       <div
@@ -143,10 +165,10 @@ function FileDrop({ file, onSelect, onRemove, error, disabled }: FileDropProps) 
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         className={cn(
-          "flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center transition-colors",
+          "flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-8 text-center transition-all",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
           isDragging
-            ? "border-brand bg-brand/5"
+            ? "border-brand bg-brand/5 scale-[0.99]"
             : error
               ? "border-destructive/40 bg-destructive/5"
               : "border-hairline bg-surface hover:border-brand/50 hover:bg-brand/5",
@@ -160,7 +182,6 @@ function FileDrop({ file, onSelect, onRemove, error, disabled }: FileDropProps) 
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) processFile(f);
-            // Limpiar para permitir seleccionar el mismo archivo de nuevo
             e.target.value = "";
           }}
           className="hidden"
@@ -170,20 +191,18 @@ function FileDrop({ file, onSelect, onRemove, error, disabled }: FileDropProps) 
         />
         <div
           className={cn(
-            "rounded-full p-3 transition-colors",
-            isDragging ? "bg-brand/15" : "bg-elevated",
+            "rounded-2xl p-3.5 transition-colors shadow-sm",
+            isDragging ? "bg-brand/20 text-brand" : "bg-elevated text-subtle",
           )}
         >
-          <UploadIcon
-            className={cn("h-6 w-6 transition-colors", isDragging ? "text-brand" : "text-subtle")}
-          />
+          <UploadIcon className="h-6 w-6" />
         </div>
-        <div className="space-y-0.5">
+        <div className="space-y-1">
           <p className="text-sm font-medium text-ink">
             Haz clic o arrastra un archivo aquí
           </p>
           <p className="text-xs text-subtle">
-            JPG, PNG, WEBP, PDF — máx. {MAX_SIZE_MB} MB
+            Imágenes, videos, PDFs, Excel, Word — máx. {MAX_SIZE_MB} MB
           </p>
         </div>
       </div>
@@ -197,8 +216,6 @@ function FileDrop({ file, onSelect, onRemove, error, disabled }: FileDropProps) 
     </div>
   );
 }
-
-// ── Modal principal ────────────────────────────────────────────────────────
 
 interface AttachmentUploadModalProps {
   open: boolean;
@@ -234,10 +251,6 @@ export function AttachmentUploadModal({
 
   const handleFileSelect = (f: File) => {
     setFileError(null);
-    if (!ACCEPTED_MIME.includes(f.type)) {
-      setFileError("Tipo no aceptado. Solo se permiten: JPG, PNG, WEBP y PDF.");
-      return;
-    }
     if (f.size > MAX_SIZE_BYTES) {
       setFileError(
         `El archivo supera los ${MAX_SIZE_MB} MB. Elige uno más pequeño e inténtalo de nuevo.`,
@@ -250,7 +263,7 @@ export function AttachmentUploadModal({
   const handleSubmit = async () => {
     if (!file) {
       void notify.warning("Falta el archivo", {
-        description: "Arrastra o elige una imagen o PDF antes de subirlo al expediente del paciente.",
+        description: "Arrastra o elige un archivo antes de subirlo al expediente del paciente.",
       });
       return;
     }
@@ -273,7 +286,7 @@ export function AttachmentUploadModal({
       }}
       icon={<UploadIcon className="h-5 w-5" />}
       title="Agregar archivo"
-      description="Adjunta una imagen o PDF al expediente del paciente."
+      description="Adjunta imágenes, videos, PDFs, documentos u hojas de cálculo al expediente del paciente."
       className="w-full sm:max-w-lg"
       footer={
         <>
@@ -281,7 +294,7 @@ export function AttachmentUploadModal({
             Cancelar
           </Button>
           <Button type="button" loading={uploading} onClick={handleSubmit}>
-            Subir
+            Subir archivo
           </Button>
         </>
       }
@@ -316,7 +329,7 @@ export function AttachmentUploadModal({
           <label className="mb-1.5 block text-sm font-medium text-ink">Notas (opcional)</label>
           <TextArea
             rows={2}
-            placeholder="Notas adicionales..."
+            placeholder="Notas o descripción adicional del archivo..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             disabled={uploading}

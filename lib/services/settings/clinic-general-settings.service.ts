@@ -11,13 +11,54 @@ function unwrapResponse<T>(data: unknown): T {
   return ((data as { data?: T })?.data ?? data) as T;
 }
 
-async function getGeneralSettings(): Promise<ClinicGeneralSettings> {
+let cachedSettings: ClinicGeneralSettings | null = null;
+let inFlightRequest: Promise<ClinicGeneralSettings> | null = null;
+let cacheEpoch = 0;
+
+function invalidateCache() {
+  cachedSettings = null;
+  inFlightRequest = null;
+  cacheEpoch += 1;
+}
+
+async function fetchGeneralSettings(): Promise<ClinicGeneralSettings> {
+  const epoch = cacheEpoch;
   const response = await serviceGet<ClinicGeneralSettings>(endpoint);
   if (response?.status === 200) {
-    return unwrapResponse<ClinicGeneralSettings>(response.data);
+    const data = unwrapResponse<ClinicGeneralSettings>(response.data);
+    if (epoch === cacheEpoch) {
+      cachedSettings = data;
+    }
+    return data;
   }
 
   handleServiceError(response, "Error al cargar la configuración general");
+}
+
+function getCachedGeneralSettings(): ClinicGeneralSettings | null {
+  return cachedSettings;
+}
+
+async function getGeneralSettings(options?: {
+  force?: boolean;
+}): Promise<ClinicGeneralSettings> {
+  if (options?.force) {
+    invalidateCache();
+  } else {
+    if (cachedSettings) return cachedSettings;
+    if (inFlightRequest) return inFlightRequest;
+  }
+
+  const request = fetchGeneralSettings();
+  inFlightRequest = request;
+
+  try {
+    return await request;
+  } finally {
+    if (inFlightRequest === request) {
+      inFlightRequest = null;
+    }
+  }
 }
 
 async function updateGeneralSettings(
@@ -29,6 +70,7 @@ async function updateGeneralSettings(
   );
 
   if (response?.status >= 200 && response?.status < 300) {
+    invalidateCache();
     return true;
   }
 
@@ -37,5 +79,7 @@ async function updateGeneralSettings(
 
 export const clinicGeneralSettingsService = {
   getGeneralSettings,
+  getCachedGeneralSettings,
   updateGeneralSettings,
+  clearCache: invalidateCache,
 };

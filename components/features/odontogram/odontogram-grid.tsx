@@ -3,7 +3,14 @@
 import { OdontogramLegend } from "./odontogramLeyend";
 import { ToothSVGMultiView } from "./tooth-svg-multi-view";
 import { ResponsiveOdontogramWrapper } from "./responsive-odontogram-wrapper";
+import { DentitionSwitch } from "./ui/DentitionSwitch";
 import type { Tooth } from "./types";
+import { useOdontogramStore } from "@/lib/odontogram/store";
+import { ToothNotationLabel } from "@/lib/odontogram/notation";
+import {
+  quadrantRowsFor,
+  type QuadrantRows,
+} from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 
 interface OdontogramGridProps {
   teeth: Tooth[];
@@ -12,14 +19,27 @@ interface OdontogramGridProps {
   onToothClick: (toothNumber: number) => void;
 }
 
+const UPPER_VIEWS = ["frontal", "oclusal", "lateral"] as const;
+const LOWER_VIEWS = ["lateral", "oclusal", "frontal"] as const;
+
 export function OdontogramGrid({ onToothClick }: OdontogramGridProps) {
-  const upperRight = [18, 17, 16, 15, 14, 13, 12, 11];
-  const upperLeft = [21, 22, 23, 24, 25, 26, 27, 28];
-  const lowerLeft = [31, 32, 33, 34, 35, 36, 37, 38];
-  const lowerRight = [48, 47, 46, 45, 44, 43, 42, 41];
+  const notation = useOdontogramStore((state) => state.notation);
+  const dentition = useOdontogramStore((state) => state.dentition);
+  // Exterior→interior: en mixta los permanentes envuelven a los temporales.
+  const rowSets = quadrantRowsFor(dentition);
+
+  const renderNumberRow = (fdiNumbers: readonly number[]) => (
+    <div className="flex gap-0.5">
+      {fdiNumbers.map((fdi) => (
+        <div key={fdi} className="w-[3.2rem] text-center">
+          <ToothNotationLabel fdi={fdi} notation={notation} prefix="Diente" />
+        </div>
+      ))}
+    </div>
+  );
 
   const renderToothRow = (
-    toothNumbers: number[],
+    toothNumbers: readonly number[],
     view: "frontal" | "oclusal" | "lateral",
   ) => {
     // Proportions adapted to the professional SVG designs.
@@ -27,9 +47,12 @@ export function OdontogramGrid({ onToothClick }: OdontogramGridProps) {
     // - oclusal: nearly square aspect ratio
     // - lateral: moderate height
     const containerClass = {
-      frontal: "w-[3.2rem] h-[4.5rem] cursor-pointer hover:opacity-80 transition-opacity",
-      oclusal: "w-[3.2rem] h-[3.2rem] cursor-pointer hover:opacity-80 transition-opacity",
-      lateral: "w-[3.2rem] h-[4rem] cursor-pointer hover:opacity-80 transition-opacity",
+      frontal:
+        "w-[3.2rem] h-[4.5rem] cursor-pointer hover:opacity-80 transition-opacity",
+      oclusal:
+        "w-[3.2rem] h-[3.2rem] cursor-pointer hover:opacity-80 transition-opacity",
+      lateral:
+        "w-[3.2rem] h-[4rem] cursor-pointer hover:opacity-80 transition-opacity",
     }[view];
 
     return (
@@ -47,104 +70,68 @@ export function OdontogramGrid({ onToothClick }: OdontogramGridProps) {
     );
   };
 
+  const renderArch = (
+    rows: QuadrantRows,
+    arch: "upper" | "lower",
+    key: string,
+  ) => {
+    const right = arch === "upper" ? rows.upperRight : rows.lowerRight;
+    const left = arch === "upper" ? rows.upperLeft : rows.lowerLeft;
+    const views = arch === "upper" ? UPPER_VIEWS : LOWER_VIEWS;
+
+    return (
+      <div key={key} className="space-y-1.5">
+        {views.map((view) => (
+          <div key={view} className="flex justify-center gap-3">
+            {renderToothRow(right, view)}
+            <div className="w-px bg-border" />
+            {renderToothRow(left, view)}
+          </div>
+        ))}
+
+        {/* Números de dientes */}
+        <div className="flex justify-center gap-3 text-xs text-center font-mono text-muted-foreground">
+          {renderNumberRow(right)}
+          <div className="w-px" />
+          {renderNumberRow(left)}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="w-full flex flex-col h-full flex-1 min-h-0">
+    <div className="relative w-full flex flex-col h-full flex-1 min-h-0">
+      {/* Fuera del zoom: la dentición se cambia sin depender del lienzo. */}
+      <DentitionSwitch className="absolute top-3 left-3 z-30" />
+
       <ResponsiveOdontogramWrapper overlay={<OdontogramLegend />}>
         {/* Ancho intrínseco: el lienzo mide este bloque, no se asume en píxeles */}
         <div className="flex w-max flex-col px-1 py-1">
           {/* Arcada Superior */}
-          <div className="space-y-1.5">
+          <div>
             <div className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
               Arcada Superior
             </div>
-
-            {/* Vista Frontal Superior */}
-            <div className="flex justify-center gap-3">
-              {renderToothRow(upperRight, "frontal")}
-              <div className="w-px bg-border" />
-              {renderToothRow(upperLeft, "frontal")}
-            </div>
-
-            {/* Vista Oclusal Superior */}
-            <div className="flex justify-center gap-3">
-              {renderToothRow(upperRight, "oclusal")}
-              <div className="w-px bg-border" />
-              {renderToothRow(upperLeft, "oclusal")}
-            </div>
-
-            {/* Vista Lateral Superior */}
-            <div className="flex justify-center gap-3">
-              {renderToothRow(upperRight, "lateral")}
-              <div className="w-px bg-border" />
-              {renderToothRow(upperLeft, "lateral")}
-            </div>
-
-            {/* Números de dientes */}
-            <div className="flex justify-center gap-3 text-xs text-center font-mono text-muted-foreground">
-              <div className="flex gap-0.5">
-                {upperRight.map((num) => (
-                  <div key={num} className="w-[3.2rem] text-center">
-                    {num}
-                  </div>
-                ))}
-              </div>
-              <div className="w-px" />
-              <div className="flex gap-0.5">
-                {upperLeft.map((num) => (
-                  <div key={num} className="w-[3.2rem] text-center">
-                    {num}
-                  </div>
-                ))}
-              </div>
+            <div className="flex flex-col gap-3">
+              {rowSets.map((set) =>
+                renderArch(set.rows, "upper", `upper-${set.primary}`),
+              )}
             </div>
           </div>
 
           <div className="border-t-2 border-dashed border-border my-3" />
 
           {/* Arcada Inferior */}
-          <div className="space-y-1.5">
+          <div>
             <div className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
               Arcada Inferior
             </div>
-
-            {/* Vista Lateral Inferior */}
-            <div className="flex justify-center gap-3">
-              {renderToothRow(lowerRight, "lateral")}
-              <div className="w-px bg-border" />
-              {renderToothRow(lowerLeft, "lateral")}
-            </div>
-
-            {/* Vista Oclusal Inferior */}
-            <div className="flex justify-center gap-3">
-              {renderToothRow(lowerRight, "oclusal")}
-              <div className="w-px bg-border" />
-              {renderToothRow(lowerLeft, "oclusal")}
-            </div>
-
-            {/* Vista Frontal Inferior */}
-            <div className="flex justify-center gap-3">
-              {renderToothRow(lowerRight, "frontal")}
-              <div className="w-px bg-border" />
-              {renderToothRow(lowerLeft, "frontal")}
-            </div>
-
-            {/* Números de dientes */}
-            <div className="flex justify-center gap-3 text-xs text-center font-mono text-muted-foreground">
-              <div className="flex gap-0.5">
-                {lowerRight.map((num) => (
-                  <div key={num} className="w-[3.2rem] text-center">
-                    {num}
-                  </div>
-                ))}
-              </div>
-              <div className="w-px" />
-              <div className="flex gap-0.5">
-                {lowerLeft.map((num) => (
-                  <div key={num} className="w-[3.2rem] text-center">
-                    {num}
-                  </div>
-                ))}
-              </div>
+            <div className="flex flex-col gap-3">
+              {[...rowSets]
+                .reverse()
+                .map((set) =>
+                  renderArch(set.rows, "lower", `lower-${set.primary}`),
+                )}
             </div>
           </div>
         </div>

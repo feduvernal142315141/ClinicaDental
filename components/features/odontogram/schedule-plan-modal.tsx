@@ -13,6 +13,7 @@ import { DoctorScheduleSummary } from "@/components/features/appointments/form/D
 import { useDoctorAvailability } from "@/lib/hooks/appointments/use-doctor-availability";
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
 import { useOdontogramStore } from "@/lib/odontogram/store";
+import { formatToothPlain } from "@/lib/odontogram/notation";
 import { notify } from "@/lib/utils/notify";
 import { dateToLocalDate } from "@/lib/datetime";
 import {
@@ -38,6 +39,7 @@ export function SchedulePlanModal({
   onScheduled,
 }: SchedulePlanModalProps) {
   const patientId = useOdontogramStore((state) => state.metadata.patientId);
+  const notation = useOdontogramStore((state) => state.notation);
 
   const [doctorId, setDoctorId] = useState("");
   const [date, setDate] = useState("");
@@ -138,7 +140,7 @@ export function SchedulePlanModal({
         type: "follow_up",
         status: "scheduled",
         notes: pendingPlans
-          .map((p) => `Diente ${p.toothNumber}: ${p.displayName}`)
+          .map((p) => `Pieza ${p.toothNumber} (FDI): ${p.displayName}`)
           .join("; "),
       });
 
@@ -203,7 +205,8 @@ export function SchedulePlanModal({
                 className="flex items-center justify-between gap-3 text-sm text-ink"
               >
                 <span className="truncate">
-                  Diente {plan.toothNumber} — {plan.displayName}
+                  Diente {formatToothPlain(plan.toothNumber, notation)} —{" "}
+                  {plan.displayName}
                 </span>
                 <span className="shrink-0 rounded-full border border-hairline bg-surface px-2 py-0.5 text-xs tabular-nums text-subtle">
                   {plan.durationMin ?? 30} min

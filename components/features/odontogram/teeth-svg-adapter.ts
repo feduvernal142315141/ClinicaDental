@@ -16,6 +16,7 @@ import {
   type PaintableSurface,
   type ToothSurface,
 } from "@/lib/odontogram/domain/odontogram/types/surface.types";
+import { permanentProxyOf } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 import { getToothView, type ToothViewData } from "./teeth-svg-data";
 import type { ToothViewPaths, SurfacePath } from "./teeth-svg-types";
 
@@ -158,7 +159,7 @@ function getContralateralFDI(fdi: string): string {
  * the adapter falls back to the contralateral tooth (28P), which is the
  * anatomical mirror on the same arch.
  *
- * @param toothNumber - FDI tooth number (11-48)
+ * @param toothNumber - FDI (11-48; 51-85 vía proxy)
  * @param view - "frontal" | "oclusal" | "lateral"
  * @returns ToothViewPaths or null if tooth data is not available
  */
@@ -166,7 +167,10 @@ export function getDesignedToothPaths(
   toothNumber: number,
   view: "frontal" | "oclusal" | "lateral"
 ): ToothViewPaths | null {
-  const fdi = String(toothNumber);
+  // Los temporales se dibujan con el arte de su homólogo permanente (55 → 15)
+  // hasta que exista SVG propio; el registro va por FDI string, así que el arte
+  // real se sustituye después sin tocar esta lógica.
+  const fdi = String(permanentProxyOf(toothNumber));
 
   // Map component view names to our internal view names
   const viewMap: Record<string, "vestibular" | "occlusal" | "lateral"> = {

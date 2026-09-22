@@ -3,7 +3,10 @@
 import { Fragment, type ReactNode } from "react";
 import { Layers, Stethoscope, type LucideIcon } from "lucide-react";
 import { StatusBadge } from "@/components/ui";
+import { useToothLabel } from "@/lib/contexts/tooth-notation-context";
+import { ToothNotationLabel } from "@/lib/odontogram/notation";
 import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
+import { notationDrawsBracket } from "@/lib/utils/clinical-tooth-text";
 import { cn } from "@/lib/utils/utils";
 import type { PlanItemGroup, PlanItemRow } from "@/lib/hooks/odontogram";
 import {
@@ -83,17 +86,13 @@ function humanizeSurface(code: string): string {
 
 function ToothScopeCell({ row }: { row: PlanItemRow }) {
   const { teeth, surfaces } = row;
-  const label =
-    teeth.length === 0
-      ? "Pieza sin especificar"
-      : teeth.length === 1
-        ? `Diente ${teeth[0]}`
-        : `Dientes ${teeth.join(", ")}`;
+  const { notation, describe } = useToothLabel();
+  const label = teeth.length === 0 ? "Pieza sin especificar" : describe(teeth);
   const surfacesLabel = surfaces.map(humanizeSurface).join(", ");
 
   return (
     <div className="flex items-start gap-2.5">
-      {/* El cuadro repite el FDI que ya dice la etiqueta: se oculta al lector
+      {/* El cuadro repite la pieza que ya dice la etiqueta: se oculta al lector
           de pantalla para no leer "16, Diente 16".
 
           Con varias piezas lleva el "+N". El cuadro es el ancla con la que se
@@ -107,9 +106,18 @@ function ToothScopeCell({ row }: { row: PlanItemRow }) {
           panel el cuadro quedaba sin relleno. */}
       <span
         aria-hidden="true"
-        className="mt-0.5 inline-flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center gap-0.5 rounded-lg border border-hairline bg-canvas px-1.5 text-xs font-semibold tabular-nums text-ink"
+        className={cn(
+          "mt-0.5 inline-flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center gap-0.5 rounded-lg border bg-canvas px-1.5 text-xs font-semibold tabular-nums text-ink",
+          notationDrawsBracket(notation)
+            ? "border-transparent"
+            : "border-hairline",
+        )}
       >
-        <span>{teeth.length === 0 ? "—" : teeth[0]}</span>
+        {teeth.length === 0 ? (
+          <span>—</span>
+        ) : (
+          <ToothNotationLabel fdi={teeth[0]} notation={notation} />
+        )}
         {teeth.length > 1 && (
           <span className="text-[10px] font-medium text-subtle">
             +{teeth.length - 1}
@@ -118,7 +126,7 @@ function ToothScopeCell({ row }: { row: PlanItemRow }) {
       </span>
       <span className="min-w-0">
         {/* Secundario a propósito: el texto fuerte de la fila es el SERVICIO.
-            El ancla visual de esta celda es el cuadro del FDI. */}
+            El ancla visual de esta celda es el cuadro de la pieza. */}
         <span className="block text-sm text-subtle">{label}</span>
         {/* Siempre presente: sin superficies el diseño pone "Pieza completa".
             Ocultarlo dejaba un hueco y hacía que la fila cambiara de alto según

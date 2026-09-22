@@ -20,7 +20,7 @@ import {
   TIMEZONE_SELECT_OPTIONS,
 } from "@/components/features/settings/regional-select-options";
 
-const Req = () => <span className="text-rose-500">*</span>;
+export const Req = () => <span className="text-rose-500">*</span>;
 
 /**
  * Máscara ligera del teléfono mientras se escribe: sólo permite dígitos,

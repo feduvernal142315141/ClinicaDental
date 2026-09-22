@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import { useClinicalNotes } from "@/lib/hooks/clinical-history";
+import { useMemo } from "react";
+import { MONTHS_ES, toLocalInput } from "@/lib/datetime";
+import { resolveAuthorship } from "@/lib/utils/clinical-authorship";
 import {
   ALERT_SEVERITY_COLORS,
   type AlertSeverity,
@@ -18,22 +19,40 @@ const SEVERITY_BADGE_STATUS: Record<
   info: "processing",
 };
 
+export type ClinicalNoteView =
+  | { kind: "no-record" }
+  | { kind: "empty" }
+  | {
+      kind: "present";
+      html: string;
+      author: string | null;
+      editedAt: string | null;
+    };
+function formatEditStamp(iso: string | undefined): string | null {
+  const local = toLocalInput(iso);
+  if (!local) return null;
+  const day = Number(local.slice(8, 10));
+  const month = MONTHS_ES[Number(local.slice(5, 7)) - 1]?.toLowerCase();
+  if (!day || !month) return null;
+  return `${day} de ${month} de ${local.slice(0, 4)} ${local.slice(11, 16)}`;
+}
+function hasVisibleContent(html: string): boolean {
+  if (/<(img|table|hr)\b/i.test(html)) return true;
+  return (
+    html
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/gi, " ")
+      .trim().length > 0
+  );
+}
 interface UseMedicalAntecedentsColumnParams {
-  patientId: string;
   medicalHistory: ClinicalHistoryMedicalHistory | null;
   patientHeader: ClinicalHistoryPatientHeader | null;
 }
-
 export function useMedicalAntecedentsColumn({
-  patientId,
   medicalHistory,
   patientHeader,
 }: UseMedicalAntecedentsColumnParams) {
-  const { saving, save } = useClinicalNotes(
-    patientId,
-    medicalHistory?.clinicalNotes,
-  );
-
   const alertBadges = useMemo(
     () =>
       (patientHeader?.alerts ?? []).map((alert) => ({
@@ -44,7 +63,6 @@ export function useMedicalAntecedentsColumn({
       })),
     [patientHeader?.alerts],
   );
-
   const antecedentItems = useMemo(
     () => [
       {
@@ -70,18 +88,20 @@ export function useMedicalAntecedentsColumn({
     ],
     [medicalHistory],
   );
-
-  const handleSaveNotes = useCallback(
-    async (html: string) => {
-      await save(html);
-    },
-    [save],
-  );
-
+  const clinicalNote = useMemo<ClinicalNoteView>(() => {
+    if (!medicalHistory) return { kind: "no-record" };
+    const html = medicalHistory.clinicalNotes?.trim() ?? "";
+    if (!html || !hasVisibleContent(html)) return { kind: "empty" };
+    return {
+      kind: "present",
+      html,
+      author: resolveAuthorship(medicalHistory.clinicalNotesUpdatedBy),
+      editedAt: formatEditStamp(medicalHistory.clinicalNotesUpdatedAt),
+    };
+  }, [medicalHistory]);
   return {
-    saving,
     alertBadges,
     antecedentItems,
-    handleSaveNotes,
+    clinicalNote,
   };
 }

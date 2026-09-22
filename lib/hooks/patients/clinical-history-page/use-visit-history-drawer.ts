@@ -47,6 +47,7 @@ export function useVisitHistoryDrawer({
     reset: resetOdontogramSnapshots,
   } = useOdontogramVisitSnapshots();
   const [attachments, setAttachments] = useState<PatientAttachment[]>([]);
+  const [attachmentsError, setAttachmentsError] = useState(false);
 
   useEffect(() => {
     if (!open || !appointmentId) {
@@ -55,12 +56,17 @@ export function useVisitHistoryDrawer({
     }
 
     loadOdontogramSnapshots(appointmentId);
+    setAttachmentsError(false);
     clinicalHistoryService
       .getVisitAttachments(patientId, appointmentId)
-      .then(setAttachments)
+      .then((data) => {
+        setAttachments(data);
+        setAttachmentsError(false);
+      })
       .catch((error) => {
         notifyApiError("No se pudieron cargar los archivos adjuntos", error);
         setAttachments([]);
+        setAttachmentsError(true);
       });
   }, [
     open,
@@ -100,6 +106,7 @@ export function useVisitHistoryDrawer({
     record,
     loading,
     attachments,
+    attachmentsError,
     pain,
     hasPain,
     formattedVisitDate,

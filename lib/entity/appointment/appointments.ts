@@ -26,6 +26,14 @@ export type AppointmentType =
   | "follow_up"
   | "routine";
 
+export const APPOINTMENT_TYPE_LABEL: Record<AppointmentType, string> = {
+  consultation: "Consulta",
+  control: "Control",
+  emergency: "Urgencia",
+  follow_up: "Seguimiento",
+  routine: "Rutina",
+};
+
 /**
  * Snapshot ligero de un servicio asociado a una cita.
  * Backend: com.kodewave.clinic.backend.domain.entities.appointment.AppointmentServiceSnapshot

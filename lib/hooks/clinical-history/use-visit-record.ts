@@ -13,11 +13,16 @@ import type {
 import { notify } from "@/lib/utils/notify";
 import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
 
+function markHandled(err: unknown): void {
+  if (err && typeof err === "object") {
+    (err as { _interceptorHandled?: boolean })._interceptorHandled = true;
+  }
+}
 export function useVisitRecord(patientId: string, appointmentId?: string) {
   const [record, setRecord] = useState<PatientVisitRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
+  const [error, setError] = useState<unknown>(null);
   const load = useCallback(async () => {
     if (!appointmentId) return;
     setLoading(true);
@@ -27,12 +32,14 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
         appointmentId,
       );
       setRecord(data);
+      setError(null);
     } catch (err: unknown) {
       const e = err as { status?: number; message?: string };
       if (e?.status === 404) {
-        // No visit record yet — graceful empty state
         setRecord(null);
+        setError(null);
       } else {
+        setError(err);
         notify.error(e?.message || "No se pudo cargar el registro de visita", {
           description:
             "No pudimos recuperar los datos de esta consulta. Revisa tu conexión y vuelve a intentarlo; si persiste, contacta a soporte.",
@@ -42,16 +49,14 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
       setLoading(false);
     }
   }, [patientId, appointmentId]);
-
-  // Auto-load when appointmentId is present
   useEffect(() => {
     if (appointmentId) {
       load();
     } else {
       setRecord(null);
+      setError(null);
     }
   }, [appointmentId, load]);
-
   const save = useCallback(
     async (data: UpsertVisitRecordRequest, options?: { silent?: boolean }) => {
       if (!appointmentId) return;
@@ -70,7 +75,6 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
                 intensity: data.currentPain.intensity ?? undefined,
                 type: data.currentPain.type,
                 duration: data.currentPain.duration,
-                // Preserve toothRef from the new data; if absent keep previous
                 toothRef: data.currentPain.toothRef ?? prev?.currentPain?.toothRef,
               }
             : undefined;
@@ -100,10 +104,36 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
     },
     [patientId, appointmentId],
   );
-
   const saveNotes = useCallback(
     async (html: string): Promise<{ updatedAt: string; updatedBy: string }> => {
       if (!appointmentId) throw new Error("No hay consulta activa");
+
+      const isBlank = !html || html.replace(/<[^>]*>/g, "").trim() === "";
+      const hadContent = !!record?.clinicalNotes?.replace(/<[^>]*>/g, "").trim();
+      if (isBlank && hadContent) {
+        useAutosaveStatus.getState().markError();
+        notify.error("No se guardó: la nota quedaría vacía", {
+          description:
+            "El editor está vacío y esta consulta ya tiene evolución registrada: guardar así la borraría y no se podría recuperar. Lo ya guardado sigue intacto; vuelve a escribir la evolución antes de guardar.",
+        });
+        const rejection = new Error(
+          "No se guardó: dejar la nota vacía borraría la evolución registrada y no se puede deshacer.",
+        );
+        markHandled(rejection);
+        throw rejection;
+      }
+      if (isBlank && error) {
+        useAutosaveStatus.getState().markError();
+        notify.error("No se guardó: no se pudo leer la evolución de esta consulta", {
+          description:
+            "El editor está vacío y no pudimos comprobar si esta consulta ya tenía evolución registrada: guardarla así podría borrarla sin poder recuperarla. Vuelve a abrir la consulta cuando se restablezca la conexión y comprueba lo que hay guardado antes de escribir.",
+        });
+        const rejection = new Error(
+          "No se guardó: no se pudo leer el registro de esta visita, así que no se escribe una nota vacía.",
+        );
+        markHandled(rejection);
+        throw rejection;
+      }
       setSaving(true);
       useAutosaveStatus.getState().markSaving();
       try {
@@ -135,29 +165,25 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
         });
         return result;
       } catch (err: unknown) {
-        const e = err as { message?: string };
+        const e = err as { message?: string; status?: number };
         useAutosaveStatus.getState().markError();
+        const description =
+          e?.status === 404
+            ? "Esta consulta no se ha iniciado, así que todavía no existe un registro de visita donde escribir. Inicia la consulta y vuelve a guardar; tu texto sigue aquí."
+            : e?.status === 409
+              ? "Esta consulta ya está cerrada y no admite más evolución. Tu texto sigue aquí: cópialo antes de salir."
+              : "Las notas de esta consulta no quedaron guardadas. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.";
         notify.error(e?.message || "No se pudieron guardar las notas clínicas", {
-          description:
-            "Las notas de esta consulta no quedaron guardadas. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+          description,
         });
+        markHandled(err);
         throw err;
       } finally {
         setSaving(false);
       }
     },
-    [patientId, appointmentId],
+    [patientId, appointmentId, record?.clinicalNotes, error],
   );
-
-  // ---------------------------------------------------------------------------
-  // Fase A — helpers para diagnósticos, hallazgos y dolor anatómico
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Guarda la lista completa de diagnósticos CIE-10 de la visita.
-   * Usa autosave silencioso (sin toast) para integración con flujos de edición
-   * en tiempo real desde el odontograma o el formulario de diagnóstico.
-   */
   const saveDiagnoses = useCallback(
     async (diagnoses: VisitDiagnosis[]): Promise<void> => {
       await save({ diagnoses }, { silent: true });
@@ -165,21 +191,12 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
     [save],
   );
 
-  /**
-   * Guarda los hallazgos del examen clínico (extraoral e intraoral).
-   * Usa autosave silencioso para integración con flujo de edición progresiva.
-   */
   const saveExamFindings = useCallback(
     async (findings: ExamFindings): Promise<void> => {
       await save({ examFindings: findings }, { silent: true });
     },
     [save],
   );
-
-  /**
-   * Actualiza la referencia anatómica del dolor en el diente FDI.
-   * Fusiona con los demás campos de currentPain para no sobrescribirlos.
-   */
   const savePainAnatomy = useCallback(
     async (toothRef: ToothRef | null): Promise<void> => {
       await save(
@@ -195,24 +212,19 @@ export function useVisitRecord(patientId: string, appointmentId?: string) {
         { silent: true },
       );
     },
-    // record.currentPain se incluye como dep para no crear stale closure al fusionar
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [save, record?.currentPain],
   );
-
-  // Getters derivados del record para comodidad del consumidor
   const diagnoses: VisitDiagnosis[] = record?.diagnoses ?? [];
   const examFindings: ExamFindings | null = record?.examFindings ?? null;
   const painAnatomy: ToothRef | null = record?.currentPain?.toothRef ?? null;
-
   return {
     record,
     loading,
     saving,
+    error,
     load,
     save,
     saveNotes,
-    // Fase A — odontogram enrichment
     diagnoses,
     examFindings,
     painAnatomy,

@@ -9,6 +9,11 @@ import { useClinicalHistory } from "@/lib/hooks/clinical-history";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useActiveConsultation } from "@/lib/store/useActiveConsultation";
+import { getVisitEditability, isLockedVisit } from "./visit-editability";
+import { PATIENT_TABS, resolveTab, type PatientTab } from "./patient-tabs";
+import { localTodayInput, parseLocalValue } from "@/lib/datetime";
+import { formatVisitDate } from "@/lib/utils/visit-eligibility";
+import type { ConsultationCta } from "@/components/features/patients/clinical-history-page/continuity";
 import type { UpdateMedicalHistoryRequest } from "@/lib/entity/clinical-history";
 import type { Patient } from "@/lib/entity/patients";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
@@ -20,21 +25,6 @@ export interface UseClinicalHistoryPageParams {
   openFinalizeOnLoad?: boolean;
 }
 
-/** Valor canónico de la pestaña del plan de tratamiento en `?tab=`. */
-export const TREATMENT_PLAN_TAB = "plan-tratamiento";
-
-/**
- * Alias aceptados en el deep-link `?tab=`. Existen para que un enlace ya
- * repartido (correo, ficha impresa, otro módulo) no aterrice en una pestaña
- * inexistente, que Radix pinta como contenido en blanco.
- */
-const TAB_ALIASES: Record<string, string> = {
-  odontogram: "odontograma",
-  plan: TREATMENT_PLAN_TAB,
-  "plan-de-tratamiento": TREATMENT_PLAN_TAB,
-  "treatment-plan": TREATMENT_PLAN_TAB,
-};
-
 export function useClinicalHistoryPage({
   patientId,
   initialTab = "historia-clinica",
@@ -42,13 +32,9 @@ export function useClinicalHistoryPage({
   openFinalizeOnLoad = false,
 }: UseClinicalHistoryPageParams) {
   const router = useRouter();
-  const normalizedInitialTab = initialTab
-    ? (TAB_ALIASES[initialTab] ?? initialTab)
-    : activeAppointmentId
-      ? "workspace"
-      : "historia-clinica";
-
-  const [activeTab, setActiveTab] = useState(normalizedInitialTab);
+  const [activeTab, setActiveTab] = useState<string>(() =>
+    resolveTab(initialTab, { canViewTreatmentPlan: true }),
+  );
   const [restoredAppointmentId, setRestoredAppointmentId] = useState<
     string | undefined
   >(undefined);
@@ -67,123 +53,120 @@ export function useClinicalHistoryPage({
   const [patientLoading, setPatientLoading] = useState(true);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+  const [appointmentsError, setAppointmentsError] = useState<unknown>(null);
+  const [appointmentsEverLoaded, setAppointmentsEverLoaded] = useState(false);
+  const [verifiedStatus, setVerifiedStatus] = useState<
+    Appointment["status"] | undefined
+  >(undefined);
 
   const {
     snapshot,
     loading: snapshotLoading,
     loadSnapshot,
     updateMedicalHistory,
+    forbidden: snapshotForbidden,
+    error: snapshotError,
   } = useClinicalHistory();
-
   const {
     appointmentId: persistedAppointmentId,
     patientId: persistedPatientId,
     start: startConsultation,
     end: endConsultation,
     isActiveFor,
+    startTime: consultationStartTime,
   } = useActiveConsultation();
-
   const effectiveActiveAppointmentId =
     activeAppointmentId ?? restoredAppointmentId;
 
-  // Estado REAL de la cita "activa" según la lista del backend ya cargada
-  // (getPatientAppointments) — la MISMA fuente que gatea la editabilidad del
-  // odontograma en PatientOdontogramPanel. Se usa para reconciliar el store
-  // local persistido (useActiveConsultation), que no conoce el status ni caduca,
-  // y así evitar el desfase que dejaba un Workspace "activo" (timer eterno) con
-  // el odontograma silenciosamente en solo-lectura. `undefined` mientras la lista
-  // carga o si la cita no está en ella → se trata como NO terminal (fail-open).
-  const activeAppointmentFromList = appointments.find(
-    (a) => a.id === effectiveActiveAppointmentId,
-  );
-  const activeAppointmentIsTerminal =
-    !!activeAppointmentFromList &&
-    activeAppointmentFromList.status !== "in_progress" &&
-    activeAppointmentFromList.status !== "scheduled";
-
+  const visitEditability = getVisitEditability({
+    appointmentId: effectiveActiveAppointmentId,
+    appointments,
+    appointmentsLoading,
+    verifiedStatus,
+  });
+  const activeAppointmentIsTerminal = isLockedVisit(visitEditability);
+  const activeAppointmentIsClosed =
+    visitEditability.kind === "locked" &&
+    visitEditability.reason !== "not-started";
   useEffect(() => {
     const persistedMatchesCurrentPatient = persistedPatientId === patientId;
     const candidateAppointmentId =
       activeAppointmentId ??
       (persistedMatchesCurrentPatient ? persistedAppointmentId : undefined);
-
     if (!candidateAppointmentId) {
       setRestoredAppointmentId(undefined);
+      setVerifiedStatus(undefined);
       return;
     }
 
+    setVerifiedStatus(undefined);
     let cancelled = false;
-
     appointmentsService
       .getAppointmentById(candidateAppointmentId)
       .then((appointment) => {
         if (cancelled) return;
-
         const appointmentPatientId =
           appointment.patientId ?? appointment.patient_id;
         const isSamePatient = appointmentPatientId === patientId;
-        const isActiveStatus =
-          appointment.status === "in_progress" ||
-          appointment.status === "scheduled";
+        const isActiveStatus = appointment.status === "in_progress";
         const shouldClearPersistedSession =
           persistedMatchesCurrentPatient &&
           persistedAppointmentId === candidateAppointmentId;
+        if (isSamePatient) {
+          setVerifiedStatus(appointment.status);
+        }
 
+        if (isSamePatient && appointment.status === "scheduled") {
+          if (shouldClearPersistedSession) {
+            endConsultation();
+          }
+          setRestoredAppointmentId(undefined);
+          return;
+        }
         if (!isSamePatient || !isActiveStatus) {
           if (shouldClearPersistedSession) {
             endConsultation();
           }
           setRestoredAppointmentId(undefined);
           if (activeAppointmentId) {
-            setActiveTab("historia-clinica");
+            setActiveTab(PATIENT_TABS.EVOLUTION);
             router.replace(`/patients/${patientId}`);
           }
           return;
         }
-
         if (!activeAppointmentId && persistedMatchesCurrentPatient) {
           setRestoredAppointmentId(candidateAppointmentId);
-          setActiveTab("workspace");
+          setActiveTab(PATIENT_TABS.EVOLUTION);
           router.replace(
-            `/patients/${patientId}?tab=workspace&appointmentId=${candidateAppointmentId}`,
+            `/patients/${patientId}?tab=${PATIENT_TABS.EVOLUTION}&appointmentId=${candidateAppointmentId}`,
           );
           return;
         }
-
         setRestoredAppointmentId(undefined);
       })
       .catch((error) => {
         if (cancelled) return;
-
         notifyApiError("No se pudo restaurar la consulta activa", error);
 
-        // Distinguir cita inválida (4xx del backend) de fallo transitorio
-        // (red/5xx, sin status): solo la primera justifica purgar la sesión
-        // persistida y expulsar del workspace. Ante un fallo transitorio se
-        // conserva la sesión (fail-open) y solo se avisa.
         const status = (error as Error & { status?: number }).status;
         const isInvalidAppointment =
           typeof status === "number" && status >= 400 && status < 500;
-
         if (!isInvalidAppointment) {
           setRestoredAppointmentId(undefined);
           return;
         }
-
         if (
           persistedMatchesCurrentPatient &&
           persistedAppointmentId === candidateAppointmentId
         ) {
           endConsultation();
         }
-
         setRestoredAppointmentId(undefined);
         if (activeAppointmentId) {
-          setActiveTab("historia-clinica");
+          setActiveTab(PATIENT_TABS.EVOLUTION);
           router.replace(`/patients/${patientId}`);
         }
       });
-
     return () => {
       cancelled = true;
     };
@@ -195,10 +178,8 @@ export function useClinicalHistoryPage({
     endConsultation,
     router,
   ]);
-
   useEffect(() => {
-    // No re-armar el store para una cita ya terminal (finalizada/cancelada):
-    // eso perpetuaba la sesión stale que compite con la reconciliación de abajo.
+
     if (
       effectiveActiveAppointmentId &&
       patient &&
@@ -220,16 +201,9 @@ export function useClinicalHistoryPage({
     activeAppointmentIsTerminal,
   ]);
 
-  // Reconciliación con el backend: si la cita "activa" ya aparece finalizada/
-  // cancelada en la lista, purgar la sesión local stale (endConsultation) para
-  // que NO se muestre un Workspace activo con el odontograma bloqueado en
-  // silencio. Guardado por `!appointmentsLoading` para no purgar durante la carga
-  // y solo dispara con un status terminal EXPLÍCITO de la lista (fail-open).
   useEffect(() => {
-    if (appointmentsLoading || !activeAppointmentIsTerminal) return;
-    // Solo purgar el store si REALMENTE apunta a esta cita (ownership guard):
-    // no pisar una consulta activa distinta si se abre por URL una cita ya
-    // finalizada. La navegación/reset de tab sí es incondicional.
+    if (appointmentsLoading || appointmentsError || !activeAppointmentIsClosed)
+      return;
     if (
       effectiveActiveAppointmentId &&
       isActiveFor(patientId, effectiveActiveAppointmentId)
@@ -237,13 +211,14 @@ export function useClinicalHistoryPage({
       endConsultation();
     }
     setRestoredAppointmentId(undefined);
-    setActiveTab("historia-clinica");
+    setActiveTab(PATIENT_TABS.EVOLUTION);
     if (activeAppointmentId) {
       router.replace(`/patients/${patientId}`);
     }
   }, [
     appointmentsLoading,
-    activeAppointmentIsTerminal,
+    appointmentsError,
+    activeAppointmentIsClosed,
     activeAppointmentId,
     effectiveActiveAppointmentId,
     isActiveFor,
@@ -251,11 +226,8 @@ export function useClinicalHistoryPage({
     router,
     patientId,
   ]);
-
   useEffect(() => {
-    // Mismo guard que el efecto de re-arranque: NO re-armar el store (ni con
-    // alertas de alergia) para una cita ya terminal, o se deshace el purge y
-    // queda un estado fantasma de "consulta activa" en el shell global.
+
     if (
       !effectiveActiveAppointmentId ||
       !snapshot ||
@@ -263,7 +235,6 @@ export function useClinicalHistoryPage({
       activeAppointmentIsTerminal
     )
       return;
-
     const allergies = snapshot.medicalHistory?.allergies ?? [];
     if (allergies.length === 0) return;
 
@@ -281,23 +252,16 @@ export function useClinicalHistoryPage({
     startConsultation,
     activeAppointmentIsTerminal,
   ]);
-
   const isCurrentlyActiveConsultation =
     !!effectiveActiveAppointmentId &&
     isActiveFor(patientId, effectiveActiveAppointmentId) &&
     !activeAppointmentIsTerminal;
-
   useEffect(() => {
     if (!openFinalizeOnLoad || !isCurrentlyActiveConsultation) return;
 
-    // Mismo motivo que en `openFinalizeModal`: el modal solo existe dentro del
-    // Workspace. Al entrar por enlace con `openFinalizeOnLoad` la pestaña
-    // inicial por defecto es Historia Clínica, así que sin esto el modal se
-    // "abría" sobre una pestaña que no lo monta.
-    setActiveTab("workspace");
+    setActiveTab(PATIENT_TABS.ODONTOGRAM);
     setIsFinalizeModalOpen(true);
   }, [openFinalizeOnLoad, isCurrentlyActiveConsultation]);
-
   const { isAdmin, can, permissionsObj } = usePermission();
   const canManageAttachments =
     isAdmin || can("patients", PermissionAction.EDIT);
@@ -307,28 +271,18 @@ export function useClinicalHistoryPage({
     can("clinical_history", PermissionAction.CREATE);
   const canEditPatient = isAdmin || can("patients", PermissionAction.EDIT);
 
-  // Plan de tratamiento: el backend lo protege con `hasAuthority('odontogram')`,
-  // una autoridad de MÓDULO sin bits de acción — se concede en cuanto el rol
-  // tiene el módulo con cualquier valor. Por eso NO se puede usar `can(...,
-  // EDIT)` aquí: eso gatearía una pantalla de solo lectura con un permiso de
-  // escritura. Sin el módulo, tanto el listado de planes como el
-  // `POST /treatment-plans` del get-or-create responden 403, así que la pestaña
-  // se oculta entera en vez de enseñar un error que el usuario no puede resolver.
+  const canViewClinicalHistory =
+    isAdmin || (permissionsObj["clinical_history"] ?? 0) > 0;
+
   const canViewTreatmentPlan =
     isAdmin || (permissionsObj["odontogram"] ?? 0) > 0;
 
-  // Un `?tab=plan-tratamiento` de alguien sin el módulo dejaría a Radix sin
-  // contenido que montar (pantalla en blanco). Se resuelve al leer, no con otro
-  // estado, para no encadenar un render extra en cada carga.
-  const effectiveActiveTab =
-    activeTab === TREATMENT_PLAN_TAB && !canViewTreatmentPlan
-      ? "historia-clinica"
-      : activeTab;
-
+  const effectiveActiveTab: PatientTab = resolveTab(activeTab, {
+    canViewTreatmentPlan,
+  });
   useEffect(() => {
     let cancelled = false;
     setPatientLoading(true);
-
     patientsService
       .getPatientById(patientId)
       .then((nextPatient) => {
@@ -346,58 +300,73 @@ export function useClinicalHistoryPage({
           setPatientLoading(false);
         }
       });
-
     return () => {
       cancelled = true;
     };
   }, [patientId]);
-
   useEffect(() => {
     loadSnapshot(patientId);
   }, [patientId, loadSnapshot]);
-
   const loadAppointments = useCallback(async () => {
     setAppointmentsLoading(true);
     try {
       const nextAppointments =
         await appointmentsService.getPatientAppointments(patientId);
       setAppointments(nextAppointments);
+      setAppointmentsError(null);
     } catch (error) {
       notifyApiError("No se pudieron cargar las citas del paciente", error);
+      setAppointmentsError(error);
     } finally {
       setAppointmentsLoading(false);
+      setAppointmentsEverLoaded(true);
     }
   }, [patientId]);
-
   useEffect(() => {
     loadAppointments();
   }, [loadAppointments]);
 
   const handleStartConsultation = useCallback(
     (appointmentId: string) => {
-      setActiveTab("workspace");
+      setActiveTab(PATIENT_TABS.EVOLUTION);
       router.push(
-        `/patients/${patientId}?tab=workspace&appointmentId=${appointmentId}`,
+        `/patients/${patientId}?tab=${PATIENT_TABS.EVOLUTION}&appointmentId=${appointmentId}`,
       );
+      void loadAppointments();
     },
-    [patientId, router],
+    [patientId, router, loadAppointments],
   );
-
   const handleStartNow = useCallback(
     (appointmentId: string) => {
       setShowStartNow(false);
-      setActiveTab("workspace");
+      setActiveTab(PATIENT_TABS.EVOLUTION);
       router.push(
-        `/patients/${patientId}?tab=workspace&appointmentId=${appointmentId}`,
+        `/patients/${patientId}?tab=${PATIENT_TABS.EVOLUTION}&appointmentId=${appointmentId}`,
       );
+      void loadAppointments();
     },
-    [patientId, router],
+    [patientId, router, loadAppointments],
   );
-
+  const handleStartScheduledConsultation = useCallback(
+    async (appointmentId: string) => {
+      try {
+        await appointmentsService.startAppointment(appointmentId);
+        setVerifiedStatus("in_progress");
+        setActiveTab(PATIENT_TABS.EVOLUTION);
+        router.push(
+          `/patients/${patientId}?tab=${PATIENT_TABS.EVOLUTION}&appointmentId=${appointmentId}`,
+        );
+      } catch (error) {
+        notifyApiError("No se pudo iniciar la consulta", error);
+      } finally {
+        void loadAppointments();
+      }
+    },
+    [patientId, router, loadAppointments],
+  );
   const handleViewVisitHistory = useCallback((appointment: Appointment) => {
     setVisitHistoryAppointment(appointment);
   }, []);
-
   const handleSaveMedicalHistory = useCallback(
     async (data: UpdateMedicalHistoryRequest) => {
       setSavingMedicalHistory(true);
@@ -410,44 +379,77 @@ export function useClinicalHistoryPage({
     },
     [patientId, updateMedicalHistory],
   );
-
-  // La pestaña "odontograma" SOLO se monta cuando no hay consulta activa
-  // (ClinicalHistoryPage la condiciona a `!isCurrentlyActiveConsultation`).
-  // Durante una consulta activa el odontograma vive dentro de "workspace":
-  // fijar "odontograma" dejaba el panel en blanco justo al entrar al historial
-  // desde el drawer de visitas.
-  const handleViewOdontogram = useCallback(
-    (appointmentId: string) => {
-      setHistoricAppointmentId(appointmentId);
-      setActiveTab(isCurrentlyActiveConsultation ? "workspace" : "odontograma");
-    },
-    [isCurrentlyActiveConsultation],
-  );
-
+  const handleViewOdontogram = useCallback((appointmentId: string) => {
+    setHistoricAppointmentId(appointmentId);
+    setActiveTab(PATIENT_TABS.ODONTOGRAM);
+  }, []);
   const handleBackToCurrentOdontogram = useCallback(() => {
     setHistoricAppointmentId(undefined);
   }, []);
+  const consultationCta = ((): ConsultationCta => {
+    if (!(isAdmin || can("appointments", PermissionAction.EDIT))) {
+      return { kind: "hidden" };
+    }
+    if (visitEditability.kind === "editable") return { kind: "hidden" };
 
+    if (appointmentsError && appointments.length === 0) {
+      return { kind: "hidden" };
+    }
+    if (visitEditability.kind === "unknown") return { kind: "disabled" };
+    if (appointmentsLoading && !appointmentsEverLoaded) {
+      return { kind: "disabled" };
+    }
+    const inProgress = appointments.find((a) => a.status === "in_progress");
+    if (inProgress) {
+      return { kind: "continue", appointmentId: inProgress.id };
+    }
+    const today = localTodayInput();
+    const todayScheduled = appointments
+      .filter((a) => a.status === "scheduled" && a.date === today)
+      .sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""))[0];
+    if (todayScheduled) {
+      return {
+        kind: "start-scheduled",
+        appointmentId: todayScheduled.id,
+        time: todayScheduled.time ?? "",
+        doctorName: todayScheduled.doctorName,
+      };
+    }
+    return { kind: "start" };
+  })();
+
+  const visitRibbonState = (() => {
+    if (historicAppointmentId) {
+      const visit = appointments.find((a) => a.id === historicAppointmentId);
+      return {
+        kind: "historic" as const,
+        dateLabel: visit ? formatVisitDate(parseLocalValue(visit.date)) : "una visita anterior",
+      };
+    }
+    if (!isCurrentlyActiveConsultation) return null;
+    const current = appointments.find(
+      (a) => a.id === effectiveActiveAppointmentId,
+    );
+    return {
+      kind: "active" as const,
+      startedAt: consultationStartTime
+        ? new Date(consultationStartTime).toISOString()
+        : undefined,
+      dateLabel: current ? formatVisitDate(parseLocalValue(current.date)) : "hoy",
+      doctorName: current?.doctorName,
+    };
+  })();
   const openStartNow = useCallback(() => {
     setShowStartNow(true);
   }, []);
-
   const closeStartNow = useCallback(() => {
     setShowStartNow(false);
   }, []);
-
   const openFinalizeModal = useCallback(() => {
-    // El banner de consulta activa es de PÁGINA y su botón "Finalizar consulta"
-    // se ve desde cualquier pestaña, pero el modal de cierre se renderiza dentro
-    // del módulo del odontograma, que solo vive en el Workspace. Radix desmonta
-    // las pestañas inactivas, así que pulsarlo desde Historia Clínica encendía
-    // el estado y no pintaba nada: el botón parecía roto.
-    // Volver al Workspace además es lo coherente: el modal resume lo ejecutado
-    // en el odontograma, que es justo lo que esa pestaña muestra.
-    setActiveTab("workspace");
+
+    setActiveTab(PATIENT_TABS.ODONTOGRAM);
     setIsFinalizeModalOpen(true);
   }, []);
-
   const closeFinalizeModal = useCallback(() => {
     setIsFinalizeModalOpen(false);
   }, []);
@@ -455,36 +457,24 @@ export function useClinicalHistoryPage({
   const handleFinalizeSuccess = useCallback(() => {
     setIsFinalizeModalOpen(false);
     endConsultation();
-    setActiveTab("historia-clinica");
+    setActiveTab(PATIENT_TABS.EVOLUTION);
     void loadAppointments();
     router.replace(`/patients/${patientId}`);
     router.refresh();
   }, [endConsultation, loadAppointments, patientId, router]);
-
   const openMedicalHistoryDrawer = useCallback(() => {
     setMedicalHistoryDrawerOpen(true);
   }, []);
-
   const closeMedicalHistoryDrawer = useCallback(() => {
     setMedicalHistoryDrawerOpen(false);
   }, []);
-
   const openEditPatient = useCallback(() => {
     setEditPatientOpen(true);
   }, []);
-
   const closeEditPatient = useCallback(() => {
     setEditPatientOpen(false);
   }, []);
 
-  /**
-   * Cambia la foto del paciente desde la tarjeta de perfil, sin abrir el modal.
-   *
-   * Manda la ficha COMPLETA a propósito: `PUT /patients/{id}` sobrescribe TODOS
-   * los campos que recibe, así que un payload parcial (solo la foto) dejaría
-   * nombre, teléfono, nacimiento y género en null. Es exactamente el fallo que
-   * tenía `togglePatientStatus` cuando mandaba `{id, active}` a secas.
-   */
   const handlePatientPhotoChange = useCallback(
     async (photoUrl: string) => {
       if (!patient) return;
@@ -502,8 +492,7 @@ export function useClinicalHistoryPage({
           active: patient.active,
           photoUrl: next,
         });
-        // Refresco optimista: la tarjeta ya muestra la imagen que acaba de subir
-        // el AvatarField, así que no hace falta releer la ficha entera.
+
         setPatient({ ...patient, photoUrl: next });
       } catch (error) {
         notifyApiError(
@@ -515,7 +504,6 @@ export function useClinicalHistoryPage({
     },
     [patient],
   );
-
   const handleEditPatientSuccess = useCallback(() => {
     setEditPatientOpen(false);
     patientsService
@@ -523,11 +511,9 @@ export function useClinicalHistoryPage({
       .then(setPatient)
       .catch(() => {});
   }, [patientId]);
-
   const closeVisitHistory = useCallback(() => {
     setVisitHistoryAppointment(null);
   }, []);
-
   const handleViewVisitOdontogram = useCallback(
     (appointmentId: string) => {
       setVisitHistoryAppointment(null);
@@ -535,18 +521,22 @@ export function useClinicalHistoryPage({
     },
     [handleViewOdontogram],
   );
-
   const handleSelectHistoricVisit = useCallback((appointmentId: string) => {
     setHistoricAppointmentId(appointmentId);
   }, []);
-
   return {
     patient,
     patientLoading,
     snapshot,
     snapshotLoading,
+    snapshotForbidden,
+    snapshotError,
+    loadSnapshot,
     appointments,
     appointmentsLoading,
+    appointmentsError,
+    visitEditability,
+    loadAppointments,
     activeTab: effectiveActiveTab,
     setActiveTab,
     showStartNow,
@@ -571,10 +561,14 @@ export function useClinicalHistoryPage({
     canEditMedicalHistory,
     canEditPatient,
     canViewTreatmentPlan,
+    canViewClinicalHistory,
     isAdmin,
     can,
     handleStartConsultation,
     handleStartNow,
+    handleStartScheduledConsultation,
+    consultationCta,
+    visitRibbonState,
     handleViewVisitHistory,
     handleSaveMedicalHistory,
     handleViewOdontogram,

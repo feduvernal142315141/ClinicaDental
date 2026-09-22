@@ -6,6 +6,7 @@ import {
   type OdontogramAdapter,
   type OdontogramSnapshot,
 } from "@/lib/odontogram/store";
+import type { DentitionType } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 
 /** UUID v4 — formato exigido cuando el guardado sí va ligado a una visita. */
 const UUID_V4 =
@@ -29,7 +30,7 @@ export interface ApiOdontogramAdapterOptions {
  *
  * The adapter:
  *  - **load**: `GET /odontograms/patient/{patientId}` → `JSON.parse(state)` → snapshot.
- *  - **save**: serialises `{ teeth, clinicalEvents }` → `PUT /odontograms`.
+ *  - **save**: serialises `{ schemaVersion, dentition, teeth, clinicalEvents }` → `PUT /odontograms`.
  *
  * Treatment-plan CRUD is managed separately via `useTreatmentPlans` / `treatmentPlanService`.
  */
@@ -59,12 +60,15 @@ export function createApiOdontogramAdapter(
       // Parse the JSON string stored in `state`.
       const parsedState = JSON.parse(response.state) as {
         schemaVersion?: number;
+        dentition?: DentitionType;
         teeth: OdontogramSnapshot["teeth"];
         clinicalEvents: OdontogramSnapshot["clinicalEvents"];
       };
 
       const snapshot: OdontogramSnapshot = {
         schemaVersion: parsedState.schemaVersion ?? 1,
+        // Sin validar: la regla de hidratación vive en `normalizeSnapshot`.
+        dentition: parsedState.dentition,
         teeth: parsedState.teeth,
         clinicalEvents: parsedState.clinicalEvents,
         treatmentPlans: [], // treatment plans live in their own API table
@@ -93,6 +97,7 @@ export function createApiOdontogramAdapter(
 
       const state = JSON.stringify({
         schemaVersion: snapshot.schemaVersion,
+        dentition: snapshot.dentition,
         teeth: snapshot.teeth,
         clinicalEvents: snapshot.clinicalEvents,
       });

@@ -1,18 +1,29 @@
-import type { ToothSurface } from "../types/surface.types"
+import { isPrimaryFdi } from "../constants/dentition.constants"
+import {
+  isAnteriorToothNumber,
+  isMaxillaryToothNumber,
+  type ToothSurface,
+} from "../types/surface.types"
 
 export class ToothTypeService {
+  /** Temporal (dentición decidua): cuadrantes 5-8, posiciones 1-5. */
+  static isDeciduous(toothNumber: number): boolean {
+    return isPrimaryFdi(toothNumber)
+  }
+
   static getToothTypeName(toothNumber: number): string {
     const lastDigit = toothNumber % 10
     if (lastDigit === 1 || lastDigit === 2) return "Incisivo"
     if (lastDigit === 3) return "Canino"
-    if (lastDigit === 4 || lastDigit === 5) return "Premolar"
+    // En la dentición temporal no hay premolares: las posiciones 4-5 son molares.
+    if (lastDigit === 4 || lastDigit === 5)
+      return this.isDeciduous(toothNumber) ? "Molar temporal" : "Premolar"
     if (lastDigit === 6 || lastDigit === 7 || lastDigit === 8) return "Molar"
     return "Diente"
   }
 
   static isAnterior(toothNumber: number): boolean {
-    const lastDigit = toothNumber % 10
-    return lastDigit >= 1 && lastDigit <= 3
+    return isAnteriorToothNumber(toothNumber)
   }
 
   static isPosterior(toothNumber: number): boolean {
@@ -22,12 +33,15 @@ export class ToothTypeService {
 
   static isMolar(toothNumber: number): boolean {
     const lastDigit = toothNumber % 10
-    return lastDigit >= 6 && lastDigit <= 8
+    if (lastDigit >= 6 && lastDigit <= 8) return true
+    return this.isDeciduous(toothNumber) && (lastDigit === 4 || lastDigit === 5)
   }
 
   static isPremolar(toothNumber: number): boolean {
     const lastDigit = toothNumber % 10
-    return lastDigit === 4 || lastDigit === 5
+    return (
+      !this.isDeciduous(toothNumber) && (lastDigit === 4 || lastDigit === 5)
+    )
   }
 
   static isCanine(toothNumber: number): boolean {
@@ -41,20 +55,20 @@ export class ToothTypeService {
   }
 
   // --- Arcada / cuadrante (FDI/ISO 3950) ---
-  // Cuadrantes 1 y 2 = maxilar (arriba); 3 y 4 = mandibular (abajo).
+  // Maxilar (arriba) = cuadrantes 1 y 2 permanentes, 5 y 6 temporales;
+  // mandibular (abajo) = 3 y 4 permanentes, 7 y 8 temporales.
 
   static getQuadrant(toothNumber: number): number {
     return Math.floor(toothNumber / 10)
   }
 
   static isMaxillary(toothNumber: number): boolean {
-    const q = this.getQuadrant(toothNumber)
-    return q === 1 || q === 2
+    return isMaxillaryToothNumber(toothNumber)
   }
 
   static isMandibular(toothNumber: number): boolean {
-    const q = this.getQuadrant(toothNumber)
-    return q === 3 || q === 4
+    const quadrant = this.getQuadrant(toothNumber)
+    return quadrant === 3 || quadrant === 4 || quadrant === 7 || quadrant === 8
   }
 
   static getArch(toothNumber: number): "maxillary" | "mandibular" {

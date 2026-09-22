@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/lib/contexts/auth-context";
 import { AlertProvider } from "@/lib/contexts/alert-context";
 import { ClinicBrandingProvider } from "@/lib/contexts/clinic-branding-context";
+import { ToothNotationProvider } from "@/lib/contexts/tooth-notation-context";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { ThemeProvider } from "@/components/theme-provider";
 import { GlobalAlertDialog } from "@/components/global-alert-dialog";
@@ -42,18 +43,24 @@ export function RootClient({ children }: RootClientProps) {
                     endpoint es público y el login (sin sesión) también la
                     consume (auth-shell, login-form). */}
                 <ClinicBrandingProvider>
-                  <AuthProvider>
-                    <AlertProvider>
-                      <GlobalErrorListeners />
-                      <PointerEventsGuard />
-                      <InterceptorsInitializer />
-                      <GlobalLoadingBar />
-                      <GlobalAlertDialog />
-                      <CommandPalette />
-                      <AppChrome>{children}</AppChrome>
-                      <FeedbackFAB />
-                    </AlertProvider>
-                  </AuthProvider>
+                  {/* Nomenclatura dental: también ENVUELVE a AuthProvider,
+                      que la refresca al completar el login y la limpia en el
+                      logout (un proveedor debe ser ancestro de quien lo usa).
+                      Su fetch sí exige sesión: sin token no pide nada. */}
+                  <ToothNotationProvider>
+                    <AuthProvider>
+                      <AlertProvider>
+                        <GlobalErrorListeners />
+                        <PointerEventsGuard />
+                        <InterceptorsInitializer />
+                        <GlobalLoadingBar />
+                        <GlobalAlertDialog />
+                        <CommandPalette />
+                        <AppChrome>{children}</AppChrome>
+                        <FeedbackFAB />
+                      </AlertProvider>
+                    </AuthProvider>
+                  </ToothNotationProvider>
                 </ClinicBrandingProvider>
               </InterceptorProvider>
             </Suspense>

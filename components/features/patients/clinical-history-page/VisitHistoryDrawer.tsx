@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Stethoscope, Paperclip, Loader2 } from "lucide-react";
+import { AlertTriangle, FileText, Loader2, Paperclip, Stethoscope } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -11,6 +11,10 @@ import {
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { OdontogramVisitComparison } from "@/components/features/patients/detail/OdontogramVisitComparison";
 import { useVisitHistoryDrawer } from "@/lib/hooks/patients/clinical-history-page/use-visit-history-drawer";
+import {
+  NO_AUTHORSHIP_LABEL,
+  resolveAuthorship,
+} from "@/lib/utils/clinical-authorship";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
 import { cn } from "@/lib/utils/utils";
 import { SECTION_LABEL_CLASS } from "./section-label";
@@ -24,6 +28,32 @@ interface VisitHistoryDrawerProps {
   onViewOdontogram?: (appointmentId: string) => void;
 }
 
+function NoteStamp({
+  updatedAt,
+  updatedBy,
+}: {
+  updatedAt?: string;
+  updatedBy?: string;
+}) {
+  const author = resolveAuthorship(updatedBy);
+  const parsed = updatedAt ? new Date(updatedAt) : null;
+  const stamp = parsed
+    ? Number.isNaN(parsed.getTime())
+      ? updatedAt
+      : parsed.toLocaleString("es-ES")
+    : null;
+  if (!author && !stamp) return null;
+  return (
+    <p className="mt-2 text-[10px] text-subtle">
+      {author ? (
+        <>Última edición: {author}</>
+      ) : (
+        <span className="italic">{NO_AUTHORSHIP_LABEL}</span>
+      )}
+      {stamp ? ` · ${stamp}` : ""}
+    </p>
+  );
+}
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <h4 className={cn(SECTION_LABEL_CLASS, "mb-2")}>
@@ -31,7 +61,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
     </h4>
   );
 }
-
 export function VisitHistoryDrawer({
   open,
   patientId,
@@ -44,6 +73,7 @@ export function VisitHistoryDrawer({
     record,
     loading,
     attachments,
+    attachmentsError,
     pain,
     hasPain,
     formattedVisitDate,
@@ -57,7 +87,6 @@ export function VisitHistoryDrawer({
     onClose,
     onViewOdontogram,
   });
-
   return (
     <Sheet
       open={open}
@@ -79,7 +108,6 @@ export function VisitHistoryDrawer({
               : "Detalle de la visita seleccionada."}
           </SheetDescription>
         </SheetHeader>
-
         {loading ? (
           <div className="flex flex-1 justify-center items-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-brand" />
@@ -87,17 +115,16 @@ export function VisitHistoryDrawer({
         ) : (
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <div className="flex flex-col gap-6">
-              {/* Header info */}
               <section className="bg-hover rounded-lg p-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className={cn(SECTION_LABEL_CLASS, "mb-1 block")}>
-                      Doctor
+                      Doctor de la cita
                     </span>
                     <span>
                       {appointment?.doctorName
                         ? `Dr. ${appointment.doctorName}`
-                        : "No registrado"}
+                        : "Sin doctor asignado"}
                     </span>
                   </div>
                   <div>
@@ -110,8 +137,6 @@ export function VisitHistoryDrawer({
                   </div>
                 </div>
               </section>
-
-              {/* Motivo de consulta */}
               <section>
                 <SectionTitle>Motivo de consulta</SectionTitle>
                 <p className="text-sm text-foreground">
@@ -122,8 +147,6 @@ export function VisitHistoryDrawer({
                   )}
                 </p>
               </section>
-
-              {/* Dolor reportado */}
               <section>
                 <SectionTitle>Dolor reportado</SectionTitle>
                 {hasPain && pain ? (
@@ -167,8 +190,6 @@ export function VisitHistoryDrawer({
                   </p>
                 )}
               </section>
-
-              {/* Anamnesis congelada al momento de la visita */}
               <section>
                 <SectionTitle>Anamnesis (al momento de la visita)</SectionTitle>
                 {record?.medicalSnapshot ? (
@@ -219,8 +240,6 @@ export function VisitHistoryDrawer({
                   </p>
                 )}
               </section>
-
-              {/* Notas del médico */}
               <section>
                 <SectionTitle>
                   <span className="flex items-center gap-2">
@@ -234,16 +253,10 @@ export function VisitHistoryDrawer({
                       dangerouslySetInnerHTML={{ __html: record.clinicalNotes }}
                       className="prose prose-sm max-w-none"
                     />
-                    {record.clinicalNotesUpdatedAt && (
-                      <p className="text-[10px] text-muted-foreground mt-2">
-                        Actualizado{" "}
-                        {new Date(
-                          record.clinicalNotesUpdatedAt,
-                        ).toLocaleString("es-ES")}
-                        {record.clinicalNotesUpdatedBy &&
-                          ` por ${record.clinicalNotesUpdatedBy}`}
-                      </p>
-                    )}
+                    <NoteStamp
+                      updatedAt={record.clinicalNotesUpdatedAt}
+                      updatedBy={record.clinicalNotesUpdatedBy}
+                    />
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">
@@ -251,8 +264,6 @@ export function VisitHistoryDrawer({
                   </p>
                 )}
               </section>
-
-              {/* Odontograma — comparativo antes/después de la visita */}
               <section>
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <SectionTitle>
@@ -277,8 +288,6 @@ export function VisitHistoryDrawer({
                   snapshots={odontogramSnapshots}
                 />
               </section>
-
-              {/* Archivos adjuntos */}
               <section>
                 <SectionTitle>
                   <span className="flex items-center gap-2">
@@ -301,6 +310,19 @@ export function VisitHistoryDrawer({
                       </li>
                     ))}
                   </ul>
+                ) : attachmentsError ? (
+                  <div className="flex flex-col items-center gap-1 py-6 text-center">
+                    <AlertTriangle
+                      className="h-5 w-5 text-subtle"
+                      aria-hidden="true"
+                    />
+                    <p className="text-xs text-subtle">
+                      No se pudieron cargar los archivos de esta visita
+                    </p>
+                    <p className="text-[11px] text-subtle">
+                      Que no aparezca ninguno no significa que no los haya.
+                    </p>
+                  </div>
                 ) : (
                   <div className="flex flex-col items-center text-center py-6">
                     <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center mb-2">

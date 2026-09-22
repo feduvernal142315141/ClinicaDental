@@ -13,6 +13,7 @@ import {
   DEFAULT_CLINIC_GENERAL_SETTINGS,
   DEFAULT_CLINIC_SCHEDULE,
 } from "@/lib/entity/settings";
+import { isToothNotation } from "@/lib/odontogram/notation";
 import { notify } from "@/lib/utils/notify";
 
 function normalizeSchedule(schedule?: Partial<ClinicSchedule> | null): ClinicSchedule {
@@ -37,11 +38,18 @@ function normalizeSettings(settings: ClinicGeneralSettings): ClinicGeneralSettin
     ...DEFAULT_CLINIC_GENERAL_SETTINGS,
     ...settings,
     schedule: normalizeSchedule(settings.schedule),
+    toothNotation: isToothNotation(settings.toothNotation)
+      ? settings.toothNotation
+      : DEFAULT_CLINIC_GENERAL_SETTINGS.toothNotation,
   };
 }
 
 export function useClinicGeneralSettings() {
-  const [settings, setSettings] = useState<ClinicGeneralSettings | null>(null);
+  const cached = clinicGeneralSettingsService.getCachedGeneralSettings();
+
+  const [settings, setSettings] = useState<ClinicGeneralSettings | null>(
+    cached ? normalizeSettings(cached) : null,
+  );
   // Horario TAL CUAL lo devolvió el backend (parcial: los días que la clínica
   // nunca configuró están AUSENTES, no rellenados con defaults). Es la fuente
   // correcta para acotar el horario del doctor: un día ausente ⇒ sin regla,
@@ -50,18 +58,19 @@ export function useClinicGeneralSettings() {
   // para eso: ese está normalizado con DEFAULT_CLINIC_SCHEDULE para el editor
   // de Opciones Generales y fabricaría límites (Lun–Vie 08:00–17:00) que el
   // backend no impone, produciendo falsos-rojos en el form de doctor.
-  const [rawSchedule, setRawSchedule] =
-    useState<Partial<ClinicSchedule> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [rawSchedule, setRawSchedule] = useState<Partial<ClinicSchedule> | null>(
+    cached ? cached.schedule ?? null : null,
+  );
+  const [loading, setLoading] = useState(!cached);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadSettings = useCallback(async () => {
+  const loadSettings = useCallback(async (options?: { force?: boolean }) => {
     setLoading(true);
     setError(null);
 
     try {
-      const data = await clinicGeneralSettingsService.getGeneralSettings();
+      const data = await clinicGeneralSettingsService.getGeneralSettings(options);
       setRawSchedule(data.schedule ?? null);
       setSettings(normalizeSettings(data));
     } catch (err) {
@@ -83,8 +92,18 @@ export function useClinicGeneralSettings() {
   }, []);
 
   useEffect(() => {
+    const cachedNow = clinicGeneralSettingsService.getCachedGeneralSettings();
+    if (cachedNow) {
+      setRawSchedule(cachedNow.schedule ?? null);
+      setSettings(normalizeSettings(cachedNow));
+      setLoading(false);
+      return;
+    }
+
     loadSettings();
   }, [loadSettings]);
+
+  const reload = useCallback(() => loadSettings({ force: true }), [loadSettings]);
 
   const saveSettings = useCallback(
     async (payload: UpdateClinicGeneralSettingsRequest) => {
@@ -128,7 +147,7 @@ export function useClinicGeneralSettings() {
     loading,
     saving,
     error,
-    reload: loadSettings,
+    reload,
     saveSettings,
   };
 }

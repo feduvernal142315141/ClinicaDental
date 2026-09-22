@@ -16,11 +16,10 @@ import {
 } from "@/components/ui/primitives/shadcn/alert-dialog";
 import { notify } from "@/lib/utils/notify";
 import { cn } from "@/lib/utils/utils";
-import apiInstance from "@/lib/services/apiConfig";
+import { attachmentCategoryLabel } from "@/lib/utils/attachment-helpers";
 import { patientAttachmentsService } from "@/lib/services/patientAttachments/patientAttachments.service";
 import {
   ATTACHMENT_CATEGORY_COLORS,
-  ATTACHMENT_CATEGORIES,
   type PatientAttachment,
 } from "@/lib/entity/patientAttachment";
 
@@ -57,15 +56,16 @@ function FileIcon({ mimeType }: { mimeType: string }) {
 export function AttachmentCard({ attachment, patientId, onDelete, canDelete }: AttachmentCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const categoryLabel =
-    ATTACHMENT_CATEGORIES.find((c) => c.value === attachment.category)?.label ?? attachment.category;
+  const categoryLabel = attachmentCategoryLabel(attachment.category);
   const categoryClassName = ATTACHMENT_CATEGORY_COLORS[attachment.category];
 
   const handleDownload = async () => {
     try {
-      const url = patientAttachmentsService.getDownloadUrl(patientId, attachment.id);
-      const response = await apiInstance.get<Blob>(url, { responseType: "blob" });
-      const blobUrl = URL.createObjectURL(response.data);
+      const blob = await patientAttachmentsService.downloadAttachment(
+        patientId,
+        attachment.id,
+      );
+      const blobUrl = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = blobUrl;
       anchor.download = attachment.fileName;
