@@ -14,7 +14,8 @@ import type {
 const endpoint = "/clinic/reminder-config";
 
 function unwrapResponse<T>(data: unknown): T {
-  return ((data as { data?: T })?.data ?? data) as T;
+  const obj = data as { value?: T; data?: T };
+  return (obj?.value ?? obj?.data ?? data) as T;
 }
 
 async function getReminderConfigs(): Promise<ReminderConfigResponse[]> {
