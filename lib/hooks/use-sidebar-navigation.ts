@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import {
+  Bell,
   Calendar,
   Users,
   Settings,
@@ -76,7 +77,7 @@ export function useSidebarNavigation() {
         { path: "/settings/doctors", label: "Usuarios", icon: UserCog, module: "doctor" },
         { path: "/settings/user-types", label: "Tipos de usuario", icon: IdCard, module: "doctor" },
         { path: "/settings/roles", label: "Roles", icon: Shield, module: "role" },
-        // MVP: notificaciones e integraciones ocultas hasta post-MVP
+        { path: "/settings/notifications", label: "Notificaciones", icon: Bell, module: "notification" },
         { path: "/settings/services", label: "Servicios", icon: Briefcase, module: "service" },
         { path: "/settings/labels", label: "Etiquetas", icon: Tag, module: "appointments" },
       ] satisfies (MenuItem & { module: string })[]
