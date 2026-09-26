@@ -34,3 +34,10 @@ export interface UpdateReminderConfigRequest {
   templateId?: string;
   enabled?: boolean;
 }
+
+export interface MetaTemplateSyncResult {
+  imported: number;
+  updated: number;
+  total: number;
+  message: string;
+}

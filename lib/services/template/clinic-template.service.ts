@@ -3,7 +3,7 @@ import {
   servicePost,
 } from "@/lib/services/baseService";
 import { handleServiceError } from "@/lib/utils/error.utils";
-import type { ClinicTemplate } from "@/lib/entity/settings";
+import type { ClinicTemplate, MetaTemplateSyncResult } from "@/lib/entity/settings";
 
 const endpoint = "/clinic-template";
 
@@ -63,7 +63,16 @@ async function createClinicTemplate(payload: {
   return null;
 }
 
+async function syncMetaTemplates(): Promise<MetaTemplateSyncResult> {
+  const response = await servicePost<Record<string, never>, MetaTemplateSyncResult>(
+    `${endpoint}/sync-meta`, {}
+  );
+  if (response?.status === 200) return unwrapResponse<MetaTemplateSyncResult>(response.data);
+  return handleServiceError(response, "No se pudieron sincronizar las plantillas de Meta");
+}
+
 export const clinicTemplateService = {
+  syncMetaTemplates,
   getClinicTemplates,
   getClinicTemplateById,
   createClinicTemplate,

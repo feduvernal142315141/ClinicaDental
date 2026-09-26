@@ -35,6 +35,7 @@ import {
   Trash2,
   Plus,
   Loader2,
+  RefreshCw,
   Edit,
   X,
 } from "lucide-react";
@@ -54,6 +55,8 @@ import type {
   UpdateReminderConfigRequest,
 } from "@/lib/entity/settings";
 
+import { useSyncMetaTemplates } from "@/lib/hooks/use-sync-meta-templates";
+
 export function NotificationsSettings() {
   // Estado para Email general (localStorage, compatible con anterior)
   const [settings, setSettings] = useState<NotificationSettings>(
@@ -67,6 +70,7 @@ export function NotificationsSettings() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const { sync: syncMetaTemplates, isSyncing } = useSyncMetaTemplates(setClinicTemplates);
   const [savingReminder, setSavingReminder] = useState(false);
 
   // Estado para crear template Meta
@@ -368,7 +372,16 @@ export function NotificationsSettings() {
             <>
               <Card>
                 <CardHeader>
-                  <CardTitle>Plantillas de WhatsApp (Meta)</CardTitle>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <CardTitle>Plantillas de WhatsApp (Meta)</CardTitle>
+                    <Button type="button" variant="outline" size="sm"
+                      disabled={isSyncing || savingTemplate} onClick={syncMetaTemplates}
+                      aria-busy={isSyncing}>
+                      {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        : <RefreshCw className="mr-2 h-4 w-4" />}
+                      Sincronizar con Meta
+                    </Button>
+                  </div>
                   <CardDescription>
                     Administra plantillas Meta para envío automático de mensajes
                   </CardDescription>
@@ -455,7 +468,7 @@ export function NotificationsSettings() {
                         <Button
                           size="sm"
                           onClick={handleCreateTemplate}
-                          disabled={savingTemplate}
+                          disabled={savingTemplate || isSyncing}
                           className="bg-medical-primary hover:bg-medical-primary/90"
                         >
                           {savingTemplate && (
@@ -470,7 +483,7 @@ export function NotificationsSettings() {
                             setIsCreatingTemplate(false);
                             setNewTemplate({ name: "", body: "" });
                           }}
-                          disabled={savingTemplate}
+                          disabled={savingTemplate || isSyncing}
                         >
                           Cancelar
                         </Button>
@@ -481,7 +494,7 @@ export function NotificationsSettings() {
                       onClick={() => setIsCreatingTemplate(true)}
                       variant="outline"
                       className="w-full"
-                      disabled={savingTemplate}
+                      disabled={savingTemplate || isSyncing}
                     >
                       <Plus className="w-4 h-4 mr-2" />
                       Nueva plantilla Meta
