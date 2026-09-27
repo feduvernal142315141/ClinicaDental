@@ -8,6 +8,8 @@ import { SearchInput } from "@/components/ui/atomic/forms/search-input";
 import { DynamicIcon } from "@/components/app/labels/DynamicIcon";
 import { useLabelCatalog } from "@/lib/hooks/labels";
 import { cn } from "@/lib/utils/utils";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 /** Máximo de chips de etiqueta que se pintan en el sidebar; el resto se
  * resume en un indicador no-interactivo que remite al buscador. */
@@ -199,6 +201,14 @@ function LabelFilterSection({
   onToggle: (id: string) => void;
   onClear: () => void;
 }) {
+  const { t } = useI18n();
+  const text = (key: TranslationKey, params: Record<string, string | number>) => {
+    let value = t(key);
+    for (const [name, replacement] of Object.entries(params)) {
+      value = value.replaceAll(`{${name}}`, String(replacement));
+    }
+    return value;
+  };
   // Estrategia híbrida (ver useLabelCatalog): catálogo completo en cliente
   // cuando total <= CATALOG_PAGE_SIZE, búsqueda server-side si no. `results`
   // ya viene filtrado por `query` en ambos casos — transparente para la UI.
@@ -230,12 +240,12 @@ function LabelFilterSection({
     <div className="border-t border-hairline pt-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <div className="flex shrink-0 items-center gap-1.5">
-          <SectionTitle>Etiquetas</SectionTitle>
+          <SectionTitle>{t("navigation.labels")}</SectionTitle>
           {selectedCount > 0 && <CountBadge>{selectedCount}</CountBadge>}
         </div>
         {selectedCount > 0 && (
           <span className="ml-auto">
-            <TextAction onClick={onClear}>Limpiar</TextAction>
+            <TextAction onClick={onClear}>{t("clinical.filters.clear")}</TextAction>
           </span>
         )}
       </div>
@@ -247,14 +257,14 @@ function LabelFilterSection({
           <SearchInput
             value={query}
             onChange={(e) => search(e.target.value)}
-            placeholder="Buscar etiqueta..."
-            aria-label="Buscar etiqueta"
+            placeholder={t("navigation.labels")}
+            aria-label={t("navigation.labels")}
           />
         </div>
       )}
       <div
         role="group"
-        aria-label="Filtrar por etiqueta"
+        aria-label={t("navigation.labels")}
         className="flex flex-wrap gap-1.5"
       >
         {visibleLabels.map((label) => (
@@ -267,12 +277,12 @@ function LabelFilterSection({
         ))}
         {overflowCount > 0 && (
           <span className="inline-flex shrink-0 items-center rounded-full border border-dashed border-hairline px-2.5 py-1 text-[12px] font-medium text-subtle">
-            +{overflowCount} más — usa el buscador
+            +{overflowCount} {t("clinical.list.more")}
           </span>
         )}
         {orderedResults.length === 0 && (
           <p className="text-xs text-subtle">
-            Sin etiquetas que coincidan con «{query.trim()}».
+            {text("appointments.noMatches", { query: query.trim() })}
           </p>
         )}
       </div>
@@ -293,6 +303,14 @@ export function AppointmentsSpecialistSidebar({
   onToggleLabel,
   onClearLabels,
 }: AppointmentsSpecialistSidebarProps) {
+  const { t } = useI18n();
+  const text = (key: TranslationKey, params: Record<string, string | number>) => {
+    let value = t(key);
+    for (const [name, replacement] of Object.entries(params)) {
+      value = value.replaceAll(`{${name}}`, String(replacement));
+    }
+    return value;
+  };
   // Buscador en cliente: pura presentación, no añade datos ni fetch.
   const [query, setQuery] = useState("");
 
@@ -318,7 +336,7 @@ export function AppointmentsSpecialistSidebar({
     // Único scroller del panel: el propio aside (sin huecos muertos; con pocos
     // especialistas el contenido se apila arriba y Etiquetas va justo debajo).
     <aside
-      aria-label="Filtros de la agenda"
+      aria-label={t("appointments.page.description")}
       className="bento flex h-full flex-col gap-4 overflow-y-auto p-4"
     >
       {/* Nivel 1 — CTA */}
@@ -329,7 +347,7 @@ export function AppointmentsSpecialistSidebar({
           className="auth-sheen relative flex h-11 w-full shrink-0 items-center justify-center gap-2 overflow-hidden rounded-xl bg-brand text-sm font-semibold text-white shadow-sm outline-none transition-colors hover:bg-brand-strong focus-visible:ring-2 focus-visible:ring-brand/40"
         >
           <Plus className="h-4 w-4" />
-          Nueva cita
+          {t("appointments.new")}
         </button>
       )}
 
@@ -340,7 +358,7 @@ export function AppointmentsSpecialistSidebar({
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <div className="flex shrink-0 items-center gap-1.5">
             <Users className="h-3.5 w-3.5 shrink-0 text-subtle" aria-hidden />
-            <SectionTitle>Especialistas</SectionTitle>
+            <SectionTitle>{t("appointments.specialists")}</SectionTitle>
             {total > 0 && (
               <CountBadge>
                 {visibleCount}/{total}
@@ -351,10 +369,10 @@ export function AppointmentsSpecialistSidebar({
               a la derecha, no colgando a la izquierda. */}
           <div className="ml-auto flex shrink-0 items-center gap-0.5">
             <TextAction onClick={onSelectAll} disabled={allVisible}>
-              Todos
+              {t("appointments.all")}
             </TextAction>
             <TextAction onClick={onClearAll} disabled={noneVisible}>
-              Ninguno
+              {t("appointments.none")}
             </TextAction>
           </div>
         </div>
@@ -362,13 +380,13 @@ export function AppointmentsSpecialistSidebar({
         <SearchInput
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar especialista..."
-          aria-label="Buscar especialista"
+          placeholder={t("appointments.searchSpecialist")}
+          aria-label={t("appointments.searchSpecialist")}
         />
 
         <div
           role="group"
-          aria-label="Filtrar por especialista"
+          aria-label={t("appointments.filterBySpecialist")}
           className="flex flex-col gap-0.5"
         >
           {loading &&
@@ -388,13 +406,13 @@ export function AppointmentsSpecialistSidebar({
 
           {!loading && doctors.length === 0 && (
             <p className="py-6 text-center text-sm text-subtle">
-              No hay especialistas registrados
+              {t("appointments.noSpecialists")}
             </p>
           )}
 
           {!loading && doctors.length > 0 && filteredDoctors.length === 0 && (
             <p className="py-6 text-center text-sm text-subtle">
-              Sin coincidencias para “{query.trim()}”
+              {text("appointments.noMatches", { query: query.trim() })}
             </p>
           )}
         </div>

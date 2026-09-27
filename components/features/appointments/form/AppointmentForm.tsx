@@ -32,19 +32,11 @@ import { QuickPatientModal } from "@/components/features/appointments/form/Quick
 import { LabelSelector, LabelFormModal } from "@/components/app/labels";
 import { useAppointmentForm } from "@/lib/hooks/appointments";
 import { cn } from "@/lib/utils/utils";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 import type { AppointmentFormPrefill } from "@/lib/hooks/appointments/use-appointment-form";
 import type { Appointment } from "@/lib/entity/appointment";
 import type { Label } from "@/lib/entity/label";
-
-
-const TYPE_OPTIONS = [
-  { value: "consultation", label: "Consulta" },
-  { value: "control", label: "Control" },
-  { value: "emergency", label: "Emergencia" },
-  { value: "follow_up", label: "Seguimiento" },
-  { value: "routine", label: "Rutina" },
-];
 
 interface AppointmentFormProps {
   appointmentId?: string;
@@ -91,6 +83,7 @@ export function AppointmentForm({
   prefill,
   readOnly = false,
 }: AppointmentFormProps) {
+  const { language, t } = useI18n();
   const [isCreatePatientModalOpen, setIsCreatePatientModalOpen] =
     useState(false);
   const [isCreateLabelModalOpen, setIsCreateLabelModalOpen] = useState(false);
@@ -133,6 +126,13 @@ export function AppointmentForm({
 
   const scheduleReady = Boolean(watchedDoctorId && watchedDate);
   const formDisabled = loading || patientCreationLoading || readOnly;
+  const typeOptions = [
+    { value: "consultation", label: t("clinical.appointmentType.consultation") },
+    { value: "control", label: t("clinical.appointmentType.control") },
+    { value: "emergency", label: t("clinical.appointmentType.emergency") },
+    { value: "follow_up", label: t("clinical.appointmentType.follow_up") },
+    { value: "routine", label: t("clinical.appointmentType.routine") },
+  ];
 
   const patientLabel = patientsOptions.find(
     (o) => o.id === watchedPatientId,
@@ -140,10 +140,10 @@ export function AppointmentForm({
   const doctorLabel =
     doctorsOptions.find((o) => o.id === watchedDoctorId)?.label ??
     (watchedDoctorId ? getDoctorLabel(watchedDoctorId) : undefined);
-  const typeLabel = TYPE_OPTIONS.find((o) => o.value === watchedType)?.label;
+  const typeLabel = typeOptions.find((o) => o.value === watchedType)?.label;
   const serviceCount = (watchedServiceIds ?? []).length;
   const dateLabel = watchedDate
-    ? new Date(`${watchedDate}T00:00:00`).toLocaleDateString("es-ES", {
+    ? new Date(`${watchedDate}T00:00:00`).toLocaleDateString(language, {
         weekday: "short",
         day: "numeric",
         month: "short",
@@ -170,7 +170,7 @@ export function AppointmentForm({
             <div className="flex items-center gap-2">
               <User className="h-5 w-5 text-brand" />
               <h2 className="text-base font-semibold text-ink">
-                Paciente y doctor
+                {t("appointments.form.patientDoctor")}
               </h2>
             </div>
 
@@ -181,7 +181,7 @@ export function AppointmentForm({
                 render={({ field }) => (
                   <FormItem className="min-w-0">
                     <FormLabel>
-                      Paciente <span className="text-rose-500">*</span>
+                      {t("appointments.form.patient")} <span className="text-rose-500">*</span>
                     </FormLabel>
                     <div className="flex min-w-0 items-center gap-2">
                       <FormControl>
@@ -193,19 +193,19 @@ export function AppointmentForm({
                             value: o.id,
                             label: o.label,
                           }))}
-                          placeholder="Seleccione paciente"
+                          placeholder={t("appointments.form.selectPatient")}
                           searchable
-                          searchPlaceholder="Buscar paciente…"
+                          searchPlaceholder={t("appointments.form.searchPatient")}
                           disabled={formDisabled || catalogsLoading}
                           className="min-w-0 flex-1"
-                          aria-label="Paciente"
+                          aria-label={t("appointments.form.patient")}
                         />
                       </FormControl>
                       {!readOnly && (
                         <button
                           type="button"
-                          aria-label="Registrar nuevo paciente"
-                          title="Registrar nuevo paciente"
+                          aria-label={t("appointments.form.registerPatient")}
+                          title={t("appointments.form.registerPatient")}
                           disabled={formDisabled || catalogsLoading}
                           onClick={() => setIsCreatePatientModalOpen(true)}
                           className={cn(
@@ -230,7 +230,7 @@ export function AppointmentForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Doctor <span className="text-rose-500">*</span>
+                      {t("appointments.form.doctor")} <span className="text-rose-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <Select
@@ -257,11 +257,11 @@ export function AppointmentForm({
                               : [];
                           return [...base, ...extra];
                         })()}
-                        placeholder="Seleccione doctor"
+                        placeholder={t("appointments.form.selectDoctor")}
                         searchable
-                        searchPlaceholder="Buscar doctor…"
+                        searchPlaceholder={t("appointments.form.searchDoctor")}
                         disabled={formDisabled || catalogsLoading}
-                        aria-label="Doctor"
+                        aria-label={t("appointments.form.doctor")}
                       />
                     </FormControl>
                     <FormMessage />
@@ -275,7 +275,7 @@ export function AppointmentForm({
           <section className="bento space-y-4 p-6">
             <div className="flex items-center gap-2">
               <CalendarClock className="h-5 w-5 text-brand" />
-              <h2 className="text-base font-semibold text-ink">Fecha y hora</h2>
+              <h2 className="text-base font-semibold text-ink">{t("appointments.form.dateTime")}</h2>
             </div>
 
             <DoctorScheduleSummary
@@ -288,10 +288,10 @@ export function AppointmentForm({
               <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-hairline bg-hover/40 px-6 py-12 text-center">
                 <CalendarClock className="h-8 w-8 text-subtle" />
                 <p className="text-sm font-medium text-ink">
-                  Primero selecciona un doctor
+                  {t("appointments.form.selectDoctorFirst")}
                 </p>
                 <p className="text-sm text-subtle">
-                  Verás los días y horas que tiene disponibles para agendar.
+                  {t("appointments.form.selectDoctorFirstDescription")}
                 </p>
               </div>
             ) : (
@@ -302,7 +302,7 @@ export function AppointmentForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Fecha <span className="text-rose-500">*</span>
+                        {t("appointments.form.date")} <span className="text-rose-500">*</span>
                       </FormLabel>
                       <AvailabilityCalendar
                         value={field.value}
@@ -323,7 +323,7 @@ export function AppointmentForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Hora <span className="text-rose-500">*</span>
+                        {t("appointments.form.time")} <span className="text-rose-500">*</span>
                       </FormLabel>
                       <AvailabilitySlotPicker
                         value={field.value}
@@ -347,7 +347,7 @@ export function AppointmentForm({
           <section className="bento space-y-5 p-6">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-brand" />
-              <h2 className="text-base font-semibold text-ink">Detalles</h2>
+              <h2 className="text-base font-semibold text-ink">{t("appointments.form.details")}</h2>
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
@@ -357,7 +357,7 @@ export function AppointmentForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Duración <span className="text-rose-500">*</span>
+                      {t("appointments.form.duration")} <span className="text-rose-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <div className="relative">
@@ -382,7 +382,7 @@ export function AppointmentForm({
                           disabled={formDisabled}
                         />
                         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-subtle">
-                          min
+                          {t("appointments.form.minutes")}
                         </span>
                       </div>
                     </FormControl>
@@ -397,15 +397,15 @@ export function AppointmentForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Tipo de cita <span className="text-rose-500">*</span>
+                      {t("appointments.form.type")} <span className="text-rose-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <Select
                         value={field.value}
                         onChange={field.onChange}
                         onBlur={field.onBlur}
-                        options={TYPE_OPTIONS}
-                        placeholder="Seleccione tipo"
+                        options={typeOptions}
+                        placeholder={t("appointments.form.selectType")}
                         disabled={formDisabled}
                       />
                     </FormControl>
@@ -420,7 +420,7 @@ export function AppointmentForm({
               name="serviceIds"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Servicios</FormLabel>
+                  <FormLabel>{t("appointments.form.services")}</FormLabel>
                   <FormControl>
                     <MultiSelect
                       value={field.value ?? []}
@@ -453,14 +453,13 @@ export function AppointmentForm({
                           }));
                         return [...base, ...extra];
                       })()}
-                      placeholder="Seleccione uno o más servicios"
-                      searchPlaceholder="Buscar servicio…"
+                      placeholder={t("appointments.form.selectServices")}
+                      searchPlaceholder={t("appointments.form.searchService")}
                       disabled={formDisabled || catalogsLoading}
                     />
                   </FormControl>
                   <p className="text-xs text-subtle">
-                    La duración se calcula desde los servicios; puedes ajustarla
-                    manualmente.
+                    {t("appointments.form.servicesHint")}
                   </p>
                   <FormMessage />
                 </FormItem>
@@ -472,10 +471,10 @@ export function AppointmentForm({
               name="reason"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Motivo</FormLabel>
+                  <FormLabel>{t("appointments.form.reason")}</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Motivo de la cita"
+                      placeholder={t("appointments.form.reasonPlaceholder")}
                       disabled={formDisabled}
                       {...field}
                     />
@@ -490,11 +489,11 @@ export function AppointmentForm({
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notas</FormLabel>
+                  <FormLabel>{t("appointments.form.notes")}</FormLabel>
                   <FormControl>
                     <TextArea
                       rows={4}
-                      placeholder="Notas adicionales"
+                      placeholder={t("appointments.form.notesPlaceholder")}
                       disabled={formDisabled}
                       {...field}
                     />
@@ -509,7 +508,7 @@ export function AppointmentForm({
               name="labelIds"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Etiquetas</FormLabel>
+                  <FormLabel>{t("appointments.form.labels")}</FormLabel>
                   <LabelSelector
                     value={field.value ?? []}
                     onChange={field.onChange}
@@ -532,41 +531,41 @@ export function AppointmentForm({
             <div className="flex items-center gap-2">
               <CalendarClock className="h-5 w-5 text-brand" />
               <h2 className="text-base font-semibold text-ink">
-                Resumen de la cita
+                {t("appointments.summary.title")}
               </h2>
             </div>
 
             {(catalogsLoading || availabilityLoading) && (
               <p className="rounded-lg bg-brand/10 px-3 py-2 text-xs text-brand">
-                Cargando información…
+                {t("appointments.summary.loading")}
               </p>
             )}
 
             <dl className="space-y-3 text-sm">
-              <SummaryRow icon={User} label="Paciente" value={patientLabel} />
+              <SummaryRow icon={User} label={t("appointments.form.patient")} value={patientLabel} />
               <SummaryRow
                 icon={Stethoscope}
-                label="Doctor"
+                label={t("appointments.form.doctor")}
                 value={doctorLabel}
               />
               <SummaryRow
                 icon={CalendarClock}
-                label="Fecha"
+                label={t("appointments.form.date")}
                 value={dateLabel}
               />
-              <SummaryRow icon={Clock} label="Hora" value={watchedTime} mono />
+              <SummaryRow icon={Clock} label={t("appointments.form.time")} value={watchedTime} mono />
               <SummaryRow
                 icon={Clock}
-                label="Duración"
-                value={watchedDuration ? `${watchedDuration} min` : undefined}
+                label={t("appointments.form.duration")}
+                value={watchedDuration ? `${watchedDuration} ${t("appointments.form.minutes")}` : undefined}
               />
-              <SummaryRow icon={FileText} label="Tipo" value={typeLabel} />
+              <SummaryRow icon={FileText} label={t("appointments.form.type")} value={typeLabel} />
               <SummaryRow
                 icon={TagIcon}
-                label="Servicios"
+                label={t("appointments.form.services")}
                 value={
                   serviceCount > 0
-                    ? `${serviceCount} seleccionado${serviceCount > 1 ? "s" : ""}`
+                    ? `${serviceCount} ${t(serviceCount > 1 ? "appointments.summary.selectedPlural" : "appointments.summary.selectedSingular")}`
                     : undefined
                 }
               />
@@ -580,7 +579,7 @@ export function AppointmentForm({
                   className="w-full gap-2"
                 >
                   <Save aria-hidden="true" className="h-4 w-4" />
-                  {isEdit ? "Actualizar cita" : "Guardar cita"}
+                  {isEdit ? t("appointments.action.update") : t("appointments.action.save")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -590,7 +589,7 @@ export function AppointmentForm({
                   className="w-full gap-2"
                 >
                   <X aria-hidden="true" className="h-4 w-4" />
-                  Cancelar
+                  {t("appointments.action.cancel")}
                 </Button>
               </div>
             )}

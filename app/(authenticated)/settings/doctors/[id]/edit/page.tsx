@@ -4,6 +4,7 @@ import { use } from "react";
 import { DoctorForm } from "@/components/doctors";
 import { PageHeader } from "@/components/ui/layout/page-header";
 import { useDoctorsPage } from "@/lib/hooks/doctors/use-doctors-page";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -11,6 +12,7 @@ interface PageProps {
 
 export default function EditDoctorPage({ params }: PageProps) {
   const { id } = use(params);
+  const { t } = useI18n();
   const { handleBackToList } = useDoctorsPage({
     basePath: "/settings/doctors",
   });
@@ -18,10 +20,10 @@ export default function EditDoctorPage({ params }: PageProps) {
   return (
     <>
       <PageHeader
-        title="Editar Usuario"
-        subtitle="Actualice la información del usuario en el sistema"
+        title={t("doctors.page.editTitle")}
+        subtitle={t("doctors.page.editDescription")}
         actionButton={{
-          label: "Atrás",
+          label: t("patients.actions.back"),
           onClick: handleBackToList,
           variant: "back",
         }}

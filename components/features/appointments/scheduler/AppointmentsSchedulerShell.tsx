@@ -23,6 +23,7 @@ import {
   getTemporalCategory,
   type AppointmentTemporalCategory,
 } from "@/lib/utils/appointment-utils";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface AppointmentsSchedulerShellProps {
   canCreate: boolean;
@@ -50,6 +51,7 @@ export function AppointmentsSchedulerShell({
   onStartConsultation,
   startConsultationLoading,
 }: AppointmentsSchedulerShellProps) {
+  const { t } = useI18n();
   const [isMobile, setIsMobile] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
@@ -289,7 +291,7 @@ export function AppointmentsSchedulerShell({
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
-            aria-label="Filtrar especialistas"
+            aria-label={t("appointments.filterBySpecialist")}
             // `bottom-24`: apilado ENCIMA del FAB de feedback, que ocupa fijo
             // `bottom-6 right-6`. A la misma altura se superponían y este, con
             // z-[100], tapaba el de feedback por completo.
@@ -303,9 +305,9 @@ export function AppointmentsSchedulerShell({
               className="w-[280px] bg-surface p-0 sm:max-w-[280px]"
             >
               <SheetHeader className="border-b border-hairline">
-                <SheetTitle className="text-ink">Especialistas</SheetTitle>
+                <SheetTitle className="text-ink">{t("appointments.specialists")}</SheetTitle>
                 <SheetDescription className="sr-only">
-                  Filtra la agenda por especialista y etiquetas
+                  {t("appointments.page.description")}
                 </SheetDescription>
               </SheetHeader>
               <div className="min-h-0 flex-1 p-4">{sidebarContent}</div>

@@ -13,9 +13,11 @@ import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { appointmentsService } from "@/lib/services/appointments/appointments.service";
 import type { Appointment } from "@/lib/entity/appointment";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 export default function AppointmentsPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const { can, isAdmin } = usePermission();
   const {
     handleNewAppointment,
@@ -82,8 +84,8 @@ export default function AppointmentsPage() {
   return (
     <>
       <PageHeader
-        title="Gestión de Citas"
-        subtitle="Agenda de citas por especialista"
+        title={t("appointments.page.title")}
+        subtitle={t("appointments.page.description")}
       />
 
       <AppointmentsSchedulerShell
