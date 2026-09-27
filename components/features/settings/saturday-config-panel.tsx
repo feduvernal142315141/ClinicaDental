@@ -80,20 +80,29 @@ export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelPro
 
   const selectPattern = (p: typeof pattern) => {
     let newSeq: string[];
-    let newShifts = { ...shifts };
+    let newShifts: Record<string, { startTime: string; endTime: string }>;
     switch (p) {
       case "every":
         newSeq = ["A"];
+        // Solo turno A, quitar B
+        newShifts = { A: shifts.A ?? DEFAULT_SHIFT_A };
         break;
       case "alternate":
         newSeq = ["A", "off"];
+        // Solo turno A, quitar B — alterna abierto/cerrado con un solo horario
+        newShifts = { A: shifts.A ?? DEFAULT_SHIFT_A };
         break;
       case "custom":
         newSeq = sequence.length > 1 ? sequence : ["A", "A", "off", "off"];
-        if (!newShifts.B) newShifts = { ...newShifts, B: DEFAULT_SHIFT_B };
+        // Custom sí permite múltiples turnos
+        newShifts = {
+          A: shifts.A ?? DEFAULT_SHIFT_A,
+          B: shifts.B ?? DEFAULT_SHIFT_B,
+        };
         break;
       default:
         newSeq = ["A"];
+        newShifts = { A: shifts.A ?? DEFAULT_SHIFT_A };
     }
     updateRule({ pattern: p, sequence: newSeq, shifts: newShifts });
   };
@@ -163,7 +172,8 @@ export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelPro
     return items;
   }, [enabled, rule, anchorDate, pattern, sequence, shifts]);
 
-  const hasMultipleShifts = Object.keys(shifts).length > 1 || pattern === "custom";
+  // Solo "custom" muestra múltiples turnos. "every" y "alternate" siempre usan solo turno A.
+  const hasMultipleShifts = pattern === "custom";
 
   return (
     <ScheduleDayCard
