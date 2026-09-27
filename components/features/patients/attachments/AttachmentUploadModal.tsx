@@ -17,6 +17,7 @@ import { Modal } from "@/components/ui/primitives/custom";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Select } from "@/components/ui/controls/select";
 import TextArea from "@/components/ui/atomic/forms/textarea";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import {
   getAttachmentMediaType,
   getFileExtension,
@@ -232,6 +233,7 @@ export function AttachmentUploadModal({
   uploading,
   appointmentId,
 }: AttachmentUploadModalProps) {
+  const { t } = useI18n();
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [category, setCategory] = useState<AttachmentCategory | null>(null);
@@ -294,7 +296,7 @@ export function AttachmentUploadModal({
             Cancelar
           </Button>
           <Button type="button" loading={uploading} onClick={handleSubmit}>
-            Subir archivo
+            {t("attachments.gallery.upload")}
           </Button>
         </>
       }

@@ -2,6 +2,7 @@
 
 import { Mic, Square } from "lucide-react";
 import { OdontogramButton } from "@/components/features/odontogram/ui/OdontogramButton";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { OdontogramDictationFeedback } from "./odontogram-dictation-feedback";
 import {
   describeOdontogramDictationStatus,
@@ -30,6 +31,7 @@ interface OdontogramDictationControlProps {
 export function OdontogramDictationControl({
   hidden = false,
 }: OdontogramDictationControlProps) {
+  const { t } = useI18n();
   const session = useOdontogramDictationSession();
 
   // Sin sesión el dictado no existe aquí: clínica sin la función, modo
@@ -49,7 +51,7 @@ export function OdontogramDictationControl({
         >
           {describeOdontogramDictationStatus(
             session,
-            "Describe piezas, caras, diagnósticos o correcciones",
+            t("odontogram.dictation.placeholder"),
           )}
         </p>
         <OdontogramButton
@@ -67,7 +69,7 @@ export function OdontogramDictationControl({
           aria-pressed={isRecording}
           onClick={session.toggleRecording}
         >
-          {isRecording ? "Terminar y aplicar" : "Dictar odontograma"}
+          {isRecording ? t("odontogram.dictation.stop") : t("odontogram.dictation.start")}
         </OdontogramButton>
       </div>
 

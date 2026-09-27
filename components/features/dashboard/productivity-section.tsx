@@ -19,31 +19,26 @@ import {
 import { Target, Users } from "lucide-react";
 import { DashboardSummary } from "@/lib/entity/dashboard";
 import { useChartPalette } from "@/lib/hooks/dashboard/use-chart-palette";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { ClinicLanguage } from "@/lib/entity/settings";
 
 interface ProductivitySectionProps {
   data: DashboardSummary;
 }
 
-const MONTH_NAMES_ES = [
-  "Ene",
-  "Feb",
-  "Mar",
-  "Abr",
-  "May",
-  "Jun",
-  "Jul",
-  "Ago",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dic",
-];
+const MONTH_NAMES: Record<ClinicLanguage, string[]> = {
+  es: ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
+  en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+  fr: ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Aoû", "Sep", "Oct", "Nov", "Déc"],
+  it: ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"],
+  pt: ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"],
+};
 
 /** "YYYY-MM" → "Ene 25" */
-function formatMonthLabel(yyyyMm: string): string {
+function formatMonthLabel(yyyyMm: string, monthNames: string[]): string {
   const [year, month] = yyyyMm.split("-");
   const idx = parseInt(month, 10) - 1;
-  return `${MONTH_NAMES_ES[idx]} ${year.slice(2)}`;
+  return `${monthNames[idx]} ${year.slice(2)}`;
 }
 
 /**
@@ -58,6 +53,8 @@ function buildFullMonthSeries(
     completed: number;
     cancelled: number;
   }[],
+  labels: { completed: string; scheduled: string; cancelled: string },
+  monthNames: string[],
 ) {
   if (monthlyAppointments.length === 0) return [];
 
@@ -79,10 +76,10 @@ function buildFullMonthSeries(
     const key = `${y}-${String(m).padStart(2, "0")}`;
     const entry = byMonth.get(key);
     result.push({
-      name: formatMonthLabel(key),
-      Cumplidas: entry?.completed ?? 0,
-      Programadas: entry?.scheduled ?? 0,
-      Canceladas: entry?.cancelled ?? 0,
+      name: formatMonthLabel(key, monthNames),
+      [labels.completed]: entry?.completed ?? 0,
+      [labels.scheduled]: entry?.scheduled ?? 0,
+      [labels.cancelled]: entry?.cancelled ?? 0,
     });
     m++;
     if (m > 12) {
@@ -94,8 +91,14 @@ function buildFullMonthSeries(
 }
 
 export function ProductivitySection({ data }: ProductivitySectionProps) {
+  const { language, t } = useI18n();
   const { kpis, doctorProductivity, monthlyAppointments } = data;
   const c = useChartPalette();
+  const chartLabels = {
+    completed: t("dashboard.chart.completed"),
+    scheduled: t("dashboard.chart.scheduled"),
+    cancelled: t("dashboard.chart.cancelled"),
+  };
 
   const axisTick = { fill: c.axis, fontSize: 12 } as const;
   const tooltipContentStyle = {
@@ -107,7 +110,11 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
   const tooltipLabelStyle = { color: c.tooltipText } as const;
   const tooltipItemStyle = { color: c.tooltipText } as const;
 
-  const chartData = buildFullMonthSeries(monthlyAppointments);
+  const chartData = buildFullMonthSeries(
+    monthlyAppointments,
+    chartLabels,
+    MONTH_NAMES[language],
+  );
   const hasMonthlyData = monthlyAppointments.some((month) => month.total > 0);
 
   return (
@@ -115,43 +122,43 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
       <Header
         level={2}
         size="lg"
-        title="Agenda & Productividad"
-        description="Análisis de eficiencia y ocupación"
+        title={t("dashboard.productivity.title")}
+        description={t("dashboard.productivity.description")}
       />
 
       {/* Productivity KPIs */}
       <KpiGrid cols={{ default: 1, md: 3 }} gap={6}>
         <MetricCard
-          title="Tasa de Asistencia"
+          title={t("dashboard.kpi.attendanceRate")}
           value={`${kpis.attendanceRate}%`}
           icon={Target}
           iconColor="text-emerald-600"
           progressValue={kpis.attendanceRate}
-          description="Citas cumplidas vs canceladas"
+          description={`${t("dashboard.kpi.completed")} vs ${t("dashboard.kpi.cancelled")}`}
         />
 
         <MetricCard
-          title="Tasa de Cancelación"
+          title={t("dashboard.productivity.cancellationRate")}
           value={`${kpis.cancellationRate}%`}
           icon={Target}
           iconColor="text-rose-600"
           progressValue={kpis.cancellationRate}
-          description="Del total de citas en el período"
+          description={t("dashboard.productivity.periodTotal")}
         />
 
         <KpiCard
-          title="Doctores Activos"
+          title={t("dashboard.productivity.activeDoctors")}
           value={kpis.activeDoctors}
           icon={Users}
           iconColor="text-indigo-600"
           description={
             doctorProductivity.length > 0
-              ? `Promedio ${Math.round(
+              ? `${t("dashboard.productivity.average")} ${Math.round(
                   doctorProductivity.reduce(
                     (acc, d) => acc + d.totalAppointments,
                     0,
                   ) / doctorProductivity.length,
-                )} citas/doctor`
+                )} ${t("dashboard.productivity.appointmentsPerDoctor")}`
               : undefined
           }
         />
@@ -159,8 +166,8 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
 
       {/* Monthly Appointments Chart */}
       <DataCard
-        title="Eventos por Mes"
-        description="Cantidad de citas agendadas por fecha de cita"
+        title={t("dashboard.productivity.monthlyEvents")}
+        description={t("dashboard.productivity.monthlyEventsDescription")}
       >
         {hasMonthlyData ? (
           <ResponsiveContainer width="100%" height={300}>
@@ -220,21 +227,21 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
               <Legend />
               <Area
                 type="monotone"
-                dataKey="Cumplidas"
+                dataKey={chartLabels.completed}
                 stroke={c.success}
                 fill="url(#colorCumplidas)"
                 strokeWidth={2}
               />
               <Area
                 type="monotone"
-                dataKey="Programadas"
+                dataKey={chartLabels.scheduled}
                 stroke={c.brand}
                 fill="url(#colorProgramadas)"
                 strokeWidth={2}
               />
               <Area
                 type="monotone"
-                dataKey="Canceladas"
+                dataKey={chartLabels.cancelled}
                 stroke={c.danger}
                 fill="url(#colorCanceladas)"
                 strokeWidth={2}
@@ -243,22 +250,22 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
           </ResponsiveContainer>
         ) : (
           <p className="py-12 text-center text-sm text-muted-foreground">
-            No hay citas registradas en este periodo.
+            {t("dashboard.productivity.noAppointments")}
           </p>
         )}
       </DataCard>
 
       {/* Doctor Rankings */}
       <DataCard
-        title="Ranking de Doctores"
-        description="Producción estimada y citas completadas"
+        title={t("dashboard.productivity.doctorRanking")}
+        description={t("dashboard.productivity.doctorRankingDescription")}
       >
         <ResponsiveContainer width="100%" height={300}>
           <BarChart
             data={doctorProductivity.map((d) => ({
               name: d.doctorName,
-              Completadas: d.completed,
-              Canceladas: d.cancelled,
+              [chartLabels.completed]: d.completed,
+              [chartLabels.cancelled]: d.cancelled,
             }))}
           >
             <CartesianGrid
@@ -284,8 +291,8 @@ export function ProductivitySection({ data }: ProductivitySectionProps) {
               itemStyle={tooltipItemStyle}
               cursor={{ fill: "var(--hover)" }}
             />
-            <Bar dataKey="Completadas" fill={c.brand} radius={[4, 4, 0, 0]} />
-            <Bar dataKey="Canceladas" fill={c.accent} radius={[4, 4, 0, 0]} />
+            <Bar dataKey={chartLabels.completed} fill={c.brand} radius={[4, 4, 0, 0]} />
+            <Bar dataKey={chartLabels.cancelled} fill={c.accent} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </DataCard>

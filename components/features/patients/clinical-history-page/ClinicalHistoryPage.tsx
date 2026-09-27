@@ -61,6 +61,7 @@ import { EvolutionColumn } from "./evolution";
 import { EvolutionPrintDocument } from "./evolution/EvolutionPrintDocument";
 import { useEvolutionPrint } from "./evolution/use-evolution-print";
 import { useIsWideDesktop } from "@/lib/hooks/use-wide-desktop";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 type ClinicalHistoryPageProps = UseClinicalHistoryPageParams;
 
@@ -70,6 +71,7 @@ export function ClinicalHistoryPage({
   activeAppointmentId,
   openFinalizeOnLoad,
 }: ClinicalHistoryPageProps) {
+  const { t } = useI18n();
   const {
     patient,
     patientLoading,
@@ -275,14 +277,14 @@ export function ClinicalHistoryPage({
   if (patientLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <LoadingSpinner size="lg" message="Cargando historia clínica..." />
+        <LoadingSpinner size="lg" message={t("clinical.loading")} />
       </div>
     );
   }
   if (!patient) {
     return (
       <div className="flex h-64 items-center justify-center text-muted-foreground">
-        Paciente no encontrado
+        {t("clinical.patientNotFound")}
       </div>
     );
   }
@@ -299,6 +301,9 @@ export function ClinicalHistoryPage({
     dentitionFromSnapshot ??
     (snapshot ? defaultDentition : undefined);
   const primaryConsultationAction = (() => {
+    const withTime = (template: string, time: string) =>
+      template.replaceAll("{time}", time);
+
     switch (consultationCta.kind) {
       case "hidden":
         return undefined;
@@ -311,7 +316,7 @@ export function ClinicalHistoryPage({
             className="rounded-xl bg-brand font-semibold text-white hover:bg-brand-strong"
           >
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            Comprobando consultas…
+            {t("clinical.consultation.checking")}
           </Button>
         );
       case "continue": {
@@ -323,7 +328,7 @@ export function ClinicalHistoryPage({
             className="rounded-xl bg-brand font-semibold text-white hover:bg-brand-strong"
           >
             <Play className="h-4 w-4" aria-hidden="true" />
-            Continuar consulta
+            {t("clinical.consultation.continue")}
           </Button>
         );
       }
@@ -349,7 +354,9 @@ export function ClinicalHistoryPage({
             ) : (
               <Play className="h-4 w-4" aria-hidden="true" />
             )}
-            {time ? `Iniciar consulta de las ${time}` : "Iniciar consulta"}
+            {time
+              ? withTime(t("clinical.consultation.startAt"), time)
+              : t("clinical.consultation.start")}
           </Button>
         );
       }
@@ -361,7 +368,7 @@ export function ClinicalHistoryPage({
             className="rounded-xl bg-brand font-semibold text-white hover:bg-brand-strong"
           >
             <Plus className="h-4 w-4" />
-            Nueva Consulta
+            {t("clinical.consultation.new")}
           </Button>
         );
       default: {
@@ -418,14 +425,14 @@ export function ClinicalHistoryPage({
               className={PATIENT_TAB_TRIGGER_CLASS}
             >
               <ClipboardList className="h-4 w-4" />
-              Evolución Clínica
+              {t("clinical.tabs.evolution")}
             </TabsTrigger>
             <TabsTrigger
               value={PATIENT_TABS.ODONTOGRAM}
               className={PATIENT_TAB_TRIGGER_CLASS}
             >
               <Stethoscope className="h-4 w-4" />
-              Odontograma
+              {t("clinical.tabs.odontogram")}
             </TabsTrigger>
             {canViewTreatmentPlan && (
               <TabsTrigger
@@ -433,7 +440,7 @@ export function ClinicalHistoryPage({
                 className={PATIENT_TAB_TRIGGER_CLASS}
               >
                 <ListChecks className="h-4 w-4" />
-                Plan de Tratamiento
+                {t("clinical.tabs.treatmentPlan")}
               </TabsTrigger>
             )}
             <TabsTrigger
@@ -441,7 +448,7 @@ export function ClinicalHistoryPage({
               className={PATIENT_TAB_TRIGGER_CLASS}
             >
               <Images className="h-4 w-4" />
-              Imágenes y Archivos
+              {t("clinical.tabs.files")}
             </TabsTrigger>
           </TabsList>
         </div>
@@ -506,7 +513,7 @@ export function ClinicalHistoryPage({
                 <div className="flex h-40 items-center justify-center">
                   <LoadingSpinner
                     size="md"
-                    message="Cargando antecedentes..."
+                    message={t("clinical.loadingAntecedents")}
                   />
                 </div>
               ) : (

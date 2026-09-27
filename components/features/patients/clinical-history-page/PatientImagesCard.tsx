@@ -33,6 +33,7 @@ import {
 } from "@/lib/utils/attachment-helpers";
 import { useAttachmentBlob } from "../attachments/use-attachment-thumbnail";
 import { AttachmentViewerModal } from "../attachments/AttachmentViewerModal";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 const ACCEPTED_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.gif,.svg,.bmp,.mp4,.webm,.mov,.pdf,.xlsx,.xls,.csv,.doc,.docx,.txt";
@@ -55,6 +56,7 @@ function AttachmentTile({
   patientId: string;
   onView: (attachment: PatientAttachment) => void;
 }) {
+  const { t } = useI18n();
   const mediaType = getAttachmentMediaType(attachment.fileName, attachment.mimeType);
   const isImage = mediaType === "image";
   const { blobUrl, loading: loadingBlob } = useAttachmentBlob(
@@ -67,7 +69,7 @@ function AttachmentTile({
     <button
       type="button"
       onClick={() => onView(attachment)}
-      aria-label={`Ver ${displayFileName(attachment.fileName)}`}
+      aria-label={`${t("clinical.images.viewFile")} ${displayFileName(attachment.fileName)}`}
       className="group relative aspect-square overflow-hidden rounded-xl border border-hairline bg-elevated text-left transition-all hover:border-brand/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       title={`${displayFileName(attachment.fileName)} — ${shortDate(attachment.uploadedAt)}`}
     >
@@ -122,6 +124,7 @@ export function PatientImagesCard({
   onViewAll,
   activeAppointmentId,
 }: PatientImagesCardProps) {
+  const { t } = useI18n();
   const { attachments, loading, uploading, error, load, upload } =
     usePatientAttachments(patientId);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -147,20 +150,23 @@ export function PatientImagesCard({
       setFileError(null);
       if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
         setFileError(
-          `El archivo supera los ${MAX_ATTACHMENT_SIZE_MB} MB. Elige uno más pequeño e inténtalo de nuevo.`,
+          t("clinical.images.fileTooLarge").replace(
+            "{max}",
+            String(MAX_ATTACHMENT_SIZE_MB),
+          ),
         );
         return;
       }
       try {
         await upload(file, UPLOAD_CATEGORY, undefined, activeAppointmentId);
-        void notify.success("Archivo subido", {
-          description: "El archivo se guardó correctamente en el expediente.",
+        void notify.success(t("clinical.images.uploaded"), {
+          description: t("clinical.images.uploadedDescription"),
         });
       } catch (err) {
-        notifyApiError("No se pudo subir el archivo", err);
+        notifyApiError(t("clinical.images.uploadFailed"), err);
       }
     },
-    [upload, activeAppointmentId],
+    [upload, activeAppointmentId, t],
   );
 
   const onDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -189,7 +195,7 @@ export function PatientImagesCard({
         <div className="flex items-center gap-2">
           <ImageIcon className="h-4 w-4 text-brand" aria-hidden="true" />
           <h3 className="text-sm font-semibold text-ink">
-            Imágenes y Radiografías
+            {t("clinical.images.title")}
           </h3>
         </div>
         {onViewAll && (
@@ -199,7 +205,7 @@ export function PatientImagesCard({
             className="h-7 px-2 text-xs font-medium text-brand hover:text-brand"
             onClick={onViewAll}
           >
-            Ver todas
+            {t("clinical.images.viewAll")}
           </Button>
         )}
       </div>
@@ -207,13 +213,11 @@ export function PatientImagesCard({
       {error ? (
         <Alert live={false}>
           <AlertTriangle />
-          <AlertTitle>No se pudieron cargar las imágenes</AlertTitle>
+          <AlertTitle>{t("clinical.images.loadFailedTitle")}</AlertTitle>
           <AlertDescription className="flex flex-col items-start gap-2">
-            <span>
-              No hemos podido leer los archivos de este paciente.
-            </span>
+            <span>{t("clinical.images.loadFailedDescription")}</span>
             <Button variant="outline" size="sm" onClick={() => void load()}>
-              Reintentar
+              {t("clinical.visit.retry")}
             </Button>
           </AlertDescription>
         </Alert>
@@ -248,24 +252,28 @@ export function PatientImagesCard({
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                   "disabled:pointer-events-none disabled:opacity-50",
                 )}
-                aria-label="Subir una imagen o archivo al expediente"
+                aria-label={t("clinical.images.uploadAria")}
               >
                 {uploading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <ImagePlus className="h-5 w-5" aria-hidden="true" />
                 )}
-                <span className="text-[10px] font-medium">Subir</span>
+                <span className="text-[10px] font-medium">
+                  {t("clinical.images.upload")}
+                </span>
               </button>
             )}
           </div>
           {!loading && images.length === 0 && (
             <p className="mt-2 text-xs text-subtle">
-              Sin imágenes registradas en el expediente.
+              {t("clinical.images.empty")}
             </p>
           )}
           {loading && images.length === 0 && (
-            <p className="mt-2 text-xs text-subtle">Cargando archivos…</p>
+            <p className="mt-2 text-xs text-subtle">
+              {t("clinical.images.loading")}
+            </p>
           )}
           {canManage && (
             <>
@@ -283,7 +291,7 @@ export function PatientImagesCard({
                 }}
               />
               <p className="mt-2 text-[10px] text-subtle">
-                Imágenes y videos clínicos — máx. {MAX_ATTACHMENT_SIZE_MB} MB
+                {t("clinical.images.hint")} {MAX_ATTACHMENT_SIZE_MB} MB
               </p>
               {fileError && (
                 <p

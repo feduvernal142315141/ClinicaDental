@@ -26,7 +26,7 @@ import {
   type StatusBadgeTone,
 } from "@/components/ui";
 import { cn } from "@/lib/utils/utils";
-import { MONTHS_ES, dateToLocalDate } from "@/lib/datetime";
+import { dateToLocalDate } from "@/lib/datetime";
 import { CIE10_DENTAL_CODES } from "@/lib/entity/clinical-history/cie10-dental";
 import {
   NO_AUTHORSHIP_LABEL,
@@ -41,53 +41,67 @@ import type {
 } from "@/lib/entity/clinical-history";
 import type {
   Appointment,
+  AppointmentType,
   AppointmentStatus,
 } from "@/lib/entity/appointment/appointments";
-import { APPOINTMENT_TYPE_LABEL } from "@/lib/entity/appointment/appointments";
 import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 import type { VisitRecordState } from "@/lib/hooks/patients/clinical-history-page/use-visit-records-batch";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { ClinicLanguage } from "@/lib/entity/settings";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 const CIE10_LABEL_BY_CODE: Map<string, string> = new Map(
   CIE10_DENTAL_CODES.map((entry) => [entry.code.toUpperCase(), entry.label]),
 );
-function resolveDiagnosisLabel(diagnosis: VisitDiagnosis): string {
+function resolveDiagnosisLabel(diagnosis: VisitDiagnosis, fallback: string): string {
   const own = diagnosis.label?.trim();
   if (own) return own;
   const fromCatalog = CIE10_LABEL_BY_CODE.get(diagnosis.code?.trim().toUpperCase() ?? "");
   if (fromCatalog) return fromCatalog;
-  return "Sin descripción en el catálogo";
+  return fallback;
 }
 interface VisitStatusConfig {
   label: string;
   tone: StatusBadgeTone;
 }
-function getVisitStatusConfig(status: AppointmentStatus): VisitStatusConfig {
+function getVisitStatusConfig(
+  status: AppointmentStatus,
+  t: (key: TranslationKey) => string,
+): VisitStatusConfig {
   switch (status) {
     case "in_progress":
-      return { label: "Consulta en curso", tone: "success" };
+      return { label: t("clinical.visit.inProgress"), tone: "success" };
     case "completed":
-      return { label: "Consulta finalizada", tone: "progress" };
+      return { label: t("clinical.visit.completed"), tone: "progress" };
     case "no-show":
     case "no_show":
-      return { label: "No asistió", tone: "danger" };
+      return { label: t("clinical.visit.noShow"), tone: "danger" };
     case "scheduled":
     default:
-      return { label: "Consulta agendada", tone: "warning" };
+      return { label: t("clinical.visit.scheduled"), tone: "warning" };
   }
 }
-function formatLongDate(date: string): string {
-  const day = Number(date?.slice(8, 10));
-  const monthIndex = Number(date?.slice(5, 7)) - 1;
-  const year = date?.slice(0, 4);
-  const month = MONTHS_ES[monthIndex]?.toLowerCase();
-  if (!day || !month || !year) return date ?? "";
-  return `${day} de ${month} de ${year}`;
+function getAppointmentTypeLabel(
+  type: AppointmentType | undefined,
+  t: (key: TranslationKey) => string,
+): string | null {
+  if (!type) return null;
+  return t(`clinical.appointmentType.${type}` as TranslationKey);
+}
+function formatLongDate(date: string, language: ClinicLanguage): string {
+  const [year, month, day] = date.split("-").map(Number);
+  if (!year || !month || !day) return date ?? "";
+  return new Intl.DateTimeFormat(language, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(year, month - 1, day));
 }
 interface StampMoment {
   localDate: string;
   text: string;
 }
-function parseStamp(iso: string | undefined): StampMoment | null {
+function parseStamp(iso: string | undefined, language: ClinicLanguage): StampMoment | null {
   if (!iso) return null;
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) {
@@ -98,7 +112,7 @@ function parseStamp(iso: string | undefined): StampMoment | null {
   const time = `${String(parsed.getHours()).padStart(2, "0")}:${String(
     parsed.getMinutes(),
   ).padStart(2, "0")}`;
-  return { localDate, text: `${formatLongDate(localDate)} ${time}` };
+  return { localDate, text: `${formatLongDate(localDate, language)} ${time}` };
 }
 const EXTRAORAL_LABELS: Array<[keyof NonNullable<ExamFindings["extraoral"]>, string]> = [
   ["facialAsymmetry", "Simetría facial"],
@@ -188,17 +202,19 @@ export function VisitEntryCard({
   onReschedule,
   onCancel,
 }: VisitEntryCardProps) {
+  const { language, t } = useI18n();
   const [expanded, setExpanded] = useState(defaultExpanded);
   const bodyId = useId();
-  const statusConfig = getVisitStatusConfig(appointment.status);
+  const statusConfig = getVisitStatusConfig(appointment.status, t);
   const isRunning = appointment.status === "in_progress";
-  const typeLabel = appointment.type
-    ? (APPOINTMENT_TYPE_LABEL[appointment.type] ?? appointment.type)
-    : null;
+  const typeLabel = getAppointmentTypeLabel(appointment.type, t);
   const title =
-    appointment.services?.[0]?.serviceName?.trim() || typeLabel || "Consulta";
-  const doctorName = appointment.doctorName?.trim() || "Sin doctor asignado";
-  const doctorLabel = `Doctor de la cita: ${doctorName}`;
+    appointment.services?.[0]?.serviceName?.trim() ||
+    typeLabel ||
+    t("clinical.visit.defaultTitle");
+  const doctorName =
+    appointment.doctorName?.trim() || t("clinical.visit.noDoctor");
+  const doctorLabel = `${t("clinical.visit.doctorTitle")}: ${doctorName}`;
   const canManageThisAppointment =
     appointment.status === "scheduled" && Boolean(onReschedule || onCancel);
   const hasMenu = Boolean(
@@ -228,7 +244,7 @@ export function VisitEntryCard({
             <span className="block truncate text-base font-semibold text-ink">
               {title}{" "}
               <span className="font-normal text-subtle">
-                · {formatLongDate(appointment.date)}
+                · {formatLongDate(appointment.date, language)}
               </span>
             </span>
             <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-subtle">
@@ -238,7 +254,7 @@ export function VisitEntryCard({
                 aria-label={doctorLabel}
               >
                 <User className="h-3 w-3 shrink-0" aria-hidden="true" />
-                Dr. {doctorName}
+                {t("clinical.visit.doctorPrefix")} {doctorName}
               </span>
               {appointment.status === "scheduled" && appointment.time ? (
                 <>
@@ -271,24 +287,26 @@ export function VisitEntryCard({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                title="Más opciones de esta consulta"
+                title={t("clinical.visit.moreOptions")}
                 className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-subtle transition-colors ease-emphasized hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
               >
                 <MoreVertical className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only">Más opciones de esta consulta</span>
+                <span className="sr-only">
+                  {t("clinical.visit.moreOptions")}
+                </span>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {onViewOdontogram ? (
                 <DropdownMenuItem onClick={() => onViewOdontogram(appointment)}>
                   <Activity className="h-4 w-4" aria-hidden="true" />
-                  Ver odontograma de esta visita
+                  {t("clinical.visit.viewOdontogram")}
                 </DropdownMenuItem>
               ) : null}
               {onViewAttachments ? (
                 <DropdownMenuItem onClick={() => onViewAttachments(appointment)}>
                   <Paperclip className="h-4 w-4" aria-hidden="true" />
-                  Ver archivos del paciente
+                  {t("clinical.visit.viewFiles")}
                 </DropdownMenuItem>
               ) : null}
               {appointment.status === "scheduled" && (onReschedule || onCancel) ? (
@@ -297,7 +315,7 @@ export function VisitEntryCard({
                   {onReschedule ? (
                     <DropdownMenuItem onClick={() => onReschedule(appointment)}>
                       <CalendarClock className="h-4 w-4" aria-hidden="true" />
-                      Reagendar cita
+                      {t("clinical.visit.reschedule")}
                     </DropdownMenuItem>
                   ) : null}
                   {onCancel ? (
@@ -306,7 +324,7 @@ export function VisitEntryCard({
                       className="text-rose-600 focus:text-rose-600 dark:text-rose-400 dark:focus:text-rose-400"
                     >
                       <CalendarX className="h-4 w-4" aria-hidden="true" />
-                      Cancelar cita
+                      {t("clinical.visit.cancel")}
                     </DropdownMenuItem>
                   ) : null}
                 </>
@@ -340,18 +358,19 @@ function CollapsedSummary({
   summary: string;
   canViewClinicalHistory: boolean;
 }) {
+  const { t } = useI18n();
 
   if (!canViewClinicalHistory) {
     return (
       <span className="mt-1 block truncate text-xs italic text-subtle">
-        Sin acceso al registro de esta visita
+        {t("clinical.visit.noAccess")}
       </span>
     );
   }
   if (state.status === "failed") {
     return (
       <span className="mt-1 block truncate text-xs text-amber-700 dark:text-amber-300">
-        No se pudo cargar el registro de esta visita
+        {t("clinical.visit.loadFailed")}
       </span>
     );
   }
@@ -378,6 +397,7 @@ function VisitEntryBody({
   canViewClinicalHistory: boolean;
   attachments?: PatientAttachment[];
 }) {
+  const { t } = useI18n();
   const services = <VisitAppointmentServices appointment={appointment} />;
   if (!canViewClinicalHistory) {
     return (
@@ -388,7 +408,7 @@ function VisitEntryBody({
             <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <div className="min-w-0">
               <p className="font-medium text-ink">
-                Sin acceso al registro de esta visita
+                {t("clinical.visit.noAccess")}
               </p>
               <p className="mt-0.5 leading-relaxed">
                 Tu rol no permite ver la historia clínica de este paciente. Lo
@@ -411,7 +431,7 @@ function VisitEntryBody({
       <div className="space-y-3.5">
         {services}
         <p className="text-xs italic text-subtle">
-          Consulta agendada — pendiente de atención
+          {t("clinical.visit.pending")}
         </p>
       </div>
     );
@@ -422,7 +442,7 @@ function VisitEntryBody({
       <div className="space-y-3.5">
         {services}
         <div aria-busy="true">
-          <span className="sr-only">Cargando el registro de esta visita…</span>
+          <span className="sr-only">{t("clinical.visit.loading")}</span>
           <VisitEntrySkeleton />
         </div>
       </div>
@@ -450,7 +470,7 @@ function VisitEntryBody({
             />
             <div className="min-w-0">
               <p className="font-medium">
-                No se pudo cargar el registro de esta visita
+                {t("clinical.visit.loadFailed")}
               </p>
               {state.message ? (
                 <p className="mt-0.5 opacity-80">{state.message}</p>
@@ -462,7 +482,7 @@ function VisitEntryBody({
                 onClick={onRetry}
                 className="mt-2 pointer-coarse:h-11 pointer-coarse:px-4"
               >
-                Reintentar
+                {t("clinical.visit.retry")}
               </Button>
             </div>
           </div>
@@ -475,7 +495,9 @@ function VisitEntryBody({
     return (
       <div className="space-y-3.5">
         {services}
-        <p className="text-xs italic text-subtle">Sin registro de visita</p>
+        <p className="text-xs italic text-subtle">
+          {t("clinical.visit.noRecord")}
+        </p>
       </div>
     );
   }
@@ -491,11 +513,12 @@ function VisitEntryBody({
   );
 }
 function VisitAppointmentServices({ appointment }: { appointment: Appointment }) {
+  const { t } = useI18n();
   const services = appointment.services ?? [];
   if (services.length < 2) return null;
   return (
     <section>
-      <h3 className={BLOCK_LABEL_CLASS}>Servicios de la cita</h3>
+      <h3 className={BLOCK_LABEL_CLASS}>{t("clinical.visit.services")}</h3>
       <ul className="space-y-1">
         {services.map((service, index) => (
           <li
@@ -508,7 +531,7 @@ function VisitAppointmentServices({ appointment }: { appointment: Appointment })
             <span className="min-w-0">
               {service.serviceName?.trim() ||
                 service.serviceCode?.trim() ||
-                "Servicio sin nombre registrado"}
+                t("clinical.visit.unnamedService")}
             </span>
           </li>
         ))}
@@ -535,6 +558,7 @@ function VisitRecordBands({
   record: PatientVisitRecord;
   attachments?: PatientAttachment[];
 }) {
+  const { t } = useI18n();
   const { plain } = useToothLabel();
   const diagnoses = record.diagnoses?.filter((d) => d?.code || d?.label) ?? [];
   const chiefComplaint = record.chiefComplaint?.trim();
@@ -560,7 +584,7 @@ function VisitRecordBands({
     return (
       <div className="space-y-4">
         <p className="py-2 text-center text-xs italic text-subtle">
-          Sin anotaciones clínicas registradas en esta visita
+          {t("clinical.visit.noClinicalNotes")}
         </p>
         <VisitAttachments attachments={attachments} />
         <VisitStampFooter appointment={appointment} record={record} />
@@ -571,12 +595,15 @@ function VisitRecordBands({
     <div className="space-y-3.5">
       {chiefComplaint || painText ? (
         <section>
-          <h3 className={BLOCK_LABEL_CLASS}>Subjetivo</h3>
+          <h3 className={BLOCK_LABEL_CLASS}>{t("clinical.visit.subjective")}</h3>
           <div className={PROSE_BOX_CLASS}>
             {chiefComplaint ? <p>{chiefComplaint}</p> : null}
             {painText ? (
               <p className={cn("text-xs text-subtle", chiefComplaint && "mt-1.5")}>
-                <span className="font-medium text-ink">Dolor:</span> {painText}
+                <span className="font-medium text-ink">
+                  {t("clinical.visit.pain")}:
+                </span>{" "}
+                {painText}
               </p>
             ) : null}
           </div>
@@ -584,7 +611,7 @@ function VisitRecordBands({
       ) : null}
       {extraoral.length > 0 || intraoral.length > 0 ? (
         <section>
-          <h3 className={BLOCK_LABEL_CLASS}>Objetivo</h3>
+          <h3 className={BLOCK_LABEL_CLASS}>{t("clinical.visit.objective")}</h3>
           <div className="space-y-2">
             {extraoral.length > 0 ? (
               <FindingsGroup title="Extraoral" rows={extraoral} />
@@ -597,7 +624,7 @@ function VisitRecordBands({
       ) : null}
       {diagnoses.length > 0 ? (
         <section>
-          <h3 className={BLOCK_LABEL_CLASS}>Apreciación</h3>
+          <h3 className={BLOCK_LABEL_CLASS}>{t("clinical.visit.assessment")}</h3>
           <ul className="space-y-1.5">
             {diagnoses.map((diagnosis, index) => {
               const toothText = toothRefText(diagnosis.toothRef, plain);
@@ -608,12 +635,12 @@ function VisitRecordBands({
               >
                 {toothText ? (
                   <span className="rounded-md bg-brand/10 px-1.5 py-0.5 text-[11px] font-bold text-brand">
-                    Pieza {toothText}
+                    {t("clinical.visit.tooth")} {toothText}
                   </span>
                 ) : null}
                 <span className="font-semibold text-ink">{diagnosis.code}</span>
                 <span className="min-w-0 text-subtle">
-                  {resolveDiagnosisLabel(diagnosis)}
+                  {resolveDiagnosisLabel(diagnosis, t("clinical.visit.noDiagnosis"))}
                 </span>
                 {diagnosis.source === "odontogram" ? (
                   <span
@@ -621,11 +648,13 @@ function VisitRecordBands({
                     title="Este diagnóstico se derivó de lo registrado en el odontograma"
                   >
                     <Activity className="h-2.5 w-2.5" aria-hidden="true" />
-                    del odontograma
+                    {t("clinical.visit.fromOdontogram")}
                   </span>
                 ) : null}
                 <span className="ml-auto shrink-0 rounded bg-hover px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-subtle">
-                  {diagnosis.status === "confirmed" ? "Confirmado" : "Provisional"}
+                  {diagnosis.status === "confirmed"
+                    ? t("clinical.visit.confirmed")
+                    : t("clinical.visit.provisional")}
                 </span>
               </li>
               );
@@ -635,7 +664,7 @@ function VisitRecordBands({
       ) : null}
       {notes ? (
         <section>
-          <h3 className={BLOCK_LABEL_CLASS}>Plan</h3>
+          <h3 className={BLOCK_LABEL_CLASS}>{t("clinical.visit.plan")}</h3>
           <div className={PROSE_BOX_CLASS}>
             <ClinicalNote html={notes} />
           </div>
@@ -669,10 +698,11 @@ function FindingsGroup({
   );
 }
 function VisitAttachments({ attachments }: { attachments?: PatientAttachment[] }) {
+  const { t } = useI18n();
   if (!attachments || attachments.length === 0) return null;
   return (
     <section>
-      <h3 className={BLOCK_LABEL_CLASS}>Adjuntos de esta consulta</h3>
+      <h3 className={BLOCK_LABEL_CLASS}>{t("clinical.visit.attachments")}</h3>
       <ul className="flex flex-wrap gap-1.5">
         {attachments.map((attachment) => {
           const Icon = attachmentIcon(attachment.mimeType);
@@ -692,6 +722,7 @@ function VisitAttachments({ attachments }: { attachments?: PatientAttachment[] }
   );
 }
 function ClinicalNote({ html }: { html: string }) {
+  const { t } = useI18n();
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [overflows, setOverflows] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -727,7 +758,9 @@ function ClinicalNote({ html }: { html: string }) {
           onClick={() => setExpanded((value) => !value)}
           className="mt-1 h-8 px-2 text-xs text-brand"
         >
-          {expanded ? "Contraer nota" : "Ver nota completa"}
+          {expanded
+            ? t("clinical.visit.collapseNote")
+            : t("clinical.visit.viewFullNote")}
         </Button>
       ) : null}
     </div>
@@ -740,9 +773,10 @@ function VisitStampFooter({
   appointment: Appointment;
   record: PatientVisitRecord;
 }) {
+  const { language } = useI18n();
   const [showNotice, setShowNotice] = useState(false);
   const author = resolveAuthorship(record.clinicalNotesUpdatedBy);
-  const stamp = parseStamp(record.clinicalNotesUpdatedAt);
+  const stamp = parseStamp(record.clinicalNotesUpdatedAt, language);
   const annotatedLate = Boolean(stamp && stamp.localDate > appointment.date);
   return (
     <div className="mt-3 border-t border-hairline pt-2">
@@ -782,7 +816,7 @@ function VisitStampFooter({
         <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-2 py-1 text-[11px] text-amber-700 ring-1 ring-amber-400/25 dark:text-amber-300">
           <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
           Anotada después de la fecha de la consulta ·{" "}
-          {formatLongDate(stamp.localDate)}
+          {formatLongDate(stamp.localDate, language)}
         </p>
       ) : null}
     </div>

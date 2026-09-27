@@ -1,5 +1,23 @@
 import type { ToothNotation } from "@/lib/odontogram/notation";
 
+export const CLINIC_LANGUAGES = ["es", "en", "fr", "it", "pt"] as const;
+
+export type ClinicLanguage = (typeof CLINIC_LANGUAGES)[number];
+
+export function isClinicLanguage(value: unknown): value is ClinicLanguage {
+  return (
+    typeof value === "string" &&
+    CLINIC_LANGUAGES.includes(value as ClinicLanguage)
+  );
+}
+
+export function normalizeClinicLanguage(
+  value?: string | null,
+): ClinicLanguage | null {
+  const normalized = value?.trim().toLowerCase().split(/[-_]/)[0];
+  return isClinicLanguage(normalized) ? normalized : null;
+}
+
 export type ClinicScheduleDayKey =
   | "monday"
   | "tuesday"
@@ -45,6 +63,7 @@ export interface ClinicGeneralSettings {
   phone?: string | null;
   timezone: string;
   currency: string;
+  language: ClinicLanguage;
   subscriptionPlan?: string | null;
   schedule: ClinicSchedule;
   minimumAdvanceNoticePeriod?: number | null;
@@ -94,6 +113,7 @@ export const DEFAULT_CLINIC_GENERAL_SETTINGS: ClinicGeneralSettings = {
   phone: null,
   timezone: "America/La_Paz",
   currency: "USD",
+  language: "es",
   subscriptionPlan: null,
   schedule: DEFAULT_CLINIC_SCHEDULE,
   minimumAdvanceNoticePeriod: 120,

@@ -15,6 +15,7 @@ import { DateRangePicker } from "@/components/ui/controls/date-range-picker";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings";
 import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
 import { formatClinicTimezone } from "@/lib/utils/clinic-regional-format";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 const OverviewSection = dynamic(
   () =>
@@ -57,6 +58,7 @@ const PatientsSection = dynamic(
  * sesión hidrate antes de disparar las peticiones.
  */
 export function DashboardContent() {
+  const { t } = useI18n();
   const { data, loading, error, params, refresh, updatePeriod } =
     useDashboardSummary();
   const { settings, loading: loadingSettings, error: settingsError, reload } =
@@ -86,7 +88,7 @@ export function DashboardContent() {
   if ((loading && !data) || (loadingSettings && !settings)) {
     return (
       <div className="flex items-center justify-center min-h-64">
-        <LoadingSpinner message="Cargando dashboard..." />
+        <LoadingSpinner message={t("dashboard.loading")} />
       </div>
     );
   }
@@ -97,16 +99,16 @@ export function DashboardContent() {
     if (isSessionExpired()) {
       return (
         <div className="flex items-center justify-center min-h-64">
-          <LoadingSpinner message="Redirigiendo al inicio de sesión..." />
+          <LoadingSpinner message={t("dashboard.redirecting")} />
         </div>
       );
     }
     return (
       <Alert variant="destructive">
         <AlertTriangle />
-        <AlertTitle>Error al cargar el dashboard</AlertTitle>
+        <AlertTitle>{t("dashboard.loadErrorTitle")}</AlertTitle>
         <AlertDescription>
-          {error ?? "No se pudo obtener la información de la clínica."}
+          {error ?? t("dashboard.unavailable")}
         </AlertDescription>
       </Alert>
     );
@@ -116,9 +118,9 @@ export function DashboardContent() {
     return (
       <Alert>
         <AlertTriangle />
-        <AlertTitle>Dashboard sin datos</AlertTitle>
+        <AlertTitle>{t("dashboard.emptyTitle")}</AlertTitle>
         <AlertDescription>
-          No se pudo obtener la información de la clínica.
+          {t("dashboard.unavailable")}
         </AlertDescription>
       </Alert>
     );
@@ -129,7 +131,7 @@ export function DashboardContent() {
       {error && (
         <Alert>
           <AlertTriangle />
-          <AlertTitle>No se pudo actualizar el dashboard</AlertTitle>
+          <AlertTitle>{t("dashboard.updateErrorTitle")}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -140,7 +142,7 @@ export function DashboardContent() {
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <h1 className="text-2xl font-semibold tracking-tight text-ink">
-                Dashboard
+                {t("navigation.dashboard")}
               </h1>
               <span className="inline-flex items-center rounded-full border border-hairline bg-elevated px-2 py-0.5 text-xs font-medium text-subtle">
                 {currency}
@@ -150,12 +152,12 @@ export function DashboardContent() {
               </span>
               {settingsError && (
                 <span className="text-xs text-amber-600">
-                  Configuración regional por defecto
+                  {t("dashboard.defaultRegionalConfig")}
                 </span>
               )}
             </div>
             <p className="text-sm text-subtle">
-              Estado operativo de la clínica basado en citas reales.
+              {t("dashboard.subtitle")}
             </p>
           </div>
 
@@ -165,7 +167,7 @@ export function DashboardContent() {
               {[
                 { label: "6M", active: selectedRange(selectedFrom, selectedTo, 6), onClick: () => setQuickRange(6) },
                 { label: "12M", active: selectedRange(selectedFrom, selectedTo, 12), onClick: () => setQuickRange(12) },
-                { label: "Año actual", active: isYearToDate(selectedFrom, selectedTo), onClick: setYearToDate },
+                { label: t("dashboard.quickRange.yearToDate"), active: isYearToDate(selectedFrom, selectedTo), onClick: setYearToDate },
               ].map((p) => (
                 <button
                   key={p.label}
@@ -202,7 +204,7 @@ export function DashboardContent() {
                 refresh();
                 reload();
               }}
-              aria-label="Actualizar dashboard"
+              aria-label={t("dashboard.refresh")}
               className="grid h-9 w-9 place-items-center rounded-xl border border-hairline bg-elevated text-subtle transition-colors hover:bg-hover hover:text-ink disabled:opacity-50"
             >
               <RefreshCw

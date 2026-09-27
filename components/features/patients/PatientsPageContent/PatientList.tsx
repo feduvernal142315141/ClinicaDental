@@ -21,6 +21,7 @@ import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { getPatientsColumns } from "../columns/patients-table.config";
 import { PatientSearchBar } from "./PatientSearchBar";
 import { patientsQuery, type PatientField } from "@/lib/query/domains/patients";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import type { Patient } from "@/lib/entity/patients";
 
 interface PatientListProps {
@@ -38,6 +39,7 @@ interface PatientListProps {
  * <PatientList basePath="/patients" />
  */
 export function PatientList({ basePath = "/patients" }: PatientListProps) {
+  const { t } = useI18n();
   const { isAdmin, can } = usePermission();
   const canCreate = isAdmin || can("patients", PermissionAction.CREATE);
   const canEdit = isAdmin || can("patients", PermissionAction.EDIT);
@@ -169,6 +171,24 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
         onDelete: handleDeactivateRequest,
         onToggleStatus: handleActivateRequest,
         canEdit,
+        labels: {
+          patient: t("patients.table.patient"),
+          age: t("patients.table.age"),
+          contact: t("patients.table.contact"),
+          address: t("patients.table.address"),
+          status: t("patients.table.status"),
+          actions: t("patients.table.actions"),
+          active: t("patients.table.active"),
+          inactive: t("patients.table.inactive"),
+          years: t("patients.table.years"),
+          months: t("patients.table.months"),
+          ageJoiner: t("patients.table.ageJoiner"),
+          viewHistory: t("patients.table.viewHistory"),
+          editPatient: t("patients.table.editPatient"),
+          moreActions: t("patients.table.moreActions"),
+          deactivate: t("patients.actions.deactivate"),
+          activate: t("patients.actions.activate"),
+        },
       }),
     [
       handleViewPatient,
@@ -176,6 +196,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
       handleDeactivateRequest,
       handleActivateRequest,
       canEdit,
+      t,
     ],
   );
 
@@ -186,11 +207,10 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
         <AlertTriangle className="h-6 w-6 text-rose-500" />
       </div>
       <p className="text-sm font-semibold text-ink">
-        No se pudo cargar el listado
+        {t("patients.list.loadErrorTitle")}
       </p>
       <p className="max-w-xs text-xs text-subtle">
-        Revisa tu conexión e inténtalo de nuevo. Si el error persiste, contacta
-        a soporte.
+        {t("patients.list.loadErrorDescription")}
       </p>
       <Button
         variant="outline"
@@ -207,7 +227,7 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
         className="mt-1 gap-2"
       >
         <RefreshCw className="h-4 w-4" />
-        Reintentar
+        {t("patients.actions.retry")}
       </Button>
     </div>
   ) : hasActiveFilters ? (
@@ -215,10 +235,12 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
       <div className="rounded-full bg-hover p-3">
         <SearchX className="h-6 w-6 text-subtle" />
       </div>
-      <p className="text-sm font-semibold text-ink">Sin resultados</p>
+      <p className="text-sm font-semibold text-ink">
+        {t("patients.list.noResultsTitle")}
+      </p>
       <p className="max-w-xs text-xs text-subtle">
-        Ningún paciente coincide con &ldquo;{search}&rdquo;. Prueba con otro
-        término.
+        {t("patients.list.noResultsBefore")} &ldquo;{search}&rdquo;.{" "}
+        {t("patients.list.noResultsAfter")}
       </p>
     </div>
   ) : (
@@ -227,15 +249,15 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
         <Users className="h-6 w-6 text-subtle" />
       </div>
       <p className="text-sm font-semibold text-ink">
-        Todavía no hay pacientes
+        {t("patients.list.emptyTitle")}
       </p>
       <p className="max-w-xs text-xs text-subtle">
-        Agrega el primero para comenzar a gestionar la atención de tu clínica.
+        {t("patients.list.emptyDescription")}
       </p>
       {canCreate && (
         <Button size="sm" onClick={handleNewPatient} className="mt-2 gap-2">
           <Plus className="h-4 w-4" />
-          Nuevo Paciente
+          {t("patients.actions.new")}
         </Button>
       )}
     </div>
@@ -278,21 +300,27 @@ export function PatientList({ basePath = "/patients" }: PatientListProps) {
           if (!open && !confirmLoading) setConfirmDialog(null);
         }}
         variant={isDeactivate ? "error" : "warning"}
-        title={isDeactivate ? "¿Desactivar paciente?" : "¿Activar paciente?"}
+        title={
+          isDeactivate
+            ? t("patients.dialog.deactivateTitle")
+            : t("patients.dialog.activateTitle")
+        }
         description={
           isDeactivate
-            ? `El paciente ${patientName} ya no aparecerá en búsquedas activas, pero su historial clínico y de pagos se mantendrá intacto.`
-            : `El paciente ${patientName} volverá a aparecer en las búsquedas activas y estará disponible para agendar citas.`
+            ? `${t("patients.dialog.deactivateBefore")} ${patientName} ${t("patients.dialog.deactivateAfter")}`
+            : `${t("patients.dialog.activateBefore")} ${patientName} ${t("patients.dialog.activateAfter")}`
         }
         actions={[
           {
-            label: "Cancelar",
+            label: t("patients.actions.cancel"),
             onClick: () => setConfirmDialog(null),
             variant: "outline",
             disabled: confirmLoading,
           },
           {
-            label: isDeactivate ? "Desactivar" : "Activar",
+            label: isDeactivate
+              ? t("patients.actions.deactivate")
+              : t("patients.actions.activate"),
             onClick: () => {
               void handleConfirm();
             },

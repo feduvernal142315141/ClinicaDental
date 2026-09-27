@@ -1,5 +1,6 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios, { AxiosError, AxiosHeaders, InternalAxiosRequestConfig } from "axios";
 import { getAccessToken } from "@/lib/auth/token-client";
+import { getEffectiveClinicLanguageFromToken } from "@/lib/auth/language-preference";
 import { normalizeError } from "@/lib/errors/normalize-error";
 
 type InterceptorHandlers = {
@@ -12,6 +13,10 @@ type InterceptorHandlers = {
   onUnauthorized?: () => void;
   onForbidden?: () => void;
   onActivity?: () => void;
+};
+
+type RetriableRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
 };
 
 let interceptorHandlers: InterceptorHandlers = {};
@@ -83,6 +88,15 @@ const usesProviderChain = (config: InternalAxiosRequestConfig): boolean =>
   (config.method ?? "get").toLowerCase() === "post" &&
   String(config.url ?? "").includes("/speech/transcribe");
 
+function setRequestHeader(
+  config: InternalAxiosRequestConfig,
+  name: string,
+  value: string,
+) {
+  config.headers = AxiosHeaders.from(config.headers);
+  config.headers.set(name, value);
+}
+
 // Crear instancia de axios
 const apiInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -105,16 +119,11 @@ apiInstance.interceptors.request.use(
 
     // Obtener el access token desde cookie (flujo OTP/JWT backend)
     const accessToken = getAccessToken();
+    const language = getEffectiveClinicLanguageFromToken();
+    setRequestHeader(config, "Accept-Language", language);
+
     if (accessToken) {
-      const headers: unknown = config.headers;
-      if (headers && typeof headers.set === "function") {
-        headers.set("Authorization", `Bearer ${accessToken}`);
-      } else {
-        config.headers = {
-          ...(headers ?? {}),
-          Authorization: `Bearer ${accessToken}`,
-        } as unknown;
-      }
+      setRequestHeader(config, "Authorization", `Bearer ${accessToken}`);
     }
     return config;
   },
@@ -135,7 +144,9 @@ apiInstance.interceptors.response.use(
     if (error.response) {
       const status = error.response.status;
       if (status === 401) {
-        const originalRequest = error.config as unknown;
+        const originalRequest = error.config as
+          | RetriableRequestConfig
+          | undefined;
         const url = String(originalRequest?.url ?? "");
 
         const isAuthEndpoint =
@@ -147,7 +158,7 @@ apiInstance.interceptors.response.use(
           console.error("[401] Auth endpoint — propagado al servicio:", appError.technical);
           return Promise.reject(error);
         }
-        if (!originalRequest?._retry) {
+        if (originalRequest && !originalRequest._retry) {
           originalRequest._retry = true;
           const refreshed = await tryRefreshOnce();
           if (refreshed) {

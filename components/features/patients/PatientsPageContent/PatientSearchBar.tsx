@@ -2,6 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { SearchInput } from "@/components/ui/atomic/forms/search-input";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface PatientSearchBarProps {
   value: string;
@@ -20,13 +21,14 @@ export function PatientSearchBar({
   onChange,
   loading,
 }: PatientSearchBarProps) {
+  const { t } = useI18n();
   return (
     <div className="relative max-w-sm">
       <SearchInput
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Buscar paciente por nombre..."
-        aria-label="Buscar paciente"
+        placeholder={t("patients.list.searchPlaceholder")}
+        aria-label={t("patients.list.searchAria")}
         containerClassName="w-full"
       />
       {loading && (

@@ -7,6 +7,7 @@ import { DentitionSwitch } from "./ui/DentitionSwitch";
 import type { Tooth } from "./types";
 import { useOdontogramStore } from "@/lib/odontogram/store";
 import { ToothNotationLabel } from "@/lib/odontogram/notation";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import {
   quadrantRowsFor,
   type QuadrantRows,
@@ -23,6 +24,7 @@ const UPPER_VIEWS = ["frontal", "oclusal", "lateral"] as const;
 const LOWER_VIEWS = ["lateral", "oclusal", "frontal"] as const;
 
 export function OdontogramGrid({ onToothClick }: OdontogramGridProps) {
+  const { t } = useI18n();
   const notation = useOdontogramStore((state) => state.notation);
   const dentition = useOdontogramStore((state) => state.dentition);
   // Exterior→interior: en mixta los permanentes envuelven a los temporales.
@@ -110,7 +112,7 @@ export function OdontogramGrid({ onToothClick }: OdontogramGridProps) {
           {/* Arcada Superior */}
           <div>
             <div className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              Arcada Superior
+              {t("odontogram.arch.upper")}
             </div>
             <div className="flex flex-col gap-3">
               {rowSets.map((set) =>
@@ -124,7 +126,7 @@ export function OdontogramGrid({ onToothClick }: OdontogramGridProps) {
           {/* Arcada Inferior */}
           <div>
             <div className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              Arcada Inferior
+              {t("odontogram.arch.lower")}
             </div>
             <div className="flex flex-col gap-3">
               {[...rowSets]

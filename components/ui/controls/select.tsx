@@ -29,6 +29,9 @@ export interface SelectProps {
   /** Deriva el texto buscable por opción. Por defecto: `option.searchText ?? option.label`. */
   getSearchText?: (option: SelectOption) => string;
   className?: string;
+  popoverClassName?: string;
+  popoverPlacement?: "bottom" | "top";
+  showSelectedLabel?: boolean;
   id?: string;
   /** Llamado cuando el control pierde el foco (para validación onBlur de RHF). */
   onBlur?: () => void;
@@ -54,6 +57,9 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       searchPlaceholder = "Buscar…",
       getSearchText,
       className,
+      popoverClassName,
+      popoverPlacement = "bottom",
+      showSelectedLabel = true,
       id,
       onBlur,
       "aria-label": ariaLabel,
@@ -291,11 +297,13 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             "disabled:cursor-not-allowed disabled:opacity-50",
             open ? "border-brand ring-2 ring-brand/30" : "border-hairline",
             ariaInvalid && "border-rose-500/60",
+            !showSelectedLabel && "justify-center px-2",
           )}
         >
           <span
             className={cn(
-              "flex flex-1 items-center gap-2 truncate",
+              "flex items-center gap-2 truncate",
+              showSelectedLabel ? "flex-1" : "shrink-0",
               selected ? "text-ink" : "text-subtle",
             )}
           >
@@ -304,9 +312,11 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                 {selected.icon}
               </span>
             )}
-            <span className="truncate">
-              {selected ? selected.label : placeholder}
-            </span>
+            {showSelectedLabel && (
+              <span className="truncate">
+                {selected ? selected.label : placeholder}
+              </span>
+            )}
           </span>
           <ChevronDown
             className={cn(
@@ -317,7 +327,13 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
         </button>
 
         {open && (
-          <div className="absolute left-0 z-50 mt-2 w-full rounded-xl border border-hairline bg-surface shadow-bento">
+          <div
+            className={cn(
+              "absolute left-0 z-50 w-full rounded-xl border border-hairline bg-surface shadow-bento",
+              popoverPlacement === "top" ? "bottom-full mb-2" : "mt-2",
+              popoverClassName,
+            )}
+          >
             {searchable && (
               <div className="border-b border-hairline p-2">
                 <input

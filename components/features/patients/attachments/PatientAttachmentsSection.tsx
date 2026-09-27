@@ -21,11 +21,12 @@ import {
   type AttachmentCategory,
   type PatientAttachment,
 } from "@/lib/entity/patientAttachment";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { notify } from "@/lib/utils/notify";
 import { notifyApiError } from "@/lib/utils/notify-error";
 import { patientAttachmentsService } from "@/lib/services/patientAttachments/patientAttachments.service";
 import {
-  attachmentCategoryLabel,
   formatFileSize,
   getAttachmentMediaType,
   MAX_ATTACHMENT_SIZE_BYTES,
@@ -79,12 +80,30 @@ function inferCategory(file: File, activeCategory: CategoryFilter): AttachmentCa
   return "otro";
 }
 
+function categoryLabelKey(category: AttachmentCategory): TranslationKey {
+  return `attachments.category.${category}` as TranslationKey;
+}
+
 export function PatientAttachmentsSection({
   patientId,
   canUpload,
   canDelete,
   activeAppointmentId,
 }: PatientAttachmentsSectionProps) {
+  const { t } = useI18n();
+  const text = (
+    key: TranslationKey,
+    params?: Record<string, string | number>,
+  ) => {
+    let value = t(key);
+    if (!params) return value;
+    for (const [name, replacement] of Object.entries(params)) {
+      value = value.replaceAll(`{${name}}`, String(replacement));
+    }
+    return value;
+  };
+  const categoryLabel = (category: AttachmentCategory) => t(categoryLabelKey(category));
+
   const [modalOpen, setModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -126,22 +145,22 @@ export function PatientAttachmentsSection({
   ) => {
     try {
       await upload(file, category, notes, appointmentId ?? activeAppointmentId);
-      void notify.success("Archivo subido", {
-        description: "El archivo ya está disponible en la galería del paciente.",
+      void notify.success(t("attachments.gallery.fileUploaded"), {
+        description: t("attachments.gallery.fileUploadedDescription"),
       });
     } catch (err) {
-      notifyApiError("No se pudo subir el archivo", err);
+      notifyApiError(t("attachments.gallery.uploadFailed"), err);
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await remove(id);
-      void notify.success("Archivo eliminado", {
-        description: "El archivo ha sido retirado de la ficha del paciente.",
+      void notify.success(t("attachments.gallery.fileDeleted"), {
+        description: t("attachments.gallery.fileDeletedDescription"),
       });
     } catch (err) {
-      notifyApiError("No se pudo eliminar el archivo", err);
+      notifyApiError(t("attachments.gallery.deleteFailed"), err);
     }
   };
 
@@ -159,7 +178,7 @@ export function PatientAttachmentsSection({
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      notifyApiError("No se pudo descargar el archivo", err);
+      notifyApiError(t("attachments.gallery.downloadFailed"), err);
     } finally {
       setDownloadingId(null);
     }
@@ -209,7 +228,10 @@ export function PatientAttachmentsSection({
 
     for (const file of dropped.filter((f) => f.size > MAX_ATTACHMENT_SIZE_BYTES)) {
       void notify.error(
-        `"${file.name}" supera los ${MAX_ATTACHMENT_SIZE_MB} MB permitidos.`,
+        text("attachments.gallery.tooLarge", {
+          name: file.name,
+          max: MAX_ATTACHMENT_SIZE_MB,
+        }),
       );
     }
 
@@ -226,7 +248,10 @@ export function PatientAttachmentsSection({
 
     for (const outcome of outcomes) {
       if (!outcome.ok) {
-        notifyApiError(`No se pudo subir "${outcome.file.name}"`, outcome.error);
+        notifyApiError(
+          `${t("attachments.gallery.uploadFailed")}: "${outcome.file.name}"`,
+          outcome.error,
+        );
       }
     }
 
@@ -234,17 +259,21 @@ export function PatientAttachmentsSection({
     if (uploaded.length === 0) return;
 
     const assigned = [
-      ...new Set(uploaded.map((outcome) => attachmentCategoryLabel(outcome.category))),
+      ...new Set(uploaded.map((outcome) => categoryLabel(outcome.category))),
     ];
     void notify.success(
       uploaded.length === 1
-        ? "Archivo añadido al expediente"
-        : `${uploaded.length} archivos añadidos al expediente`,
+        ? t("attachments.gallery.fileAdded")
+        : text("attachments.gallery.filesAdded", { count: uploaded.length }),
       {
         description:
           selectedCategory === "all"
-            ? `Categoría deducida del nombre del archivo: ${assigned.join(", ")}. Si no corresponde, elimínalo y vuelve a subirlo desde "Subir archivo": la categoría no se puede cambiar después.`
-            : `Archivado en "${assigned.join(", ")}".`,
+            ? text("attachments.gallery.categoryInferred", {
+                categories: assigned.join(", "),
+              })
+            : text("attachments.gallery.archivedIn", {
+                categories: assigned.join(", "),
+              }),
       },
     );
   };
@@ -256,8 +285,8 @@ export function PatientAttachmentsSection({
 
   const gallery = filteredAttachments.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-hairline bg-surface py-12 text-center shadow-bento">
-          <p className="text-sm font-medium text-ink">No hay archivos que coincidan con el filtro</p>
-          <p className="text-xs text-subtle">Prueba cambiando la búsqueda o los filtros seleccionados.</p>
+          <p className="text-sm font-medium text-ink">{t("attachments.gallery.noMatchesTitle")}</p>
+          <p className="text-xs text-subtle">{t("attachments.gallery.noMatchesDescription")}</p>
           <Button
             variant="outline"
             size="sm"
@@ -265,7 +294,7 @@ export function PatientAttachmentsSection({
             className="mt-2 text-xs"
             onClick={clearFilters}
           >
-            Mostrar todos los archivos
+            {t("attachments.gallery.showAll")}
           </Button>
         </div>
       ) : viewMode === "grid" ? (
@@ -317,12 +346,14 @@ export function PatientAttachmentsSection({
             <UploadCloud className="h-8 w-8" />
           </div>
           <h3 className="mt-4 text-base font-bold text-ink">
-            Suelta los archivos aquí para agregarlos al expediente
+            {t("attachments.gallery.dropTitle")}
           </h3>
           <p className="mt-1 max-w-sm text-center text-xs text-subtle">
             {selectedCategory !== "all"
-              ? `Se guardarán como "${attachmentCategoryLabel(selectedCategory)}", la categoría que tienes filtrada`
-              : "Se clasificarán según su tipo de archivo (imágenes clínicas, radiografías, etc.)"}
+              ? text("attachments.gallery.dropFiltered", {
+                  category: categoryLabel(selectedCategory),
+                })
+              : t("attachments.gallery.dropAuto")}
           </p>
         </div>
       )}
@@ -330,7 +361,7 @@ export function PatientAttachmentsSection({
       {uploading && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-xl border border-hairline bg-surface/95 px-4 py-2.5 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-3">
           <Loader2 className="h-4 w-4 animate-spin text-brand" />
-          <span className="text-xs font-medium text-ink">Guardando archivo en el expediente...</span>
+          <span className="text-xs font-medium text-ink">{t("attachments.gallery.saving")}</span>
         </div>
       )}
 
@@ -341,7 +372,7 @@ export function PatientAttachmentsSection({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-semibold text-ink">Galería y Archivos Clínicos</h3>
+              <h3 className="text-base font-semibold text-ink">{t("attachments.gallery.title")}</h3>
               {attachments.length > 0 && (
                 <span className="rounded-full bg-elevated px-2 py-0.5 text-xs font-semibold text-ink border border-hairline">
                   {attachments.length}
@@ -350,8 +381,8 @@ export function PatientAttachmentsSection({
             </div>
             <p className="text-xs text-subtle">
               {attachments.length > 0
-                ? `${attachments.length} archivo${attachments.length > 1 ? "s" : ""} · ${formatFileSize(totalBytes)} en total · Arrastra archivos aquí para subirlos`
-                : "Expediente digital multimedia · Arrastra archivos aquí para subirlos"}
+                ? `${attachments.length} ${t(attachments.length > 1 ? "attachments.gallery.filePlural" : "attachments.gallery.fileSingular")} · ${formatFileSize(totalBytes)} ${t("attachments.gallery.total")} · ${t("attachments.gallery.dragUpload")}`
+                : `${t("attachments.gallery.digitalRecord")} · ${t("attachments.gallery.dragUpload")}`}
             </p>
           </div>
         </div>
@@ -367,8 +398,8 @@ export function PatientAttachmentsSection({
                 viewMode === "grid" && "bg-surface text-ink shadow-sm",
               )}
               onClick={() => setViewMode("grid")}
-              title="Vista en cuadrícula"
-              aria-label="Vista en cuadrícula"
+              title={t("attachments.gallery.gridView")}
+              aria-label={t("attachments.gallery.gridView")}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
             </Button>
@@ -381,8 +412,8 @@ export function PatientAttachmentsSection({
                 viewMode === "list" && "bg-surface text-ink shadow-sm",
               )}
               onClick={() => setViewMode("list")}
-              title="Vista en lista"
-              aria-label="Vista en lista"
+              title={t("attachments.gallery.listView")}
+              aria-label={t("attachments.gallery.listView")}
             >
               <List className="h-3.5 w-3.5" />
             </Button>
@@ -397,7 +428,7 @@ export function PatientAttachmentsSection({
               onClick={() => setModalOpen(true)}
             >
               <Plus className="h-4 w-4" />
-              Subir archivo
+              {t("attachments.gallery.upload")}
             </Button>
           )}
         </div>
@@ -408,7 +439,7 @@ export function PatientAttachmentsSection({
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="w-full sm:max-w-xs">
               <SearchInput
-                placeholder="Buscar por nombre o nota..."
+                placeholder={t("attachments.gallery.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-8 text-xs bg-elevated/60"
@@ -417,16 +448,16 @@ export function PatientAttachmentsSection({
 
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[11px] font-medium text-subtle mr-1 hidden lg:inline">
-                Tipo:
+                {t("attachments.gallery.type")}
               </span>
               {(
                 [
-                  { value: "all", label: "Todos" },
-                  { value: "image", label: "Imágenes" },
-                  { value: "video", label: "Videos" },
-                  { value: "pdf", label: "PDFs" },
-                  { value: "spreadsheet", label: "Excel/CSV" },
-                  { value: "document", label: "Documentos" },
+                  { value: "all", label: t("attachments.gallery.type.all") },
+                  { value: "image", label: t("attachments.gallery.type.image") },
+                  { value: "video", label: t("attachments.gallery.type.video") },
+                  { value: "pdf", label: t("attachments.gallery.type.pdf") },
+                  { value: "spreadsheet", label: t("attachments.gallery.type.spreadsheet") },
+                  { value: "document", label: t("attachments.gallery.type.document") },
                 ] as const
               ).map((type) => (
                 <button
@@ -448,7 +479,7 @@ export function PatientAttachmentsSection({
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-hairline/60 pt-2">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-medium text-subtle mr-1">Categoría:</span>
+              <span className="text-[11px] font-medium text-subtle mr-1">{t("attachments.gallery.category")}</span>
               <button
                 type="button"
                 onClick={() => setSelectedCategory("all")}
@@ -459,7 +490,7 @@ export function PatientAttachmentsSection({
                     : "border-transparent bg-elevated text-subtle hover:bg-hover hover:text-ink",
                 )}
               >
-                Todas
+                {t("attachments.gallery.category.all")}
               </button>
               {ATTACHMENT_CATEGORIES.map((cat) => (
                 <button
@@ -473,7 +504,7 @@ export function PatientAttachmentsSection({
                       : "border-transparent bg-elevated text-subtle hover:bg-hover hover:text-ink",
                   )}
                 >
-                  {cat.label}
+                  {categoryLabel(cat.value)}
                 </button>
               ))}
             </div>
@@ -487,7 +518,7 @@ export function PatientAttachmentsSection({
                 onClick={clearFilters}
               >
                 <X className="h-3 w-3" />
-                Limpiar filtros
+                {t("attachments.gallery.clearFilters")}
               </Button>
             )}
           </div>
@@ -497,7 +528,7 @@ export function PatientAttachmentsSection({
       {loading ? (
         <div className="flex flex-col items-center justify-center gap-2 py-12 text-subtle">
           <Loader2 className="h-6 w-6 animate-spin text-brand" />
-          <p className="text-xs">Cargando archivos del paciente...</p>
+          <p className="text-xs">{t("attachments.gallery.loading")}</p>
         </div>
       ) : error ? (
         <div className="space-y-3">
@@ -505,22 +536,22 @@ export function PatientAttachmentsSection({
             <AlertTriangle />
             <AlertTitle>
               {forbidden
-                ? "Sin acceso a los archivos"
+                ? t("attachments.gallery.noAccessTitle")
                 : showingStaleList
-                  ? "No se pudieron actualizar los archivos"
-                  : "No se pudieron cargar los archivos"}
+                  ? t("attachments.gallery.updateFailedTitle")
+                  : t("attachments.gallery.loadFailedTitle")}
             </AlertTitle>
             <AlertDescription className="flex flex-col items-start gap-2">
               <span>
                 {forbidden
-                  ? "Tu rol no permite ver los archivos adjuntos de este paciente. Que aquí no aparezca ninguno NO significa que no los tenga."
+                  ? t("attachments.gallery.noAccessDescription")
                   : showingStaleList
-                    ? "No hemos podido releer los archivos. Lo que ves abajo es la última lectura correcta y puede estar desactualizada: si acabas de subir algo, puede que todavía no aparezca. No des la lista por completa antes de un procedimiento."
-                    : "No hemos podido leer los archivos adjuntos de este paciente. Que aquí no aparezca ninguno NO significa que el paciente no tenga archivos."}
+                    ? t("attachments.gallery.updateFailedDescription")
+                    : t("attachments.gallery.loadFailedDescription")}
               </span>
               {!forbidden && (
                 <Button variant="outline" size="sm" type="button" onClick={() => void load()}>
-                  Reintentar
+                  {t("clinical.visit.retry")}
                 </Button>
               )}
             </AlertDescription>
@@ -533,9 +564,9 @@ export function PatientAttachmentsSection({
             <FileX2 className="h-7 w-7" />
           </div>
           <div className="space-y-1">
-            <h4 className="text-sm font-semibold text-ink">Sin archivos en el expediente</h4>
+            <h4 className="text-sm font-semibold text-ink">{t("attachments.gallery.emptyTitle")}</h4>
             <p className="max-w-xs text-xs text-subtle">
-              Arrastra y suelta tus archivos aquí directamente, o usa el botón para subir imágenes, radiografías, videos o documentos.
+              {t("attachments.gallery.emptyDescription")}
             </p>
           </div>
           {canUpload && (
@@ -547,7 +578,7 @@ export function PatientAttachmentsSection({
               onClick={() => setModalOpen(true)}
             >
               <Plus className="h-3.5 w-3.5" />
-              Subir primer archivo
+              {t("attachments.gallery.uploadFirst")}
             </Button>
           )}
         </div>

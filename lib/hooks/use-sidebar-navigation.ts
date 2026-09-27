@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { usePermission } from "./use-permission";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 
 export interface MenuItem {
@@ -56,6 +57,7 @@ export interface MenuGroups {
  */
 export function useSidebarNavigation() {
   const { can, isAdmin } = usePermission();
+  const { t } = useI18n();
 
   return useMemo(() => {
     /**
@@ -73,13 +75,13 @@ export function useSidebarNavigation() {
 
     const settingsChildren: MenuItem[] = (
       [
-        { path: "/settings/general", label: "Opciones Generales", icon: Sliders, module: "general_option" },
-        { path: "/settings/doctors", label: "Usuarios", icon: UserCog, module: "doctor" },
-        { path: "/settings/user-types", label: "Tipos de usuario", icon: IdCard, module: "doctor" },
-        { path: "/settings/roles", label: "Roles", icon: Shield, module: "role" },
-        { path: "/settings/notifications", label: "Notificaciones", icon: Bell, module: "notification" },
-        { path: "/settings/services", label: "Servicios", icon: Briefcase, module: "service" },
-        { path: "/settings/labels", label: "Etiquetas", icon: Tag, module: "appointments" },
+        { path: "/settings/general", label: t("navigation.generalSettings"), icon: Sliders, module: "general_option" },
+        { path: "/settings/doctors", label: t("navigation.users"), icon: UserCog, module: "doctor" },
+        { path: "/settings/user-types", label: t("navigation.userTypes"), icon: IdCard, module: "doctor" },
+        { path: "/settings/roles", label: t("navigation.roles"), icon: Shield, module: "role" },
+        { path: "/settings/notifications", label: t("navigation.notifications"), icon: Bell, module: "notification" },
+        { path: "/settings/services", label: t("navigation.services"), icon: Briefcase, module: "service" },
+        { path: "/settings/labels", label: t("navigation.labels"), icon: Tag, module: "appointments" },
       ] satisfies (MenuItem & { module: string })[]
     )
       .filter((item) => hasModule(item.module))
@@ -90,18 +92,18 @@ export function useSidebarNavigation() {
     // El Dashboard es visible para todo usuario autenticado, sin importar rol ni
     // permisos: sus endpoints dejaron de exigir `reports`/`general_option`. Sin
     // esto el enlace quedaría oculto y la vista solo se alcanzaría tecleando la URL.
-    main.push({ path: "/dashboard", label: "Dashboard", icon: LayoutDashboard });
+    main.push({ path: "/dashboard", label: t("navigation.dashboard"), icon: LayoutDashboard });
     if (hasModule("patients")) {
-      main.push({ path: "/patients", label: "Pacientes", icon: Users });
+      main.push({ path: "/patients", label: t("navigation.patients"), icon: Users });
     }
     if (hasModule("appointments")) {
-      main.push({ path: "/appointments", label: "Citas", icon: Calendar });
+      main.push({ path: "/appointments", label: t("navigation.appointments"), icon: Calendar });
     }
     // El grupo Configuración solo aparece si le queda algún hijo visible.
     if (settingsChildren.length > 0) {
       main.push({
         path: "/settings",
-        label: "Configuración",
+        label: t("navigation.settings"),
         icon: Settings,
         children: settingsChildren,
       });
@@ -120,5 +122,5 @@ export function useSidebarNavigation() {
       secondaryMenuItems: [] as MenuItem[],
       isActiveRoute,
     };
-  }, [can, isAdmin]);
+  }, [can, isAdmin, t]);
 }

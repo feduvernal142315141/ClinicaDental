@@ -7,7 +7,7 @@ import {
   type VisitRecordState,
 } from "@/lib/hooks/patients/clinical-history-page/use-visit-records-batch";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
-import { APPOINTMENT_TYPE_LABEL } from "@/lib/entity/appointment/appointments";
+import type { AppointmentType } from "@/lib/entity/appointment/appointments";
 import type { PatientAttachment } from "@/lib/entity/patientAttachment";
 import { EvolutionScopeHeader } from "./EvolutionScopeHeader";
 import { VisitEntryCard } from "./VisitEntryCard";
@@ -20,6 +20,9 @@ import { CancelModal } from "@/components/features/appointments/scheduler/Cancel
 import { RescheduleModal } from "@/components/features/appointments/scheduler/RescheduleModal";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { ClinicLanguage } from "@/lib/entity/settings";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 const BACKEND_PAGE_CAP = 100;
 
@@ -27,31 +30,40 @@ const EAGER_COUNT = 8;
 
 const VISIBLE_PAGE_SIZE = 6;
 
-const MONTHS_ES = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-] as const;
+function monthName(date: string, language: ClinicLanguage): string {
+  const [year, month] = date.split("-").map(Number);
+  if (!year || !month) return "";
+  return new Intl.DateTimeFormat(language, { month: "long" }).format(
+    new Date(year, month - 1, 1),
+  );
+}
 
-function dateHaystack(date?: string): string {
+function dateHaystack(date: string | undefined, language: ClinicLanguage): string {
   if (!date) return "";
   const [year, month, day] = date.split("-");
-  const monthName = MONTHS_ES[Number(month) - 1] ?? "";
+  const localizedMonth = monthName(date, language);
   return [
     date,
     `${day}/${month}/${year}`,
     `${day}-${month}-${year}`,
-    `${day} de ${monthName} de ${year}`,
-    `${monthName} ${year}`,
-    monthName,
+    `${day} ${localizedMonth} ${year}`,
+    `${localizedMonth} ${year}`,
+    localizedMonth,
     year,
   ].join(" ");
 }
-function formatMonthLabel(date?: string): string {
+function formatMonthLabel(date: string | undefined, language: ClinicLanguage): string {
   if (!date) return "";
-  const [year, month] = date.split("-");
-  const index = Number(month) - 1;
-  const name = MONTHS_ES[index];
+  const [year] = date.split("-");
+  const name = monthName(date, language);
   return name && year ? `${name} ${year}` : "";
+}
+function appointmentTypeLabel(
+  type: AppointmentType | undefined,
+  t: (key: TranslationKey) => string,
+): string | null {
+  if (!type) return null;
+  return t(`clinical.appointmentType.${type}` as TranslationKey);
 }
 const OBSERVER_ROOT_MARGIN = "600px";
 const IDLE_STATE: VisitRecordState = { status: "idle" };
@@ -95,6 +107,7 @@ export function EvolutionColumn({
   onPrintSelection,
   appointmentsError = null,
 }: EvolutionColumnProps) {
+  const { language, t } = useI18n();
   const { isAdmin, can } = usePermission();
   const canManageAppointments =
     isAdmin || can("appointments", PermissionAction.EDIT);
@@ -124,7 +137,7 @@ export function EvolutionColumn({
   useEffect(() => {
     if (!invalidateToken || !invalidateAppointmentId) return;
     invalidate(invalidateAppointmentId);
-  }, [invalidateToken, invalidateAppointmentId]);
+  }, [invalidate, invalidateToken, invalidateAppointmentId]);
   const ordered = useMemo(() => {
     const visible = appointments.filter(
       (appointment) => appointment.status !== "cancelled",
@@ -169,15 +182,15 @@ export function EvolutionColumn({
       const haystack = [
         ...(a.services ?? []).map((service) => service.serviceName),
         a.notes,
-        a.type ? APPOINTMENT_TYPE_LABEL[a.type] : null,
+        appointmentTypeLabel(a.type, t),
         a.doctorName,
-        dateHaystack(a.date),
+        dateHaystack(a.date, language),
       ]
         .filter(Boolean)
         .join(" ");
       return matchesQuery(haystack, q);
     });
-  }, [ordered, query, selectedYear, selectedDoctor, dateFrom, dateTo]);
+  }, [ordered, query, selectedYear, selectedDoctor, dateFrom, dateTo, language, t]);
   const hasFilters =
     query.trim().length > 0 ||
     selectedYear !== null ||
@@ -390,8 +403,7 @@ export function EvolutionColumn({
       {filtered.length === 0 ? (
         <section className="bento p-6">
           <p className="text-sm text-subtle">
-            Ninguna consulta coincide con la búsqueda. Prueba con otro término o
-            quita los filtros.
+            {t("clinical.list.noFilterResults")}
           </p>
         </section>
       ) : (
@@ -411,7 +423,7 @@ export function EvolutionColumn({
                     )}
                   >
                     <span className="text-xs font-semibold uppercase tracking-wider text-subtle">
-                      {formatMonthLabel(appointment.date)}
+                      {formatMonthLabel(appointment.date, language)}
                     </span>
                     <div className="h-px flex-1 bg-hairline" />
                   </div>
@@ -439,7 +451,9 @@ export function EvolutionColumn({
           {remaining > 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 pb-6 pt-3">
               <p className="text-xs text-subtle">
-                Mostrando {visible.length} de {filtered.length} consultas
+                {t("clinical.list.showing")} {visible.length}{" "}
+                {t("clinical.filters.of")} {filtered.length}{" "}
+                {t("clinical.filters.consultations")}
               </p>
               <Button
                 type="button"
@@ -450,8 +464,9 @@ export function EvolutionColumn({
                 }
                 className="rounded-xl px-5 text-xs font-medium"
               >
-                Cargar consultas anteriores (
-                {Math.min(VISIBLE_PAGE_SIZE, remaining)} más)
+                {t("clinical.list.loadPrevious")} (
+                {Math.min(VISIBLE_PAGE_SIZE, remaining)}{" "}
+                {t("clinical.list.more")})
               </Button>
             </div>
           ) : null}

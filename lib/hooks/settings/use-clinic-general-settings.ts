@@ -12,6 +12,7 @@ import {
   CLINIC_SCHEDULE_DAYS,
   DEFAULT_CLINIC_GENERAL_SETTINGS,
   DEFAULT_CLINIC_SCHEDULE,
+  normalizeClinicLanguage,
 } from "@/lib/entity/settings";
 import { isToothNotation } from "@/lib/odontogram/notation";
 import { notify } from "@/lib/utils/notify";
@@ -37,6 +38,9 @@ function normalizeSettings(settings: ClinicGeneralSettings): ClinicGeneralSettin
   return {
     ...DEFAULT_CLINIC_GENERAL_SETTINGS,
     ...settings,
+    language:
+      normalizeClinicLanguage(settings.language) ??
+      DEFAULT_CLINIC_GENERAL_SETTINGS.language,
     schedule: normalizeSchedule(settings.schedule),
     toothNotation: isToothNotation(settings.toothNotation)
       ? settings.toothNotation

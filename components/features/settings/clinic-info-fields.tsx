@@ -14,9 +14,11 @@ import {
 import { Select } from "@/components/ui/controls/select";
 import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { LogoUploader } from "@/components/features/settings/logo-uploader";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import type { GeneralSettingsFormValues } from "@/lib/hooks/settings";
 import {
   CURRENCY_SELECT_OPTIONS,
+  LANGUAGE_SELECT_OPTIONS,
   TIMEZONE_SELECT_OPTIONS,
 } from "@/components/features/settings/regional-select-options";
 
@@ -74,8 +76,8 @@ interface ClinicInfoFieldsProps {
 /**
  * ClinicInfoFields — datos institucionales de la clínica: nombre, teléfono,
  * dirección, logo (Cloudinary vía `LogoUploader`) y configuración regional
- * (moneda / zona horaria). Incluye el plan de suscripción como dato de solo
- * lectura (no es un campo editable del form).
+ * (moneda / zona horaria / idioma). Incluye el plan de suscripción como dato
+ * de solo lectura (no es un campo editable del form).
  *
  * Debe renderizarse dentro del `<Form {...form}>` del padre (usa
  * `useFormContext<GeneralSettingsFormValues>`).
@@ -85,6 +87,7 @@ export function ClinicInfoFields({
   subscriptionPlan,
 }: ClinicInfoFieldsProps) {
   const form = useFormContext<GeneralSettingsFormValues>();
+  const { t } = useI18n();
 
   return (
     <div className="space-y-6">
@@ -95,11 +98,11 @@ export function ClinicInfoFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Nombre de la clínica <Req />
+                {t("settings.general.clinicName")} <Req />
               </FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Ej: Clínica Dental San José"
+                  placeholder={t("settings.general.clinicNamePlaceholder")}
                   maxLength={120}
                   disabled={disabled}
                   {...field}
@@ -115,13 +118,13 @@ export function ClinicInfoFields({
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Teléfono</FormLabel>
+              <FormLabel>{t("settings.general.phone")}</FormLabel>
               <FormControl>
                 <Input
                   type="tel"
                   inputMode="tel"
                   autoComplete="tel"
-                  placeholder="Ej: +591 70000000"
+                  placeholder={t("settings.general.phonePlaceholder")}
                   maxLength={30}
                   disabled={disabled}
                   {...field}
@@ -141,10 +144,10 @@ export function ClinicInfoFields({
           name="address"
           render={({ field }) => (
             <FormItem className="sm:col-span-2">
-              <FormLabel>Dirección</FormLabel>
+              <FormLabel>{t("settings.general.address")}</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Dirección principal de la clínica"
+                  placeholder={t("settings.general.addressPlaceholder")}
                   maxLength={255}
                   disabled={disabled}
                   {...field}
@@ -162,15 +165,14 @@ export function ClinicInfoFields({
         name="logoUrl"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Logo de la clínica</FormLabel>
+            <FormLabel>{t("settings.general.logo")}</FormLabel>
             <LogoFieldControl
               value={field.value}
               onChange={field.onChange}
               disabled={disabled}
             />
             <p className="text-xs text-subtle">
-              Se muestra en documentos y, próximamente, en el panel lateral de
-              la aplicación.
+              {t("settings.general.logoDescription")}
             </p>
           </FormItem>
         )}
@@ -180,16 +182,16 @@ export function ClinicInfoFields({
 
       <div className="space-y-3">
         <h4 className="text-sm font-semibold text-ink">
-          Configuración regional
+          {t("settings.general.regionalConfig")}
         </h4>
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-3">
           <FormField
             control={form.control}
             name="currency"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  Moneda <Req />
+                  {t("settings.general.currency")} <Req />
                 </FormLabel>
                 <FormControl>
                   <Select
@@ -197,9 +199,9 @@ export function ClinicInfoFields({
                     onChange={field.onChange}
                     onBlur={field.onBlur}
                     options={CURRENCY_SELECT_OPTIONS}
-                    placeholder="Seleccione moneda…"
+                    placeholder={t("settings.general.currencyPlaceholder")}
                     searchable
-                    searchPlaceholder="Buscar moneda…"
+                    searchPlaceholder={t("settings.general.currencySearch")}
                     disabled={disabled}
                   />
                 </FormControl>
@@ -214,7 +216,7 @@ export function ClinicInfoFields({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  Zona horaria <Req />
+                  {t("settings.general.timezone")} <Req />
                 </FormLabel>
                 <FormControl>
                   <Select
@@ -222,9 +224,34 @@ export function ClinicInfoFields({
                     onChange={field.onChange}
                     onBlur={field.onBlur}
                     options={TIMEZONE_SELECT_OPTIONS}
-                    placeholder="Seleccione zona horaria…"
+                    placeholder={t("settings.general.timezonePlaceholder")}
                     searchable
-                    searchPlaceholder="Buscar zona horaria…"
+                    searchPlaceholder={t("settings.general.timezoneSearch")}
+                    disabled={disabled}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="language"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  {t("settings.general.language")} <Req />
+                </FormLabel>
+                <FormControl>
+                  <Select
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    options={LANGUAGE_SELECT_OPTIONS}
+                    placeholder={t("settings.general.languagePlaceholder")}
+                    searchable
+                    searchPlaceholder={t("settings.general.languageSearch")}
                     disabled={disabled}
                   />
                 </FormControl>
@@ -235,7 +262,10 @@ export function ClinicInfoFields({
         </div>
 
         <p className="text-sm text-subtle">
-          Plan actual: <Badge variant="secondary">{subscriptionPlan || "Sin plan"}</Badge>
+          {t("settings.general.currentPlan")}:{" "}
+          <Badge variant="secondary">
+            {subscriptionPlan || t("settings.general.noPlan")}
+          </Badge>
         </p>
       </div>
     </div>

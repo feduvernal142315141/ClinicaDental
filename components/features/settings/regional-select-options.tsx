@@ -58,3 +58,36 @@ export const TIMEZONE_SELECT_OPTIONS: readonly SelectOption[] =
     icon: <Flag emoji={z.flag} />,
     description: z.offset,
   }));
+
+export const LANGUAGE_SELECT_OPTIONS: readonly SelectOption[] = [
+  {
+    value: "es",
+    label: "Español",
+    searchText: "es espanol español spanish",
+    icon: <Flag emoji="🇪🇸" />,
+  },
+  {
+    value: "en",
+    label: "Inglés",
+    searchText: "en ingles inglés english",
+    icon: <Flag emoji="🇺🇸" />,
+  },
+  {
+    value: "fr",
+    label: "Francés",
+    searchText: "fr frances francés french",
+    icon: <Flag emoji="🇫🇷" />,
+  },
+  {
+    value: "it",
+    label: "Italiano",
+    searchText: "it italiano italian",
+    icon: <Flag emoji="🇮🇹" />,
+  },
+  {
+    value: "pt",
+    label: "Portugués",
+    searchText: "pt portugues portugués portuguese",
+    icon: <Flag emoji="🇵🇹" />,
+  },
+];

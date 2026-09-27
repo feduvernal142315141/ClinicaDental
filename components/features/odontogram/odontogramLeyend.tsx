@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Info, ChevronUp } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui";
 import { ODONTOGRAM_LEGEND_ITEMS } from "@/lib/odontogram/domain/odontogram/constants/odontogram-colors.constants";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { cn } from "@/lib/utils/utils";
 
 /**
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils/utils";
  * y para heredar el cierre con Escape, el clic fuera y el manejo de foco.
  */
 export function OdontogramLegend() {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -27,7 +29,7 @@ export function OdontogramLegend() {
               ? "border-brand bg-brand text-white shadow-brand/20"
               : "border-border/70 bg-surface/90 text-ink opacity-90 hover:bg-surface hover:opacity-100",
           )}
-          title="Ver guía de colores y estados clínicos"
+          title={t("odontogram.legend.tooltip")}
           type="button"
         >
           <Info
@@ -36,7 +38,7 @@ export function OdontogramLegend() {
               isOpen ? "text-white" : "text-brand",
             )}
           />
-          <span>Estados Clínicos</span>
+          <span>{t("odontogram.legend.button")}</span>
           <ChevronUp
             className={cn(
               "h-3.5 w-3.5 transition-transform duration-200",
@@ -55,7 +57,7 @@ export function OdontogramLegend() {
       >
         <h3 className="mb-3 flex items-center gap-1.5 border-b border-border/50 pb-2 text-xs font-semibold tracking-wider text-ink uppercase">
           <Info className="h-3.5 w-3.5 text-brand" />
-          Guía de Estados Clínicos
+          {t("odontogram.legend.title")}
         </h3>
 
         <div className="grid max-h-[min(50vh,20rem)] grid-cols-2 gap-2.5 overflow-y-auto pr-1 text-xs sm:grid-cols-3">
@@ -109,8 +111,7 @@ export function OdontogramLegend() {
 
         {/* Nota profesional */}
         <p className="mt-3 border-t border-border/40 pt-2 text-[10px] text-subtle italic">
-          * Los colores indican el estado clínico actual del diente. ICDAS:
-          Sistema de detección de caries (1=inicial, 6=severa).
+          {t("odontogram.legend.note")}
         </p>
       </PopoverContent>
     </Popover>

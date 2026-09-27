@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils/utils";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { ThemeToggle } from "@/components/ui/atomic/controls/theme-toggle";
+import { LanguageSelector } from "@/components/ui/atomic/navigation/language-selector";
 import { SidebarFooter } from "@/components/ui/atomic/navigation/sidebar-footer";
 
 interface MobileHeaderProps {
@@ -26,11 +28,12 @@ export function MobileHeader({
 }: MobileHeaderProps) {
   const { user, logout } = useAuth();
   const { name: clinicName, logoUrl } = useClinicBranding();
+  const { t } = useI18n();
   const router = useRouter();
 
   const userName = user?.email
-    ? user.email.split(String.fromCharCode(64))[0] || "Usuario"
-    : "Usuario";
+    ? user.email.split(String.fromCharCode(64))[0] || t("app.user.fallback")
+    : t("app.user.fallback");
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-hairline bg-surface/95 px-2 backdrop-blur supports-[backdrop-filter]:bg-surface/80 lg:hidden">
@@ -39,7 +42,9 @@ export function MobileHeader({
         <button
           type="button"
           onClick={onToggleSidebar}
-          aria-label={isSidebarOpen ? "Cerrar menú" : "Abrir menú"}
+          aria-label={
+            isSidebarOpen ? t("navigation.closeMenu") : t("navigation.openMenu")
+          }
           aria-expanded={isSidebarOpen}
           className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45"
         >
@@ -77,6 +82,7 @@ export function MobileHeader({
 
       {/* Derecha: tema + menú de cuenta (avatar → Perfil / Cerrar sesión) */}
       <div className="flex shrink-0 items-center gap-0.5">
+        <LanguageSelector className="w-[88px]" />
         <ThemeToggle variant="ghost" size="sm" />
         <SidebarFooter
           compact

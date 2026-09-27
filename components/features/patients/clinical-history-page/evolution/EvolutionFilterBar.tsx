@@ -5,6 +5,7 @@ import { CalendarRange, Search, SlidersHorizontal, X } from "lucide-react";
 import { DateRangePicker } from "@/components/ui/controls/date-range-picker";
 import { Select, type SelectOption } from "@/components/ui/controls/select";
 import { cn } from "@/lib/utils/utils";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 export interface EvolutionFilterBarProps {
   query: string;
@@ -41,6 +42,7 @@ export function EvolutionFilterBar({
   totalCount,
   onClear,
 }: EvolutionFilterBarProps) {
+  const { t } = useI18n();
   const hasDateRange = dateFrom !== "" || dateTo !== "";
   const [showDateRange, setShowDateRange] = useState(hasDateRange);
   const hasFilters =
@@ -50,10 +52,10 @@ export function EvolutionFilterBar({
     hasDateRange;
   const doctorOptions = useMemo<SelectOption[]>(
     () => [
-      { value: ALL_DOCTORS, label: "Todos los profesionales" },
+      { value: ALL_DOCTORS, label: t("clinical.filters.allDoctors") },
       ...doctors.map((doctor) => ({ value: doctor, label: doctor })),
     ],
-    [doctors],
+    [doctors, t],
   );
   const showDoctorFilter = doctors.length > 1;
   const showYearFilter = years.length > 1;
@@ -69,8 +71,8 @@ export function EvolutionFilterBar({
             type="search"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Buscar por fecha, servicio, doctor o notas de la cita…"
-            aria-label="Buscar en el historial de consultas"
+            placeholder={t("clinical.filters.searchPlaceholder")}
+            aria-label={t("clinical.filters.searchAria")}
             className={cn(
               "h-9 w-full rounded-lg bg-hover pl-9 pr-3 text-sm text-ink",
               "ring-1 ring-transparent transition-shadow",
@@ -90,8 +92,8 @@ export function EvolutionFilterBar({
               }
               options={doctorOptions}
               searchable={doctors.length > 8}
-              searchPlaceholder="Buscar profesional…"
-              aria-label="Filtrar por profesional"
+              searchPlaceholder={t("clinical.filters.searchDoctor")}
+              aria-label={t("clinical.filters.filterDoctor")}
               className="h-9 text-xs"
             />
           </div>
@@ -112,7 +114,9 @@ export function EvolutionFilterBar({
           )}
         >
           <CalendarRange className="h-3.5 w-3.5" aria-hidden="true" />
-          {hasDateRange ? "Rango activo" : "Rango de fechas"}
+          {hasDateRange
+            ? t("clinical.filters.activeRange")
+            : t("clinical.filters.dateRange")}
         </button>
         {showDateRange ? (
           <div className="w-full">
@@ -128,7 +132,7 @@ export function EvolutionFilterBar({
         <div
           className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5"
           role="group"
-          aria-label="Filtrar por año"
+          aria-label={t("clinical.filters.year")}
         >
           <SlidersHorizontal
             className="h-3.5 w-3.5 shrink-0 text-subtle"
@@ -138,7 +142,7 @@ export function EvolutionFilterBar({
             active={selectedYear === null}
             onClick={() => onYearChange(null)}
           >
-            Todos
+            {t("clinical.filters.all")}
           </YearChip>
           {years.map((year) => (
             <YearChip
@@ -155,20 +159,20 @@ export function EvolutionFilterBar({
         <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-hairline pt-2">
           <p className="min-w-0 text-xs text-subtle">
             {resultCount === 0 ? (
-              "Ninguna consulta coincide"
+              t("clinical.filters.noMatches")
             ) : (
               <>
                 <span className="font-medium text-ink tabular-nums">
                   {resultCount}
                 </span>{" "}
-                de {totalCount} consultas
+                {t("clinical.filters.of")} {totalCount}{" "}
+                {t("clinical.filters.consultations")}
               </>
             )}
             {query.trim().length > 0 ? (
               <span className="hidden text-[11px] sm:inline">
                 {" "}
-                · se busca en fecha, servicio, tipo, doctor y notas de la cita;
-                no en las notas de evolución ni en los diagnósticos
+                · {t("clinical.filters.searchHint")}
               </span>
             ) : null}
           </p>
@@ -182,7 +186,7 @@ export function EvolutionFilterBar({
             )}
           >
             <X className="h-3.5 w-3.5" aria-hidden="true" />
-            Limpiar
+            {t("clinical.filters.clear")}
           </button>
         </div>
       ) : null}

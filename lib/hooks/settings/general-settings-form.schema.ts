@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { requiredText } from "@/lib/validation/fields";
-import { CLINIC_SCHEDULE_DAYS } from "@/lib/entity/settings";
+import { CLINIC_LANGUAGES, CLINIC_SCHEDULE_DAYS } from "@/lib/entity/settings";
 import { TOOTH_NOTATIONS } from "@/lib/odontogram/notation";
 
 /**
@@ -61,6 +61,9 @@ export const generalSettingsFormSchema = z
       .max(30, "El teléfono debe tener máximo 30 caracteres")
       .nullable()
       .optional(),
+    language: z.enum(CLINIC_LANGUAGES, {
+      message: "El idioma es requerido",
+    }),
     timezone: z.string().min(1, "La zona horaria es requerida"),
     currency: z.string().min(1, "La moneda es requerida"),
     toothNotation: z.enum(TOOTH_NOTATIONS, {

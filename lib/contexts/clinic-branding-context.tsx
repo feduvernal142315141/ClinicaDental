@@ -9,6 +9,8 @@ import {
 
 const STORAGE_KEY = "clinic-branding-cache-v1";
 
+let hasHydratedBranding = false;
+
 interface ClinicBrandingContextType extends ClinicBranding {
   loading: boolean;
   /**
@@ -85,9 +87,12 @@ export function ClinicBrandingProvider({ children }: { children: ReactNode }) {
   /** Pide la marca al backend y la fija + cachea. Silencioso ante error (cae al caché/default). */
   const refetch = useCallback(async () => {
     try {
-      const data = await clinicBrandingService.getClinicBranding();
+      const data = await clinicBrandingService.getClinicBranding({
+        force: true,
+      });
       setBranding(data);
       writeCachedBranding(data);
+      hasHydratedBranding = true;
     } catch (err) {
       // Silencioso a propósito: se dispara también en el login (sin sesión), donde
       // un toast de error sería ruido; la marca se queda en el caché/default.
@@ -106,17 +111,39 @@ export function ClinicBrandingProvider({ children }: { children: ReactNode }) {
         // storage no disponible: nada que limpiar
       }
     }
+    clinicBrandingService.clearCache();
+    hasHydratedBranding = false;
     setBranding(DEFAULT_CLINIC_BRANDING);
   }, []);
 
   useEffect(() => {
-    const cached = readCachedBranding();
+    const cached =
+      clinicBrandingService.getCachedBranding() ?? readCachedBranding();
     if (cached) setBranding(cached);
 
+    if (hasHydratedBranding || cached) {
+      setLoading(false);
+      return;
+    }
+
     let active = true;
-    refetch().finally(() => {
-      if (active) setLoading(false);
-    });
+    clinicBrandingService
+      .getClinicBranding()
+      .then((data) => {
+        if (!active) return;
+        setBranding(data);
+        writeCachedBranding(data);
+        hasHydratedBranding = true;
+      })
+      .catch((err) => {
+        console.error(
+          "[ClinicBranding] No se pudo cargar la marca de la clínica:",
+          err,
+        );
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
     return () => {
       active = false;
@@ -127,6 +154,7 @@ export function ClinicBrandingProvider({ children }: { children: ReactNode }) {
     setBranding((current) => {
       const next = { ...current, ...patch };
       writeCachedBranding(next);
+      hasHydratedBranding = true;
       return next;
     });
   };

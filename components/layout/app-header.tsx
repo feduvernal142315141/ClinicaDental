@@ -3,16 +3,18 @@
 import { HeaderActions } from "@/components/ui/atomic/navigation/header-actions";
 import { SidebarFooter } from "@/components/ui/atomic/navigation/sidebar-footer";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { useRouter } from "next/navigation";
 
 export function AppHeader() {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   const router = useRouter();
 
   const getUserName = () => {
-    if (!user?.email) return "Usuario";
+    if (!user?.email) return t("app.user.fallback");
     const emailParts = user.email.split(String.fromCharCode(64));
-    return emailParts[0] || "Usuario";
+    return emailParts[0] || t("app.user.fallback");
   };
 
   return (

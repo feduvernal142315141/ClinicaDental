@@ -4,6 +4,7 @@ import { Theme } from "@radix-ui/themes";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/lib/contexts/auth-context";
 import { AlertProvider } from "@/lib/contexts/alert-context";
+import { I18nProvider } from "@/lib/contexts/i18n-context";
 import { ClinicBrandingProvider } from "@/lib/contexts/clinic-branding-context";
 import { ToothNotationProvider } from "@/lib/contexts/tooth-notation-context";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
@@ -39,29 +40,31 @@ export function RootClient({ children }: RootClientProps) {
           <Theme>
             <Suspense fallback={null}>
               <InterceptorProvider>
-                {/* Marca de la clínica: fuera de AuthProvider a propósito, el
-                    endpoint es público y el login (sin sesión) también la
-                    consume (auth-shell, login-form). */}
-                <ClinicBrandingProvider>
-                  {/* Nomenclatura dental: también ENVUELVE a AuthProvider,
-                      que la refresca al completar el login y la limpia en el
-                      logout (un proveedor debe ser ancestro de quien lo usa).
-                      Su fetch sí exige sesión: sin token no pide nada. */}
-                  <ToothNotationProvider>
-                    <AuthProvider>
-                      <AlertProvider>
-                        <GlobalErrorListeners />
-                        <PointerEventsGuard />
-                        <InterceptorsInitializer />
-                        <GlobalLoadingBar />
-                        <GlobalAlertDialog />
-                        <CommandPalette />
-                        <AppChrome>{children}</AppChrome>
-                        <FeedbackFAB />
-                      </AlertProvider>
-                    </AuthProvider>
-                  </ToothNotationProvider>
-                </ClinicBrandingProvider>
+                <I18nProvider>
+                  {/* Marca de la clínica: fuera de AuthProvider a propósito, el
+                      endpoint es público y el login (sin sesión) también la
+                      consume (auth-shell, login-form). */}
+                  <ClinicBrandingProvider>
+                    {/* Nomenclatura dental: también ENVUELVE a AuthProvider,
+                        que la refresca al completar el login y la limpia en el
+                        logout (un proveedor debe ser ancestro de quien lo usa).
+                        Su fetch sí exige sesión: sin token no pide nada. */}
+                    <ToothNotationProvider>
+                      <AuthProvider>
+                        <AlertProvider>
+                          <GlobalErrorListeners />
+                          <PointerEventsGuard />
+                          <InterceptorsInitializer />
+                          <GlobalLoadingBar />
+                          <GlobalAlertDialog />
+                          <CommandPalette />
+                          <AppChrome>{children}</AppChrome>
+                          <FeedbackFAB />
+                        </AlertProvider>
+                      </AuthProvider>
+                    </ToothNotationProvider>
+                  </ClinicBrandingProvider>
+                </I18nProvider>
               </InterceptorProvider>
             </Suspense>
             <Analytics />

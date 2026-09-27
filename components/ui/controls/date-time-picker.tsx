@@ -14,10 +14,10 @@ import {
   parseLocalValue,
   dateToLocalDate,
   isSameLocalDay,
-  MONTHS_ES,
-  WEEKDAYS_ES_MON,
   mondayFirstWeekday,
 } from "@/lib/datetime";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { ClinicLanguage } from "@/lib/entity/settings";
 
 export interface DateTimePickerProps {
   value: string;
@@ -34,6 +34,7 @@ export interface DateTimePickerProps {
   toYear?: number;
   /** Permite limpiar el valor (X + botón "Limpiar"). Def. true. */
   allowClear?: boolean;
+  placeholder?: string;
   /** Anclaje horizontal del popover. Def. "start" (izquierda, comportamiento actual). */
   align?: "start" | "end";
   "aria-label"?: string;
@@ -44,6 +45,20 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const HOURS = Array.from({ length: 24 }, (_, i) => ({ value: pad(i), label: pad(i) }));
 const MINUTES = Array.from({ length: 60 }, (_, i) => ({ value: pad(i), label: pad(i) }));
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const MONTH_NAMES: Record<ClinicLanguage, string[]> = {
+  es: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+  fr: ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"],
+  it: ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"],
+  pt: ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"],
+};
+const WEEKDAY_NAMES: Record<ClinicLanguage, string[]> = {
+  es: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
+  en: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  fr: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"],
+  it: ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"],
+  pt: ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"],
+};
 
 /**
  * DateTimePicker corporativo (calendario + hora) sin controles nativos.
@@ -62,10 +77,12 @@ export function DateTimePicker({
   fromYear,
   toYear,
   allowClear = true,
+  placeholder: placeholderProp,
   align = "start",
   "aria-label": ariaLabel,
   "aria-invalid": ariaInvalid,
 }: DateTimePickerProps) {
+  const { language, t } = useI18n();
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
 
@@ -112,7 +129,9 @@ export function DateTimePicker({
     ? `${pad(selected.getDate())}/${pad(selected.getMonth() + 1)}/${selected.getFullYear()}` +
       (showTime ? ` · ${hh}:${mm}` : "")
     : "";
-  const placeholder = showTime ? "Selecciona fecha y hora" : "Selecciona una fecha";
+  const placeholder =
+    placeholderProp ??
+    (showTime ? t("app.date.selectDateTime") : t("app.date.selectDate"));
 
   // Grilla del mes
   const year = view.getFullYear();
@@ -125,7 +144,9 @@ export function DateTimePicker({
   ];
   const today = new Date();
 
-  const monthOptions = MONTHS_ES.map((m, i) => ({ value: String(i), label: m }));
+  const monthNames = MONTH_NAMES[language];
+  const weekdayNames = WEEKDAY_NAMES[language];
+  const monthOptions = monthNames.map((m, i) => ({ value: String(i), label: m }));
   const baseYear = today.getFullYear();
   const minYear = fromYear ?? baseYear - 100;
   const maxYear = toYear ?? baseYear + 10;
@@ -163,7 +184,6 @@ export function DateTimePicker({
                 id={id}
                 disabled={disabled}
                 aria-label={ariaLabel ?? placeholder}
-                aria-invalid={ariaInvalid}
                 className={cn(
                   "flex-1 truncate text-left outline-none tabular-nums",
                   selected ? "text-ink" : "text-subtle",
@@ -175,7 +195,7 @@ export function DateTimePicker({
             {allowClear && selected && !disabled && (
               <button
                 type="button"
-                aria-label="Limpiar"
+                aria-label={t("app.date.clear")}
                 onClick={() => onChange("")}
                 className="grid h-5 w-5 shrink-0 place-items-center rounded text-subtle hover:text-ink"
               >
@@ -198,7 +218,7 @@ export function DateTimePicker({
           <div className="mb-2 flex items-center gap-1">
             <button
               type="button"
-              aria-label="Mes anterior"
+              aria-label={t("app.date.previousMonth")}
               onClick={() => setView(new Date(year, month - 1, 1))}
               className="grid h-8 w-7 shrink-0 place-items-center rounded-lg text-subtle hover:bg-hover hover:text-ink"
             >
@@ -210,7 +230,7 @@ export function DateTimePicker({
                   value={String(month)}
                   onChange={(m) => setView(new Date(year, Number(m), 1))}
                   options={monthOptions}
-                  aria-label="Mes"
+                  aria-label={t("app.date.month")}
                 />
               </div>
               <div className="w-24">
@@ -218,13 +238,13 @@ export function DateTimePicker({
                   value={String(year)}
                   onChange={(y) => setView(new Date(Number(y), month, 1))}
                   options={yearOptions}
-                  aria-label="Año"
+                  aria-label={t("app.date.year")}
                 />
               </div>
             </div>
             <button
               type="button"
-              aria-label="Mes siguiente"
+              aria-label={t("app.date.nextMonth")}
               onClick={() => setView(new Date(year, month + 1, 1))}
               className="grid h-8 w-7 shrink-0 place-items-center rounded-lg text-subtle hover:bg-hover hover:text-ink"
             >
@@ -234,7 +254,7 @@ export function DateTimePicker({
 
           {/* Cabecera de días */}
           <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-subtle">
-            {WEEKDAYS_ES_MON.map((d) => (
+            {weekdayNames.map((d) => (
               <span key={d}>{d}</span>
             ))}
           </div>
@@ -253,7 +273,7 @@ export function DateTimePicker({
                   type="button"
                   disabled={off}
                   aria-pressed={isSel}
-                  aria-label={`${day} de ${MONTHS_ES[month]} de ${year}`}
+                  aria-label={`${day} ${t("app.date.fullDateJoiner")} ${monthNames[month]} ${t("app.date.fullDateJoiner")} ${year}`}
                   onClick={() => pickDay(d)}
                   className={cn(
                     "h-8 rounded-lg text-sm tabular-nums transition-colors",
@@ -278,7 +298,7 @@ export function DateTimePicker({
                   value={hh}
                   onChange={(h) => setTime(h, mm)}
                   options={HOURS}
-                  aria-label="Hora"
+                  aria-label={t("app.date.hour")}
                 />
               </div>
               <span className="text-subtle">:</span>
@@ -287,7 +307,7 @@ export function DateTimePicker({
                   value={mm}
                   onChange={(m) => setTime(hh, m)}
                   options={MINUTES}
-                  aria-label="Minutos"
+                  aria-label={t("app.date.minutes")}
                 />
               </div>
             </div>
@@ -304,7 +324,7 @@ export function DateTimePicker({
                 }}
                 className="text-sm text-subtle hover:text-ink"
               >
-                Limpiar
+                {t("app.date.clear")}
               </button>
             ) : (
               <span />
@@ -329,7 +349,7 @@ export function DateTimePicker({
                   "opacity-50 cursor-not-allowed hover:bg-brand",
               )}
             >
-              {showTime ? "Ahora" : "Hoy"}
+              {showTime ? t("app.date.now") : t("app.date.today")}
             </button>
           </div>
       </PopoverContent>
