@@ -9,10 +9,31 @@ export type ClinicScheduleDayKey =
   | "saturday"
   | "sunday";
 
+export interface SaturdayShift {
+  startTime: string;
+  endTime: string;
+}
+
+export interface SaturdayRule {
+  pattern: "every" | "alternate" | "custom";
+  anchorDate: string; // ISO: "2026-10-04"
+  shifts: Record<string, SaturdayShift>; // { A: {...}, B: {...} }
+  sequence: string[]; // ["A", "off"] or ["A", "A", "off", "off"]
+}
+
+export interface SaturdayPreviewItem {
+  date: string;
+  open: boolean;
+  startTime?: string | null;
+  endTime?: string | null;
+  shiftKey: string;
+}
+
 export interface ClinicScheduleDay {
   enabled: boolean;
   startTime?: string | null;
   endTime?: string | null;
+  saturdayRule?: SaturdayRule | null;
 }
 
 export type ClinicSchedule = Record<ClinicScheduleDayKey, ClinicScheduleDay>;

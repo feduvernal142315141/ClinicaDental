@@ -19,10 +19,23 @@ import { TOOTH_NOTATIONS } from "@/lib/odontogram/notation";
  * construir el payload de guardado (ver use-general-settings-form.ts).
  */
 
+const saturdayShiftSchema = z.object({
+  startTime: z.string(),
+  endTime: z.string(),
+});
+
+const saturdayRuleSchema = z.object({
+  pattern: z.enum(["every", "alternate", "custom"]),
+  anchorDate: z.string(),
+  shifts: z.record(z.string(), saturdayShiftSchema),
+  sequence: z.array(z.string()),
+}).optional().nullable();
+
 const scheduleDaySchema = z.object({
   enabled: z.boolean(),
   startTime: z.string().optional().default(""),
   endTime: z.string().optional().default(""),
+  saturdayRule: saturdayRuleSchema.optional().nullable(),
 });
 
 const scheduleSchema = z.object({

@@ -10,6 +10,7 @@ import {
   TimeRangeField,
   type ScheduleDayStatus,
 } from "@/components/ui/atomic/schedule";
+import { SaturdayConfigPanel } from "@/components/features/settings/saturday-config-panel";
 import { CLINIC_SCHEDULE_DAYS } from "@/lib/entity/settings";
 import type { ClinicScheduleDayKey } from "@/lib/entity/settings";
 import type { GeneralSettingsFormValues } from "@/lib/hooks/settings";
@@ -85,15 +86,19 @@ export function ScheduleEditor({ disabled = false }: ScheduleEditorProps) {
       <DayOverviewStrip days={overviewDays} />
       {/* Rejilla de 2 columnas en desktop; una sola en móvil/tablet. */}
       <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
-        {CLINIC_SCHEDULE_DAYS.map(({ key, label }) => (
-          <ScheduleDayRow
-            key={key}
-            dayKey={key}
-            label={label}
-            disabled={disabled}
-            onToggle={(next) => setDayEnabled(key, next)}
-          />
-        ))}
+        {CLINIC_SCHEDULE_DAYS.map(({ key, label }) =>
+          key === "saturday" ? (
+            <SaturdayConfigPanel key={key} disabled={disabled} />
+          ) : (
+            <ScheduleDayRow
+              key={key}
+              dayKey={key}
+              label={label}
+              disabled={disabled}
+              onToggle={(next) => setDayEnabled(key, next)}
+            />
+          ),
+        )}
       </div>
     </div>
   );
