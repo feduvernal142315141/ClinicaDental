@@ -79,6 +79,7 @@ export function NotificationsSettings() {
   const [newTemplate, setNewTemplate] = useState({
     name: "",
     body: "",
+    category: "MARKETING" as "UTILITY" | "MARKETING",
   });
   const [templateVariables, setTemplateVariables] = useState<Array<{ id: string; placeholder: string; sampleContent: string }>>([]);
   const [placeholderError, setPlaceholderError] = useState("");
@@ -136,6 +137,7 @@ export function NotificationsSettings() {
         name: newTemplate.name,
         body: newTemplate.body,
         type: "APPOINTMENT_REMINDER",
+        category: newTemplate.category,
         variables: templateVariables.map((v) => ({
           id: v.id,
           placeholder: v.placeholder,
@@ -149,7 +151,7 @@ export function NotificationsSettings() {
         const updated = await clinicTemplateService.getClinicTemplates();
         setClinicTemplates(updated);
         setIsCreatingTemplate(false);
-        setNewTemplate({ name: "", body: "" });
+        setNewTemplate({ name: "", body: "", category: "MARKETING" });
         setTemplateVariables([]);
         setPlaceholderError("");
         notify.success(t("settings.notifications.templateCreated"), {
@@ -520,21 +522,40 @@ export function NotificationsSettings() {
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Left: Form */}
                         <div className="space-y-3">
-                          <div>
-                            <Label htmlFor="template-name">
-                              {t("settings.notifications.whatsapp.name")}
-                            </Label>
-                            <Input
-                              id="template-name"
-                              value={newTemplate.name}
-                              onChange={(e) =>
-                                setNewTemplate({
-                                  ...newTemplate,
-                                  name: e.target.value,
-                                })
-                              }
-                              placeholder={t("settings.notifications.whatsapp.namePlaceholder")}
-                            />
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor="template-name">
+                                {t("settings.notifications.whatsapp.name")}
+                              </Label>
+                              <Input
+                                id="template-name"
+                                value={newTemplate.name}
+                                onChange={(e) =>
+                                  setNewTemplate({
+                                    ...newTemplate,
+                                    name: e.target.value,
+                                  })
+                                }
+                                placeholder={t("settings.notifications.whatsapp.namePlaceholder")}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="template-category">Categoría Meta</Label>
+                              <Select
+                                value={newTemplate.category}
+                                onValueChange={(v) =>
+                                  setNewTemplate({ ...newTemplate, category: v as "UTILITY" | "MARKETING" })
+                                }
+                              >
+                                <SelectTrigger id="template-category">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="MARKETING">Marketing (promos, ofertas)</SelectItem>
+                                  <SelectItem value="UTILITY">Utilidad (recordatorios, confirmaciones)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                           <div>
                             <Label htmlFor="template-body">
@@ -635,7 +656,7 @@ export function NotificationsSettings() {
                           variant="outline"
                           onClick={() => {
                             setIsCreatingTemplate(false);
-                            setNewTemplate({ name: "", body: "" });
+                            setNewTemplate({ name: "", body: "", category: "MARKETING" });
                             setTemplateVariables([]);
                             setPlaceholderError("");
                           }}
