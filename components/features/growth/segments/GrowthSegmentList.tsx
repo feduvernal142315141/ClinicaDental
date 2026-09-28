@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/ui/atomic/layout/header";
 import {
   Button,
-  Skeleton,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -17,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
+import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { Alert, AlertDescription } from "@/components/ui";
 import { Plus, Filter, Pencil, Trash2, Users } from "lucide-react";
 import { useGrowthSegments, useSegmentEvaluation } from "@/lib/hooks/growth";
@@ -39,15 +39,6 @@ function formatCondition(c: SegmentCondition): string {
   return `${fieldLabel} ${opLabel} ${displayValue}`;
 }
 
-function SegmentListSkeleton() {
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Skeleton key={i} className="h-20 rounded-xl" />
-      ))}
-    </div>
-  );
-}
 
 export function GrowthSegmentList() {
   const router = useRouter();
@@ -90,7 +81,11 @@ export function GrowthSegmentList() {
         </Alert>
       )}
 
-      {loading && <SegmentListSkeleton />}
+      {loading && (
+        <div className="flex items-center justify-center min-h-64">
+          <LoadingSpinner message="Cargando segmentos..." />
+        </div>
+      )}
 
       {!loading && segments.length === 0 && (
         <EmptyState

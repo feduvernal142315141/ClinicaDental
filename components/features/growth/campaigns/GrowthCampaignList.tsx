@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/ui/atomic/layout/header";
 import {
   Button,
-  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -14,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
+import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { Alert, AlertDescription } from "@/components/ui";
 import { Plus, Megaphone, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { useGrowthCampaigns } from "@/lib/hooks/growth";
@@ -36,15 +36,6 @@ function formatDate(iso: string | undefined): string {
   }
 }
 
-function CampaignTableSkeleton() {
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Skeleton key={i} className="h-14 rounded-lg" />
-      ))}
-    </div>
-  );
-}
 
 export function GrowthCampaignList() {
   const router = useRouter();
@@ -78,7 +69,11 @@ export function GrowthCampaignList() {
         </Alert>
       )}
 
-      {loading && <CampaignTableSkeleton />}
+      {loading && (
+        <div className="flex items-center justify-center min-h-64">
+          <LoadingSpinner message="Cargando campañas..." />
+        </div>
+      )}
 
       {!loading && campaigns.length === 0 && (
         <EmptyState
