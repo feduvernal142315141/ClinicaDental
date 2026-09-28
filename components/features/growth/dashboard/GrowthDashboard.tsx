@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Header } from "@/components/ui/atomic/layout/header";
-import { Skeleton } from "@/components/ui";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
+import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { Alert, AlertDescription } from "@/components/ui";
 import { BarChart3 } from "lucide-react";
 import { useGrowthAnalytics } from "@/lib/hooks/growth";
@@ -18,22 +18,6 @@ import { GrowthEngagementCard } from "./GrowthEngagementCard";
 import { GrowthConversionCard } from "./GrowthConversionCard";
 import { GrowthAttributedValueCard } from "./GrowthAttributedValueCard";
 
-function DashboardSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 rounded-xl" />
-        ))}
-      </div>
-      <Skeleton className="h-80 rounded-xl" />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Skeleton className="h-64 rounded-xl" />
-        <Skeleton className="h-64 rounded-xl" />
-      </div>
-    </div>
-  );
-}
 
 export function GrowthDashboard() {
   const [dateFilter, setDateFilter] = useState<DateFilterValue>(
@@ -71,7 +55,11 @@ export function GrowthDashboard() {
         </Alert>
       )}
 
-      {loading && <DashboardSkeleton />}
+      {loading && (
+        <div className="flex items-center justify-center min-h-64">
+          <LoadingSpinner message="Cargando Growth..." />
+        </div>
+      )}
 
       {data && !loading && (
         <div className="space-y-6">

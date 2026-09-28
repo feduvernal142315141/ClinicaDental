@@ -22,7 +22,7 @@ import { Input } from "@/components/ui";
 import { Header } from "@/components/ui/atomic/layout/header";
 import { Select } from "@/components/ui/controls/select";
 import type { SelectOption } from "@/components/ui/controls/select";
-import { Skeleton } from "@/components/ui";
+import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import {
@@ -259,7 +259,7 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
               </CardHeader>
               <CardContent className="space-y-4">
                 {segmentsLoading ? (
-                  <Skeleton className="h-12 rounded-xl" />
+                  <LoadingSpinner size="sm" message="Cargando..." />
                 ) : (
                   <FormField
                     control={form.control}
@@ -316,7 +316,7 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
               </CardHeader>
               <CardContent className="space-y-4">
                 {templatesLoading ? (
-                  <Skeleton className="h-12 rounded-xl" />
+                  <LoadingSpinner size="sm" message="Cargando..." />
                 ) : templateOptions.length === 0 ? (
                   <p className="text-sm text-subtle py-4">
                     No hay plantillas de Marketing aprobadas disponibles. Crea

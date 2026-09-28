@@ -3,13 +3,13 @@
 import { useRouter } from "next/navigation";
 import {
   Button,
-  Skeleton,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui";
 import { KpiCard, KpiGrid } from "@/components/ui/atomic/data-display/kpi-card";
 import { DataCard } from "@/components/ui/atomic/data-display/data-card";
+import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { Alert, AlertDescription } from "@/components/ui";
 import { ArrowLeft, Info, Send, Eye, MessageCircleReply, CalendarPlus, Coins } from "lucide-react";
 import { useGrowthCampaignDetail, useGrowthCampaignAnalytics, useGrowthConversions } from "@/lib/hooks/growth";
@@ -68,22 +68,6 @@ function formatRate(rate: number): string {
   return `${(rate * 100).toFixed(1)}%`;
 }
 
-function DetailSkeleton() {
-  return (
-    <div className="space-y-6">
-      <Skeleton className="h-10 w-64 rounded-lg" />
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 rounded-xl" />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Skeleton className="h-64 rounded-xl" />
-        <Skeleton className="h-64 rounded-xl" />
-      </div>
-    </div>
-  );
-}
 
 export function GrowthCampaignDetail({ campaignId }: GrowthCampaignDetailProps) {
   const router = useRouter();
@@ -91,7 +75,11 @@ export function GrowthCampaignDetail({ campaignId }: GrowthCampaignDetailProps) 
   const { data: analytics } = useGrowthCampaignAnalytics(campaignId);
   const { data: conversionsData } = useGrowthConversions(campaignId);
 
-  if (loading) return <DetailSkeleton />;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-64">
+      <LoadingSpinner message="Cargando campaña..." />
+    </div>
+  );
 
   if (error) {
     return (
