@@ -13,6 +13,7 @@ import {
   Briefcase,
   Tag,
   IdCard,
+  TrendingUp,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { usePermission } from "./use-permission";
@@ -98,6 +99,18 @@ export function useSidebarNavigation() {
     }
     if (hasModule("appointments")) {
       main.push({ path: "/appointments", label: t("navigation.appointments"), icon: Calendar });
+    }
+    if (hasModule("campaign")) {
+      main.push({
+        path: "/growth",
+        label: "Growth",
+        icon: TrendingUp,
+        children: [
+          { path: "/growth/dashboard", label: "Dashboard", icon: LayoutDashboard },
+          { path: "/growth/campaigns", label: "Campañas", icon: TrendingUp },
+          { path: "/growth/segments", label: "Segmentos", icon: Users },
+        ],
+      });
     }
     // El grupo Configuración solo aparece si le queda algún hijo visible.
     if (settingsChildren.length > 0) {
