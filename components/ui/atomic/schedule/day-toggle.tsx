@@ -1,4 +1,5 @@
 import { Switch } from "@/components/ui/atomic/forms";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { cn } from "@/lib/utils/utils";
 
 export type DayStatus = "active" | "closed" | "clinic-closed";
@@ -14,6 +15,7 @@ export interface DayStatusPillProps {
  * - "clinic-closed" → "Cerrado" (ámbar informativo: restricción externa).
  */
 export function DayStatusPill({ status }: DayStatusPillProps) {
+  const { t } = useI18n();
   const styles: Record<DayStatus, string> = {
     active: "bg-brand/15 text-brand",
     closed: "bg-hover text-subtle",
@@ -25,8 +27,10 @@ export function DayStatusPill({ status }: DayStatusPillProps) {
         "inline-flex w-fit shrink-0 items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
         styles[status],
       )}
-    >
-      {status === "active" ? "Activo" : "Cerrado"}
+  >
+      {status === "active"
+        ? t("settings.schedule.active")
+        : t("settings.schedule.closed")}
     </span>
   );
 }
@@ -60,6 +64,8 @@ export function DayToggle({
   disabled = false,
   className,
 }: DayToggleProps) {
+  const { t } = useI18n();
+  const configLabel = t("settings.schedule.dayConfig").replace("{day}", label);
   return (
     <label
       className={cn(
@@ -69,7 +75,7 @@ export function DayToggle({
       )}
     >
       <span className="min-w-0 truncate text-sm font-semibold text-ink">
-        Configuración de {label}
+        {configLabel}
       </span>
       <DayStatusPill status={status} />
       <span className="ml-auto shrink-0">
@@ -77,7 +83,9 @@ export function DayToggle({
           checked={checked}
           onCheckedChange={onCheckedChange}
           disabled={disabled}
-          aria-label={`${label}: ${checked ? "abierto" : "cerrado"}`}
+          aria-label={`${label}: ${
+            checked ? t("settings.schedule.open") : t("settings.schedule.closedAria")
+          }`}
         />
       </span>
     </label>

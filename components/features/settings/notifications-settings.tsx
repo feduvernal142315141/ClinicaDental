@@ -37,7 +37,6 @@ import {
   Loader2,
   RefreshCw,
   Edit,
-  X,
 } from "lucide-react";
 import {
   type NotificationSettings,
@@ -56,8 +55,10 @@ import type {
 } from "@/lib/entity/settings";
 
 import { useSyncMetaTemplates } from "@/lib/hooks/use-sync-meta-templates";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 export function NotificationsSettings() {
+  const { t } = useI18n();
   // Estado para Email general (localStorage, compatible con anterior)
   const [settings, setSettings] = useState<NotificationSettings>(
     getNotificationSettings()
@@ -103,7 +104,7 @@ export function NotificationsSettings() {
         setClinicTemplates(templates);
       } catch (error) {
         console.error("Error loading data:", error);
-        notify.error("Error al cargar la configuración");
+        notify.error(t("settings.notifications.loadError"));
       } finally {
         setLoading(false);
       }
@@ -115,14 +116,14 @@ export function NotificationsSettings() {
   // Guardar cambios en Email config
   const handleSaveEmailConfig = () => {
     saveNotificationSettings(settings);
-    notify.success("Configuración de email guardada");
+    notify.success(t("settings.notifications.emailSaved"));
   };
 
   // Crear nuevo template Meta
   const handleCreateTemplate = async () => {
     if (!newTemplate.name.trim() || !newTemplate.body.trim()) {
-      notify.error("Error", {
-        description: "Nombre y contenido de plantilla son requeridos",
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.templateRequired"),
       });
       return;
     }
@@ -142,13 +143,15 @@ export function NotificationsSettings() {
         setClinicTemplates(updated);
         setIsCreatingTemplate(false);
         setNewTemplate({ name: "", body: "" });
-        notify.success("Plantilla creada", {
-          description: "La plantilla se está sincronizando con Meta",
+        notify.success(t("settings.notifications.templateCreated"), {
+          description: t("settings.notifications.templateCreatedDescription"),
         });
       }
     } catch (error) {
       console.error("Error creating template:", error);
-      notify.error("Error", { description: "No se pudo crear la plantilla" });
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.templateCreateFailed"),
+      });
     } finally {
       setSavingTemplate(false);
     }
@@ -157,9 +160,8 @@ export function NotificationsSettings() {
   // Agregar nuevo recordatorio
   const handleAddReminder = async () => {
     if (!newReminderMinutes || !newReminderTemplate) {
-      notify.error("Error", {
-        description:
-          "Por favor completa tiempo y plantilla para el recordatorio",
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.reminderRequired"),
       });
       return;
     }
@@ -178,11 +180,13 @@ export function NotificationsSettings() {
         setIsAddingReminder(false);
         setNewReminderMinutes("1440");
         setNewReminderTemplate("");
-        notify.success("Recordatorio agregado");
+        notify.success(t("settings.notifications.reminderAdded"));
       }
     } catch (error) {
       console.error("Error adding reminder:", error);
-      notify.error("Error", { description: "No se pudo agregar el recordatorio" });
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.reminderAddFailed"),
+      });
     } finally {
       setSavingReminder(false);
     }
@@ -199,7 +203,9 @@ export function NotificationsSettings() {
 
   const handleSaveEditReminder = async () => {
     if (!editingReminder || !editReminderData.minutes || !editReminderData.templateId) {
-      notify.error("Error", { description: "Datos incompletos" });
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.incompleteData"),
+      });
       return;
     }
 
@@ -219,11 +225,13 @@ export function NotificationsSettings() {
         const updated = await reminderConfigService.getReminderConfigs();
         setReminderConfigs(updated);
         setEditingReminder(null);
-        notify.success("Recordatorio actualizado");
+        notify.success(t("settings.notifications.reminderUpdated"));
       }
     } catch (error) {
       console.error("Error updating reminder:", error);
-      notify.error("Error", { description: "No se pudo actualizar el recordatorio" });
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.reminderUpdateFailed"),
+      });
     } finally {
       setSavingReminder(false);
     }
@@ -252,7 +260,9 @@ export function NotificationsSettings() {
       }
     } catch (error) {
       console.error("Error toggling reminder:", error);
-      notify.error("Error", { description: "No se pudo actualizar el recordatorio" });
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.reminderUpdateFailed"),
+      });
     } finally {
       setSavingReminder(false);
     }
@@ -260,7 +270,7 @@ export function NotificationsSettings() {
 
   // Eliminar recordatorio
   const handleDeleteReminder = async (reminderId: string) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar este recordatorio?")) {
+    if (!confirm(t("settings.notifications.deleteReminderConfirm"))) {
       return;
     }
 
@@ -272,11 +282,13 @@ export function NotificationsSettings() {
       if (success) {
         const updated = await reminderConfigService.getReminderConfigs();
         setReminderConfigs(updated);
-        notify.success("Recordatorio eliminado");
+        notify.success(t("settings.notifications.reminderDeleted"));
       }
     } catch (error) {
       console.error("Error deleting reminder:", error);
-      notify.error("Error", { description: "No se pudo eliminar el recordatorio" });
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.reminderDeleteFailed"),
+      });
     } finally {
       setSavingReminder(false);
     }
@@ -329,10 +341,10 @@ export function NotificationsSettings() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
-            Notificaciones y Comunicación
+            {t("settings.notifications.title")}
           </h2>
           <p className="text-muted-foreground">
-            Configura las notificaciones automáticas y plantillas de mensajes
+            {t("settings.notifications.description")}
           </p>
         </div>
         <Button
@@ -340,7 +352,7 @@ export function NotificationsSettings() {
           className="bg-medical-primary hover:bg-medical-primary/90"
         >
           <Save className="w-4 h-4 mr-2" />
-          Guardar Cambios
+          {t("settings.notifications.saveChanges")}
         </Button>
       </div>
 
@@ -348,15 +360,15 @@ export function NotificationsSettings() {
         <TabsList>
           <TabsTrigger value="whatsapp">
             <MessageSquare className="w-4 h-4 mr-2" />
-            WhatsApp Templates
+            {t("settings.notifications.tabs.whatsapp")}
           </TabsTrigger>
           <TabsTrigger value="email">
             <Mail className="w-4 h-4 mr-2" />
-            Email
+            {t("settings.notifications.tabs.email")}
           </TabsTrigger>
           <TabsTrigger value="reminders">
             <Clock className="w-4 h-4 mr-2" />
-            Recordatorios
+            {t("settings.notifications.tabs.reminders")}
           </TabsTrigger>
         </TabsList>
 
@@ -373,17 +385,17 @@ export function NotificationsSettings() {
               <Card>
                 <CardHeader>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <CardTitle>Plantillas de WhatsApp (Meta)</CardTitle>
+                    <CardTitle>{t("settings.notifications.whatsapp.title")}</CardTitle>
                     <Button type="button" variant="outline" size="sm"
                       disabled={isSyncing || savingTemplate} onClick={syncMetaTemplates}
                       aria-busy={isSyncing}>
                       {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         : <RefreshCw className="mr-2 h-4 w-4" />}
-                      Sincronizar con Meta
+                      {t("settings.notifications.whatsapp.syncMeta")}
                     </Button>
                   </div>
                   <CardDescription>
-                    Administra plantillas Meta para envío automático de mensajes
+                    {t("settings.notifications.whatsapp.description")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -424,7 +436,7 @@ export function NotificationsSettings() {
                     </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
-                      No hay plantillas configuradas
+                      {t("settings.notifications.whatsapp.empty")}
                     </div>
                   )}
 
@@ -432,10 +444,14 @@ export function NotificationsSettings() {
 
                   {isCreatingTemplate ? (
                     <div className="border rounded-lg p-4 space-y-4 bg-muted/50">
-                      <h4 className="font-semibold">Nueva plantilla</h4>
+                      <h4 className="font-semibold">
+                        {t("settings.notifications.whatsapp.newTemplate")}
+                      </h4>
                       <div className="space-y-3">
                         <div>
-                          <Label htmlFor="template-name">Nombre</Label>
+                          <Label htmlFor="template-name">
+                            {t("settings.notifications.whatsapp.name")}
+                          </Label>
                           <Input
                             id="template-name"
                             value={newTemplate.name}
@@ -445,11 +461,13 @@ export function NotificationsSettings() {
                                 name: e.target.value,
                               })
                             }
-                            placeholder="p.ej. appointment_reminder_24h"
+                            placeholder={t("settings.notifications.whatsapp.namePlaceholder")}
                           />
                         </div>
                         <div>
-                          <Label htmlFor="template-body">Contenido</Label>
+                          <Label htmlFor="template-body">
+                            {t("settings.notifications.whatsapp.content")}
+                          </Label>
                           <TextArea
                             id="template-body"
                             value={newTemplate.body}
@@ -459,7 +477,7 @@ export function NotificationsSettings() {
                                 body: e.target.value,
                               })
                             }
-                            placeholder="Contenido de la plantilla"
+                            placeholder={t("settings.notifications.whatsapp.contentPlaceholder")}
                             rows={4}
                           />
                         </div>
@@ -474,7 +492,7 @@ export function NotificationsSettings() {
                           {savingTemplate && (
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           )}
-                          Crear
+                          {t("settings.notifications.whatsapp.create")}
                         </Button>
                         <Button
                           size="sm"
@@ -485,7 +503,7 @@ export function NotificationsSettings() {
                           }}
                           disabled={savingTemplate || isSyncing}
                         >
-                          Cancelar
+                          {t("settings.notifications.whatsapp.cancel")}
                         </Button>
                       </div>
                     </div>
@@ -497,7 +515,7 @@ export function NotificationsSettings() {
                       disabled={savingTemplate || isSyncing}
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      Nueva plantilla Meta
+                      {t("settings.notifications.whatsapp.newMetaTemplate")}
                     </Button>
                   )}
                 </CardContent>
@@ -510,15 +528,17 @@ export function NotificationsSettings() {
         <TabsContent value="email" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Configuración de Email</CardTitle>
+              <CardTitle>{t("settings.notifications.email.title")}</CardTitle>
               <CardDescription>
-                Configura el proveedor de email para envío de notificaciones
+                {t("settings.notifications.email.description")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email-provider">Proveedor</Label>
+                  <Label htmlFor="email-provider">
+                    {t("settings.notifications.email.provider")}
+                  </Label>
                   <Select
                     value={settings.emailConfig.provider}
                     onValueChange={(value: "smtp" | "sendgrid" | "resend") =>
@@ -535,7 +555,9 @@ export function NotificationsSettings() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="smtp">SMTP Personalizado</SelectItem>
+                      <SelectItem value="smtp">
+                        {t("settings.notifications.email.smtpCustom")}
+                      </SelectItem>
                       <SelectItem value="sendgrid">SendGrid</SelectItem>
                       <SelectItem value="resend">Resend</SelectItem>
                     </SelectContent>
@@ -547,7 +569,9 @@ export function NotificationsSettings() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="from-email">Email Remitente</Label>
+                  <Label htmlFor="from-email">
+                    {t("settings.notifications.email.fromEmail")}
+                  </Label>
                   <Input
                     id="from-email"
                     type="email"
@@ -564,7 +588,9 @@ export function NotificationsSettings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="from-name">Nombre Remitente</Label>
+                  <Label htmlFor="from-name">
+                    {t("settings.notifications.email.fromName")}
+                  </Label>
                   <Input
                     id="from-name"
                     value={settings.emailConfig.fromName}
@@ -583,10 +609,14 @@ export function NotificationsSettings() {
 
               {settings.emailConfig.provider === "smtp" && (
                 <div className="space-y-4 border-t pt-4">
-                  <h4 className="font-semibold">Configuración SMTP</h4>
+                  <h4 className="font-semibold">
+                    {t("settings.notifications.email.smtpConfig")}
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="smtp-host">Servidor SMTP</Label>
+                      <Label htmlFor="smtp-host">
+                        {t("settings.notifications.email.smtpServer")}
+                      </Label>
                       <Input
                         id="smtp-host"
                         value={settings.emailConfig.smtpHost || ""}
@@ -602,7 +632,9 @@ export function NotificationsSettings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="smtp-port">Puerto</Label>
+                      <Label htmlFor="smtp-port">
+                        {t("settings.notifications.email.port")}
+                      </Label>
                       <Input
                         id="smtp-port"
                         type="number"
@@ -619,7 +651,9 @@ export function NotificationsSettings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="smtp-user">Usuario</Label>
+                      <Label htmlFor="smtp-user">
+                        {t("settings.notifications.email.user")}
+                      </Label>
                       <Input
                         id="smtp-user"
                         value={settings.emailConfig.smtpUser || ""}
@@ -635,7 +669,9 @@ export function NotificationsSettings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="smtp-password">Contraseña</Label>
+                      <Label htmlFor="smtp-password">
+                        {t("settings.notifications.email.password")}
+                      </Label>
                       <Input
                         id="smtp-password"
                         type="password"
@@ -660,7 +696,9 @@ export function NotificationsSettings() {
                 <div className="space-y-4 border-t pt-4">
                   <h4 className="font-semibold">API Key</h4>
                   <div className="space-y-2">
-                    <Label htmlFor="api-key">Clave API</Label>
+                    <Label htmlFor="api-key">
+                      {t("settings.notifications.email.apiKey")}
+                    </Label>
                     <Input
                       id="api-key"
                       type="password"
@@ -694,10 +732,9 @@ export function NotificationsSettings() {
             <>
               <Card>
                 <CardHeader>
-                  <CardTitle>Recordatorios de Citas</CardTitle>
+                  <CardTitle>{t("settings.notifications.reminders.title")}</CardTitle>
                   <CardDescription>
-                    Configura automáticamente cuándo enviar recordatorios a los
-                    pacientes
+                    {t("settings.notifications.reminders.description")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -707,11 +744,13 @@ export function NotificationsSettings() {
                         <div key={reminder.id} className="border rounded-lg p-4">
                           {editingReminder === reminder.id ? (
                             <div className="space-y-4">
-                              <h5 className="font-semibold">Editar recordatorio</h5>
+                              <h5 className="font-semibold">
+                                {t("settings.notifications.reminders.edit")}
+                              </h5>
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                   <Label htmlFor={`edit-minutes-${reminder.id}`}>
-                                    Minutos antes
+                                    {t("settings.notifications.reminders.minutesBefore")}
                                   </Label>
                                   <Input
                                     id={`edit-minutes-${reminder.id}`}
@@ -728,7 +767,7 @@ export function NotificationsSettings() {
                                 </div>
                                 <div className="space-y-2">
                                   <Label htmlFor={`edit-template-${reminder.id}`}>
-                                    Plantilla
+                                    {t("settings.notifications.reminders.template")}
                                   </Label>
                                   <Select
                                     value={editReminderData.templateId}
@@ -765,7 +804,7 @@ export function NotificationsSettings() {
                                   {savingReminder && (
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                   )}
-                                  Guardar
+                                  {t("settings.notifications.reminders.save")}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -773,7 +812,7 @@ export function NotificationsSettings() {
                                   onClick={handleCancelEditReminder}
                                   disabled={savingReminder}
                                 >
-                                  Cancelar
+                                  {t("settings.notifications.reminders.cancel")}
                                 </Button>
                               </div>
                             </div>
@@ -784,14 +823,14 @@ export function NotificationsSettings() {
                                   <Clock className="w-5 h-5 text-medical-primary" />
                                   <div>
                                     <h4 className="font-semibold">
-                                      Recordatorio{" "}
+                                      {t("settings.notifications.reminders.reminder")}{" "}
                                       {formatMinutesToLabel(
                                         reminder.reminderMinutesBefore
                                       )}{" "}
-                                      antes
+                                      {t("settings.notifications.reminders.before")}
                                     </h4>
                                     <p className="text-sm text-muted-foreground">
-                                      Plantilla:{" "}
+                                      {t("settings.notifications.reminders.templateLabel")}{" "}
                                       <span className="font-medium">
                                         {getTemplateName(reminder.templateId)}
                                       </span>
@@ -845,7 +884,7 @@ export function NotificationsSettings() {
                     </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
-                      No hay recordatorios configurados aún
+                      {t("settings.notifications.reminders.empty")}
                     </div>
                   )}
 
@@ -854,12 +893,12 @@ export function NotificationsSettings() {
                   {isAddingReminder ? (
                     <div className="border rounded-lg p-4 space-y-4 bg-muted/50">
                       <h4 className="font-semibold">
-                        Agregar nuevo recordatorio
+                        {t("settings.notifications.reminders.addNew")}
                       </h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="reminder-minutes">
-                            Minutos antes de la cita
+                            {t("settings.notifications.reminders.minutesBeforeAppointment")}
                           </Label>
                           <Input
                             id="reminder-minutes"
@@ -867,7 +906,7 @@ export function NotificationsSettings() {
                             min="1"
                             value={newReminderMinutes}
                             onChange={(e) => setNewReminderMinutes(e.target.value)}
-                            placeholder="p.ej. 1440 (24 horas)"
+                            placeholder={t("settings.notifications.reminders.minutesPlaceholder")}
                           />
                           <p className="text-xs text-muted-foreground">
                             {formatMinutesToLabel(
@@ -877,14 +916,16 @@ export function NotificationsSettings() {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="reminder-template">
-                            Plantilla Meta
+                            {t("settings.notifications.reminders.metaTemplate")}
                           </Label>
                           <Select
                             value={newReminderTemplate}
                             onValueChange={setNewReminderTemplate}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Seleccionar plantilla" />
+                              <SelectValue
+                                placeholder={t("settings.notifications.reminders.selectTemplate")}
+                              />
                             </SelectTrigger>
                             <SelectContent>
                               {approvedTemplates.length > 0 ? (
@@ -895,7 +936,7 @@ export function NotificationsSettings() {
                                 ))
                               ) : (
                                 <div className="p-2 text-sm text-muted-foreground">
-                                  No hay plantillas aprobadas
+                                  {t("settings.notifications.reminders.noApprovedTemplates")}
                                 </div>
                               )}
                             </SelectContent>
@@ -912,7 +953,7 @@ export function NotificationsSettings() {
                           {savingReminder && (
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           )}
-                          Agregar
+                          {t("settings.notifications.reminders.add")}
                         </Button>
                         <Button
                           size="sm"
@@ -924,7 +965,7 @@ export function NotificationsSettings() {
                           }}
                           disabled={savingReminder}
                         >
-                          Cancelar
+                          {t("settings.notifications.reminders.cancel")}
                         </Button>
                       </div>
                     </div>
@@ -936,7 +977,7 @@ export function NotificationsSettings() {
                       disabled={savingReminder}
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      Agregar recordatorio
+                      {t("settings.notifications.reminders.addReminder")}
                     </Button>
                   )}
                 </CardContent>

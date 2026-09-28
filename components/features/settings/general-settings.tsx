@@ -10,6 +10,7 @@ import { ClinicInfoFields } from "@/components/features/settings/clinic-info-fie
 import { ScheduleEditor } from "@/components/features/settings/schedule-editor";
 import { PolicyFields } from "@/components/features/settings/policy-fields";
 import { OdontogramFields } from "@/components/features/settings/odontogram-fields";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 /** Scrollea suavemente hacia el primer campo inválido tras un submit fallido. */
 function scrollToFirstInvalidField() {
@@ -48,6 +49,7 @@ function GeneralSettingsSkeleton() {
 }
 
 export function GeneralSettings() {
+  const { t } = useI18n();
   const {
     form,
     settings,
@@ -67,8 +69,8 @@ export function GeneralSettings() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Opciones Generales"
-          subtitle="Administra la configuración institucional y operativa de la clínica."
+          title={t("settings.general.pageTitle")}
+          subtitle={t("settings.general.loadingSubtitle")}
         />
         <GeneralSettingsSkeleton />
       </div>
@@ -78,8 +80,8 @@ export function GeneralSettings() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Opciones Generales"
-        subtitle="Administra datos de la clínica, horarios y políticas base para la operación diaria."
+        title={t("settings.general.pageTitle")}
+        subtitle={t("settings.general.pageSubtitle")}
       />
 
       {error && (
@@ -95,7 +97,7 @@ export function GeneralSettings() {
             />
             <div>
               <p className="text-sm font-medium text-ink">
-                No se pudo sincronizar la configuración
+                {t("settings.general.syncErrorTitle")}
               </p>
               <p className="text-sm text-subtle">{error}</p>
             </div>
@@ -108,7 +110,7 @@ export function GeneralSettings() {
             onClick={reload}
           >
             <RotateCw aria-hidden="true" className="h-4 w-4" />
-            Reintentar
+            {t("settings.general.retry")}
           </Button>
         </div>
       )}
@@ -124,10 +126,11 @@ export function GeneralSettings() {
             className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400"
           />
           <div>
-            <p className="text-sm font-medium text-ink">Solo lectura</p>
+            <p className="text-sm font-medium text-ink">
+              {t("settings.general.readOnlyTitle")}
+            </p>
             <p className="text-sm text-subtle">
-              No tienes permiso para editar las opciones generales. Puedes
-              revisar la configuración actual.
+              {t("settings.general.readOnlyDescription")}
             </p>
           </div>
         </div>
@@ -141,8 +144,8 @@ export function GeneralSettings() {
         >
           <section className="bento p-6">
             <SectionHeader
-              title="Datos de la clínica"
-              subtitle="Información institucional visible en documentos internos y operación diaria."
+              title={t("settings.general.clinicSectionTitle")}
+              subtitle={t("settings.general.clinicSectionSubtitle")}
             />
             <ClinicInfoFields
               disabled={disabled}
@@ -152,24 +155,24 @@ export function GeneralSettings() {
 
           <section className="bento p-6">
             <SectionHeader
-              title="Horarios de atención"
-              subtitle="Horario global de la clínica. El horario efectivo de citas se define junto con el horario de cada doctor."
+              title={t("settings.general.scheduleSectionTitle")}
+              subtitle={t("settings.general.scheduleSectionSubtitle")}
             />
             <ScheduleEditor disabled={disabled} />
           </section>
 
           <section className="bento p-6">
             <SectionHeader
-              title="Políticas de operación"
-              subtitle="Parámetros activos para disponibilidad, creación, actualización y reagenda de citas futuras."
+              title={t("settings.general.policySectionTitle")}
+              subtitle={t("settings.general.policySectionSubtitle")}
             />
             <PolicyFields disabled={disabled} />
           </section>
 
           <section className="bento p-6">
             <SectionHeader
-              title="Odontograma"
-              subtitle="Nomenclatura con la que se numeran las piezas dentales en pantalla, historia clínica e impresos."
+              title={t("settings.general.odontogramSectionTitle")}
+              subtitle={t("settings.general.odontogramSectionSubtitle")}
             />
             <OdontogramFields disabled={disabled} />
           </section>
@@ -180,11 +183,13 @@ export function GeneralSettings() {
           {canEdit && (
             <FormActionBar
               isDirty={isDirty}
+              dirtyLabel={t("settings.actions.unsaved")}
+              cleanLabel={t("settings.actions.saved")}
               onSecondary={() => form.reset()}
-              secondaryLabel="Descartar"
+              secondaryLabel={t("settings.actions.discard")}
               secondaryIcon={RotateCw}
               disableSecondaryWhenClean
-              submitLabel="Guardar cambios"
+              submitLabel={t("settings.actions.saveChanges")}
               disableSubmitWhenClean
               loading={saving}
             />

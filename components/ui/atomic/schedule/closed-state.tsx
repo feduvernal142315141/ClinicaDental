@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils/utils";
 import { CLINIC_DAY_CLOSED_MESSAGE } from "@/lib/utils/schedule-bounds";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 export type ClosedStateVariant = "off" | "clinic-closed";
 
@@ -22,9 +23,11 @@ export interface ClosedStateProps {
  *   informativo, no rojo de error.
  */
 export function ClosedState({ variant, message }: ClosedStateProps) {
+  const { t } = useI18n();
   const isClinic = variant === "clinic-closed";
   const text =
-    message ?? (isClinic ? CLINIC_DAY_CLOSED_MESSAGE : "Este día está cerrado.");
+    message ??
+    (isClinic ? CLINIC_DAY_CLOSED_MESSAGE : t("settings.schedule.dayClosed"));
 
   return (
     <div

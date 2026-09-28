@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo} from "react";
 import { useFormContext, useWatch } from "react-hook-form";
-import { Calendar, CalendarClock, CalendarDays, Repeat, Settings2 } from "lucide-react";
+import { Calendar, CalendarDays, Repeat, Settings2 } from "lucide-react";
 
 import {
   DayToggle,
@@ -10,14 +10,30 @@ import {
   TimeRangeField,
   type ScheduleDayStatus,
 } from "@/components/ui/atomic/schedule";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import type { GeneralSettingsFormValues } from "@/lib/hooks/settings";
 import type { SaturdayRule } from "@/lib/entity/settings";
 import { cn } from "@/lib/utils/utils";
 
 const PATTERNS = [
-  { value: "every", label: "Todos", desc: "Abre todos los sábados", icon: CalendarDays },
-  { value: "alternate", label: "Alternos", desc: "Uno sí, uno no", icon: Repeat },
-  { value: "custom", label: "Personalizado", desc: "Secuencia libre", icon: Settings2 },
+  {
+    value: "every",
+    labelKey: "settings.schedule.saturday.every",
+    descKey: "settings.schedule.saturday.everyDescription",
+    icon: CalendarDays,
+  },
+  {
+    value: "alternate",
+    labelKey: "settings.schedule.saturday.alternate",
+    descKey: "settings.schedule.saturday.alternateDescription",
+    icon: Repeat,
+  },
+  {
+    value: "custom",
+    labelKey: "settings.schedule.saturday.custom",
+    descKey: "settings.schedule.saturday.customDescription",
+    icon: Settings2,
+  },
 ] as const;
 
 const SHIFT_COLORS: Record<string, string> = {
@@ -35,6 +51,7 @@ interface SaturdayConfigPanelProps {
 
 export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelProps) {
   const { control, setValue, getValues } = useFormContext<GeneralSettingsFormValues>();
+  const { language, t } = useI18n();
   const saturday = useWatch({ control, name: "schedule.saturday" });
   const enabled = !!saturday?.enabled;
 
@@ -180,7 +197,7 @@ export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelPro
       status={cardStatus}
       toggleSlot={
         <DayToggle
-          label="Sábado"
+          label={t("settings.schedule.days.saturday")}
           status={enabled ? "active" : "clinic-closed"}
           checked={enabled}
           onCheckedChange={setEnabled}
@@ -192,9 +209,11 @@ export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelPro
         <div className="space-y-4">
           {/* Pattern selector */}
           <div className="space-y-1.5">
-            <div className="text-xs font-medium text-subtle">Patrón de sábados</div>
+            <div className="text-xs font-medium text-subtle">
+              {t("settings.schedule.saturdayPattern")}
+            </div>
             <div className="flex gap-2">
-              {PATTERNS.map(({ value, label, desc, icon: Icon }) => (
+              {PATTERNS.map(({ value, labelKey, descKey, icon: Icon }) => (
                 <button
                   key={value}
                   type="button"
@@ -209,8 +228,10 @@ export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelPro
                   )}
                 >
                   <Icon className="h-4 w-4" />
-                  <span className="text-xs font-medium">{label}</span>
-                  <span className="text-[10px] leading-tight opacity-70">{desc}</span>
+                  <span className="text-xs font-medium">{t(labelKey)}</span>
+                  <span className="text-[10px] leading-tight opacity-70">
+                    {t(descKey)}
+                  </span>
                 </button>
               ))}
             </div>
@@ -225,22 +246,22 @@ export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelPro
                     "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase",
                     SHIFT_COLORS[key] ?? SHIFT_COLORS.A,
                   )}>
-                    Turno {key}
+                    {t("settings.schedule.shift").replace("{shift}", key)}
                   </div>
                 )}
                 <TimeRangeField
-                  heading={hasMultipleShifts ? undefined : "Horario de Consulta"}
-                  startLabel="Desde"
-                  endLabel="Hasta"
+                  heading={hasMultipleShifts ? undefined : t("settings.schedule.consultationHours")}
+                  startLabel={t("settings.schedule.from")}
+                  endLabel={t("settings.schedule.to")}
                   start={{
                     value: shift.startTime,
                     onChange: (v) => updateShift(key, "startTime", v),
-                    ariaLabel: `Sábado turno ${key}: apertura`,
+                    ariaLabel: t("settings.schedule.saturdayShiftOpen").replace("{shift}", key),
                   }}
                   end={{
                     value: shift.endTime,
                     onChange: (v) => updateShift(key, "endTime", v),
-                    ariaLabel: `Sábado turno ${key}: cierre`,
+                    ariaLabel: t("settings.schedule.saturdayShiftClose").replace("{shift}", key),
                   }}
                   disabled={disabled}
                 />
@@ -252,9 +273,11 @@ export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelPro
           {pattern !== "every" && (
             <div className="space-y-1.5">
               <div className="text-xs font-medium text-subtle">
-                Secuencia del ciclo
+                {t("settings.schedule.cycleSequence")}
                 {pattern === "custom" && (
-                  <span className="ml-1 font-normal opacity-70">(click para cambiar)</span>
+                  <span className="ml-1 font-normal opacity-70">
+                    {t("settings.schedule.clickToChange")}
+                  </span>
                 )}
               </div>
               <div className="flex items-center gap-1.5">
@@ -270,7 +293,11 @@ export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelPro
                       pattern === "custom" && !disabled && "cursor-pointer hover:scale-110",
                       (pattern !== "custom" || disabled) && "cursor-default",
                     )}
-                    title={slot === "off" ? "Cerrado" : `Turno ${slot}`}
+                    title={
+                      slot === "off"
+                        ? t("settings.schedule.closed")
+                        : t("settings.schedule.shift").replace("{shift}", slot)
+                    }
                   >
                     {slot === "off" ? "—" : slot}
                   </button>
@@ -281,7 +308,7 @@ export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelPro
                       type="button"
                       onClick={addSequenceSlot}
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-dashed border-hairline text-subtle hover:border-brand hover:text-brand transition-colors"
-                      title="Agregar semana"
+                      title={t("settings.schedule.addWeek")}
                     >
                       +
                     </button>
@@ -290,7 +317,7 @@ export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelPro
                         type="button"
                         onClick={removeSequenceSlot}
                         className="flex h-8 w-8 items-center justify-center rounded-lg border border-dashed border-hairline text-subtle hover:border-red-400 hover:text-red-400 transition-colors"
-                        title="Quitar última semana"
+                        title={t("settings.schedule.removeLastWeek")}
                       >
                         −
                       </button>
@@ -305,8 +332,10 @@ export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelPro
           {pattern !== "every" && (
             <div className="space-y-1">
               <label className="text-xs font-medium text-subtle">
-                Inicio del ciclo
-                <span className="ml-1 font-normal opacity-70">(primer sábado de referencia)</span>
+                {t("settings.schedule.cycleStart")}
+                <span className="ml-1 font-normal opacity-70">
+                  {t("settings.schedule.firstReferenceSaturday")}
+                </span>
               </label>
               <input
                 type="date"
@@ -327,13 +356,13 @@ export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelPro
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 text-xs font-medium text-subtle">
                 <Calendar className="h-3.5 w-3.5" />
-                Próximos sábados
+                {t("settings.schedule.nextSaturdays")}
               </div>
               <div className="flex gap-1.5">
                 {preview.map((item) => {
                   const d = new Date(item.date + "T12:00:00");
                   const dayNum = d.getDate();
-                  const month = d.toLocaleDateString("es", { month: "short" });
+                  const month = d.toLocaleDateString(language, { month: "short" });
                   return (
                     <div
                       key={item.date}
@@ -358,7 +387,7 @@ export function SaturdayConfigPanel({ disabled = false }: SaturdayConfigPanelPro
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-amber-400/40 bg-amber-500/[0.04] px-4 py-3 text-center text-xs text-amber-600 dark:text-amber-400">
-          Activa los sábados y configura el patrón de apertura.
+          {t("settings.schedule.enableSaturdays")}
         </div>
       )}
     </ScheduleDayCard>

@@ -50,6 +50,7 @@ import type { SelectOption } from "@/components/ui/controls/select";
 import type { ClinicScheduleDay } from "@/lib/entity/settings";
 import type { DoctorFormValues } from "@/lib/hooks/doctors/doctor-form.schema";
 import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 interface DoctorFormProps {
   doctorId?: string;
@@ -65,17 +66,6 @@ const Req = () => <span className="text-rose-500">*</span>;
 /** Horario de respaldo cuando la clínica no define horas válidas ese día. */
 const FALLBACK_START = "09:00";
 const FALLBACK_END = "18:00";
-
-/** Inicial de cada día para el resumen (convención ES: miércoles = X). */
-const DAY_SHORT: Record<string, string> = {
-  monday: "L",
-  tuesday: "M",
-  wednesday: "X",
-  thursday: "J",
-  friday: "V",
-  saturday: "S",
-  sunday: "D",
-};
 
 /**
  * Una fila de día del editor de horarios. El horario del doctor queda
@@ -105,6 +95,7 @@ function ScheduleDayRow({
   onToggle: (next: boolean) => void;
 }) {
   const { control } = form;
+  const { t } = useI18n();
 
   const enabledField = useController({
     control,
@@ -180,9 +171,9 @@ function ScheduleDayRow({
               y Descanso Intermedio, cada uno con labels flotantes. */}
           <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
             <TimeRangeField
-              heading="Horario de Consulta"
-              startLabel="Desde"
-              endLabel="Hasta"
+              heading={t("settings.schedule.consultationHours")}
+              startLabel={t("settings.schedule.from")}
+              endLabel={t("settings.schedule.to")}
               start={{
                 value: startField.field.value,
                 onChange: startField.field.onChange,
@@ -204,10 +195,10 @@ function ScheduleDayRow({
               disabled={disabled}
             />
             <TimeRangeField
-              heading="Descanso Intermedio"
+              heading={t("settings.schedule.intermediateBreak")}
               icon={<Coffee className="h-3.5 w-3.5 shrink-0" />}
-              startLabel="Inicio"
-              endLabel="Fin"
+              startLabel={t("settings.schedule.start")}
+              endLabel={t("settings.schedule.end")}
               start={{
                 value: breakStartField.field.value,
                 onChange: breakStartField.field.onChange,
@@ -273,6 +264,10 @@ export function DoctorForm({
   const { errors, isDirty } = form.formState;
   const { roles, loading: rolesLoading, fetchRoles } = useRoles();
   const [tab, setTab] = useState("datos");
+  const dayLabel = (key: string) =>
+    t(`settings.schedule.days.${key}` as TranslationKey);
+  const dayShort = (key: string) =>
+    t(`settings.schedule.daysShort.${key}` as TranslationKey);
 
   useEffect(() => {
     fetchRoles({ page: 0, pageSize: 0 });
@@ -344,8 +339,8 @@ export function DoctorForm({
     const clinicClosedForDay = clinicSchedule?.[d.key]?.enabled === false;
     const chipDisabled = formDisabled || (clinicClosedForDay && !active);
     return {
-      short: DAY_SHORT[d.key],
-      label: d.label,
+      short: dayShort(d.key),
+      label: dayLabel(d.key),
       active,
       disabled: chipDisabled,
       onToggle: chipDisabled ? undefined : () => setDayEnabled(d.key, !active),
@@ -739,7 +734,7 @@ export function DoctorForm({
                     key={day.key}
                     form={form}
                     dayKey={day.key}
-                    label={day.label}
+                    label={dayLabel(day.key)}
                     disabled={formDisabled}
                     clinicDay={clinicSchedule?.[day.key]}
                     onToggle={(next) => setDayEnabled(day.key, next)}
