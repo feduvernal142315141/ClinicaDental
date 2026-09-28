@@ -4,6 +4,8 @@ export interface ClinicTemplate {
   name: string;
   body?: string;
   type?: string;
+  /** Meta template category: "MARKETING" | "UTILITY" | "AUTHENTICATION" */
+  category?: string;
   provider?: "META" | "TWILIO";
   metaTemplateName?: string;
   metaTemplateStatus?: "PENDING" | "APPROVED" | "REJECTED";
