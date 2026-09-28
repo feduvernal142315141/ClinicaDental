@@ -129,7 +129,9 @@ export function GrowthSegmentBuilder({ form }: GrowthSegmentBuilderProps) {
                           onChange={(v) => {
                             f.onChange(v);
                             form.setValue(`conditions.${index}.operator`, "");
-                            form.setValue(`conditions.${index}.value`, "");
+                            const meta = getFieldMeta(v);
+                            const isNumeric = meta?.valueType === "number" || meta?.valueType === "decimal";
+                            form.setValue(`conditions.${index}.value`, isNumeric ? 0 : "");
                           }}
                           onBlur={f.onBlur}
                           options={fieldOptions}
@@ -234,9 +236,12 @@ export function GrowthSegmentBuilder({ form }: GrowthSegmentBuilderProps) {
                             <Input
                               type="number"
                               value={String(f.value)}
-                              onChange={(e) => f.onChange(Number(e.target.value) || "")}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                f.onChange(v === "" ? "" : Number(v));
+                              }}
                               onBlur={f.onBlur}
-                              placeholder="Valor"
+                              placeholder="0"
                               step={fieldMeta?.valueType === "decimal" ? "0.01" : "1"}
                             />
                           ) : (
