@@ -80,6 +80,8 @@ export function NotificationsSettings() {
     name: "",
     body: "",
   });
+  const [templateVariables, setTemplateVariables] = useState<Array<{ id: string; placeholder: string; sampleContent: string }>>([]);
+  const [placeholderError, setPlaceholderError] = useState("");
 
   // Estado para crear/editar recordatorio
   const [isAddingReminder, setIsAddingReminder] = useState(false);
@@ -134,7 +136,12 @@ export function NotificationsSettings() {
         name: newTemplate.name,
         body: newTemplate.body,
         type: "APPOINTMENT_REMINDER",
-        variables: [],
+        variables: templateVariables.map((v) => ({
+          id: v.id,
+          placeholder: v.placeholder,
+          sampleContent: v.sampleContent,
+          type: "text",
+        })),
       });
 
       if (result) {
@@ -143,6 +150,8 @@ export function NotificationsSettings() {
         setClinicTemplates(updated);
         setIsCreatingTemplate(false);
         setNewTemplate({ name: "", body: "" });
+        setTemplateVariables([]);
+        setPlaceholderError("");
         notify.success(t("settings.notifications.templateCreated"), {
           description: t("settings.notifications.templateCreatedDescription"),
         });
@@ -311,6 +320,67 @@ export function NotificationsSettings() {
     (t) => t.metaTemplateStatus === "APPROVED" && t.provider === "META"
   );
 
+  // --- Variable handling for template creation ---
+  const handleBodyChange = (text: string) => {
+    setNewTemplate((prev) => ({ ...prev, body: text }));
+    // Extract {{N}} placeholders
+    const regex = /\{\{(\d+)}}/g;
+    const found = new Map<string, boolean>();
+    let m;
+    while ((m = regex.exec(text)) !== null) {
+      found.set(m[1], true);
+    }
+    // Check for stray braces
+    const cleaned = text.replace(/\{\{\d+}}/g, "");
+    if (cleaned.includes("{") || cleaned.includes("}")) {
+      setPlaceholderError("Llaves malformadas. Use el formato {{1}}, {{2}}, etc.");
+      return;
+    }
+    const ids = Array.from(found.keys()).map(Number).sort((a, b) => a - b);
+    for (let i = 0; i < ids.length; i++) {
+      if (ids[i] !== i + 1) {
+        setPlaceholderError(`Las variables deben ser consecutivas. Se esperaba {{${i + 1}}}.`);
+        return;
+      }
+    }
+    setPlaceholderError("");
+    setTemplateVariables((prev) =>
+      ids.map((id) => {
+        const existing = prev.find((v) => v.id === String(id));
+        return {
+          id: String(id),
+          placeholder: `{{${id}}}`,
+          sampleContent: existing?.sampleContent ?? "",
+        };
+      })
+    );
+  };
+
+  const addTemplateVariable = () => {
+    const nextId = templateVariables.length + 1;
+    setNewTemplate((prev) => ({
+      ...prev,
+      body: prev.body + `{{${nextId}}}`,
+    }));
+    setTemplateVariables((prev) => [
+      ...prev,
+      { id: String(nextId), placeholder: `{{${nextId}}}`, sampleContent: "" },
+    ]);
+  };
+
+  const previewBody = (text: string) => {
+    let result = text;
+    templateVariables.forEach((v) => {
+      if (v.sampleContent) {
+        result = result.replace(
+          new RegExp(`\\{\\{${v.id}\\}\\}`, "g"),
+          v.sampleContent
+        );
+      }
+    });
+    return result;
+  };
+
   const formatMinutesToLabel = (minutes: number): string => {
     if (minutes < 60) return `${minutes}m`;
     if (minutes === 60) return "1h";
@@ -447,46 +517,112 @@ export function NotificationsSettings() {
                       <h4 className="font-semibold">
                         {t("settings.notifications.whatsapp.newTemplate")}
                       </h4>
-                      <div className="space-y-3">
-                        <div>
-                          <Label htmlFor="template-name">
-                            {t("settings.notifications.whatsapp.name")}
-                          </Label>
-                          <Input
-                            id="template-name"
-                            value={newTemplate.name}
-                            onChange={(e) =>
-                              setNewTemplate({
-                                ...newTemplate,
-                                name: e.target.value,
-                              })
-                            }
-                            placeholder={t("settings.notifications.whatsapp.namePlaceholder")}
-                          />
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Left: Form */}
+                        <div className="space-y-3">
+                          <div>
+                            <Label htmlFor="template-name">
+                              {t("settings.notifications.whatsapp.name")}
+                            </Label>
+                            <Input
+                              id="template-name"
+                              value={newTemplate.name}
+                              onChange={(e) =>
+                                setNewTemplate({
+                                  ...newTemplate,
+                                  name: e.target.value,
+                                })
+                              }
+                              placeholder={t("settings.notifications.whatsapp.namePlaceholder")}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="template-body">
+                              {t("settings.notifications.whatsapp.content")}
+                            </Label>
+                            <TextArea
+                              id="template-body"
+                              value={newTemplate.body}
+                              onChange={(e) => handleBodyChange(e.target.value)}
+                              placeholder={t("settings.notifications.whatsapp.contentPlaceholder")}
+                              rows={4}
+                            />
+                            {placeholderError && (
+                              <p className="text-sm text-destructive mt-1 flex items-center gap-1">
+                                <span>⚠️</span> {placeholderError}
+                              </p>
+                            )}
+                            <div className="flex justify-end text-xs text-muted-foreground mt-1">
+                              {newTemplate.body.length}/1600
+                            </div>
+                          </div>
+
+                          {/* Variables */}
+                          {templateVariables.map((variable) => (
+                            <div key={variable.id} className="space-y-1">
+                              <Label htmlFor={`var-${variable.id}`} className="text-xs">
+                                Muestra para variable {variable.placeholder}
+                              </Label>
+                              <Input
+                                id={`var-${variable.id}`}
+                                placeholder="Ej: Juan Pérez"
+                                value={variable.sampleContent}
+                                onChange={(e) =>
+                                  setTemplateVariables((prev) =>
+                                    prev.map((v) =>
+                                      v.id === variable.id
+                                        ? { ...v, sampleContent: e.target.value }
+                                        : v
+                                    )
+                                  )
+                                }
+                              />
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={addTemplateVariable}
+                            className="text-brand hover:text-brand-strong"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Agregar variable
+                          </Button>
                         </div>
-                        <div>
-                          <Label htmlFor="template-body">
-                            {t("settings.notifications.whatsapp.content")}
-                          </Label>
-                          <TextArea
-                            id="template-body"
-                            value={newTemplate.body}
-                            onChange={(e) =>
-                              setNewTemplate({
-                                ...newTemplate,
-                                body: e.target.value,
-                              })
-                            }
-                            placeholder={t("settings.notifications.whatsapp.contentPlaceholder")}
-                            rows={4}
-                          />
+
+                        {/* Right: Preview */}
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-center text-muted-foreground">
+                            Vista previa
+                          </div>
+                          <div className="mx-auto max-w-[280px] rounded-2xl border-[10px] border-gray-800 bg-gray-800 shadow-xl">
+                            <div className="rounded-xl bg-white overflow-hidden">
+                              <div className="bg-gradient-to-b from-gray-700 to-gray-800 px-4 py-2.5 flex items-center justify-center gap-2">
+                                <div className="bg-white rounded-full p-1">
+                                  <MessageSquare className="h-3 w-3 text-gray-800" />
+                                </div>
+                                <span className="text-xs font-medium text-white">WhatsApp</span>
+                              </div>
+                              <div className="p-4 bg-gradient-to-b from-gray-50 to-white min-h-[200px]">
+                                <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
+                                  <p className="text-xs whitespace-pre-wrap leading-relaxed">
+                                    {newTemplate.body
+                                      ? previewBody(newTemplate.body)
+                                      : <span className="text-muted-foreground italic">El mensaje aparecerá aquí...</span>}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+
+                      <div className="flex gap-2 pt-2">
                         <Button
                           size="sm"
                           onClick={handleCreateTemplate}
-                          disabled={savingTemplate || isSyncing}
+                          disabled={savingTemplate || isSyncing || !!placeholderError}
                           className="bg-medical-primary hover:bg-medical-primary/90"
                         >
                           {savingTemplate && (
@@ -500,6 +636,8 @@ export function NotificationsSettings() {
                           onClick={() => {
                             setIsCreatingTemplate(false);
                             setNewTemplate({ name: "", body: "" });
+                            setTemplateVariables([]);
+                            setPlaceholderError("");
                           }}
                           disabled={savingTemplate || isSyncing}
                         >
