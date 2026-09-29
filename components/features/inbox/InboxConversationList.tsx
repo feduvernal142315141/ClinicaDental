@@ -17,6 +17,7 @@ import { INBOX_FILTER_PRESETS } from "@/lib/entity/inbox";
 export interface InboxConversationListProps {
   conversations: InboxConversation[];
   loading: boolean;
+  loadingMore?: boolean;
   selectedId: string | null;
   onSelect: (id: string) => void;
   query: string;
@@ -56,6 +57,7 @@ const EMPTY_DESCRIPTIONS: Partial<Record<InboxFilterPreset, string>> = {
 export function InboxConversationList({
   conversations,
   loading,
+  loadingMore = false,
   selectedId,
   onSelect,
   query,
@@ -67,11 +69,18 @@ export function InboxConversationList({
   onLoadMore,
   className,
 }: InboxConversationListProps) {
+  const [localSearch, setLocalSearch] = React.useState(query);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync from parent when query changes externally (e.g. filter reset)
+  React.useEffect(() => {
+    setLocalSearch(query);
+  }, [query]);
 
   const handleSearch = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
+      setLocalSearch(value);
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         onQueryChange(value);
@@ -87,10 +96,10 @@ export function InboxConversationList({
   }, []);
 
   const hasMore =
-    pagination && pagination.page * pagination.pageSize < pagination.total;
+    pagination && (pagination.page + 1) * pagination.pageSize < pagination.total;
 
   return (
-    <div className={cn("flex h-full flex-col", className)}>
+    <div className={cn("flex h-full flex-col bg-surface", className)}>
       {/* Header */}
       <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
         <div className="flex items-center gap-2">
@@ -108,7 +117,7 @@ export function InboxConversationList({
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-subtle" />
           <Input
-            defaultValue={query}
+            value={localSearch}
             onChange={handleSearch}
             placeholder="Buscar conversación..."
             className="pl-9 text-sm"
@@ -161,15 +170,21 @@ export function InboxConversationList({
 
             {hasMore && onLoadMore && (
               <div className="px-4 py-3">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  block
-                  onClick={onLoadMore}
-                >
-                  Cargar más
-                </Button>
+                {loadingMore ? (
+                  <div className="flex justify-center">
+                    <LoadingSpinner size="sm" message="" />
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    block
+                    onClick={onLoadMore}
+                  >
+                    Cargar más
+                  </Button>
+                )}
               </div>
             )}
           </div>

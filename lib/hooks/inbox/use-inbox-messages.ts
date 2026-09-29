@@ -17,17 +17,16 @@ interface UseInboxMessagesResult {
 const PAGE_SIZE = 50;
 
 /**
- * Stable chronological sort: by createdAt ascending, then by id for tie-breaking.
- * This guarantees the message list is ALWAYS in correct chronological order
- * regardless of how pages are merged.
+ * Reverse the backend's newest-first array to oldest-first (chronological).
+ *
+ * We TRUST the backend's ordering — it uses the DB insertion sequence which
+ * reflects the real conversation flow (interleaved inbound/outbound).
+ * Sorting by `createdAt` would break the interleaving because WhatsApp
+ * webhook timestamps and Dalia response timestamps can differ from the
+ * logical conversation order.
  */
-function sortChronological(msgs: InboxMessage[]): InboxMessage[] {
-  return [...msgs].sort((a, b) => {
-    const ta = new Date(a.createdAt).getTime();
-    const tb = new Date(b.createdAt).getTime();
-    if (ta !== tb) return ta - tb;
-    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-  });
+function toChronological(msgs: InboxMessage[]): InboxMessage[] {
+  return [...msgs].reverse();
 }
 
 export function useInboxMessages(
@@ -48,14 +47,14 @@ export function useInboxMessages(
     }
   }, [conversationId]);
 
-  /** Initial load: fetch the latest page and sort chronologically. */
+  /** Initial load: fetch the latest page, reverse to chronological. */
   const fetchData = useCallback(async () => {
     if (!conversationId) return;
     setLoading(true);
     try {
       const result = await getInboxMessages(conversationId, { limit: PAGE_SIZE });
-      // Backend returns newest-first — sort to chronological
-      setMessages(sortChronological(result));
+      // Backend returns newest-first — reverse to chronological
+      setMessages(toChronological(result));
       setHasMore(result.length >= PAGE_SIZE);
     } catch {
       // Initial load errors visible via empty state
@@ -71,6 +70,7 @@ export function useInboxMessages(
   /**
    * Load older messages using keyset pagination.
    * Uses the oldest current message's createdAt / id as the cursor.
+   * Prepends older messages at the start, preserving existing order.
    */
   const loadOlderMessages = useCallback(async () => {
     if (!conversationId || loadingOlder || !hasMore || messages.length === 0) return;
@@ -84,11 +84,10 @@ export function useInboxMessages(
         limit: PAGE_SIZE,
       });
       setMessages((prev) => {
-        // Merge older + existing, deduplicate by id, sort chronologically
-        const merged = new Map<string, InboxMessage>();
-        for (const m of result) merged.set(m.id, m);
-        for (const m of prev) merged.set(m.id, m);
-        return sortChronological(Array.from(merged.values()));
+        const existingIds = new Set(prev.map((m) => m.id));
+        const olderMsgs = result.filter((m) => !existingIds.has(m.id));
+        // Prepend older messages (reversed to chronological) before existing
+        return [...toChronological(olderMsgs), ...prev];
       });
       setHasMore(result.length >= PAGE_SIZE);
     } catch {
@@ -106,9 +105,11 @@ export function useInboxMessages(
   }, []);
 
   /**
-   * Silent refresh — fetch the latest page, merge with existing,
-   * update delivery statuses, and ALWAYS sort chronologically.
-   * This ensures new messages from ANY sender appear in the right position.
+   * Silent refresh — fetch the latest page, update delivery statuses for
+   * existing messages, and append truly new messages at the end.
+   *
+   * Preserves the existing order (no re-sort) so interleaved conversations
+   * stay interleaved. New messages are appended in the backend's sequence.
    */
   const refresh = useCallback(async () => {
     if (!conversationId) return;
@@ -118,17 +119,26 @@ export function useInboxMessages(
 
       setMessages((prev) => {
         if (prev.length === 0) {
-          // First load via refresh (e.g. after conversation switch)
-          return sortChronological(result);
+          return toChronological(result);
         }
 
-        // Merge: use Map to deduplicate and update existing messages
-        const merged = new Map<string, InboxMessage>();
-        for (const m of prev) merged.set(m.id, m);
-        // Overwrite with fresh data (updates delivery statuses) + add new
-        for (const m of result) merged.set(m.id, m);
+        // Build a lookup of fresh data (for delivery status updates)
+        const freshMap = new Map<string, InboxMessage>();
+        for (const m of result) freshMap.set(m.id, m);
 
-        return sortChronological(Array.from(merged.values()));
+        // Update existing messages (delivery status, etc.) — preserve order
+        const updated = prev.map((m) => freshMap.get(m.id) ?? m);
+
+        // Find truly new messages not in the current list
+        const existingIds = new Set(prev.map((m) => m.id));
+        const newMsgs = result.filter((m) => !existingIds.has(m.id));
+
+        if (newMsgs.length === 0) return updated;
+
+        // Append new messages in backend sequence (reversed = chronological)
+        // Remove optimistic temp messages that now have a real counterpart
+        const withoutTemp = updated.filter((m) => !m.id.startsWith("temp-"));
+        return [...withoutTemp, ...toChronological(newMsgs)];
       });
     } catch {
       // Silent — polling errors should not disrupt the UI

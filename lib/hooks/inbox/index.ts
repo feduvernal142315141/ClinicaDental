@@ -12,3 +12,5 @@ export {
   useLinkPatient,
 } from "./use-inbox-actions";
 export { useInboxPolling } from "./use-inbox-polling";
+export { useInboxSSE } from "./use-inbox-sse";
+export { useInboxRealtime } from "./use-inbox-realtime";

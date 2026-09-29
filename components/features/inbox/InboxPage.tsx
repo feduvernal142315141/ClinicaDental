@@ -13,6 +13,7 @@ import {
 } from "@/components/ui";
 import type {
   InboxFilterPreset,
+  InboxMessage,
 } from "@/lib/entity/inbox";
 import { INBOX_FILTER_PRESETS } from "@/lib/entity/inbox";
 
@@ -37,7 +38,7 @@ import {
   useSendMessage,
   useMarkRead,
   useLinkPatient,
-  useInboxPolling,
+  useInboxRealtime,
 } from "@/lib/hooks/inbox";
 
 type MobileView = "list" | "chat";
@@ -83,12 +84,13 @@ export function InboxPage() {
   const markRead = useMarkRead();
   const linkPatient = useLinkPatient(afterMutation);
 
-  // ── Polling ───────────────────────────────────────────────────────────────
-  useInboxPolling({
+  // ── Real-time: SSE (preferred) → adaptive polling (fallback) ────────────
+  useInboxRealtime({
     conversationListRefresh: convList.refresh,
     activeConversationRefresh: selectedId ? convDetail.refresh : undefined,
     messagesRefresh: selectedId ? msgs.refresh : undefined,
     summaryRefresh: summary.refresh,
+    activeConversationId: selectedId ?? undefined,
   });
 
   // ── Auto-mark read ────────────────────────────────────────────────────────
@@ -121,8 +123,9 @@ export function InboxPage() {
   const handleFilterChange = useCallback(
     (preset: InboxFilterPreset) => {
       setActiveFilter(preset);
+      setSelectedId(null);
       const def = INBOX_FILTER_PRESETS.find((p) => p.value === preset);
-      convList.setQuery({ ...def?.params, page: 0, pageSize: 20, search: searchTerm || undefined });
+      convList.setQuery({ ...def?.params, pageSize: 20, search: searchTerm || undefined });
     },
     [convList, searchTerm],
   );
@@ -130,8 +133,9 @@ export function InboxPage() {
   const handleSearchChange = useCallback(
     (term: string) => {
       setSearchTerm(term);
+      setSelectedId(null);
       const def = INBOX_FILTER_PRESETS.find((p) => p.value === activeFilter);
-      convList.setQuery({ ...def?.params, search: term || undefined, page: 0, pageSize: 20 });
+      convList.setQuery({ ...def?.params, search: term || undefined, pageSize: 20 });
     },
     [convList, activeFilter],
   );
@@ -139,9 +143,25 @@ export function InboxPage() {
   const handleSend = useCallback(
     async (text: string) => {
       if (!selectedId) return;
+      // Optimistic: show message immediately with PENDING status
+      const tempMsg: InboxMessage = {
+        id: `temp-${Date.now()}`,
+        conversationId: selectedId,
+        direction: "OUTBOUND",
+        senderType: "STAFF",
+        senderUserId: currentUserId,
+        role: null,
+        content: text,
+        wamid: null,
+        status: "PENDING",
+        statusUpdatedAt: null,
+        messageType: "text",
+        createdAt: new Date().toISOString(),
+      };
+      msgs.addLocalMessage(tempMsg);
       await sendMsg.execute(selectedId, text);
     },
-    [selectedId, sendMsg],
+    [selectedId, currentUserId, sendMsg, msgs],
   );
 
   const handleTakeover = useCallback(() => {
@@ -161,7 +181,7 @@ export function InboxPage() {
   }, [selectedId, reopenAction]);
 
   const handleLoadMore = useCallback(() => {
-    convList.setQuery({ ...convList.query, page: (convList.query.page ?? 0) + 1 });
+    convList.loadNextPage();
   }, [convList]);
 
   // ── Composer state ────────────────────────────────────────────────────────
@@ -197,6 +217,7 @@ export function InboxPage() {
     <InboxConversationList
       conversations={convList.conversations}
       loading={convList.loading}
+      loadingMore={convList.loadingMore}
       selectedId={selectedId}
       onSelect={handleSelect}
       query={searchTerm}
@@ -241,10 +262,17 @@ export function InboxPage() {
       />
     </div>
   ) : (
-    <div className="flex flex-1 items-center justify-center text-subtle">
-      <div className="text-center space-y-2">
-        <p className="text-lg font-medium">Bandeja de WhatsApp</p>
-        <p className="text-sm">Selecciona una conversación para comenzar</p>
+    <div className="flex flex-1 items-center justify-center bg-[#f0f2f5] dark:bg-[#0b141a]">
+      <div className="text-center space-y-3">
+        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-brand/10">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-7 text-brand">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </div>
+        <div className="space-y-1">
+          <p className="text-base font-semibold text-ink">Bandeja de WhatsApp</p>
+          <p className="text-sm text-subtle">Selecciona una conversación para comenzar</p>
+        </div>
       </div>
     </div>
   );

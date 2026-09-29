@@ -16,11 +16,11 @@ function DeliveryIcon({ status }: { status: MessageDeliveryStatus }) {
   const base = "size-3.5 shrink-0";
   switch (status) {
     case "PENDING":
-      return <Clock className={cn(base, "text-subtle/60")} />;
+      return <Clock className={cn(base, "text-subtle/50")} />;
     case "SENT":
-      return <Check className={cn(base, "text-subtle/60")} />;
+      return <Check className={cn(base, "text-subtle/50")} />;
     case "DELIVERED":
-      return <CheckCheck className={cn(base, "text-subtle/60")} />;
+      return <CheckCheck className={cn(base, "text-subtle/50")} />;
     case "READ":
       return <CheckCheck className={cn(base, "text-sky-500")} />;
     case "FAILED":
@@ -52,12 +52,13 @@ export interface InboxMessageBubbleProps {
 
 /**
  * Chat bubble — aligned by senderType/direction:
- * - CONTACT (INBOUND)      → left,  neutral bg
- * - DALIA   (OUTBOUND)     → right, tinted bg
- * - STAFF   (OUTBOUND)     → right, brand-tinted bg
- * - SYSTEM                 → centered, no bubble
+ * - CONTACT (INBOUND)      → left,  white surface
+ * - DALIA   (OUTBOUND)     → right, soft green
+ * - STAFF   (OUTBOUND)     → right, soft brand blue
+ * - SYSTEM                 → centered pill, no bubble
  *
- * WhatsApp-style tail on first message of a group.
+ * WhatsApp-style: pointed corner on first message of a group,
+ * inline timestamp floated at bottom-right of the text flow.
  */
 export function InboxMessageBubble({
   message,
@@ -67,17 +68,17 @@ export function InboxMessageBubble({
 }: InboxMessageBubbleProps) {
   const { senderType, direction, content, createdAt, status } = message;
 
-  // ── SYSTEM messages — event-style, no bubble ───────────────────────
+  // ── SYSTEM messages — event pill ───────────────────────────────────
   if (senderType === "SYSTEM") {
     return (
       <div
         className={cn(
           "flex justify-center",
-          isConsecutive ? "mt-1" : "mt-4",
+          isConsecutive ? "mt-1.5" : "mt-4",
           className,
         )}
       >
-        <span className="rounded-lg bg-hover/80 px-3 py-1 text-[11px] text-subtle">
+        <span className="rounded-full bg-black/[0.06] px-3 py-1 text-[11px] text-subtle dark:bg-white/[0.08]">
           {content}
         </span>
       </div>
@@ -89,38 +90,46 @@ export function InboxMessageBubble({
   const isDalia = senderType === "DALIA";
   const label = getSenderLabel(senderType);
 
+  // The invisible spacer reserves room for the timestamp so text wraps
+  // around it naturally (WhatsApp-style inline timestamp).
+  const timestampSpacer = (
+    <span className="float-right ml-2 mt-1 h-0 w-[70px] select-none" aria-hidden="true">
+      {"\u200B"}
+    </span>
+  );
+
   return (
     <div
       className={cn(
         "flex",
         isOutbound ? "justify-end" : "justify-start",
-        isConsecutive ? "mt-[3px]" : "mt-3",
+        isConsecutive ? "mt-[3px]" : "mt-2.5",
         className,
       )}
     >
       <div
         className={cn(
-          "relative max-w-[70%] px-3 py-[7px]",
+          "relative max-w-[75%] px-[10px] py-[6px]",
           "sm:max-w-[65%]",
-          // Bubble shape: rounded with WhatsApp-style pointed corner on first message
+          // Bubble shape
           isConsecutive
-            ? "rounded-xl"
+            ? "rounded-lg"
             : isOutbound
-              ? "rounded-xl rounded-tr-[4px]"
-              : "rounded-xl rounded-tl-[4px]",
-          // Colors by sender type
+              ? "rounded-lg rounded-tr-[3px]"
+              : "rounded-lg rounded-tl-[3px]",
+          // Background + shadow by sender type
           isOutbound
             ? isDalia
-              ? "bg-emerald-500/10 dark:bg-emerald-500/15"
-              : "bg-brand/10 dark:bg-brand/15"
-            : "bg-surface ring-1 ring-hairline",
+              ? "bg-emerald-50 shadow-sm dark:bg-emerald-950/40"
+              : "bg-blue-50 shadow-sm dark:bg-blue-950/40"
+            : "bg-surface shadow-sm dark:bg-elevated",
         )}
       >
-        {/* Sender label — only on first of group, only for outbound */}
+        {/* Sender label — first of group, outbound only */}
         {showSender && isOutbound && label && (
           <p
             className={cn(
-              "mb-0.5 text-[11px] font-semibold",
+              "mb-0.5 text-[11px] font-semibold leading-tight",
               isDalia ? "text-emerald-600 dark:text-emerald-400" : "text-brand",
             )}
           >
@@ -128,18 +137,19 @@ export function InboxMessageBubble({
           </p>
         )}
 
-        {/* Message content */}
-        <p className="whitespace-pre-wrap text-[13.5px] leading-[1.45] text-ink">
+        {/* Message text with timestamp spacer */}
+        <p className="whitespace-pre-wrap break-words text-[13.5px] leading-[1.45] text-ink">
           {content}
+          {timestampSpacer}
         </p>
 
-        {/* Timestamp + delivery status — inline at bottom-right */}
-        <div className="mt-[2px] flex items-center justify-end gap-1 -mb-[2px]">
-          <span className="text-[10px] leading-none text-subtle/70 select-none">
+        {/* Timestamp + delivery — floated bottom-right, overlapping the spacer */}
+        <span className="float-right -mt-4 flex items-center gap-[3px]">
+          <span className="text-[10px] leading-none text-subtle/60 select-none">
             {formatTime(createdAt)}
           </span>
           {isOutbound && <DeliveryIcon status={status} />}
-        </div>
+        </span>
       </div>
     </div>
   );

@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { Button } from "@/components/ui/primitives/shadcn/button";
+import {
+  Avatar,
+  AvatarFallback,
+} from "@/components/ui/atomic/data-display/avatar";
 import { StatusBadge } from "@/components/ui/atomic/data-display/status-badge";
 import {
   DropdownMenu,
@@ -27,6 +31,15 @@ import {
 } from "@/lib/entity/inbox";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+}
 
 function getStatusTone(
   status: InboxConversationDetail["status"],
@@ -86,13 +99,18 @@ export function InboxChatHeader({
   } = detail;
 
   const displayName = patientName || contactPhone || "Contacto no registrado";
+  const initials = patientName
+    ? getInitials(patientName)
+    : contactPhone
+      ? contactPhone.slice(-2)
+      : "?";
   const isMine = !!currentUserId && assignedTo === currentUserId;
   const isHuman = handlingMode === "HUMAN";
 
   return (
     <div
       className={cn(
-        "flex h-14 shrink-0 items-center gap-3 border-b border-hairline px-4",
+        "flex h-[60px] shrink-0 items-center gap-3 border-b border-hairline bg-surface px-4",
         className,
       )}
     >
@@ -104,13 +122,27 @@ export function InboxChatHeader({
           size="icon"
           onClick={onBack}
           className="md:hidden"
+          aria-label="Volver a la lista"
         >
           <ArrowLeft className="size-5" />
         </Button>
       )}
 
+      {/* Avatar */}
+      <Avatar className="size-9 shrink-0">
+        <AvatarFallback className="bg-brand/10 text-brand text-xs font-semibold">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+
       {/* Contact info */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className="flex min-w-0 flex-1 cursor-pointer flex-col"
+        onClick={onShowDetails}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter") onShowDetails?.(); }}
+      >
         <span className="truncate text-sm font-semibold text-ink">
           {displayName}
         </span>
@@ -138,6 +170,7 @@ export function InboxChatHeader({
           size="icon"
           onClick={onShowDetails}
           title="Detalles del contacto"
+          aria-label="Detalles del contacto"
         >
           <PanelRight className="size-4" />
         </Button>
@@ -157,7 +190,7 @@ export function InboxChatHeader({
         {isHuman && isMine && status === "OPEN" && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="icon">
+              <Button type="button" variant="outline" size="icon" aria-label="Más opciones">
                 <MoreVertical className="size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -178,7 +211,7 @@ export function InboxChatHeader({
         {/* HUMAN + not mine */}
         {isHuman && !isMine && status === "OPEN" && (
           <span className="text-xs text-subtle">
-            Atendida por otro miembro del equipo
+            Atendida por otro miembro
           </span>
         )}
 

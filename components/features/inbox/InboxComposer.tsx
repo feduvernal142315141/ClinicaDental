@@ -64,16 +64,16 @@ export function InboxComposer({
   );
 
   return (
-    <div className={cn("border-t border-hairline bg-canvas", className)}>
+    <div className={cn("shrink-0 border-t border-hairline bg-surface", className)}>
       {/* Disabled reason */}
       {disabled && disabledReason && (
-        <div className="px-4 pt-2">
+        <div className="px-4 pt-2.5 pb-1">
           <p className="text-xs text-subtle">{disabledReason}</p>
         </div>
       )}
 
-      {/* Input area */}
-      <div className="flex items-end gap-2 px-4 py-3">
+      {/* Input row */}
+      <div className="flex items-end gap-2 px-3 py-2.5 sm:px-4">
         <textarea
           ref={textareaRef}
           value={text}
@@ -84,9 +84,9 @@ export function InboxComposer({
           rows={1}
           maxLength={MAX_CHARS}
           className={cn(
-            "flex-1 resize-none rounded-xl border border-hairline bg-elevated px-3 py-2.5 text-sm text-ink outline-none transition-colors",
-            "placeholder:text-subtle",
-            "focus:border-brand focus:ring-2 focus:ring-brand/30",
+            "flex-1 resize-none rounded-2xl border border-hairline bg-canvas px-4 py-2.5 text-sm text-ink outline-none transition-colors",
+            "placeholder:text-subtle/60",
+            "focus:border-brand focus:ring-2 focus:ring-brand/20",
             "disabled:cursor-not-allowed disabled:opacity-50",
           )}
           style={{ lineHeight: `${LINE_HEIGHT_PX}px` }}
@@ -96,28 +96,37 @@ export function InboxComposer({
           type="button"
           onClick={handleSend}
           disabled={!canSend}
+          aria-label="Enviar mensaje"
           className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors",
+            "flex size-10 shrink-0 items-center justify-center rounded-full transition-all",
             canSend
-              ? "bg-brand-strong text-white hover:bg-brand-strong/90"
-              : "bg-hover text-subtle cursor-not-allowed",
+              ? "bg-brand text-white shadow-sm hover:bg-brand-strong active:scale-95"
+              : "bg-hover text-subtle/40 cursor-not-allowed",
           )}
         >
-          <SendHorizontal className="size-4" />
+          <SendHorizontal className="size-[18px]" />
         </button>
       </div>
 
-      {/* Character counter */}
-      {charCount > WARN_THRESHOLD && (
-        <div className="flex justify-end px-4 pb-2">
-          <span
-            className={cn(
-              "text-[11px]",
-              charCount > MAX_CHARS ? "text-rose-500 font-medium" : "text-subtle",
-            )}
-          >
-            {charCount}/{MAX_CHARS}
-          </span>
+      {/* Footer: hint + counter */}
+      {(!disabled || charCount > WARN_THRESHOLD) && (
+        <div className="flex items-center justify-between px-4 pb-1.5">
+          {!disabled && (
+            <span className="text-[10px] text-subtle/40 select-none">
+              Enter enviar · Shift+Enter nueva línea
+            </span>
+          )}
+          <span className="flex-1" />
+          {charCount > WARN_THRESHOLD && (
+            <span
+              className={cn(
+                "text-[11px]",
+                charCount > MAX_CHARS ? "text-rose-500 font-medium" : "text-subtle",
+              )}
+            >
+              {charCount}/{MAX_CHARS}
+            </span>
+          )}
         </div>
       )}
     </div>

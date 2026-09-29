@@ -50,7 +50,18 @@ function relativeTime(dateStr: string | null): string {
   });
 }
 
-/** Derives a combined "visual status" from status + handlingMode. */
+/** Status dot color for the avatar. */
+function getStatusDot(
+  status: ConversationStatus,
+  handlingMode: HandlingMode,
+): string | null {
+  if (status === "NEEDS_HUMAN") return "bg-amber-500";
+  if (status === "RESOLVED") return null; // no dot
+  if (handlingMode === "HUMAN") return "bg-brand";
+  return "bg-emerald-500"; // Dalia handling
+}
+
+/** Status label for the bottom row. */
 function getStatusConfig(
   status: ConversationStatus,
   handlingMode: HandlingMode,
@@ -62,12 +73,12 @@ function getStatusConfig(
     };
   }
   if (status === "RESOLVED") {
-    return { label: "Resuelta", className: "text-subtle" };
+    return { label: "Resuelta", className: "text-subtle/60" };
   }
   if (handlingMode === "HUMAN") {
     return { label: "Humano", className: "text-brand" };
   }
-  return { label: "Dalia", className: "text-subtle" };
+  return { label: "Dalia", className: "text-emerald-600 dark:text-emerald-400" };
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -103,54 +114,86 @@ export function InboxConversationRow({
       ? contactPhone.slice(-2)
       : "?";
   const statusCfg = getStatusConfig(status, handlingMode);
+  const dotColor = getStatusDot(status, handlingMode);
+  const hasUnread = unreadCount > 0;
 
   return (
     <button
       type="button"
       onClick={() => onClick(id)}
+      aria-label={`Conversación con ${displayName}${hasUnread ? `, ${unreadCount} sin leer` : ""}`}
+      aria-selected={isSelected}
       className={cn(
         "group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
-        "border-l-2 border-l-transparent",
         "hover:bg-hover",
-        isSelected && "border-l-brand bg-brand/5",
+        isSelected
+          ? "bg-brand/[0.06] dark:bg-brand/10"
+          : "bg-transparent",
         className,
       )}
     >
-      {/* Avatar */}
-      <Avatar className="size-10 shrink-0">
-        <AvatarFallback className="bg-brand/10 text-brand text-xs font-semibold">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
-
-      {/* Content */}
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        {/* Top row: name + time */}
-        <div className="flex items-center justify-between gap-2">
+      {/* Avatar with status dot */}
+      <div className="relative shrink-0">
+        <Avatar className="size-11">
+          <AvatarFallback
+            className={cn(
+              "text-xs font-semibold",
+              hasUnread
+                ? "bg-brand/15 text-brand"
+                : "bg-hover-strong text-subtle",
+            )}
+          >
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        {dotColor && (
           <span
             className={cn(
-              "truncate text-sm font-medium text-ink",
-              unreadCount > 0 && "font-semibold",
+              "absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-surface",
+              dotColor,
+            )}
+          />
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+        {/* Top row: name + time */}
+        <div className="flex items-baseline justify-between gap-2">
+          <span
+            className={cn(
+              "truncate text-[13.5px] text-ink",
+              hasUnread ? "font-semibold" : "font-medium",
             )}
           >
             {displayName}
           </span>
-          <span className="shrink-0 text-[11px] text-subtle">
+          <span
+            className={cn(
+              "shrink-0 text-[11px]",
+              hasUnread ? "font-semibold text-brand" : "text-subtle",
+            )}
+          >
             {relativeTime(lastMessageAt)}
           </span>
         </div>
 
         {/* Bottom row: preview + badge + status */}
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-xs text-subtle">
+          <span
+            className={cn(
+              "truncate text-[12.5px]",
+              hasUnread ? "text-ink/70 font-medium" : "text-subtle",
+            )}
+          >
             {lastMessagePreview || "\u00A0"}
           </span>
           <div className="flex shrink-0 items-center gap-1.5">
-            <span className={cn("text-[10px]", statusCfg.className)}>
+            <span className={cn("text-[10px] font-medium", statusCfg.className)}>
               {statusCfg.label}
             </span>
-            {unreadCount > 0 && (
-              <span className="flex size-5 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">
+            {hasUnread && (
+              <span className="flex min-w-[20px] items-center justify-center rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}

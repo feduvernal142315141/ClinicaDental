@@ -141,10 +141,13 @@ export function InboxTimeline({
     onNewMessageVisible?.();
   }, [scrollToBottom, onNewMessageVisible]);
 
+  // Chat-area background — subtle warm tint, distinct from sidebar surface
+  const chatBg = "bg-[#f0f2f5] dark:bg-[#0b141a]";
+
   // ── Loading state ────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className={cn("flex flex-1 items-center justify-center", className)}>
+      <div className={cn("flex flex-1 items-center justify-center", chatBg, className)}>
         <LoadingSpinner size="sm" message="Cargando mensajes..." />
       </div>
     );
@@ -153,7 +156,7 @@ export function InboxTimeline({
   // ── Empty state ──────────────────────────────────────────────────────
   if (messages.length === 0) {
     return (
-      <div className={cn("flex flex-1 items-center justify-center", className)}>
+      <div className={cn("flex flex-1 items-center justify-center", chatBg, className)}>
         <EmptyState
           icon={MessageSquare}
           title="No hay mensajes"
@@ -165,11 +168,14 @@ export function InboxTimeline({
 
   // ── Message list — single flat chronological render ──────────────────
   return (
-    <div className={cn("relative flex-1 overflow-hidden", className)}>
+    <div className={cn("relative flex-1 overflow-hidden", chatBg, className)}>
       <div
         ref={scrollContainerRef}
         className="h-full overflow-y-auto"
         onScroll={handleScroll}
+        role="log"
+        aria-live="polite"
+        aria-label="Mensajes de la conversación"
       >
         {/* Load older button */}
         {hasMore && (
@@ -185,7 +191,7 @@ export function InboxTimeline({
         )}
 
         {/* Chronological message list */}
-        <div className="flex flex-col px-3 pb-3">
+        <div className="flex flex-col px-4 pt-2 pb-3 sm:px-6">
           {messages.map((msg, idx) => {
             const prev = idx > 0 ? messages[idx - 1] : null;
 
@@ -199,12 +205,10 @@ export function InboxTimeline({
             return (
               <React.Fragment key={msg.id}>
                 {showDaySeparator && (
-                  <div className="my-4 flex items-center gap-3">
-                    <div className="h-px flex-1 bg-hairline" />
-                    <span className="text-[11px] font-medium text-subtle">
+                  <div className="my-3 flex justify-center">
+                    <span className="rounded-lg bg-white/80 px-3 py-1 text-[11px] font-medium text-subtle shadow-sm dark:bg-white/10">
                       {formatDaySeparator(msg.createdAt)}
                     </span>
-                    <div className="h-px flex-1 bg-hairline" />
                   </div>
                 )}
                 <InboxMessageBubble
@@ -225,7 +229,7 @@ export function InboxTimeline({
         <button
           type="button"
           onClick={handleNewMessagesClick}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-brand px-4 py-1.5 text-xs font-medium text-white shadow-lg transition-transform hover:scale-105"
+          className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-surface px-4 py-2 text-xs font-medium text-brand shadow-lg ring-1 ring-hairline transition-transform hover:scale-105 dark:bg-elevated"
         >
           <span className="flex items-center gap-1.5">
             Nuevos mensajes
