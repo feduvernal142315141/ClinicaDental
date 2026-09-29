@@ -3,7 +3,6 @@
 import * as React from "react";
 import { ArrowDown, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
-import { ScrollArea } from "@/components/ui/primitives/shadcn/scroll-area";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
 import { Button } from "@/components/ui/primitives/shadcn/button";
@@ -32,7 +31,7 @@ function formatDaySeparator(dateStr: string): string {
   ) {
     return "Ayer";
   }
-  return d.toLocaleDateString("es-MX", {
+  return d.toLocaleDateString("es", {
     day: "numeric",
     month: "long",
     year: d.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
@@ -61,6 +60,17 @@ export interface InboxTimelineProps {
   className?: string;
 }
 
+/**
+ * Chat timeline — renders messages in EXACT chronological order (oldest → newest).
+ *
+ * Alignment is ONLY determined by senderType/direction — never by sorting:
+ * - CONTACT (INBOUND) → left
+ * - DALIA / STAFF (OUTBOUND) → right
+ * - SYSTEM → centered
+ *
+ * Sequential grouping: consecutive messages from the same senderType within
+ * the same day get tighter spacing and the sender label is hidden.
+ */
 export function InboxTimeline({
   messages,
   loading,
@@ -70,48 +80,53 @@ export function InboxTimeline({
   onNewMessageVisible,
   className,
 }: InboxTimelineProps) {
-  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const bottomRef = React.useRef<HTMLDivElement>(null);
   const [showNewButton, setShowNewButton] = React.useState(false);
   const prevCountRef = React.useRef(messages.length);
   const isNearBottomRef = React.useRef(true);
+  const initialScrollDone = React.useRef(false);
 
-  // Check if user is near the bottom (within 120px)
   const checkNearBottom = React.useCallback(() => {
-    const el = scrollRef.current;
+    const el = scrollContainerRef.current;
     if (!el) return true;
-    return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 150;
   }, []);
 
-  // Scroll to bottom
   const scrollToBottom = React.useCallback((smooth = false) => {
-    bottomRef.current?.scrollIntoView({
-      behavior: smooth ? "smooth" : "instant",
-    });
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "instant" });
   }, []);
 
-  // Auto-scroll on mount
+  // Initial scroll to bottom
   React.useEffect(() => {
-    if (!loading && messages.length > 0) {
-      scrollToBottom();
+    if (!loading && messages.length > 0 && !initialScrollDone.current) {
+      initialScrollDone.current = true;
+      requestAnimationFrame(() => scrollToBottom());
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]);
+  }, [loading, messages.length, scrollToBottom]);
 
-  // Handle new messages
+  // Reset flag when conversation changes (messages go to 0)
   React.useEffect(() => {
-    if (messages.length > prevCountRef.current) {
+    if (messages.length === 0) initialScrollDone.current = false;
+  }, [messages.length]);
+
+  // New messages: auto-scroll if near bottom, show button otherwise
+  React.useEffect(() => {
+    const curr = messages.length;
+    const prev = prevCountRef.current;
+    if (curr > prev && prev > 0) {
       if (isNearBottomRef.current) {
-        scrollToBottom(true);
+        requestAnimationFrame(() => scrollToBottom(true));
         onNewMessageVisible?.();
       } else {
         setShowNewButton(true);
       }
     }
-    prevCountRef.current = messages.length;
+    prevCountRef.current = curr;
   }, [messages.length, scrollToBottom, onNewMessageVisible]);
 
-  // Track scroll position
   const handleScroll = React.useCallback(() => {
     isNearBottomRef.current = checkNearBottom();
     if (isNearBottomRef.current && showNewButton) {
@@ -126,7 +141,7 @@ export function InboxTimeline({
     onNewMessageVisible?.();
   }, [scrollToBottom, onNewMessageVisible]);
 
-  // ── Loading ──────────────────────────────────────────────────────────
+  // ── Loading state ────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className={cn("flex flex-1 items-center justify-center", className)}>
@@ -135,7 +150,7 @@ export function InboxTimeline({
     );
   }
 
-  // ── Empty ────────────────────────────────────────────────────────────
+  // ── Empty state ──────────────────────────────────────────────────────
   if (messages.length === 0) {
     return (
       <div className={cn("flex flex-1 items-center justify-center", className)}>
@@ -148,70 +163,64 @@ export function InboxTimeline({
     );
   }
 
+  // ── Message list — single flat chronological render ──────────────────
   return (
     <div className={cn("relative flex-1 overflow-hidden", className)}>
-      <ScrollArea className="h-full">
-        <div
-          ref={scrollRef}
-          className="h-full overflow-y-auto"
-          onScroll={handleScroll}
-        >
-          {/* Load older */}
-          {hasMore && (
-            <div className="flex justify-center py-3">
-              {loadingOlder ? (
-                <LoadingSpinner size="sm" message="" />
-              ) : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={onLoadOlder}
-                >
-                  Cargar mensajes anteriores
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Messages */}
-          <div className="flex flex-col pb-2">
-            {messages.map((msg, idx) => {
-              const prev = idx > 0 ? messages[idx - 1] : null;
-              const showDaySeparator =
-                !prev || !isSameDay(prev.createdAt, msg.createdAt);
-              const isConsecutive =
-                !!prev &&
-                prev.senderType === msg.senderType &&
-                !showDaySeparator;
-              const showSender = !isConsecutive;
-
-              return (
-                <React.Fragment key={msg.id}>
-                  {showDaySeparator && (
-                    <div className="my-4 flex items-center gap-3 px-4">
-                      <div className="h-px flex-1 bg-hairline" />
-                      <span className="text-[11px] font-medium text-subtle">
-                        {formatDaySeparator(msg.createdAt)}
-                      </span>
-                      <div className="h-px flex-1 bg-hairline" />
-                    </div>
-                  )}
-                  <InboxMessageBubble
-                    message={msg}
-                    showSender={showSender}
-                    isConsecutive={isConsecutive}
-                  />
-                </React.Fragment>
-              );
-            })}
+      <div
+        ref={scrollContainerRef}
+        className="h-full overflow-y-auto"
+        onScroll={handleScroll}
+      >
+        {/* Load older button */}
+        {hasMore && (
+          <div className="flex justify-center py-3">
+            {loadingOlder ? (
+              <LoadingSpinner size="sm" message="" />
+            ) : (
+              <Button type="button" variant="ghost" size="sm" onClick={onLoadOlder}>
+                Cargar mensajes anteriores
+              </Button>
+            )}
           </div>
+        )}
 
-          <div ref={bottomRef} />
+        {/* Chronological message list */}
+        <div className="flex flex-col px-3 pb-3">
+          {messages.map((msg, idx) => {
+            const prev = idx > 0 ? messages[idx - 1] : null;
+
+            // Day separator between different days
+            const showDaySeparator = !prev || !isSameDay(prev.createdAt, msg.createdAt);
+
+            // Sequential grouping: same sender + same day → tight spacing, no label
+            const isConsecutive = !!prev && prev.senderType === msg.senderType && !showDaySeparator;
+            const showSender = !isConsecutive;
+
+            return (
+              <React.Fragment key={msg.id}>
+                {showDaySeparator && (
+                  <div className="my-4 flex items-center gap-3">
+                    <div className="h-px flex-1 bg-hairline" />
+                    <span className="text-[11px] font-medium text-subtle">
+                      {formatDaySeparator(msg.createdAt)}
+                    </span>
+                    <div className="h-px flex-1 bg-hairline" />
+                  </div>
+                )}
+                <InboxMessageBubble
+                  message={msg}
+                  showSender={showSender}
+                  isConsecutive={isConsecutive}
+                />
+              </React.Fragment>
+            );
+          })}
         </div>
-      </ScrollArea>
 
-      {/* New messages button */}
+        <div ref={bottomRef} className="h-px" />
+      </div>
+
+      {/* Floating "new messages" button */}
       {showNewButton && (
         <button
           type="button"
