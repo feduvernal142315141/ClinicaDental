@@ -14,6 +14,7 @@ import {
   Tag,
   IdCard,
   TrendingUp,
+  MessageSquare,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { usePermission } from "./use-permission";
@@ -99,6 +100,9 @@ export function useSidebarNavigation() {
     }
     if (hasModule("appointments")) {
       main.push({ path: "/appointments", label: t("navigation.appointments"), icon: Calendar });
+    }
+    if (hasModule("whatsapp_inbox")) {
+      main.push({ path: "/inbox", label: "Bandeja", icon: MessageSquare });
     }
     if (hasModule("campaign")) {
       main.push({
