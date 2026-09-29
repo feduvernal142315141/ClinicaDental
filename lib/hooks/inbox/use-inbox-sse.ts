@@ -163,11 +163,25 @@ export function useInboxSSE({
     // Guard: may have been disabled/unmounted during async ticket fetch
     if (!enabledRef.current) { setS("disconnected"); return; }
 
+    // Guard: never create EventSource with invalid ticket
+    if (typeof ticket !== "string" || !ticket.trim()) {
+      if (process.env.NODE_ENV === "development") {
+        console.debug("[inbox-sse] invalid ticket received, type:", typeof ticket);
+      }
+      scheduleReconnect();
+      return;
+    }
+
     // ── Step 2: Create EventSource with temporary ticket (NOT JWT) ──
     setS("connecting");
 
-    const url = `${apiUrl}/whatsapp/inbox/events?ticket=${encodeURIComponent(ticket)}`;
-    const source = new EventSource(url);
+    if (process.env.NODE_ENV === "development") {
+      console.debug("[inbox-sse] ticket acquired:", ticket.length > 0);
+    }
+
+    const sseUrl = new URL(`${apiUrl}/whatsapp/inbox/events`);
+    sseUrl.searchParams.set("ticket", ticket);
+    const source = new EventSource(sseUrl.toString());
     sourceRef.current = source;
 
     // Connection timeout: if no onopen within 10s, reconnect

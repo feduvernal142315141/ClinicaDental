@@ -143,7 +143,13 @@ export async function createInboxSseTicket(): Promise<string> {
     `${BASE}/events/ticket`, {},
   );
   if (response?.status >= 200 && response?.status < 300 && response?.data) {
-    return (response.data as unknown as { ticket: string }).ticket;
+    // Backend may wrap in { data: { ticket } } or return { ticket } directly
+    const body = response.data as unknown as { data?: { ticket?: string }; ticket?: string };
+    const ticket = body?.data?.ticket ?? body?.ticket;
+    if (typeof ticket === "string" && ticket.length > 0) {
+      return ticket;
+    }
+    throw new Error("Ticket response missing or empty");
   }
   handleServiceError(response, "Error al obtener ticket SSE");
 }
