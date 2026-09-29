@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Clock,
-  Check,
-  CheckCheck,
-  AlertCircle,
-} from "lucide-react";
+import { Clock, Check, CheckCheck, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import type { InboxMessage, MessageDeliveryStatus } from "@/lib/entity/inbox";
 
@@ -14,24 +9,20 @@ import type { InboxMessage, MessageDeliveryStatus } from "@/lib/entity/inbox";
 
 function formatTime(dateStr: string): string {
   const d = new Date(dateStr);
-  return d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-function DeliveryIcon({
-  status,
-}: {
-  status: MessageDeliveryStatus;
-}) {
-  const base = "size-3 shrink-0";
+function DeliveryIcon({ status }: { status: MessageDeliveryStatus }) {
+  const base = "size-3.5 shrink-0";
   switch (status) {
     case "PENDING":
-      return <Clock className={cn(base, "text-subtle")} />;
+      return <Clock className={cn(base, "text-subtle/60")} />;
     case "SENT":
-      return <Check className={cn(base, "text-subtle")} />;
+      return <Check className={cn(base, "text-subtle/60")} />;
     case "DELIVERED":
-      return <CheckCheck className={cn(base, "text-subtle")} />;
+      return <CheckCheck className={cn(base, "text-subtle/60")} />;
     case "READ":
-      return <CheckCheck className={cn(base, "text-brand")} />;
+      return <CheckCheck className={cn(base, "text-sky-500")} />;
     case "FAILED":
       return <AlertCircle className={cn(base, "text-rose-500")} />;
     default:
@@ -39,9 +30,7 @@ function DeliveryIcon({
   }
 }
 
-function getSenderLabel(
-  senderType: InboxMessage["senderType"],
-): string {
+function getSenderLabel(senderType: InboxMessage["senderType"]): string {
   switch (senderType) {
     case "DALIA":
       return "Dalia";
@@ -61,6 +50,15 @@ export interface InboxMessageBubbleProps {
   className?: string;
 }
 
+/**
+ * Chat bubble — aligned by senderType/direction:
+ * - CONTACT (INBOUND)      → left,  neutral bg
+ * - DALIA   (OUTBOUND)     → right, tinted bg
+ * - STAFF   (OUTBOUND)     → right, brand-tinted bg
+ * - SYSTEM                 → centered, no bubble
+ *
+ * WhatsApp-style tail on first message of a group.
+ */
 export function InboxMessageBubble({
   message,
   showSender,
@@ -69,58 +67,77 @@ export function InboxMessageBubble({
 }: InboxMessageBubbleProps) {
   const { senderType, direction, content, createdAt, status } = message;
 
-  // ── SYSTEM messages ─────────────────────────────────────────────────
+  // ── SYSTEM messages — event-style, no bubble ───────────────────────
   if (senderType === "SYSTEM") {
     return (
       <div
         className={cn(
-          "flex justify-center px-4",
-          isConsecutive ? "mt-1" : "mt-3",
+          "flex justify-center",
+          isConsecutive ? "mt-1" : "mt-4",
           className,
         )}
       >
-        <span className="text-xs italic text-subtle">{content}</span>
+        <span className="rounded-lg bg-hover/80 px-3 py-1 text-[11px] text-subtle">
+          {content}
+        </span>
       </div>
     );
   }
 
-  // ── CONTACT = left, DALIA/STAFF = right ─────────────────────────────
+  // ── Chat bubbles ───────────────────────────────────────────────────
   const isOutbound = direction === "OUTBOUND";
+  const isDalia = senderType === "DALIA";
+  const label = getSenderLabel(senderType);
 
   return (
     <div
       className={cn(
-        "flex px-4",
+        "flex",
         isOutbound ? "justify-end" : "justify-start",
-        isConsecutive ? "mt-0.5" : "mt-3",
+        isConsecutive ? "mt-[3px]" : "mt-3",
         className,
       )}
     >
       <div
         className={cn(
-          "max-w-[75%] md:max-w-[75%] rounded-2xl px-3 py-2",
-          /* Mobile wider bubbles */
-          "max-sm:max-w-[85%]",
+          "relative max-w-[70%] px-3 py-[7px]",
+          "sm:max-w-[65%]",
+          // Bubble shape: rounded with WhatsApp-style pointed corner on first message
+          isConsecutive
+            ? "rounded-xl"
+            : isOutbound
+              ? "rounded-xl rounded-tr-[4px]"
+              : "rounded-xl rounded-tl-[4px]",
+          // Colors by sender type
           isOutbound
-            ? "bg-brand/10 rounded-tr-sm"
-            : "bg-hover rounded-tl-sm",
+            ? isDalia
+              ? "bg-emerald-500/10 dark:bg-emerald-500/15"
+              : "bg-brand/10 dark:bg-brand/15"
+            : "bg-surface ring-1 ring-hairline",
         )}
       >
-        {/* Sender label */}
-        {showSender && isOutbound && (
-          <p className="mb-0.5 text-[11px] font-medium text-brand">
-            {getSenderLabel(senderType)}
+        {/* Sender label — only on first of group, only for outbound */}
+        {showSender && isOutbound && label && (
+          <p
+            className={cn(
+              "mb-0.5 text-[11px] font-semibold",
+              isDalia ? "text-emerald-600 dark:text-emerald-400" : "text-brand",
+            )}
+          >
+            {label}
           </p>
         )}
 
-        {/* Content */}
-        <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink">
+        {/* Message content */}
+        <p className="whitespace-pre-wrap text-[13.5px] leading-[1.45] text-ink">
           {content}
         </p>
 
-        {/* Time + delivery status */}
-        <div className="mt-1 flex items-center justify-end gap-1">
-          <span className="text-[10px] text-subtle">{formatTime(createdAt)}</span>
+        {/* Timestamp + delivery status — inline at bottom-right */}
+        <div className="mt-[2px] flex items-center justify-end gap-1 -mb-[2px]">
+          <span className="text-[10px] leading-none text-subtle/70 select-none">
+            {formatTime(createdAt)}
+          </span>
           {isOutbound && <DeliveryIcon status={status} />}
         </div>
       </div>
