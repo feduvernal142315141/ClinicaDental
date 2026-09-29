@@ -136,6 +136,20 @@ export async function sendInboxMessage(
   handleServiceError(response, "Error al enviar el mensaje");
 }
 
+// ── SSE Ticket ─────────────────────────────────────────────────────────────
+
+export async function createInboxSseTicket(): Promise<string> {
+  const response = await servicePost<Record<string, never>, { ticket: string }>(
+    `${BASE}/events/ticket`, {},
+  );
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
+    return (response.data as unknown as { ticket: string }).ticket;
+  }
+  handleServiceError(response, "Error al obtener ticket SSE");
+}
+
+// ── Link patient ───────────────────────────────────────────────────────────
+
 export async function linkConversationPatient(
   conversationId: string,
   patientId: string,

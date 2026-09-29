@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { InboxMessage } from "@/lib/entity/inbox";
+import { shouldAcceptDeliveryStatus } from "@/lib/entity/inbox";
 import { getInboxMessages } from "@/lib/services/inbox/inbox.service";
 
 interface UseInboxMessagesResult {
@@ -18,15 +19,24 @@ const PAGE_SIZE = 50;
 
 /**
  * Reverse the backend's newest-first array to oldest-first (chronological).
- *
- * We TRUST the backend's ordering — it uses the DB insertion sequence which
+ * We TRUST the backend's ordering — it uses DB insertion sequence which
  * reflects the real conversation flow (interleaved inbound/outbound).
- * Sorting by `createdAt` would break the interleaving because WhatsApp
- * webhook timestamps and Dalia response timestamps can differ from the
- * logical conversation order.
  */
 function toChronological(msgs: InboxMessage[]): InboxMessage[] {
   return [...msgs].reverse();
+}
+
+/**
+ * Merge a fresh message into an existing one, preventing delivery status
+ * regression. A stale REST response must not cause:
+ *   READ → DELIVERED, DELIVERED → SENT, DELIVERED → FAILED, etc.
+ */
+function mergePreserveStatus(existing: InboxMessage, fresh: InboxMessage): InboxMessage {
+  if (shouldAcceptDeliveryStatus(existing.status, fresh.status)) {
+    return fresh; // Status transition valid → accept all fresh data
+  }
+  // Status transition invalid → keep existing status, update everything else
+  return { ...fresh, status: existing.status, statusUpdatedAt: existing.statusUpdatedAt };
 }
 
 export function useInboxMessages(
@@ -38,28 +48,33 @@ export function useInboxMessages(
   const [hasMore, setHasMore] = useState(true);
   const convIdRef = useRef(conversationId);
 
+  // Generation counter: protects against out-of-order REST responses
+  const refreshGenRef = useRef(0);
+
   // Reset when conversation changes
   useEffect(() => {
     if (conversationId !== convIdRef.current) {
       convIdRef.current = conversationId;
       setMessages([]);
       setHasMore(true);
+      refreshGenRef.current += 1; // Invalidate any in-flight refresh
     }
   }, [conversationId]);
 
   /** Initial load: fetch the latest page, reverse to chronological. */
   const fetchData = useCallback(async () => {
     if (!conversationId) return;
+    const gen = ++refreshGenRef.current;
     setLoading(true);
     try {
       const result = await getInboxMessages(conversationId, { limit: PAGE_SIZE });
-      // Backend returns newest-first — reverse to chronological
+      if (gen !== refreshGenRef.current) return; // Stale
       setMessages(toChronological(result));
       setHasMore(result.length >= PAGE_SIZE);
     } catch {
       // Initial load errors visible via empty state
     } finally {
-      setLoading(false);
+      if (gen === refreshGenRef.current) setLoading(false);
     }
   }, [conversationId]);
 
@@ -69,8 +84,8 @@ export function useInboxMessages(
 
   /**
    * Load older messages using keyset pagination.
-   * Uses the oldest current message's createdAt / id as the cursor.
-   * Prepends older messages at the start, preserving existing order.
+   * Independent from refresh — NOT invalidated by refreshGenRef.
+   * Uses functional update + ID dedup for safe concurrent operation.
    */
   const loadOlderMessages = useCallback(async () => {
     if (!conversationId || loadingOlder || !hasMore || messages.length === 0) return;
@@ -86,7 +101,6 @@ export function useInboxMessages(
       setMessages((prev) => {
         const existingIds = new Set(prev.map((m) => m.id));
         const olderMsgs = result.filter((m) => !existingIds.has(m.id));
-        // Prepend older messages (reversed to chronological) before existing
         return [...toChronological(olderMsgs), ...prev];
       });
       setHasMore(result.length >= PAGE_SIZE);
@@ -97,9 +111,7 @@ export function useInboxMessages(
     }
   }, [conversationId, loadingOlder, hasMore, messages]);
 
-  /**
-   * Optimistic send — append a local message to the end of the list.
-   */
+  /** Optimistic send — append a local message to the end of the list. */
   const addLocalMessage = useCallback((msg: InboxMessage) => {
     setMessages((prev) => [...prev, msg]);
   }, []);
@@ -108,26 +120,36 @@ export function useInboxMessages(
    * Silent refresh — fetch the latest page, update delivery statuses for
    * existing messages, and append truly new messages at the end.
    *
-   * Preserves the existing order (no re-sort) so interleaved conversations
-   * stay interleaved. New messages are appended in the backend's sequence.
+   * Protected by generation counter: if another refresh started after this
+   * one, this response is stale and gets discarded.
+   *
+   * Delivery status is monotonic: READ can't regress to DELIVERED.
    */
   const refresh = useCallback(async () => {
     if (!conversationId) return;
+    const gen = ++refreshGenRef.current;
 
     try {
       const result = await getInboxMessages(conversationId, { limit: PAGE_SIZE });
+
+      // Stale response check
+      if (gen !== refreshGenRef.current) return;
 
       setMessages((prev) => {
         if (prev.length === 0) {
           return toChronological(result);
         }
 
-        // Build a lookup of fresh data (for delivery status updates)
+        // Build lookup of fresh data
         const freshMap = new Map<string, InboxMessage>();
         for (const m of result) freshMap.set(m.id, m);
 
-        // Update existing messages (delivery status, etc.) — preserve order
-        const updated = prev.map((m) => freshMap.get(m.id) ?? m);
+        // Update existing messages with monotonic status protection
+        const updated = prev.map((m) => {
+          const fresh = freshMap.get(m.id);
+          if (!fresh) return m;
+          return mergePreserveStatus(m, fresh);
+        });
 
         // Find truly new messages not in the current list
         const existingIds = new Set(prev.map((m) => m.id));
@@ -135,13 +157,12 @@ export function useInboxMessages(
 
         if (newMsgs.length === 0) return updated;
 
-        // Append new messages in backend sequence (reversed = chronological)
-        // Remove optimistic temp messages that now have a real counterpart
+        // Remove optimistic temp messages, append real new ones
         const withoutTemp = updated.filter((m) => !m.id.startsWith("temp-"));
         return [...withoutTemp, ...toChronological(newMsgs)];
       });
     } catch {
-      // Silent — polling errors should not disrupt the UI
+      // Silent — polling/SSE errors should not disrupt the UI
     }
   }, [conversationId]);
 

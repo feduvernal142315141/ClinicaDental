@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   InboxConversation,
   InboxConversationPage,
@@ -35,11 +35,16 @@ export function useInboxConversations(
     initialQuery ?? { page: 0, pageSize: 20 },
   );
 
+  // Generation counter: protects refresh against out-of-order REST responses
+  const refreshGenRef = useRef(0);
+
   const fetchData = useCallback(async () => {
+    const gen = ++refreshGenRef.current;
     setLoading(true);
     setError(null);
     try {
       const result = await getInboxConversations(query);
+      if (gen !== refreshGenRef.current) return; // Stale
       setConversations(result.rows ?? []);
       setPagination({
         total: result.total,
@@ -47,11 +52,12 @@ export function useInboxConversations(
         pageSize: result.pageSize,
       });
     } catch (err: unknown) {
+      if (gen !== refreshGenRef.current) return;
       setError(
         err instanceof Error ? err.message : "Error al cargar conversaciones",
       );
     } finally {
-      setLoading(false);
+      if (gen === refreshGenRef.current) setLoading(false);
     }
   }, [query]);
 
@@ -81,10 +87,12 @@ export function useInboxConversations(
     }
   }, [loadingMore, pagination, query]);
 
-  /** Silent refresh — does NOT reset loading (ideal for polling). */
+  /** Silent refresh — protected by generation counter. */
   const refresh = useCallback(async () => {
+    const gen = ++refreshGenRef.current;
     try {
       const result = await getInboxConversations(query);
+      if (gen !== refreshGenRef.current) return; // Stale
       setConversations(result.rows ?? []);
       setPagination({
         total: result.total,

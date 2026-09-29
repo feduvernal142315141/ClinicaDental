@@ -48,7 +48,8 @@ async function createClinicTemplate(payload: {
   name: string;
   body: string;
   type: string;
-  variables?: string[];
+  category?: string;
+  variables?: Array<{ id: string; placeholder: string; sampleContent: string; type: string }>;
 }): Promise<string | null> {
   const response = await servicePost<typeof payload, string>(
     `${endpoint}/create-content-template`,

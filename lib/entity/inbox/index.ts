@@ -148,3 +148,80 @@ export const HANDLING_MODE_LABELS: Record<HandlingMode, string> = {
   DALIA: "Dalia",
   HUMAN: "Humano",
 };
+
+// ── SSE Realtime types ─────────────────────────────────────────────────────
+
+export type InboxRealtimeEventType =
+  | "message_new"
+  | "message_status"
+  | "conversation_update"
+  | "summary_update";
+
+export interface MessageNewEventData {
+  conversationId: string;
+  messageId: string;
+  direction: MessageDirection;
+}
+
+export interface MessageStatusEventData {
+  conversationId: string;
+  messageId: string;
+  status: Extract<MessageDeliveryStatus, "SENT" | "DELIVERED" | "READ" | "FAILED">;
+}
+
+export interface ConversationUpdateEventData {
+  conversationId: string;
+}
+
+export type SummaryUpdateEventData = Record<string, never>;
+
+export type RealtimeConnectionState =
+  | "disconnected"
+  | "obtaining_ticket"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "fallback_polling";
+
+/**
+ * Determines if an incoming delivery status should replace the current one.
+ *
+ * Backend enforces forward-only transitions on the happy path:
+ *   N_A → PENDING → SENT → DELIVERED → READ
+ *
+ * FAILED is a terminal branch that can only occur from early states
+ * (PENDING, SENT) before delivery is confirmed. Once a message reaches
+ * DELIVERED or READ, it cannot become FAILED — a stale REST response
+ * must not cause visual regression.
+ *
+ * Same status is accepted (idempotent).
+ */
+export function shouldAcceptDeliveryStatus(
+  current: MessageDeliveryStatus,
+  incoming: MessageDeliveryStatus,
+): boolean {
+  if (current === incoming) return true; // idempotent
+
+  // Happy-path forward transitions
+  const FORWARD_ORDER: MessageDeliveryStatus[] = ["N_A", "PENDING", "SENT", "DELIVERED", "READ"];
+  const currentIdx = FORWARD_ORDER.indexOf(current);
+  const incomingIdx = FORWARD_ORDER.indexOf(incoming);
+
+  // Both on forward path → accept only if incoming is ahead
+  if (currentIdx !== -1 && incomingIdx !== -1) {
+    return incomingIdx > currentIdx;
+  }
+
+  // Incoming is FAILED → only accept from states before delivery confirmation
+  if (incoming === "FAILED") {
+    return current === "N_A" || current === "PENDING" || current === "SENT";
+  }
+
+  // Current is FAILED → accept forward-path statuses that are DELIVERED or READ
+  // (corrective update from backend)
+  if (current === "FAILED") {
+    return incoming === "DELIVERED" || incoming === "READ";
+  }
+
+  return false;
+}

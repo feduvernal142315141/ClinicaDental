@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Input } from "@/components/ui/atomic/forms/input";
 import { Label } from "@/components/ui/atomic/forms/label";
-import { Switch } from "@/components/ui/atomic/forms/switch";
 import {
   Select,
   SelectContent,
@@ -25,18 +24,12 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/primitives/shadcn/tabs";
-import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { Separator } from "@/components/ui/primitives/shadcn/separator";
 import {
   MessageSquare,
   Mail,
   Clock,
   Save,
-  Trash2,
-  Plus,
-  Loader2,
-  RefreshCw,
-  Edit,
 } from "lucide-react";
 import {
   type NotificationSettings,
@@ -56,6 +49,7 @@ import type {
 
 import { useSyncMetaTemplates } from "@/lib/hooks/use-sync-meta-templates";
 import { useI18n } from "@/lib/contexts/i18n-context";
+import { WhatsAppTemplatesPanel, RemindersPanel } from "./whatsapp-templates";
 
 export function NotificationsSettings() {
   const { t } = useI18n();
@@ -154,6 +148,44 @@ export function NotificationsSettings() {
         setNewTemplate({ name: "", body: "", category: "MARKETING" });
         setTemplateVariables([]);
         setPlaceholderError("");
+        notify.success(t("settings.notifications.templateCreated"), {
+          description: t("settings.notifications.templateCreatedDescription"),
+        });
+      }
+    } catch (error) {
+      console.error("Error creating template:", error);
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.templateCreateFailed"),
+      });
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  // Crear template — interfaz para WhatsAppTemplatesPanel
+  const handleCreateTemplateFromPanel = async (data: {
+    name: string;
+    body: string;
+    category: "MARKETING" | "UTILITY";
+    variables: Array<{ id: string; placeholder: string; sampleContent: string }>;
+  }) => {
+    setSavingTemplate(true);
+    try {
+      const result = await clinicTemplateService.createClinicTemplate({
+        name: data.name,
+        body: data.body,
+        type: "APPOINTMENT_REMINDER",
+        category: data.category,
+        variables: data.variables.map((v) => ({
+          id: v.id,
+          placeholder: v.placeholder,
+          sampleContent: v.sampleContent,
+          type: "text",
+        })),
+      });
+      if (result) {
+        const updated = await clinicTemplateService.getClinicTemplates();
+        setClinicTemplates(updated);
         notify.success(t("settings.notifications.templateCreated"), {
           description: t("settings.notifications.templateCreatedDescription"),
         });
@@ -445,242 +477,15 @@ export function NotificationsSettings() {
         </TabsList>
 
         {/* TAB: WhatsApp Templates */}
-        <TabsContent value="whatsapp" className="space-y-4">
-          {loading ? (
-            <Card>
-              <CardContent className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-medical-primary" />
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              <Card>
-                <CardHeader>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <CardTitle>{t("settings.notifications.whatsapp.title")}</CardTitle>
-                    <Button type="button" variant="outline" size="sm"
-                      disabled={isSyncing || savingTemplate} onClick={syncMetaTemplates}
-                      aria-busy={isSyncing}>
-                      {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        : <RefreshCw className="mr-2 h-4 w-4" />}
-                      {t("settings.notifications.whatsapp.syncMeta")}
-                    </Button>
-                  </div>
-                  <CardDescription>
-                    {t("settings.notifications.whatsapp.description")}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {clinicTemplates.length > 0 ? (
-                    <div className="space-y-4">
-                      {clinicTemplates.map((template) => (
-                        <div
-                          key={template.id}
-                          className="border rounded-lg p-4 space-y-3"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h4 className="font-semibold">{template.name}</h4>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {template.body}
-                              </p>
-                            </div>
-                            <div className="flex flex-col gap-2 items-end">
-                              <Badge
-                                className={getStatusBadgeColor(
-                                  template.metaTemplateStatus
-                                )}
-                              >
-                                {template.metaTemplateStatus || "N/A"}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                {template.provider}
-                              </Badge>
-                            </div>
-                          </div>
-                          {template.metaTemplateName && (
-                            <p className="text-xs text-muted-foreground">
-                              Meta ID: {template.metaTemplateName}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      {t("settings.notifications.whatsapp.empty")}
-                    </div>
-                  )}
-
-                  <Separator />
-
-                  {isCreatingTemplate ? (
-                    <div className="border rounded-lg p-4 space-y-4 bg-muted/50">
-                      <h4 className="font-semibold">
-                        {t("settings.notifications.whatsapp.newTemplate")}
-                      </h4>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Left: Form */}
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label htmlFor="template-name">
-                                {t("settings.notifications.whatsapp.name")}
-                              </Label>
-                              <Input
-                                id="template-name"
-                                value={newTemplate.name}
-                                onChange={(e) =>
-                                  setNewTemplate({
-                                    ...newTemplate,
-                                    name: e.target.value,
-                                  })
-                                }
-                                placeholder={t("settings.notifications.whatsapp.namePlaceholder")}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="template-category">Categoría Meta</Label>
-                              <Select
-                                value={newTemplate.category}
-                                onValueChange={(v) =>
-                                  setNewTemplate({ ...newTemplate, category: v as "UTILITY" | "MARKETING" })
-                                }
-                              >
-                                <SelectTrigger id="template-category">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="MARKETING">Marketing (promos, ofertas)</SelectItem>
-                                  <SelectItem value="UTILITY">Utilidad (recordatorios, confirmaciones)</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          <div>
-                            <Label htmlFor="template-body">
-                              {t("settings.notifications.whatsapp.content")}
-                            </Label>
-                            <TextArea
-                              id="template-body"
-                              value={newTemplate.body}
-                              onChange={(e) => handleBodyChange(e.target.value)}
-                              placeholder={t("settings.notifications.whatsapp.contentPlaceholder")}
-                              rows={4}
-                            />
-                            {placeholderError && (
-                              <p className="text-sm text-destructive mt-1 flex items-center gap-1">
-                                <span>⚠️</span> {placeholderError}
-                              </p>
-                            )}
-                            <div className="flex justify-end text-xs text-muted-foreground mt-1">
-                              {newTemplate.body.length}/1600
-                            </div>
-                          </div>
-
-                          {/* Variables */}
-                          {templateVariables.map((variable) => (
-                            <div key={variable.id} className="space-y-1">
-                              <Label htmlFor={`var-${variable.id}`} className="text-xs">
-                                Muestra para variable {variable.placeholder}
-                              </Label>
-                              <Input
-                                id={`var-${variable.id}`}
-                                placeholder="Ej: Juan Pérez"
-                                value={variable.sampleContent}
-                                onChange={(e) =>
-                                  setTemplateVariables((prev) =>
-                                    prev.map((v) =>
-                                      v.id === variable.id
-                                        ? { ...v, sampleContent: e.target.value }
-                                        : v
-                                    )
-                                  )
-                                }
-                              />
-                            </div>
-                          ))}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={addTemplateVariable}
-                            className="text-brand hover:text-brand-strong"
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Agregar variable
-                          </Button>
-                        </div>
-
-                        {/* Right: Preview */}
-                        <div className="space-y-2">
-                          <div className="text-sm font-medium text-center text-muted-foreground">
-                            Vista previa
-                          </div>
-                          <div className="mx-auto max-w-[280px] rounded-2xl border-[10px] border-gray-800 bg-gray-800 shadow-xl">
-                            <div className="rounded-xl bg-white overflow-hidden">
-                              <div className="bg-gradient-to-b from-gray-700 to-gray-800 px-4 py-2.5 flex items-center justify-center gap-2">
-                                <div className="bg-white rounded-full p-1">
-                                  <MessageSquare className="h-3 w-3 text-gray-800" />
-                                </div>
-                                <span className="text-xs font-medium text-white">WhatsApp</span>
-                              </div>
-                              <div className="p-4 bg-gradient-to-b from-gray-50 to-white min-h-[200px]">
-                                <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
-                                  <p className="text-xs whitespace-pre-wrap leading-relaxed">
-                                    {newTemplate.body
-                                      ? previewBody(newTemplate.body)
-                                      : <span className="text-muted-foreground italic">El mensaje aparecerá aquí...</span>}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          size="sm"
-                          onClick={handleCreateTemplate}
-                          disabled={savingTemplate || isSyncing || !!placeholderError}
-                          className="bg-medical-primary hover:bg-medical-primary/90"
-                        >
-                          {savingTemplate && (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          )}
-                          {t("settings.notifications.whatsapp.create")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setIsCreatingTemplate(false);
-                            setNewTemplate({ name: "", body: "", category: "MARKETING" });
-                            setTemplateVariables([]);
-                            setPlaceholderError("");
-                          }}
-                          disabled={savingTemplate || isSyncing}
-                        >
-                          {t("settings.notifications.whatsapp.cancel")}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button
-                      onClick={() => setIsCreatingTemplate(true)}
-                      variant="outline"
-                      className="w-full"
-                      disabled={savingTemplate || isSyncing}
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      {t("settings.notifications.whatsapp.newMetaTemplate")}
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            </>
-          )}
+        <TabsContent value="whatsapp">
+          <WhatsAppTemplatesPanel
+            templates={clinicTemplates}
+            loading={loading}
+            onSync={syncMetaTemplates}
+            isSyncing={isSyncing}
+            onCreate={handleCreateTemplateFromPanel}
+            savingTemplate={savingTemplate}
+          />
         </TabsContent>
 
         {/* TAB: Email */}
@@ -880,269 +685,69 @@ export function NotificationsSettings() {
         </TabsContent>
 
         {/* TAB: Recordatorios */}
-        <TabsContent value="reminders" className="space-y-4">
-          {loading ? (
-            <Card>
-              <CardContent className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-medical-primary" />
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t("settings.notifications.reminders.title")}</CardTitle>
-                  <CardDescription>
-                    {t("settings.notifications.reminders.description")}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {reminderConfigs.length > 0 ? (
-                    <div className="space-y-4">
-                      {reminderConfigs.map((reminder) => (
-                        <div key={reminder.id} className="border rounded-lg p-4">
-                          {editingReminder === reminder.id ? (
-                            <div className="space-y-4">
-                              <h5 className="font-semibold">
-                                {t("settings.notifications.reminders.edit")}
-                              </h5>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor={`edit-minutes-${reminder.id}`}>
-                                    {t("settings.notifications.reminders.minutesBefore")}
-                                  </Label>
-                                  <Input
-                                    id={`edit-minutes-${reminder.id}`}
-                                    type="number"
-                                    min="1"
-                                    value={editReminderData.minutes}
-                                    onChange={(e) =>
-                                      setEditReminderData({
-                                        ...editReminderData,
-                                        minutes: e.target.value,
-                                      })
-                                    }
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor={`edit-template-${reminder.id}`}>
-                                    {t("settings.notifications.reminders.template")}
-                                  </Label>
-                                  <Select
-                                    value={editReminderData.templateId}
-                                    onValueChange={(value) =>
-                                      setEditReminderData({
-                                        ...editReminderData,
-                                        templateId: value,
-                                      })
-                                    }
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {approvedTemplates.map((template) => (
-                                        <SelectItem
-                                          key={template.id}
-                                          value={template.id}
-                                        >
-                                          {template.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={handleSaveEditReminder}
-                                  disabled={savingReminder}
-                                  className="bg-medical-primary hover:bg-medical-primary/90"
-                                >
-                                  {savingReminder && (
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  )}
-                                  {t("settings.notifications.reminders.save")}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={handleCancelEditReminder}
-                                  disabled={savingReminder}
-                                >
-                                  {t("settings.notifications.reminders.cancel")}
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3">
-                                  <Clock className="w-5 h-5 text-medical-primary" />
-                                  <div>
-                                    <h4 className="font-semibold">
-                                      {t("settings.notifications.reminders.reminder")}{" "}
-                                      {formatMinutesToLabel(
-                                        reminder.reminderMinutesBefore
-                                      )}{" "}
-                                      {t("settings.notifications.reminders.before")}
-                                    </h4>
-                                    <p className="text-sm text-muted-foreground">
-                                      {t("settings.notifications.reminders.templateLabel")}{" "}
-                                      <span className="font-medium">
-                                        {getTemplateName(reminder.templateId)}
-                                      </span>
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="mt-2 flex items-center gap-2">
-                                  <Badge
-                                    className={`${getStatusBadgeColor(
-                                      getTemplateStatus(reminder.templateId)
-                                    )} text-xs`}
-                                  >
-                                    {getTemplateStatus(reminder.templateId) ||
-                                      "UNKNOWN"}
-                                  </Badge>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Switch
-                                  checked={reminder.enabled}
-                                  onCheckedChange={(checked) =>
-                                    handleToggleReminder(reminder.id, checked)
-                                  }
-                                  disabled={savingReminder}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleStartEditReminder(reminder)
-                                  }
-                                  disabled={savingReminder}
-                                >
-                                  <Edit className="w-4 h-4 text-blue-500" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleDeleteReminder(reminder.id)
-                                  }
-                                  disabled={savingReminder}
-                                >
-                                  <Trash2 className="w-4 h-4 text-red-500" />
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      {t("settings.notifications.reminders.empty")}
-                    </div>
-                  )}
-
-                  <Separator />
-
-                  {isAddingReminder ? (
-                    <div className="border rounded-lg p-4 space-y-4 bg-muted/50">
-                      <h4 className="font-semibold">
-                        {t("settings.notifications.reminders.addNew")}
-                      </h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="reminder-minutes">
-                            {t("settings.notifications.reminders.minutesBeforeAppointment")}
-                          </Label>
-                          <Input
-                            id="reminder-minutes"
-                            type="number"
-                            min="1"
-                            value={newReminderMinutes}
-                            onChange={(e) => setNewReminderMinutes(e.target.value)}
-                            placeholder={t("settings.notifications.reminders.minutesPlaceholder")}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            {formatMinutesToLabel(
-                              parseInt(newReminderMinutes) || 0
-                            )}
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="reminder-template">
-                            {t("settings.notifications.reminders.metaTemplate")}
-                          </Label>
-                          <Select
-                            value={newReminderTemplate}
-                            onValueChange={setNewReminderTemplate}
-                          >
-                            <SelectTrigger>
-                              <SelectValue
-                                placeholder={t("settings.notifications.reminders.selectTemplate")}
-                              />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {approvedTemplates.length > 0 ? (
-                                approvedTemplates.map((template) => (
-                                  <SelectItem key={template.id} value={template.id}>
-                                    {template.name}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <div className="p-2 text-sm text-muted-foreground">
-                                  {t("settings.notifications.reminders.noApprovedTemplates")}
-                                </div>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={handleAddReminder}
-                          disabled={savingReminder}
-                          className="bg-medical-primary hover:bg-medical-primary/90"
-                        >
-                          {savingReminder && (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          )}
-                          {t("settings.notifications.reminders.add")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setIsAddingReminder(false);
-                            setNewReminderMinutes("1440");
-                            setNewReminderTemplate("");
-                          }}
-                          disabled={savingReminder}
-                        >
-                          {t("settings.notifications.reminders.cancel")}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button
-                      onClick={() => setIsAddingReminder(true)}
-                      variant="outline"
-                      className="w-full"
-                      disabled={savingReminder}
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      {t("settings.notifications.reminders.addReminder")}
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            </>
-          )}
+        <TabsContent value="reminders">
+          <RemindersPanel
+            reminders={reminderConfigs}
+            templates={clinicTemplates}
+            loading={loading}
+            saving={savingReminder}
+            onAdd={async (minutes, templateId) => {
+              setSavingReminder(true);
+              try {
+                const result = await reminderConfigService.createReminderConfig({ reminderMinutesBefore: minutes, templateId });
+                if (result) {
+                  const updated = await reminderConfigService.getReminderConfigs();
+                  setReminderConfigs(updated);
+                  notify.success(t("settings.notifications.reminderAdded"));
+                }
+              } catch {
+                notify.error(t("settings.notifications.error"), { description: t("settings.notifications.reminderAddFailed") });
+              } finally {
+                setSavingReminder(false);
+              }
+            }}
+            onUpdate={async (id, data) => {
+              setSavingReminder(true);
+              try {
+                const success = await reminderConfigService.updateReminderConfig(id, data);
+                if (success) {
+                  const updated = await reminderConfigService.getReminderConfigs();
+                  setReminderConfigs(updated);
+                  notify.success(t("settings.notifications.reminderUpdated"));
+                }
+              } catch {
+                notify.error(t("settings.notifications.error"), { description: t("settings.notifications.reminderUpdateFailed") });
+              } finally {
+                setSavingReminder(false);
+              }
+            }}
+            onToggle={async (id, enabled) => {
+              setSavingReminder(true);
+              try {
+                const success = await reminderConfigService.updateReminderConfig(id, { enabled });
+                if (success) {
+                  const updated = await reminderConfigService.getReminderConfigs();
+                  setReminderConfigs(updated);
+                }
+              } catch {
+                notify.error(t("settings.notifications.error"), { description: t("settings.notifications.reminderUpdateFailed") });
+              } finally {
+                setSavingReminder(false);
+              }
+            }}
+            onDelete={(id) => {
+              if (!confirm(t("settings.notifications.deleteReminderConfirm"))) return;
+              setSavingReminder(true);
+              reminderConfigService.deleteReminderConfig(id).then((success) => {
+                if (success) {
+                  reminderConfigService.getReminderConfigs().then(setReminderConfigs);
+                  notify.success(t("settings.notifications.reminderDeleted"));
+                }
+              }).catch(() => {
+                notify.error(t("settings.notifications.error"), { description: t("settings.notifications.reminderDeleteFailed") });
+              }).finally(() => setSavingReminder(false));
+            }}
+          />
         </TabsContent>
       </Tabs>
     </div>
