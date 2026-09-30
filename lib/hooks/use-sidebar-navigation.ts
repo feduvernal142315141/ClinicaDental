@@ -131,7 +131,7 @@ export function useSidebarNavigation() {
       if (itemPath === "/") {
         return currentPath === "/";
       }
-      return currentPath.startsWith(itemPath);
+      return currentPath === itemPath || currentPath.startsWith(itemPath + "/");
     };
 
     return {

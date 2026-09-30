@@ -16,6 +16,20 @@ export const serviceGet = async <T = unknown>(
             return err.response
         })
 }
+/** GET without triggering the global loading bar (polling/SSE refreshes). */
+export const serviceGetSilent = async <T = unknown>(
+    url: string,
+    config?: AxiosRequestConfig,
+): ServiceResponse<T> => {
+    return apiInstance
+        .get<ResponseEntity<T>>(url, { ...config, _silent: true } as AxiosRequestConfig)
+        .then((response) => {
+            return response
+        })
+        .catch((err) => {
+            return err.response
+        })
+}
 export const serviceDelete = async <T = unknown, R = unknown>(url: string, data?: T): ServiceResponse<R> => {
     return apiInstance
         .delete<ResponseEntity<R>>(url, { data })
@@ -29,6 +43,17 @@ export const serviceDelete = async <T = unknown, R = unknown>(url: string, data?
 export const servicePost = async <T = unknown, R = unknown>(url: string, data: T): ServiceResponse<R> => {
     return apiInstance
         .post<ResponseEntity<R>>(url, data)
+        .then((response) => {
+            return response
+        })
+        .catch((err) => {
+            return err.response
+        })
+}
+/** POST without triggering the global loading bar. */
+export const servicePostSilent = async <T = unknown, R = unknown>(url: string, data: T): ServiceResponse<R> => {
+    return apiInstance
+        .post<ResponseEntity<R>>(url, data, { _silent: true } as AxiosRequestConfig)
         .then((response) => {
             return response
         })

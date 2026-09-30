@@ -128,7 +128,9 @@ export function InboxConversationRow({
         "hover:bg-hover",
         isSelected
           ? "bg-brand/[0.06] dark:bg-brand/10"
-          : "bg-transparent",
+          : hasUnread
+            ? "bg-brand/[0.03] dark:bg-brand/[0.06]"
+            : "bg-transparent",
         className,
       )}
     >
@@ -139,7 +141,7 @@ export function InboxConversationRow({
             className={cn(
               "text-xs font-semibold",
               hasUnread
-                ? "bg-brand/15 text-brand"
+                ? "bg-brand/20 text-brand dark:bg-brand/25"
                 : "bg-hover-strong text-subtle",
             )}
           >
@@ -162,8 +164,8 @@ export function InboxConversationRow({
         <div className="flex items-baseline justify-between gap-2">
           <span
             className={cn(
-              "truncate text-[13.5px] text-ink",
-              hasUnread ? "font-semibold" : "font-medium",
+              "truncate text-[13.5px]",
+              hasUnread ? "font-bold text-ink" : "font-medium text-ink",
             )}
           >
             {displayName}
@@ -171,7 +173,7 @@ export function InboxConversationRow({
           <span
             className={cn(
               "shrink-0 text-[11px]",
-              hasUnread ? "font-semibold text-brand" : "text-subtle",
+              hasUnread ? "font-bold text-brand" : "text-subtle",
             )}
           >
             {relativeTime(lastMessageAt)}
@@ -183,15 +185,17 @@ export function InboxConversationRow({
           <span
             className={cn(
               "truncate text-[12.5px]",
-              hasUnread ? "text-ink/70 font-medium" : "text-subtle",
+              hasUnread ? "font-medium text-ink/80" : "text-subtle",
             )}
           >
             {lastMessagePreview || "\u00A0"}
           </span>
           <div className="flex shrink-0 items-center gap-1.5">
-            <span className={cn("text-[10px] font-medium", statusCfg.className)}>
-              {statusCfg.label}
-            </span>
+            {!hasUnread && (
+              <span className={cn("text-[10px] font-medium", statusCfg.className)}>
+                {statusCfg.label}
+              </span>
+            )}
             {hasUnread && (
               <span className="flex min-w-[20px] items-center justify-center rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
                 {unreadCount > 99 ? "99+" : unreadCount}

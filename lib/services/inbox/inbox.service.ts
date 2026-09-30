@@ -1,4 +1,4 @@
-import { serviceGet, servicePost, servicePut } from "@/lib/services/baseService";
+import { serviceGet, serviceGetSilent, servicePost, servicePostSilent, servicePut } from "@/lib/services/baseService";
 import { handleServiceError } from "@/lib/utils/error.utils";
 import type {
   InboxConversationPage,
@@ -136,10 +136,69 @@ export async function sendInboxMessage(
   handleServiceError(response, "Error al enviar el mensaje");
 }
 
+// ── Silent versions (no global loading bar — for polling/SSE refresh) ──────
+
+export async function getInboxConversationsSilent(
+  params?: InboxConversationQueryParams,
+): Promise<InboxConversationPage> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.append("status", params.status);
+  if (params?.handlingMode) qs.append("handlingMode", params.handlingMode);
+  if (params?.unreadOnly) qs.append("unreadOnly", "true");
+  if (params?.assignedToMe) qs.append("assignedToMe", "true");
+  if (params?.search) qs.append("search", params.search);
+  if (params?.page !== undefined) qs.append("page", String(params.page));
+  if (params?.pageSize !== undefined) qs.append("pageSize", String(params.pageSize));
+  const query = qs.toString();
+  const url = query ? `${BASE}/conversations?${query}` : `${BASE}/conversations`;
+  const response = await serviceGetSilent<InboxConversationPage>(url);
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
+    return response.data as unknown as InboxConversationPage;
+  }
+  handleServiceError(response, "Error al cargar conversaciones");
+}
+
+export async function getInboxConversationDetailSilent(
+  id: string,
+): Promise<InboxConversationDetail> {
+  const response = await serviceGetSilent<InboxConversationDetail>(`${BASE}/conversations/${id}`);
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
+    return response.data as unknown as InboxConversationDetail;
+  }
+  handleServiceError(response, "Error al cargar la conversación");
+}
+
+export async function getInboxMessagesSilent(
+  conversationId: string,
+  params?: InboxMessageQueryParams,
+): Promise<InboxMessage[]> {
+  const qs = new URLSearchParams();
+  if (params?.before) qs.append("before", params.before);
+  if (params?.beforeId) qs.append("beforeId", params.beforeId);
+  if (params?.limit) qs.append("limit", String(params.limit));
+  const query = qs.toString();
+  const url = query
+    ? `${BASE}/conversations/${conversationId}/messages?${query}`
+    : `${BASE}/conversations/${conversationId}/messages`;
+  const response = await serviceGetSilent<InboxMessage[]>(url);
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
+    return response.data as unknown as InboxMessage[];
+  }
+  handleServiceError(response, "Error al cargar mensajes");
+}
+
+export async function getInboxSummarySilent(): Promise<InboxSummary> {
+  const response = await serviceGetSilent<InboxSummary>(`${BASE}/summary`);
+  if (response?.status >= 200 && response?.status < 300 && response?.data) {
+    return response.data as unknown as InboxSummary;
+  }
+  handleServiceError(response, "Error al cargar resumen");
+}
+
 // ── SSE Ticket ─────────────────────────────────────────────────────────────
 
 export async function createInboxSseTicket(): Promise<string> {
-  const response = await servicePost<Record<string, never>, { ticket: string }>(
+  const response = await servicePostSilent<Record<string, never>, { ticket: string }>(
     `${BASE}/events/ticket`, {},
   );
   if (response?.status >= 200 && response?.status < 300 && response?.data) {

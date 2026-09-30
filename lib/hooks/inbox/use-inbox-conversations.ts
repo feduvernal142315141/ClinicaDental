@@ -6,7 +6,7 @@ import type {
   InboxConversationPage,
   InboxConversationQueryParams,
 } from "@/lib/entity/inbox";
-import { getInboxConversations } from "@/lib/services/inbox/inbox.service";
+import { getInboxConversations, getInboxConversationsSilent } from "@/lib/services/inbox/inbox.service";
 
 interface UseInboxConversationsResult {
   conversations: InboxConversation[];
@@ -87,11 +87,11 @@ export function useInboxConversations(
     }
   }, [loadingMore, pagination, query]);
 
-  /** Silent refresh — protected by generation counter. */
+  /** Silent refresh — protected by generation counter, no loading bar. */
   const refresh = useCallback(async () => {
     const gen = ++refreshGenRef.current;
     try {
-      const result = await getInboxConversations(query);
+      const result = await getInboxConversationsSilent(query);
       if (gen !== refreshGenRef.current) return; // Stale
       setConversations(result.rows ?? []);
       setPagination({

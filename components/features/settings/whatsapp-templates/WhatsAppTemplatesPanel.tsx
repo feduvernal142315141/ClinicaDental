@@ -94,6 +94,13 @@ export function WhatsAppTemplatesPanel({
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [panelView, setPanelView] = React.useState<PanelView>("detail");
 
+  // Auto-select first template on initial load
+  React.useEffect(() => {
+    if (templates.length > 0 && selectedId === null && panelView === "detail") {
+      setSelectedId(templates[0].id);
+    }
+  }, [templates, selectedId, panelView]);
+
   // Create form state
   const [formName, setFormName] = React.useState("");
   const [formBody, setFormBody] = React.useState("");

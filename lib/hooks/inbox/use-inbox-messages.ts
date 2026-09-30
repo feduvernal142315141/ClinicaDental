@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { InboxMessage } from "@/lib/entity/inbox";
 import { shouldAcceptDeliveryStatus } from "@/lib/entity/inbox";
-import { getInboxMessages } from "@/lib/services/inbox/inbox.service";
+import { getInboxMessages, getInboxMessagesSilent } from "@/lib/services/inbox/inbox.service";
 
 interface UseInboxMessagesResult {
   messages: InboxMessage[];
@@ -130,7 +130,7 @@ export function useInboxMessages(
     const gen = ++refreshGenRef.current;
 
     try {
-      const result = await getInboxMessages(conversationId, { limit: PAGE_SIZE });
+      const result = await getInboxMessagesSilent(conversationId, { limit: PAGE_SIZE });
 
       // Stale response check
       if (gen !== refreshGenRef.current) return;

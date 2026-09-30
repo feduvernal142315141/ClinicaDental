@@ -52,7 +52,7 @@ export function Sidebar({
     if (item.children?.length) {
       const children = item.children;
       const open = isGroupOpen(item);
-      const parentActive = isActiveRoute(currentPath, item.path);
+      const parentActive = children.some((c) => isActiveRoute(currentPath, c.path));
       const submenuId = `submenu-${item.path}`;
       return (
         <div key={item.path}>

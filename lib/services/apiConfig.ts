@@ -108,7 +108,11 @@ const apiInstance = axios.create({
 
 apiInstance.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    interceptorHandlers.onLoadingStart?.();
+    // Silent requests (polling/SSE refresh) skip the global loading indicator
+    const isSilent = (config as { _silent?: boolean })._silent === true;
+    if (!isSilent) {
+      interceptorHandlers.onLoadingStart?.();
+    }
     interceptorHandlers.onActivity?.();
 
     // Los dictados esperan a varios proveedores encadenados: se les amplía el
@@ -128,18 +132,21 @@ apiInstance.interceptors.request.use(
     return config;
   },
   (error: AxiosError) => {
-    interceptorHandlers.onLoadingEnd?.();
+    const isSilent = (error.config as { _silent?: boolean } | undefined)?._silent === true;
+    if (!isSilent) interceptorHandlers.onLoadingEnd?.();
     return Promise.reject(error);
   },
 );
 
 apiInstance.interceptors.response.use(
   (response) => {
-    interceptorHandlers.onLoadingEnd?.();
+    const isSilent = (response.config as { _silent?: boolean })._silent === true;
+    if (!isSilent) interceptorHandlers.onLoadingEnd?.();
     return response;
   },
   async (error: AxiosError) => {
-    interceptorHandlers.onLoadingEnd?.();
+    const isSilent = (error.config as { _silent?: boolean } | undefined)?._silent === true;
+    if (!isSilent) interceptorHandlers.onLoadingEnd?.();
     const appError = normalizeError(error);
     if (error.response) {
       const status = error.response.status;

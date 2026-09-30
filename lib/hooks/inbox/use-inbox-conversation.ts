@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { InboxConversationDetail } from "@/lib/entity/inbox";
-import { getInboxConversationDetail } from "@/lib/services/inbox/inbox.service";
+import { getInboxConversationDetail, getInboxConversationDetailSilent } from "@/lib/services/inbox/inbox.service";
 
 interface UseInboxConversationResult {
   detail: InboxConversationDetail | null;
@@ -40,12 +40,12 @@ export function useInboxConversation(
     }
   }, [id]);
 
-  /** Silent refresh — protected by generation counter. */
+  /** Silent refresh — protected by generation counter, no loading bar. */
   const refresh = useCallback(async () => {
     if (!id) return;
     const gen = ++refreshGenRef.current;
     try {
-      const result = await getInboxConversationDetail(id);
+      const result = await getInboxConversationDetailSilent(id);
       if (gen !== refreshGenRef.current) return; // Stale
       setDetail(result);
     } catch {

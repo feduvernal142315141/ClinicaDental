@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { InboxSummary } from "@/lib/entity/inbox";
-import { getInboxSummary } from "@/lib/services/inbox/inbox.service";
+import { getInboxSummary, getInboxSummarySilent } from "@/lib/services/inbox/inbox.service";
 
 interface UseInboxSummaryResult {
   summary: InboxSummary | null;
@@ -37,11 +37,11 @@ export function useInboxSummary(): UseInboxSummaryResult {
     }
   }, []);
 
-  /** Silent refresh — protected by generation counter. */
+  /** Silent refresh — protected by generation counter, no loading bar. */
   const refresh = useCallback(async () => {
     const gen = ++refreshGenRef.current;
     try {
-      const result = await getInboxSummary();
+      const result = await getInboxSummarySilent();
       if (gen !== refreshGenRef.current) return; // Stale
       setSummary(result);
     } catch {
