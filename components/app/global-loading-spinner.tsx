@@ -7,8 +7,12 @@
  * Se actualiza automáticamente usando el InterceptorContext.
  */
 
+import { usePathname } from "next/navigation";
 import { useGlobalLoading } from "@/lib/contexts/interceptor-context";
 import { Loader2 } from "lucide-react";
+
+/** Routes where the loading bar is hidden (constant polling/SSE). */
+const SILENT_ROUTES = ["/inbox"];
 
 export function GlobalLoadingSpinner() {
   const { isLoading, activeRequests } = useGlobalLoading();
@@ -37,8 +41,12 @@ export function GlobalLoadingSpinner() {
  */
 export function GlobalLoadingBar() {
   const { isLoading } = useGlobalLoading();
+  const pathname = usePathname();
 
-  if (!isLoading) return null;
+  // Hide on routes with constant background requests (inbox polling/SSE)
+  const isSilentRoute = SILENT_ROUTES.some((r) => pathname?.startsWith(r));
+
+  if (!isLoading || isSilentRoute) return null;
 
   return (
     <div className="fixed left-0 right-0 top-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">
