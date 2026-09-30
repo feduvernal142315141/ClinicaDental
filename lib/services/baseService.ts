@@ -22,7 +22,10 @@ export const serviceGetSilent = async <T = unknown>(
     config?: AxiosRequestConfig,
 ): ServiceResponse<T> => {
     return apiInstance
-        .get<ResponseEntity<T>>(url, { ...config, _silent: true } as AxiosRequestConfig)
+        .get<ResponseEntity<T>>(url, {
+            ...config,
+            headers: { ...config?.headers, "X-Silent": "true" },
+        })
         .then((response) => {
             return response
         })
@@ -53,7 +56,9 @@ export const servicePost = async <T = unknown, R = unknown>(url: string, data: T
 /** POST without triggering the global loading bar. */
 export const servicePostSilent = async <T = unknown, R = unknown>(url: string, data: T): ServiceResponse<R> => {
     return apiInstance
-        .post<ResponseEntity<R>>(url, data, { _silent: true } as AxiosRequestConfig)
+        .post<ResponseEntity<R>>(url, data, {
+            headers: { "X-Silent": "true" },
+        })
         .then((response) => {
             return response
         })

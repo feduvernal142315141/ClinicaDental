@@ -25,6 +25,10 @@ let refreshPromise: Promise<boolean> | null = null;
 
 let sessionExpiryHandled = false;
 
+// Track silent requests — these skip the global loading bar.
+// WeakSet keyed on config object survives through response/error interceptors.
+const silentRequests = new WeakSet<object>();
+
 export const isSessionExpired = (): boolean => sessionExpiryHandled;
 const tryRefreshOnce = (): Promise<boolean> => {
   if (!refreshPromise) {
@@ -108,9 +112,12 @@ const apiInstance = axios.create({
 
 apiInstance.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    // Silent requests (polling/SSE refresh) skip the global loading indicator
-    const isSilent = (config as { _silent?: boolean })._silent === true;
-    if (!isSilent) {
+    // Silent requests (polling/SSE refresh) skip the global loading indicator.
+    const isSilent = config.headers?.["X-Silent"] === "true";
+    if (isSilent) {
+      config.headers.delete("X-Silent"); // Don't send to server
+      silentRequests.add(config);        // Track for response interceptor
+    } else {
       interceptorHandlers.onLoadingStart?.();
     }
     interceptorHandlers.onActivity?.();
@@ -132,21 +139,24 @@ apiInstance.interceptors.request.use(
     return config;
   },
   (error: AxiosError) => {
-    const isSilent = (error.config as { _silent?: boolean } | undefined)?._silent === true;
-    if (!isSilent) interceptorHandlers.onLoadingEnd?.();
+    if (error.config && !silentRequests.has(error.config)) {
+      interceptorHandlers.onLoadingEnd?.();
+    }
     return Promise.reject(error);
   },
 );
 
 apiInstance.interceptors.response.use(
   (response) => {
-    const isSilent = (response.config as { _silent?: boolean })._silent === true;
-    if (!isSilent) interceptorHandlers.onLoadingEnd?.();
+    if (!silentRequests.has(response.config)) {
+      interceptorHandlers.onLoadingEnd?.();
+    }
     return response;
   },
   async (error: AxiosError) => {
-    const isSilent = (error.config as { _silent?: boolean } | undefined)?._silent === true;
-    if (!isSilent) interceptorHandlers.onLoadingEnd?.();
+    if (error.config && !silentRequests.has(error.config)) {
+      interceptorHandlers.onLoadingEnd?.();
+    }
     const appError = normalizeError(error);
     if (error.response) {
       const status = error.response.status;
