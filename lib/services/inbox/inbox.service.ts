@@ -83,7 +83,7 @@ export async function getInboxSummary(): Promise<InboxSummary> {
 // ── Mutations ───────────────────────────────────────────────────────────────
 
 export async function markConversationRead(id: string): Promise<void> {
-  const response = await servicePost<Record<string, never>, boolean>(
+  const response = await servicePostSilent<Record<string, never>, boolean>(
     `${BASE}/conversations/${id}/read`, {},
   );
   if (response?.status >= 200 && response?.status < 300) return;
