@@ -126,14 +126,14 @@ export function InboxConversationList({
       </div>
 
       {/* Filter pills */}
-      <div className="flex gap-1.5 overflow-x-auto border-b border-hairline px-4 py-2 scrollbar-none">
+      <div className="flex flex-wrap gap-1.5 border-b border-hairline px-4 py-2">
         {INBOX_FILTER_PRESETS.map((preset) => (
           <button
             key={preset.value}
             type="button"
             onClick={() => onFilterChange(preset.value)}
             className={cn(
-              "shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+              "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
               activeFilter === preset.value
                 ? "bg-brand text-white"
                 : "bg-hover text-subtle hover:text-ink",

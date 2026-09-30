@@ -67,6 +67,13 @@ export function InboxPage() {
   const msgs = useInboxMessages(selectedId ?? undefined);
   const summary = useInboxSummary();
 
+  // Auto-select first conversation on initial load (desktop only)
+  useEffect(() => {
+    if (!isMobile && selectedId === null && convList.conversations.length > 0 && !convList.loading) {
+      setSelectedId(convList.conversations[0].id);
+    }
+  }, [isMobile, selectedId, convList.conversations, convList.loading]);
+
   // ── Action hooks ──────────────────────────────────────────────────────────
   const afterMutation = useCallback(() => {
     convDetail.refresh();
