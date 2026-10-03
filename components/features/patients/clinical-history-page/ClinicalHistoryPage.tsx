@@ -18,6 +18,7 @@ import {
   Loader2,
   Play,
   Plus,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui";
 import {
@@ -41,6 +42,8 @@ import {
   type UseClinicalHistoryPageParams,
 } from "@/lib/hooks/patients/clinical-history-page/use-clinical-history-page";
 import { PATIENT_TABS } from "@/lib/hooks/patients/clinical-history-page/patient-tabs";
+import { PatientAccountPanel } from "@/components/features/billing/account/PatientAccountPanel";
+import { useBillingPermissions, useFinanceModule } from "@/lib/hooks/billing";
 import { PatientRecordHeader, VisitRibbon } from "./header";
 import {
   PATIENT_TABS_LIST_CLASS,
@@ -128,6 +131,17 @@ export function ClinicalHistoryPage({
     activeAppointmentId,
     openFinalizeOnLoad,
   });
+
+  // Pestaña "Cuenta": solo con el módulo FINANCE activo y permiso `billing`. Si se llegó
+  // con ?tab=cuenta y el módulo está apagado, se vuelve a Evolución.
+  const financeModule = useFinanceModule();
+  const billingPermissions = useBillingPermissions();
+  const accountVisible = financeModule.enabled && billingPermissions.canView;
+  useEffect(() => {
+    if (activeTab === PATIENT_TABS.ACCOUNT && !financeModule.loading && !accountVisible) {
+      setActiveTab(PATIENT_TABS.EVOLUTION);
+    }
+  }, [activeTab, accountVisible, financeModule.loading, setActiveTab]);
 
   const isWideDesktop = useIsWideDesktop();
   const showConsultationPanel = isCurrentlyActiveConsultation;
@@ -450,6 +464,15 @@ export function ClinicalHistoryPage({
               <Images className="h-4 w-4" />
               {t("clinical.tabs.files")}
             </TabsTrigger>
+            {accountVisible && (
+              <TabsTrigger
+                value={PATIENT_TABS.ACCOUNT}
+                className={PATIENT_TAB_TRIGGER_CLASS}
+              >
+                <Wallet className="h-4 w-4" />
+                Cuenta
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
         <TabsContent
@@ -609,6 +632,14 @@ export function ClinicalHistoryPage({
             />
           </div>
         </TabsContent>
+        {accountVisible && (
+          <TabsContent
+            value={PATIENT_TABS.ACCOUNT}
+            className="flex-1 min-h-0 mt-5 overflow-auto"
+          >
+            <PatientAccountPanel patientId={patientId} patientName={patient.name} />
+          </TabsContent>
+        )}
       </Tabs>
       <StartConsultationNowModal
         open={showStartNow}

@@ -39,6 +39,7 @@ explícita, no patrones para copiar indiscriminadamente.
 | etiquetas | `/labels` |
 | configuración | `/clinic/*` |
 | dashboard | `/dashboard/summary` |
+| facturación | `/billing/*` (ver [billing-backend-spec.md](billing-backend-spec.md)) |
 | adjuntos | `/patients/{id}/attachments` |
 | subida de imagen | `/api/v1/cloudinary/upload` |
 | voz | `/speech/transcribe` |

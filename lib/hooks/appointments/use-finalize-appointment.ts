@@ -14,6 +14,7 @@ import type {
   CreateAppointmentRequest,
 } from "@/lib/entity/appointment";
 import { notify } from "@/lib/utils/notify";
+import { useFinanceChargesNotice } from "@/lib/hooks/billing/use-finance-charges-notice";
 
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -86,6 +87,8 @@ export function useFinalizeAppointment({
   const storeApi = useOdontogramStoreApi();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Finanzas: el backend crea los cargos de la cita; aquí solo se avisa (§9).
+  const notifyFinanceCharges = useFinanceChargesNotice();
 
   const finalize = useCallback(
     async ({
@@ -254,12 +257,13 @@ export function useFinalizeAppointment({
           });
         }
 
+        notifyFinanceCharges();
         return { followUpId };
       } finally {
         setLoading(false);
       }
     },
-    [visitId, patientId, clinicId, adapter, storeApi],
+    [visitId, patientId, clinicId, adapter, storeApi, notifyFinanceCharges],
   );
 
   return { finalize, loading, error };

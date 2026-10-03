@@ -14,6 +14,7 @@ import {
   Sliders,
   Link,
   Briefcase,
+  Wallet,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -46,6 +47,34 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
   appointments: {
     label: "Citas",
     icon: Calendar,
+  },
+  billing: {
+    label: "Finanzas",
+    icon: Wallet,
+  },
+  estimates: {
+    label: "Presupuestos",
+    parent: "billing",
+  },
+  invoices: {
+    label: "Recibos",
+    parent: "billing",
+  },
+  charges: {
+    label: "Cargos pendientes",
+    parent: "billing",
+  },
+  payments: {
+    label: "Pagos y devoluciones",
+    parent: "billing",
+  },
+  cash: {
+    label: "Caja",
+    parent: "billing",
+  },
+  reports: {
+    label: "Reportes",
+    parent: "billing",
   },
   campaigns: {
     label: "Campañas",

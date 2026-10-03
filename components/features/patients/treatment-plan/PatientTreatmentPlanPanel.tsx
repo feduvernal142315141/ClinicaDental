@@ -46,6 +46,9 @@ import {
 } from "./PlanItemPropertySelects";
 import { TreatmentPlanFiltersBar } from "./TreatmentPlanFiltersBar";
 import { TreatmentPlanItemsTable } from "./TreatmentPlanItemsTable";
+import { FilePlus2 } from "lucide-react";
+import { LinkButton } from "@/components/features/billing/shared/LinkButton";
+import { useBillingPermissions, useFinanceModule } from "@/lib/hooks/billing";
 
 /** `min-w-[50rem]` de {@link TreatmentPlanItemsTable} (creció con el menú). */
 const TABLE_MIN_WIDTH_PX = 800;
@@ -179,7 +182,13 @@ export function PatientTreatmentPlanPanel({
     addItems,
     updateItem,
     removeItem,
+    planId,
   } = useTreatmentPlanBoard(patientId);
+  // Finanzas (§9): "Crear presupuesto" precarga las líneas del plan. Solo con el
+  // módulo FINANCE activo y permiso para crear presupuestos.
+  const financeModule = useFinanceModule();
+  const billingPermissions = useBillingPermissions();
+  const canCreateEstimate = financeModule.enabled && billingPermissions.canCreate;
 
 
   // Estado y prioridad se editan SOBRE su valor en la fila (skill
@@ -339,6 +348,16 @@ export function PatientTreatmentPlanPanel({
                         {t("treatmentPlan.estimatedAmount")}
                       </span>
                     </p>
+                  )}
+                  {canCreateEstimate && hasItems && planId && (
+                    <LinkButton
+                      href={`/billing/estimates/new?patientId=${patientId}&patientName=${encodeURIComponent(patientName)}&treatmentPlanId=${planId}`}
+                      variant="outline"
+                      className="shrink-0 gap-1.5"
+                    >
+                      <FilePlus2 aria-hidden="true" className="h-4 w-4" />
+                      Crear presupuesto
+                    </LinkButton>
                   )}
                   <Button
                   type="button"
