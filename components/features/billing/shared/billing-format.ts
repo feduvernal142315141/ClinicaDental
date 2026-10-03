@@ -15,7 +15,6 @@ const DATE_TIME = new Intl.DateTimeFormat("es", {
   hour12: false,
 });
 const TIME = new Intl.DateTimeFormat("es", { hour: "2-digit", minute: "2-digit", hour12: false });
-const DAY_MONTH = new Intl.DateTimeFormat("es", { day: "2-digit", month: "2-digit" });
 
 function parseCalendarDate(value: string): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -49,8 +48,10 @@ export function formatBillingTime(value: string | null | undefined): string {
   return date ? TIME.format(date) : "—";
 }
 
-/** "01/10" — para "Cita del DD/MM". */
+/** "01/10" — para "Cita del DD/MM" (Intl en español no rellena el día con cero). */
 export function formatDayMonth(value: string | null | undefined): string {
   const date = parse(value);
-  return date ? DAY_MONTH.format(date) : "—";
+  if (!date) return "—";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}`;
 }
