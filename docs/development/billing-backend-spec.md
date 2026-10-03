@@ -1,5 +1,10 @@
 # Facturación y Cobros — Spec de integración Backend
 
+> **SUPERADA.** El backend ya existe (`backend-clinic`, rama `feature/finance-module`) y el
+> contrato vigente es `backend-clinic/docs/finance/frontend-prompt.md`, implementado en
+> `lib/entity/billing` y `lib/services/billing`. Este documento queda como histórico del diseño
+> inicial: no lo uses como contrato (códigos F-…, facturas fiscales, campos y rutas han cambiado).
+
 > **Estado**: Front implementado (mock). Listo para implementar en `backend-clinic`.
 > **Frontend**: rama `feat/billing-cobros` — contratos en `lib/entity/billing`, HTTP en `lib/services/billing/billing.api.ts`
 > **Stack backend**: Java + Spring Boot + arquitectura hexagonal
