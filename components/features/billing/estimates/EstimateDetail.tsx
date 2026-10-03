@@ -17,7 +17,6 @@ import {
   AlertDialogTitle,
   Button,
 } from "@/components/ui";
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import {
   canTransitionEstimate,
   isEstimateConvertible,
@@ -38,6 +37,7 @@ import { LineItemsTable } from "../shared/LineItemsTable";
 import { LinkButton } from "../shared/LinkButton";
 import { formatBillingDate, formatBillingDateTime } from "../shared/billing-format";
 import { notifyBillingError } from "../shared/billing-notify";
+import { DetailSkeleton } from "../shared/BillingSkeletons";
 
 const STATUS_ACTIONS: Array<{ status: EstimateStatusChange; label: string; icon: typeof Send }> = [
   { status: "SENT", label: "Marcar enviado", icon: Send },
@@ -54,7 +54,7 @@ export function EstimateDetail({ estimateId }: { estimateId: string }) {
   const convert = useConvertEstimate();
   const [confirmConvert, setConfirmConvert] = useState(false);
 
-  if (isPending) return <LoadingSpinner message="Cargando presupuesto..." />;
+  if (isPending) return <DetailSkeleton label="Cargando presupuesto…" />;
   if (isError || !estimate) {
     return (
       <Alert variant="destructive">

@@ -20,7 +20,6 @@ import {
   Switch,
 } from "@/components/ui";
 import { Select as SearchSelect } from "@/components/ui/controls/select";
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { CHARGE_POLICY_LABELS, type ChargePolicy } from "@/lib/entity/billing";
 import { useBillingPermissions, useExchangeRate, useFinanceSettings } from "@/lib/hooks/billing";
 import {
@@ -34,6 +33,7 @@ import { COMMON_CURRENCIES, currencyOptions } from "../shared/CurrencyRateFields
 import { NumberInput } from "../shared/NumberInput";
 import { FinanceNoPermission } from "../module/FinanceModuleUnavailable";
 import { formatBillingDate } from "../shared/billing-format";
+import { DetailSkeleton } from "../shared/BillingSkeletons";
 
 const POLICIES: ChargePolicy[] = ["SUGGEST", "AUTO", "OFF"];
 
@@ -43,7 +43,7 @@ function SettingsForm() {
   });
   const rootError = form.formState.errors.root?.message;
 
-  if (loading) return <LoadingSpinner message="Cargando configuración..." />;
+  if (loading) return <DetailSkeleton label="Cargando configuración…" />;
   if (loadError) {
     return (
       <Alert variant="destructive">

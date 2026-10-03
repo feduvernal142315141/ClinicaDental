@@ -7,7 +7,6 @@ import { Plus, ReceiptText } from "lucide-react";
 import { Header } from "@/components/ui/atomic/layout/header";
 import { Alert, AlertDescription, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { INVOICE_STATUS_LABELS, type InvoiceStatus } from "@/lib/entity/billing";
 import { useBillingPermissions, useInvoiceList } from "@/lib/hooks/billing";
 import { useDebouncedValue } from "@/lib/hooks/billing/use-debounced-value";
@@ -18,6 +17,7 @@ import { LinkButton } from "../shared/LinkButton";
 import { ALL_STATUSES, ListFilters, type PatientFilterValue } from "../shared/ListFilters";
 import { Money } from "../shared/Money";
 import { formatBillingDate } from "../shared/billing-format";
+import { TableSkeleton } from "../shared/BillingSkeletons";
 
 const PAGE_SIZE = 20;
 
@@ -82,7 +82,7 @@ export function InvoiceList({ initialPatient }: { initialPatient?: PatientFilter
       )}
 
       {isPending ? (
-        <LoadingSpinner message="Cargando recibos..." />
+        <TableSkeleton columns={7} label="Cargando recibos…" />
       ) : data && data.entities.length === 0 ? (
         <EmptyState
           icon={ReceiptText}

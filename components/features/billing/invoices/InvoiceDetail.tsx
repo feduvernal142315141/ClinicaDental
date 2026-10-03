@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Ban, Banknote, Pencil, Printer } from "lucide-react";
 import { Header } from "@/components/ui/atomic/layout/header";
 import { Alert, AlertDescription, Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui";
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { PAYMENT_METHOD_LABELS } from "@/lib/entity/billing";
 import {
   useBillingPermissions,
@@ -24,6 +23,7 @@ import { Money } from "../shared/Money";
 import { ReasonDialog } from "../shared/ReasonDialog";
 import { formatBillingDate, formatBillingDateTime } from "../shared/billing-format";
 import { RegisterPaymentDialog } from "../payments/RegisterPaymentDialog";
+import { DetailSkeleton } from "../shared/BillingSkeletons";
 
 /** Solo el recibo se imprime: se oculta el resto de la aplicación. */
 const PRINT_CSS = `
@@ -45,7 +45,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   const [paying, setPaying] = useState(false);
   const [voiding, setVoiding] = useState(false);
 
-  if (isPending) return <LoadingSpinner message="Cargando recibo..." />;
+  if (isPending) return <DetailSkeleton label="Cargando recibo…" />;
   if (isError || !invoice) {
     return (
       <Alert variant="destructive">

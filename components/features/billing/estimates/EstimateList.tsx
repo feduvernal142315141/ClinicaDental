@@ -7,7 +7,6 @@ import { FileText, Plus } from "lucide-react";
 import { Header } from "@/components/ui/atomic/layout/header";
 import { Alert, AlertDescription, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { ESTIMATE_STATUS_LABELS, type EstimateStatus } from "@/lib/entity/billing";
 import { useBillingPermissions, useEstimateList } from "@/lib/hooks/billing";
 import { useDebouncedValue } from "@/lib/hooks/billing/use-debounced-value";
@@ -18,6 +17,7 @@ import { LinkButton } from "../shared/LinkButton";
 import { ALL_STATUSES, ListFilters, type PatientFilterValue } from "../shared/ListFilters";
 import { Money } from "../shared/Money";
 import { formatBillingDate } from "../shared/billing-format";
+import { TableSkeleton } from "../shared/BillingSkeletons";
 
 const PAGE_SIZE = 20;
 
@@ -78,7 +78,7 @@ export function EstimateList() {
       )}
 
       {isPending ? (
-        <LoadingSpinner message="Cargando presupuestos..." />
+        <TableSkeleton columns={5} label="Cargando presupuestos…" />
       ) : data && data.entities.length === 0 ? (
         <EmptyState
           icon={FileText}

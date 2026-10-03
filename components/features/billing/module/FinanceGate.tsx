@@ -1,12 +1,12 @@
 "use client";
 
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import {
   useBillingPermissions,
   useFinanceModule,
   type BillingPermissions,
 } from "@/lib/hooks/billing";
 import { FinanceModuleUnavailable, FinanceNoPermission } from "./FinanceModuleUnavailable";
+import { PageSkeleton } from "../shared/BillingSkeletons";
 
 interface FinanceGateProps {
   children: React.ReactNode;
@@ -26,13 +26,7 @@ export function FinanceGate({ children, allow, deniedDescription }: FinanceGateP
   const { enabled, loading } = useFinanceModule();
   const permissions = useBillingPermissions();
 
-  if (loading) {
-    return (
-      <div className="flex min-h-64 items-center justify-center">
-        <LoadingSpinner message="Cargando Finanzas..." />
-      </div>
-    );
-  }
+  if (loading) return <PageSkeleton />;
   if (!enabled) return <FinanceModuleUnavailable />;
   if (!permissions.canView || (allow && !allow(permissions))) {
     return <FinanceNoPermission description={deniedDescription} />;

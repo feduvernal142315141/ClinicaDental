@@ -24,7 +24,6 @@ import {
   TabsTrigger,
 } from "@/components/ui";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { PAYMENT_METHOD_LABELS, refundableAmount, type PaymentResponse } from "@/lib/entity/billing";
 import { useBillingPermissions, usePaymentList, useRefundList, useVoidPayment } from "@/lib/hooks/billing";
 import { billingErrorMessage, isConflictError } from "@/lib/services/billing";
@@ -36,6 +35,7 @@ import { Money } from "../shared/Money";
 import { ReasonDialog } from "../shared/ReasonDialog";
 import { formatBillingDateTime } from "../shared/billing-format";
 import { RefundDialog } from "./RefundDialog";
+import { TableSkeleton } from "../shared/BillingSkeletons";
 
 const PAGE_SIZE = 20;
 
@@ -98,7 +98,7 @@ export function PaymentsPage({ initialPatient }: { initialPatient?: PatientFilte
             </Alert>
           )}
           {payments.isPending ? (
-            <LoadingSpinner message="Cargando pagos..." />
+            <TableSkeleton columns={8} label="Cargando pagos…" />
           ) : payments.data && payments.data.entities.length === 0 ? (
             <EmptyState icon={Banknote} variant="card" title="Sin pagos" description="No hay pagos con estos filtros." />
           ) : payments.data ? (
@@ -197,7 +197,7 @@ export function PaymentsPage({ initialPatient }: { initialPatient?: PatientFilte
             </Alert>
           )}
           {refunds.isPending ? (
-            <LoadingSpinner message="Cargando devoluciones..." />
+            <TableSkeleton columns={5} label="Cargando devoluciones…" />
           ) : refunds.data && refunds.data.entities.length === 0 ? (
             <EmptyState icon={Undo2} variant="card" title="Sin devoluciones" description="No hay devoluciones con estos filtros." />
           ) : refunds.data ? (

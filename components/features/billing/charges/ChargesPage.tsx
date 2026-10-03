@@ -7,7 +7,6 @@ import { ClipboardList, ClipboardPlus, Trash2 } from "lucide-react";
 import { Header } from "@/components/ui/atomic/layout/header";
 import { Alert, AlertDescription, Button, Checkbox } from "@/components/ui";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { CHARGE_STATUS_LABELS, type ChargeResponse, type ChargeStatus } from "@/lib/entity/billing";
 import { useBillingPermissions, useChargeList, useDismissCharge } from "@/lib/hooks/billing";
 import { billingErrorMessage } from "@/lib/services/billing";
@@ -20,6 +19,7 @@ import { Money } from "../shared/Money";
 import { ReasonDialog } from "../shared/ReasonDialog";
 import { formatDayMonth } from "../shared/billing-format";
 import { ManualChargeDialog } from "./ManualChargeDialog";
+import { TableSkeleton } from "../shared/BillingSkeletons";
 
 const PAGE_SIZE = 50;
 
@@ -115,7 +115,7 @@ export function ChargesPage() {
       )}
 
       {isPending ? (
-        <LoadingSpinner message="Cargando cargos..." />
+        <TableSkeleton columns={5} label="Cargando cargos…" />
       ) : groups.length === 0 ? (
         <EmptyState
           icon={ClipboardList}

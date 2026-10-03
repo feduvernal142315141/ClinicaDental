@@ -7,7 +7,6 @@ import {
   Alert,
   AlertDescription,
   Button,
-  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -27,6 +26,7 @@ import { BillingPager } from "../shared/BillingPager";
 import { Money } from "../shared/Money";
 import { formatBillingDateTime, formatBillingTime } from "../shared/billing-format";
 import { CloseCashDialog, OpenCashDialog } from "./CashDialogs";
+import { LinesSkeleton, TableSkeleton } from "../shared/BillingSkeletons";
 
 function Figure({ label, children, emphasis }: { label: string; children: React.ReactNode; emphasis?: boolean }) {
   return (
@@ -83,7 +83,7 @@ export function CashPage({ openOnLoad = false }: { openOnLoad?: boolean }) {
         </div>
 
         {current.isPending ? (
-          <Skeleton className="h-20 rounded-xl" />
+          <LinesSkeleton lines={3} label="Consultando la caja…" />
         ) : session ? (
           <>
             <div className="grid gap-4 sm:grid-cols-4">
@@ -137,7 +137,7 @@ export function CashPage({ openOnLoad = false }: { openOnLoad?: boolean }) {
             </Alert>
           )}
           {history.isPending ? (
-            <Skeleton className="h-32 rounded-bento" />
+            <TableSkeleton columns={5} rows={4} label="Cargando historial de cajas…" />
           ) : history.data && history.data.entities.length === 0 ? (
             <EmptyState icon={Wallet} variant="card" title="Sin cajas registradas" />
           ) : history.data ? (

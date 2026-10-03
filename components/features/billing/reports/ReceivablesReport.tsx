@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { HandCoins } from "lucide-react";
 import { Alert, AlertDescription, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { useReceivables } from "@/lib/hooks/billing";
 import { useDebouncedValue } from "@/lib/hooks/billing/use-debounced-value";
 import { billingErrorMessage } from "@/lib/services/billing";
@@ -13,6 +12,7 @@ import { BillingPager } from "../shared/BillingPager";
 import { ListFilters } from "../shared/ListFilters";
 import { Money } from "../shared/Money";
 import { formatBillingDate } from "../shared/billing-format";
+import { TableSkeleton } from "../shared/BillingSkeletons";
 
 const PAGE_SIZE = 20;
 
@@ -42,7 +42,7 @@ export function ReceivablesReport() {
         </Alert>
       )}
       {isPending ? (
-        <LoadingSpinner message="Cargando saldos..." />
+        <TableSkeleton columns={8} label="Cargando saldos…" />
       ) : data && data.entities.length === 0 ? (
         <EmptyState
           icon={HandCoins}

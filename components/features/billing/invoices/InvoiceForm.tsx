@@ -15,7 +15,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui";
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { useInvoiceEditor } from "@/lib/hooks/billing/use-invoice-editor";
 import { billingErrorMessage } from "@/lib/services/billing";
 import { notify } from "@/lib/utils/notify";
@@ -27,6 +26,7 @@ import { Money } from "../shared/Money";
 import { PatientPicker } from "../shared/PatientPicker";
 import { FinanceNoPermission } from "../module/FinanceModuleUnavailable";
 import { formatDayMonth } from "../shared/billing-format";
+import { DetailSkeleton, LinesSkeleton } from "../shared/BillingSkeletons";
 
 interface InvoiceFormProps {
   invoiceId?: string;
@@ -45,7 +45,7 @@ export function InvoiceForm(props: InvoiceFormProps) {
   const chargeIdsError = form.formState.errors.lines?.message;
 
   if (!(isEdit ? permissions.canEdit : permissions.canCreate)) return <FinanceNoPermission />;
-  if (isEdit && editor.invoiceQuery.isPending) return <LoadingSpinner message="Cargando recibo..." />;
+  if (isEdit && editor.invoiceQuery.isPending) return <DetailSkeleton label="Cargando recibo…" />;
   if (isEdit && (editor.invoiceQuery.isError || !invoice)) {
     return (
       <Alert variant="destructive">
@@ -129,7 +129,7 @@ export function InvoiceForm(props: InvoiceFormProps) {
                 )}
               </div>
               {editor.chargesQuery.isPending ? (
-                <LoadingSpinner size="sm" message="Cargando cargos..." />
+                <LinesSkeleton lines={2} label="Cargando cargos…" />
               ) : editor.pendingCharges.length === 0 ? (
                 <p className="text-sm text-subtle">El paciente no tiene cargos pendientes.</p>
               ) : (

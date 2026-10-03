@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Alert, AlertDescription, Input, Label, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui";
+import { Alert, AlertDescription, Input, Label, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui";
 import { PAYMENT_METHOD_LABELS, type PaymentMethod } from "@/lib/entity/billing";
 import { useFinanceDashboard } from "@/lib/hooks/billing";
 import { useChartPalette } from "@/lib/hooks/dashboard/use-chart-palette";
@@ -10,6 +10,7 @@ import { billingErrorMessage } from "@/lib/services/billing";
 import { dateToLocalDate, localTodayInput } from "@/lib/datetime";
 import { formatMoney } from "@/lib/utils/billing-currency";
 import { Money } from "../shared/Money";
+import { CardsSkeleton } from "../shared/BillingSkeletons";
 
 const MAX_RANGE_DAYS = 366;
 const DAY_MS = 86_400_000;
@@ -92,11 +93,7 @@ export function FinanceDashboard() {
       )}
 
       {dashboard.isPending && !error ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-bento" />
-          ))}
-        </div>
+        <CardsSkeleton count={8} label="Cargando el dashboard…" />
       ) : data ? (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

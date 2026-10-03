@@ -18,7 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Header } from "@/components/ui/atomic/layout/header";
-import { Alert, AlertDescription, Input, Label, Skeleton } from "@/components/ui";
+import { Alert, AlertDescription, Input, Label } from "@/components/ui";
 import { PAYMENT_METHOD_LABELS, type CashSummaryMethod } from "@/lib/entity/billing";
 import {
   useBillingPermissions,
@@ -31,6 +31,7 @@ import { localTodayInput } from "@/lib/datetime";
 import { Money } from "../shared/Money";
 import { formatBillingTime } from "../shared/billing-format";
 import { LinkButton } from "../shared/LinkButton";
+import { CardsSkeleton } from "../shared/BillingSkeletons";
 
 const METHOD_ICONS: Record<CashSummaryMethod, LucideIcon> = {
   CASH: Banknote,
@@ -189,11 +190,7 @@ export function BillingOverview() {
           )}
 
           {summary.isPending ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton key={index} className="h-28 rounded-bento" />
-              ))}
-            </div>
+            <CardsSkeleton label="Cargando la caja del día…" />
           ) : summary.data ? (
             <>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -9,7 +9,6 @@ import {
   AlertDescription,
   Button,
   Checkbox,
-  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -29,6 +28,7 @@ import { formatBillingDate, formatBillingDateTime, formatDayMonth } from "../sha
 import { LinkButton } from "../shared/LinkButton";
 import { RegisterPaymentDialog } from "../payments/RegisterPaymentDialog";
 import { ManualChargeDialog } from "../charges/ManualChargeDialog";
+import { CardsSkeleton, TableSkeleton } from "../shared/BillingSkeletons";
 
 interface PatientAccountPanelProps {
   patientId: string;
@@ -63,10 +63,9 @@ export function PatientAccountPanel({ patientId, patientName }: PatientAccountPa
 
   if (isPending) {
     return (
-      <div className="grid gap-3 sm:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <Skeleton key={index} className="h-24 rounded-bento" />
-        ))}
+      <div className="space-y-4">
+        <CardsSkeleton label="Cargando la cuenta del paciente…" />
+        <TableSkeleton columns={4} rows={3} label="Cargando la cuenta del paciente…" />
       </div>
     );
   }

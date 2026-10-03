@@ -16,7 +16,6 @@ import {
   FormMessage,
 } from "@/components/ui";
 import { Select as SearchSelect } from "@/components/ui/controls/select";
-import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { isEstimateEditable } from "@/lib/entity/billing";
 import { loadPlanLines, usePatientTreatmentPlans } from "@/lib/hooks/billing";
 import { useEstimateEditor } from "@/lib/hooks/billing/use-estimate-editor";
@@ -29,6 +28,7 @@ import { LineItemsEditor } from "../shared/LineItemsEditor";
 import { PatientPicker } from "../shared/PatientPicker";
 import { FinanceNoPermission } from "../module/FinanceModuleUnavailable";
 import { notifyBillingError } from "../shared/billing-notify";
+import { DetailSkeleton, LinesSkeleton } from "../shared/BillingSkeletons";
 
 interface EstimateFormProps {
   estimateId?: string;
@@ -54,7 +54,7 @@ export function EstimateForm(props: EstimateFormProps) {
     return <FinanceNoPermission />;
   }
   if (isEdit && editor.estimateQuery.isPending) {
-    return <LoadingSpinner message="Cargando presupuesto..." />;
+    return <DetailSkeleton label="Cargando presupuesto…" />;
   }
   if (isEdit && editor.estimateQuery.isError) {
     return (
@@ -111,7 +111,7 @@ export function EstimateForm(props: EstimateFormProps) {
         description="Los presupuestos nunca generan deuda: se cobran al convertirlos en recibo."
       />
 
-      {editor.planLinesQuery.isFetching && <LoadingSpinner size="sm" message="Cargando líneas del plan..." />}
+      {editor.planLinesQuery.isFetching && <LinesSkeleton lines={2} label="Cargando líneas del plan…" />}
 
       <Form {...form}>
         <form
