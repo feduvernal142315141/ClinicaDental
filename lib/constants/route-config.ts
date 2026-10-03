@@ -49,7 +49,7 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
     icon: Calendar,
   },
   billing: {
-    label: "Facturación",
+    label: "Finanzas",
     icon: Wallet,
   },
   estimates: {
@@ -57,7 +57,23 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
     parent: "billing",
   },
   invoices: {
-    label: "Facturas",
+    label: "Recibos",
+    parent: "billing",
+  },
+  charges: {
+    label: "Cargos pendientes",
+    parent: "billing",
+  },
+  payments: {
+    label: "Pagos y devoluciones",
+    parent: "billing",
+  },
+  cash: {
+    label: "Caja",
+    parent: "billing",
+  },
+  reports: {
+    label: "Reportes",
     parent: "billing",
   },
   campaigns: {
