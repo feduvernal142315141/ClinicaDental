@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { CheckCircle2, Stethoscope, ArrowUpRight, Receipt } from "lucide-react";
+import { CheckCircle2, Stethoscope, ArrowUpRight } from "lucide-react";
 import { StatusBadge, type StatusBadgeTone } from "@/components/ui";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { useToothLabel } from "@/lib/contexts/tooth-notation-context";
@@ -14,11 +13,8 @@ import type {
 interface TreatmentPlansPendingSectionProps {
   plans: PendingPlanView[];
   loading: boolean;
-  patientId: string;
   /** Lleva al usuario a la pestaña Odontograma (donde vive el plan). */
   onViewOdontogram?: () => void;
-  /** Si false, oculta el CTA de presupuesto (sin permiso billing). */
-  canCreateEstimate?: boolean;
 }
 
 /** Etiqueta y tono del pill de estado de cada plan. */
@@ -35,12 +31,9 @@ const STATUS_META: Record<
 export function TreatmentPlansPendingSection({
   plans,
   loading,
-  patientId,
   onViewOdontogram,
-  canCreateEstimate = true,
 }: TreatmentPlansPendingSectionProps) {
   const { plain } = useToothLabel();
-  const router = useRouter();
 
   if (loading) {
     return (
@@ -58,18 +51,6 @@ export function TreatmentPlansPendingSection({
       </div>
     );
   }
-
-  const goToEstimate = (plan: PendingPlanView) => {
-    const params = new URLSearchParams({
-      patientId,
-      treatmentPlanId: plan.id,
-      planName: plan.name,
-    });
-    if (plan.totalPrice !== undefined && plan.totalPrice !== null) {
-      params.set("planTotal", String(plan.totalPrice));
-    }
-    router.push(`/billing/estimates/new?${params.toString()}`);
-  };
 
   return (
     <div className="space-y-2">
@@ -107,7 +88,7 @@ export function TreatmentPlansPendingSection({
               </div>
             )}
 
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="mt-2 flex items-center justify-between gap-2">
               {plan.eventCount > 0 ? (
                 <span className="text-muted-foreground">
                   {plan.eventCount} tratamiento
@@ -117,28 +98,16 @@ export function TreatmentPlansPendingSection({
                 <span className="text-muted-foreground">Sin tratamientos</span>
               )}
 
-              <div className="flex flex-wrap items-center gap-2">
-                {canCreateEstimate && (
-                  <button
-                    type="button"
-                    onClick={() => goToEstimate(plan)}
-                    className="inline-flex items-center gap-1 font-medium text-brand hover:underline"
-                  >
-                    <Receipt className="h-3 w-3" />
-                    Generar presupuesto
-                  </button>
-                )}
-                {onViewOdontogram && (
-                  <button
-                    type="button"
-                    onClick={onViewOdontogram}
-                    className="inline-flex items-center gap-1 font-medium text-brand hover:underline"
-                  >
-                    Ver en odontograma
-                    <ArrowUpRight className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
+              {onViewOdontogram && (
+                <button
+                  type="button"
+                  onClick={onViewOdontogram}
+                  className="inline-flex items-center gap-1 font-medium text-brand hover:underline"
+                >
+                  Ver en odontograma
+                  <ArrowUpRight className="h-3 w-3" />
+                </button>
+              )}
             </div>
           </div>
         );

@@ -20,7 +20,6 @@ export interface PendingPlanView {
   eventCount: number;
   status: DerivedPlanStatus;
   linkedDiagnosis?: TreatmentPlanDiagnosisRef;
-  totalPrice?: number;
 }
 
 export interface TreatmentStatusCounts {
@@ -91,7 +90,6 @@ export function useTreatmentPlansPendingSection(patientId: string) {
             eventCount,
             status: derivePlanStatus(plan, eventCount),
             linkedDiagnosis: plan.linkedDiagnosis,
-            totalPrice: plan.totalPrice,
           };
         }),
     [plans],

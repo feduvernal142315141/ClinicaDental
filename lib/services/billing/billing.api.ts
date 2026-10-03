@@ -1,401 +1,233 @@
-import { handleServiceError } from "@/lib/utils/error.utils";
-import {
-  serviceGet,
-  servicePost,
-  servicePut,
-  servicePatch,
-} from "../baseService";
 import type {
-  BillingQueryParams,
+  CashSessionResponse,
   CashSummaryResponse,
+  ChargeResponse,
+  ClinicCapabilities,
   ConvertEstimateResult,
-  CreateEstimateRequest,
-  CreateInvoiceRequest,
   EstimateResponse,
   ExchangeRateResponse,
+  FinanceDashboardResponse,
+  FinanceSettings,
   InvoiceResponse,
-  PaginatedEstimatesResponse,
-  PaginatedInvoicesResponse,
-  PaginatedPaymentsResponse,
-  PaginatedReceivablesResponse,
+  Paginated,
   PatientLedgerResponse,
   PaymentResponse,
-  RegisterPaymentRequest,
-  UpdateEstimateRequest,
-  UpdateEstimateStatusRequest,
-  UpdateInvoiceRequest,
+  ReceivableListItem,
+  RefundResponse,
 } from "@/lib/entity/billing";
+import {
+  cashSessionResponseSchema,
+  chargeResponseSchema,
+  estimateResponseSchema,
+  financeSettingsSchema,
+  invoiceResponseSchema,
+  paginatedSchema,
+  patientLedgerResponseSchema,
+  paymentResponseSchema,
+  refundResponseSchema,
+} from "@/lib/entity/billing/schemas";
+import { isNotFoundError } from "./billing-errors";
+import { billingRequest, pageParams } from "./billing-http";
+import type { BillingServiceApi } from "./billing.contract";
 
 /**
- * Billing API — implementación HTTP real.
- * Base: /billing/*
- *
- * El front no llama esto directamente: usa billing.service.ts
- * (conmuta mock ↔ api vía NEXT_PUBLIC_BILLING_MOCK).
+ * Finanzas — implementación HTTP real. Base `/billing/*`, respuestas sin envoltorio.
+ * La UI no la usa directamente: pasa por `billing.service.ts` (conmutador mock ↔ API).
  */
 
-const endpoint = "/billing";
+const BASE = "/billing";
 
-function buildQueryString(params?: BillingQueryParams): string {
-  if (!params) return "";
-
-  const qp = new URLSearchParams();
-
-  if (params.page !== undefined) qp.append("page", params.page.toString());
-  if (params.pageSize !== undefined)
-    qp.append("pageSize", params.pageSize.toString());
-  if (params.patientId) qp.append("patientId", params.patientId);
-  if (params.status) qp.append("status", params.status);
-  if (params.q) qp.append("q", params.q);
-  if (params.from) qp.append("from", params.from);
-  if (params.to) qp.append("to", params.to);
-
-  if (params.filters?.length) {
-    params.filters.forEach((f) => qp.append("filters", f));
-  }
-  if (params.orders?.length) {
-    params.orders.forEach((o) => qp.append("orders", o));
-  }
-
-  return qp.toString();
+async function get<T>(url: string, options?: Parameters<typeof billingRequest>[2]): Promise<T> {
+  return (await billingRequest<T>("GET", url, options)).data;
 }
 
-// ─── Ledger ─────────────────────────────────────────────────────────
-
-async function getPatientLedger(
-  patientId: string,
-): Promise<PatientLedgerResponse> {
-  const response = await serviceGet<PatientLedgerResponse>(
-    `${endpoint}/patients/${patientId}/ledger`,
-  );
-  if (response?.data) return response.data;
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al cargar la cuenta del paciente",
-  );
+async function send<T>(
+  method: "POST" | "PUT" | "PATCH",
+  url: string,
+  data?: unknown,
+  options?: Parameters<typeof billingRequest>[2],
+): Promise<T> {
+  return (await billingRequest<T>(method, url, { ...options, data })).data;
 }
 
-// ─── Estimates ──────────────────────────────────────────────────────
+export const billingApi: BillingServiceApi = {
+  // ── Capacidades ────────────────────────────────────────────────────
+  async getCapabilities() {
+    return get<ClinicCapabilities>("/clinic/capabilities", { silent: true });
+  },
 
-async function getEstimates(
-  params?: BillingQueryParams,
-): Promise<PaginatedEstimatesResponse> {
-  const qs = buildQueryString(params);
-  const url = `${endpoint}/estimates${qs ? `?${qs}` : ""}`;
-  const response = await serviceGet<PaginatedEstimatesResponse>(url);
-  if (response?.data) return response.data;
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al cargar presupuestos",
-  );
-}
+  // ── Cuenta del paciente ────────────────────────────────────────────
+  async getPatientLedger(patientId) {
+    return get<PatientLedgerResponse>(`${BASE}/patients/${patientId}/ledger`, {
+      schema: patientLedgerResponseSchema,
+    });
+  },
 
-async function getEstimateById(id: string): Promise<EstimateResponse> {
-  const response = await serviceGet<EstimateResponse>(
-    `${endpoint}/estimates/${id}`,
-  );
-  if (response?.data) return response.data;
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al cargar el presupuesto",
-  );
-}
+  // ── Presupuestos ───────────────────────────────────────────────────
+  async getEstimates(query = {}) {
+    return get<Paginated<EstimateResponse>>(`${BASE}/estimates`, {
+      params: { ...pageParams(query.page, query.pageSize), patientId: query.patientId, status: query.status, q: query.q },
+      schema: paginatedSchema(estimateResponseSchema),
+    });
+  },
+  async getEstimate(id) {
+    return get<EstimateResponse>(`${BASE}/estimates/${id}`, { schema: estimateResponseSchema });
+  },
+  async createEstimate(data) {
+    return send<EstimateResponse>("POST", `${BASE}/estimates`, data, { schema: estimateResponseSchema });
+  },
+  async updateEstimate(id, data) {
+    return send<EstimateResponse>("PUT", `${BASE}/estimates/${id}`, data, { schema: estimateResponseSchema });
+  },
+  async changeEstimateStatus(id, status) {
+    return send<EstimateResponse>("PATCH", `${BASE}/estimates/${id}/status`, { status }, {
+      schema: estimateResponseSchema,
+    });
+  },
+  async convertEstimate(id) {
+    return send<ConvertEstimateResult>("POST", `${BASE}/estimates/${id}/convert`);
+  },
 
-async function createEstimate(
-  data: CreateEstimateRequest,
-): Promise<EstimateResponse> {
-  const response = await servicePost<CreateEstimateRequest, EstimateResponse>(
-    `${endpoint}/estimates`,
-    data,
-  );
-  if (
-    response &&
-    typeof response.status === "number" &&
-    response.status >= 200 &&
-    response.status < 300 &&
-    response.data
-  ) {
-    return response.data;
-  }
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al crear el presupuesto",
-  );
-}
+  // ── Recibos ────────────────────────────────────────────────────────
+  async getInvoices(query = {}) {
+    return get<Paginated<InvoiceResponse>>(`${BASE}/invoices`, {
+      params: {
+        ...pageParams(query.page, query.pageSize),
+        patientId: query.patientId,
+        status: query.status,
+        q: query.q,
+        from: query.from,
+        to: query.to,
+      },
+      schema: paginatedSchema(invoiceResponseSchema),
+    });
+  },
+  async getInvoice(id) {
+    return get<InvoiceResponse>(`${BASE}/invoices/${id}`, { schema: invoiceResponseSchema });
+  },
+  async createInvoice(data) {
+    return send<InvoiceResponse>("POST", `${BASE}/invoices`, data, { schema: invoiceResponseSchema });
+  },
+  async updateInvoice(id, data) {
+    return send<InvoiceResponse>("PUT", `${BASE}/invoices/${id}`, data, { schema: invoiceResponseSchema });
+  },
+  async voidInvoice(id, reason) {
+    return send<InvoiceResponse>("PATCH", `${BASE}/invoices/${id}/void`, { reason }, {
+      schema: invoiceResponseSchema,
+    });
+  },
 
-async function updateEstimate(
-  data: UpdateEstimateRequest,
-): Promise<EstimateResponse> {
-  const response = await servicePut<UpdateEstimateRequest, EstimateResponse>(
-    `${endpoint}/estimates/${data.id}`,
-    data,
-  );
-  if (
-    response &&
-    typeof response.status === "number" &&
-    response.status >= 200 &&
-    response.status < 300 &&
-    response.data
-  ) {
-    return response.data;
-  }
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al actualizar el presupuesto",
-  );
-}
+  // ── Pagos y devoluciones ───────────────────────────────────────────
+  async getPayments(query = {}) {
+    return get<Paginated<PaymentResponse>>(`${BASE}/payments`, {
+      params: { ...pageParams(query.page, query.pageSize), patientId: query.patientId, from: query.from, to: query.to },
+      schema: paginatedSchema(paymentResponseSchema),
+    });
+  },
+  async registerPayment(data, idempotencyKey) {
+    const response = await billingRequest<PaymentResponse>("POST", `${BASE}/payments`, {
+      data,
+      headers: { "Idempotency-Key": idempotencyKey },
+      schema: paymentResponseSchema,
+    });
+    // 201 = pago nuevo; 200 = reintento con la misma clave (el backend devuelve el mismo pago).
+    return { payment: response.data, replayed: response.status === 200 };
+  },
+  async voidPayment(id, reason) {
+    return send<PaymentResponse>("PATCH", `${BASE}/payments/${id}/void`, { reason }, {
+      schema: paymentResponseSchema,
+    });
+  },
+  async refundPayment(paymentId, data) {
+    return send<RefundResponse>("POST", `${BASE}/payments/${paymentId}/refunds`, data, {
+      schema: refundResponseSchema,
+    });
+  },
+  async getRefunds(query = {}) {
+    return get<Paginated<RefundResponse>>(`${BASE}/refunds`, {
+      params: { ...pageParams(query.page, query.pageSize), patientId: query.patientId, from: query.from, to: query.to },
+      schema: paginatedSchema(refundResponseSchema),
+    });
+  },
 
-async function updateEstimateStatus(
-  id: string,
-  data: UpdateEstimateStatusRequest,
-): Promise<EstimateResponse> {
-  const response = await servicePatch<
-    UpdateEstimateStatusRequest,
-    EstimateResponse
-  >(`${endpoint}/estimates/${id}/status`, data);
-  if (
-    response &&
-    typeof response.status === "number" &&
-    response.status >= 200 &&
-    response.status < 300 &&
-    response.data
-  ) {
-    return response.data;
-  }
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al actualizar el estado del presupuesto",
-  );
-}
+  // ── Cargos ─────────────────────────────────────────────────────────
+  async getCharges(query = {}) {
+    return get<Paginated<ChargeResponse>>(`${BASE}/charges`, {
+      params: { ...pageParams(query.page, query.pageSize), patientId: query.patientId, status: query.status },
+      schema: paginatedSchema(chargeResponseSchema),
+    });
+  },
+  async createCharge(data) {
+    return send<ChargeResponse>("POST", `${BASE}/charges`, data, { schema: chargeResponseSchema });
+  },
+  async dismissCharge(id, reason) {
+    return send<ChargeResponse>("PATCH", `${BASE}/charges/${id}/dismiss`, { reason }, {
+      schema: chargeResponseSchema,
+    });
+  },
 
-async function convertEstimate(id: string): Promise<ConvertEstimateResult> {
-  const response = await servicePost<Record<string, never>, ConvertEstimateResult>(
-    `${endpoint}/estimates/${id}/convert`,
-    {},
-  );
-  if (
-    response &&
-    typeof response.status === "number" &&
-    response.status >= 200 &&
-    response.status < 300 &&
-    response.data
-  ) {
-    return response.data;
-  }
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al convertir el presupuesto en factura",
-  );
-}
+  // ── Caja ───────────────────────────────────────────────────────────
+  async getCurrentCashSession(options) {
+    try {
+      return await get<CashSessionResponse>(`${BASE}/cash-sessions/current`, {
+        silent: options?.silent,
+        expectedStatuses: [404],
+        schema: cashSessionResponseSchema,
+      });
+    } catch (error) {
+      if (isNotFoundError(error)) return null; // 404 = no hay caja abierta
+      throw error;
+    }
+  },
+  async getCashSessions(query = {}) {
+    return get<Paginated<CashSessionResponse>>(`${BASE}/cash-sessions`, {
+      params: pageParams(query.page, query.pageSize),
+      schema: paginatedSchema(cashSessionResponseSchema),
+    });
+  },
+  async openCashSession(data) {
+    return send<CashSessionResponse>("POST", `${BASE}/cash-sessions/open`, data, {
+      schema: cashSessionResponseSchema,
+    });
+  },
+  async closeCashSession(id, data) {
+    return send<CashSessionResponse>("POST", `${BASE}/cash-sessions/${id}/close`, data, {
+      schema: cashSessionResponseSchema,
+    });
+  },
 
-// ─── Invoices ───────────────────────────────────────────────────────
+  // ── Reportes ───────────────────────────────────────────────────────
+  async getCashSummary(date) {
+    return get<CashSummaryResponse>(`${BASE}/cash-summary`, { params: { date } });
+  },
+  async getReceivables(query = {}) {
+    return get<Paginated<ReceivableListItem>>(`${BASE}/receivables`, {
+      params: { ...pageParams(query.page, query.pageSize), q: query.q },
+    });
+  },
+  async getDashboard(query = {}) {
+    return get<FinanceDashboardResponse>(`${BASE}/dashboard`, { params: { from: query.from, to: query.to } });
+  },
 
-async function getInvoices(
-  params?: BillingQueryParams,
-): Promise<PaginatedInvoicesResponse> {
-  const qs = buildQueryString(params);
-  const url = `${endpoint}/invoices${qs ? `?${qs}` : ""}`;
-  const response = await serviceGet<PaginatedInvoicesResponse>(url);
-  if (response?.data) return response.data;
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al cargar facturas",
-  );
-}
-
-async function getInvoiceById(id: string): Promise<InvoiceResponse> {
-  const response = await serviceGet<InvoiceResponse>(
-    `${endpoint}/invoices/${id}`,
-  );
-  if (response?.data) return response.data;
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al cargar la factura",
-  );
-}
-
-async function createInvoice(
-  data: CreateInvoiceRequest,
-): Promise<InvoiceResponse> {
-  const response = await servicePost<CreateInvoiceRequest, InvoiceResponse>(
-    `${endpoint}/invoices`,
-    data,
-  );
-  if (
-    response &&
-    typeof response.status === "number" &&
-    response.status >= 200 &&
-    response.status < 300 &&
-    response.data
-  ) {
-    return response.data;
-  }
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al crear la factura",
-  );
-}
-
-async function updateInvoice(
-  data: UpdateInvoiceRequest,
-): Promise<InvoiceResponse> {
-  const response = await servicePut<UpdateInvoiceRequest, InvoiceResponse>(
-    `${endpoint}/invoices/${data.id}`,
-    data,
-  );
-  if (
-    response &&
-    typeof response.status === "number" &&
-    response.status >= 200 &&
-    response.status < 300 &&
-    response.data
-  ) {
-    return response.data;
-  }
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al actualizar la factura",
-  );
-}
-
-async function voidInvoice(id: string): Promise<InvoiceResponse> {
-  const response = await servicePatch<Record<string, never>, InvoiceResponse>(
-    `${endpoint}/invoices/${id}/void`,
-    {},
-  );
-  if (
-    response &&
-    typeof response.status === "number" &&
-    response.status >= 200 &&
-    response.status < 300 &&
-    response.data
-  ) {
-    return response.data;
-  }
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al anular la factura",
-  );
-}
-
-// ─── Payments ───────────────────────────────────────────────────────
-
-async function getPayments(
-  params?: BillingQueryParams,
-): Promise<PaginatedPaymentsResponse> {
-  const qs = buildQueryString(params);
-  const url = `${endpoint}/payments${qs ? `?${qs}` : ""}`;
-  const response = await serviceGet<PaginatedPaymentsResponse>(url);
-  if (response?.data) return response.data;
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al cargar pagos",
-  );
-}
-
-async function registerPayment(
-  data: RegisterPaymentRequest,
-): Promise<PaymentResponse> {
-  const response = await servicePost<RegisterPaymentRequest, PaymentResponse>(
-    `${endpoint}/payments`,
-    data,
-  );
-  if (
-    response &&
-    typeof response.status === "number" &&
-    response.status >= 200 &&
-    response.status < 300 &&
-    response.data
-  ) {
-    return response.data;
-  }
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al registrar el pago",
-  );
-}
-
-async function voidPayment(id: string): Promise<PaymentResponse> {
-  const response = await servicePatch<Record<string, never>, PaymentResponse>(
-    `${endpoint}/payments/${id}/void`,
-    {},
-  );
-  if (
-    response &&
-    typeof response.status === "number" &&
-    response.status >= 200 &&
-    response.status < 300 &&
-    response.data
-  ) {
-    return response.data;
-  }
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al anular el pago",
-  );
-}
-
-// ─── Cash / receivables (Fase 2) ────────────────────────────────────
-
-async function getCashSummary(date: string): Promise<CashSummaryResponse> {
-  const response = await serviceGet<CashSummaryResponse>(
-    `${endpoint}/cash-summary?date=${encodeURIComponent(date)}`,
-  );
-  if (response?.data) return response.data;
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al cargar el resumen de caja",
-  );
-}
-
-async function getReceivables(
-  params?: BillingQueryParams,
-): Promise<PaginatedReceivablesResponse> {
-  const qs = buildQueryString(params);
-  const url = `${endpoint}/receivables${qs ? `?${qs}` : ""}`;
-  const response = await serviceGet<PaginatedReceivablesResponse>(url);
-  if (response?.data) return response.data;
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al cargar cuentas por cobrar",
-  );
-}
-
-// ─── Exchange rates ─────────────────────────────────────────────────
-
-async function getExchangeRate(
-  base: string,
-  target: string,
-): Promise<ExchangeRateResponse> {
-  const response = await serviceGet<ExchangeRateResponse>(
-    `${endpoint}/exchange-rates?base=${encodeURIComponent(base)}&target=${encodeURIComponent(target)}`,
-  );
-  if (response?.data) return response.data;
-  handleServiceError(
-    typeof response !== "undefined" ? response : null,
-    "Error al obtener el tipo de cambio",
-  );
-}
-
-export const billingApi = {
-  getPatientLedger,
-  getEstimates,
-  getEstimateById,
-  createEstimate,
-  updateEstimate,
-  updateEstimateStatus,
-  convertEstimate,
-  getInvoices,
-  getInvoiceById,
-  createInvoice,
-  updateInvoice,
-  voidInvoice,
-  getPayments,
-  registerPayment,
-  voidPayment,
-  getCashSummary,
-  getReceivables,
-  getExchangeRate,
+  // ── Configuración y tipos de cambio ────────────────────────────────
+  async getSettings() {
+    return get<FinanceSettings>(`${BASE}/settings`, { schema: financeSettingsSchema });
+  },
+  async updateSettings(data) {
+    return send<FinanceSettings>("PUT", `${BASE}/settings`, data, { schema: financeSettingsSchema });
+  },
+  async getExchangeRate(query) {
+    try {
+      return await get<ExchangeRateResponse>(`${BASE}/exchange-rates`, {
+        params: { base: query.base, target: query.target },
+        expectedStatuses: [404],
+      });
+    } catch (error) {
+      if (isNotFoundError(error)) return null; // 404 = no hay tasa registrada
+      throw error;
+    }
+  },
+  async setExchangeRate(data) {
+    return send<ExchangeRateResponse>("POST", `${BASE}/exchange-rates`, data);
+  },
 };
-
-export type BillingServiceApi = typeof billingApi;

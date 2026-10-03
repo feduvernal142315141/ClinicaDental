@@ -191,7 +191,12 @@ apiInstance.interceptors.response.use(
         (error as { _interceptorHandled?: boolean })._interceptorHandled = true;
         return Promise.reject(error);
       }
-      if (status === 403) {
+      // `skipForbiddenHandler`: el servicio decide qué mostrar (Finanzas distingue el 403
+      // de "módulo apagado" del 403 de permiso y no debe disparar la alerta global).
+      const skipForbiddenHandler = (
+        error.config as { skipForbiddenHandler?: boolean } | undefined
+      )?.skipForbiddenHandler;
+      if (status === 403 && !skipForbiddenHandler) {
         interceptorHandlers.onForbidden?.();
 
         (error as { _interceptorHandled?: boolean })._interceptorHandled = true;

@@ -20,6 +20,8 @@ import { CommandPalette } from "@/components/ui/navigation/command-palette";
 import { GlobalErrorListeners } from "@/components/layout/global-error-listeners";
 import { PointerEventsGuard } from "@/components/layout/pointer-events-guard";
 import { FeedbackFAB } from "@/components/features/feedback/FeedbackFAB";
+import { QueryProvider } from "@/components/layout/query-provider";
+import { FinanceModuleBridge } from "@/components/features/billing/module/FinanceModuleBridge";
 
 interface RootClientProps {
   children: React.ReactNode;
@@ -51,7 +53,9 @@ export function RootClient({ children }: RootClientProps) {
                         Su fetch sí exige sesión: sin token no pide nada. */}
                     <ToothNotationProvider>
                       <AuthProvider>
+                        <QueryProvider>
                         <AlertProvider>
+                          <FinanceModuleBridge />
                           <GlobalErrorListeners />
                           <PointerEventsGuard />
                           <InterceptorsInitializer />
@@ -61,6 +65,7 @@ export function RootClient({ children }: RootClientProps) {
                           <AppChrome>{children}</AppChrome>
                           <FeedbackFAB />
                         </AlertProvider>
+                        </QueryProvider>
                       </AuthProvider>
                     </ToothNotationProvider>
                   </ClinicBrandingProvider>

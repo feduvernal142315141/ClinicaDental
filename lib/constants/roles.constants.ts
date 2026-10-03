@@ -32,6 +32,7 @@ export const PERMISSION_CATEGORIES = {
   DOCTORS: "doctors",
   SETTINGS: "settings",
   REPORTS: "reports",
+  FINANCE: "finance",
 } as const;
 
 /**
@@ -127,13 +128,45 @@ export const PERMISSIONS = {
     description: "Acceso a reportes y dashboard administrativo",
     category: PERMISSION_CATEGORIES.REPORTS,
   },
+  // ── Finanzas: 4 módulos (docs/finance/frontend-prompt.md §3) ──────────
+  // `actions` restringe y renombra las columnas del selector de roles.
   BILLING: {
-    // Debe coincidir con el `name` que emita el backend en el claim JWT
-    // (`billing-${actionsBitmask}`). Coordinar con backend al activar el módulo.
     id: "billing",
-    name: "Facturación",
-    description: "Presupuestos, facturas, cobros y cuenta del paciente",
-    category: PERMISSION_CATEGORIES.REPORTS,
+    name: "Finanzas",
+    description: "Ver finanzas, cobrar, emitir recibos, presupuestos y cargos",
+    category: PERMISSION_CATEGORIES.FINANCE,
+    actions: [
+      { action: 1, label: "Cobrar y emitir" },
+      { action: 2, label: "Editar" },
+      { action: 8, label: "Anular" },
+    ],
+  },
+  BILLING_ADJUST: {
+    id: "billing_adjust",
+    name: "Ajustes de Finanzas",
+    description: "Aplicar descuentos y devolver dinero",
+    category: PERMISSION_CATEGORIES.FINANCE,
+    actions: [
+      { action: 1, label: "Descuentos" },
+      { action: 4, label: "Devoluciones" },
+    ],
+  },
+  BILLING_CASH: {
+    id: "billing_cash",
+    name: "Caja",
+    description: "Abrir y cerrar caja; historial de cajas",
+    category: PERMISSION_CATEGORIES.FINANCE,
+    actions: [
+      { action: 1, label: "Abrir caja" },
+      { action: 2, label: "Cerrar caja" },
+    ],
+  },
+  BILLING_REPORTS: {
+    id: "billing_reports",
+    name: "Reportes de Finanzas",
+    description: "Caja del día, por cobrar y dashboard",
+    category: PERMISSION_CATEGORIES.FINANCE,
+    actions: [{ action: 1, label: "Ver" }],
   },
 } as const;
 

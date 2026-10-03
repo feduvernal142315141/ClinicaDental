@@ -25,6 +25,11 @@ type PermissionModule = {
   name: string;
   description?: string;
   category?: string;
+  /**
+   * Acciones que admite el módulo y su etiqueta propia (p. ej. Finanzas: Crear = "Cobrar y
+   * emitir"). Sin `actions` el módulo admite las cuatro con las etiquetas genéricas.
+   */
+  actions?: ReadonlyArray<{ action: number; label: string }>;
 };
 
 const ACTIONS: Array<{ label: string; action: PermissionAction }> = [
@@ -42,6 +47,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   doctors: "Usuarios",
   settings: "Configuración",
   reports: "Reportes",
+  finance: "Finanzas",
 };
 
 const UNCATEGORIZED = "__otros__";
@@ -61,8 +67,20 @@ function hasAnyPermission(value: number): boolean {
   return value > 0;
 }
 
-function hasFullAccess(value: number): boolean {
-  return value === PermissionAction.ALL;
+/** Máscara de las acciones que admite el módulo (ALL si no restringe). */
+function moduleMask(mod: PermissionModule): number {
+  if (!mod.actions?.length) return PermissionAction.ALL;
+  return mod.actions.reduce((mask, { action }) => mask | action, 0);
+}
+
+function hasFullAccess(value: number, mask: number = PermissionAction.ALL): boolean {
+  return value > 0 && (value & mask) === mask;
+}
+
+/** Etiqueta de la acción en ese módulo, o null si el módulo no la admite. */
+function moduleActionLabel(mod: PermissionModule, action: PermissionAction): string | null {
+  if (!mod.actions?.length) return actionLabel(action);
+  return mod.actions.find((a) => a.action === action)?.label ?? null;
 }
 
 function actionLabel(action: PermissionAction): string {
@@ -79,22 +97,27 @@ function categoryLabel(category: string): string {
 }
 
 /** Badge de nivel de acceso (sin acceso · limitado · acceso total). */
-function LevelBadge({ value }: { value: number }) {
+function LevelBadge({ value, mod }: { value: number; mod: PermissionModule }) {
   if (!hasAnyPermission(value)) {
     return <span className="text-xs text-subtle">—</span>;
   }
 
-  if (hasFullAccess(value)) {
+  const mask = moduleMask(mod);
+  const allLabels = ACTIONS.map(({ action }) => moduleActionLabel(mod, action)).filter(
+    (label): label is string => label !== null,
+  );
+
+  if (hasFullAccess(value, mask)) {
     return (
-      <StatusBadge tone="success" title="Crear, Editar, Eliminar y Bloquear">
+      <StatusBadge tone="success" title={allLabels.join(", ")}>
         Acceso total
       </StatusBadge>
     );
   }
 
-  const actions = ACTIONS.filter(
-    ({ action }) => (value & action) === action,
-  ).map(({ label }) => label);
+  const actions = ACTIONS.filter(({ action }) => (value & action) === action)
+    .map(({ action }) => moduleActionLabel(mod, action))
+    .filter((label): label is string => label !== null);
 
   return (
     <StatusBadge
@@ -162,12 +185,13 @@ export function PermissionsSelector({
     [permissionsObj, emit],
   );
 
+  /** Acceso total (máscara de cada módulo) o ninguno para un grupo de módulos. */
   const setManyModulesValue = useCallback(
-    (moduleKeys: string[], nextValue: number) => {
+    (mods: PermissionModule[], enabled: boolean) => {
       const next: PermissionsObject = { ...permissionsObj };
-      for (const key of moduleKeys) {
-        if (nextValue > 0) next[key] = nextValue;
-        else delete next[key];
+      for (const mod of mods) {
+        if (enabled) next[mod.id] = moduleMask(mod);
+        else delete next[mod.id];
       }
       emit(next);
     },
@@ -184,7 +208,7 @@ export function PermissionsSelector({
 
   const handleSelectAll = useCallback(() => {
     const next: PermissionsObject = {};
-    for (const mod of modules) next[mod.id] = PermissionAction.ALL;
+    for (const mod of modules) next[mod.id] = moduleMask(mod);
     emit(next);
   }, [modules, emit]);
 
@@ -196,10 +220,11 @@ export function PermissionsSelector({
     const values = Object.values(permissionsObj);
     return {
       modulesWithPermissions: values.filter((v) => v > 0).length,
-      modulesWithFullAccess: values.filter((v) => v === PermissionAction.ALL)
-        .length,
+      modulesWithFullAccess: modules.filter((m) =>
+        hasFullAccess(permissionsObj[m.id] ?? 0, moduleMask(m)),
+      ).length,
     };
-  }, [permissionsObj]);
+  }, [permissionsObj, modules]);
 
   // Agrupar los módulos (filtrados por búsqueda) por categoría, preservando el
   // orden de aparición del catálogo.
@@ -223,8 +248,9 @@ export function PermissionsSelector({
   const renderModuleRow = useCallback(
     (mod: PermissionModule) => {
       const current = permissionsObj[mod.id] ?? 0;
+      const mask = moduleMask(mod);
       const checked = hasAnyPermission(current);
-      const full = hasFullAccess(current);
+      const full = hasFullAccess(current, mask);
 
       return (
         <div
@@ -235,7 +261,7 @@ export function PermissionsSelector({
             <Checkbox
               checked={full ? true : checked ? "indeterminate" : false}
               onCheckedChange={(c) =>
-                setModuleValue(mod.id, c ? PermissionAction.ALL : 0)
+                setModuleValue(mod.id, c ? mask : 0)
               }
               disabled={disabled}
               aria-label={`Acceso total a ${mod.name}`}
@@ -257,19 +283,38 @@ export function PermissionsSelector({
             </div>
           </div>
 
-          {ACTIONS.map(({ action }) => (
-            <div key={`${mod.id}-${action}`} className="flex justify-center">
-              <Checkbox
-                checked={(current & action) === action}
-                onCheckedChange={() => handleToggleAction(mod.id, action)}
-                disabled={disabled}
-                aria-label={`${actionLabel(action)} en ${mod.name}`}
-              />
-            </div>
-          ))}
+          {ACTIONS.map(({ action }) => {
+            const label = moduleActionLabel(mod, action);
+            if (label === null) {
+              return (
+                <div key={`${mod.id}-${action}`} className="flex justify-center">
+                  <span className="text-xs text-subtle" aria-hidden>—</span>
+                </div>
+              );
+            }
+            const customLabel = label !== actionLabel(action);
+            return (
+              <div
+                key={`${mod.id}-${action}`}
+                className="flex flex-col items-center gap-0.5"
+              >
+                <Checkbox
+                  checked={(current & action) === action}
+                  onCheckedChange={() => handleToggleAction(mod.id, action)}
+                  disabled={disabled}
+                  aria-label={`${label} en ${mod.name}`}
+                />
+                {customLabel && (
+                  <span className="text-center text-[0.65rem] leading-tight text-subtle">
+                    {label}
+                  </span>
+                )}
+              </div>
+            );
+          })}
 
           <div className="flex justify-end pr-1">
-            <LevelBadge value={current} />
+            <LevelBadge value={current} mod={mod} />
           </div>
         </div>
       );
@@ -348,7 +393,11 @@ export function PermissionsSelector({
         groups.map(({ key, modules: categoryModules }) => {
           const moduleIds = categoryModules.map((m) => m.id);
           const values = moduleIds.map((id) => permissionsObj[id] ?? 0);
-          const all = values.length > 0 && values.every((v) => hasFullAccess(v));
+          const all =
+            values.length > 0 &&
+            categoryModules.every((m) =>
+              hasFullAccess(permissionsObj[m.id] ?? 0, moduleMask(m)),
+            );
           const some = values.some((v) => hasAnyPermission(v));
           const withPerms = values.filter((v) => hasAnyPermission(v)).length;
           // Al buscar, forzar la categoría abierta para mostrar coincidencias.
@@ -366,7 +415,7 @@ export function PermissionsSelector({
                   <Checkbox
                     checked={all ? true : some ? "indeterminate" : false}
                     onCheckedChange={(c) =>
-                      setManyModulesValue(moduleIds, c ? PermissionAction.ALL : 0)
+                      setManyModulesValue(categoryModules, !!c)
                     }
                     disabled={disabled}
                     aria-label={`Acceso total a ${categoryLabel(key)}`}

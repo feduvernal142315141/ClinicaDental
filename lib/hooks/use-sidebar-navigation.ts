@@ -22,6 +22,7 @@ import { LucideIcon } from "lucide-react";
 import { usePermission } from "./use-permission";
 import { useI18n } from "@/lib/contexts/i18n-context";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
+import { useBillingSections } from "@/lib/hooks/billing/use-billing-navigation";
 
 export interface MenuItem {
   path: string;
@@ -47,6 +48,7 @@ export interface MenuGroups {
  * | /growth/campaigns          | `campaign`        (GrowthCampaignController)        |
  * | /growth/segments           | `campaign`        (PatientSegmentController)        |
  * | /settings/notifications    | `notification`    (plantillas + recordatorios)      |
+ * | /billing/*                 | módulo FINANCE + `billing` (y `billing_reports`)   |
  * | /settings/general          | `general_option`  (ClinicGeneralSettingsController) |
  * | /settings/doctors          | `doctor`          (DoctorController)                |
  * | /settings/user-types       | `doctor`          (UserTypeController)              |
@@ -57,6 +59,7 @@ export interface MenuGroups {
 export function useSidebarNavigation() {
   const { can, isAdmin } = usePermission();
   const { t } = useI18n();
+  const billingSections = useBillingSections();
 
   return useMemo(() => {
     const hasModule = (moduleKey: string): boolean =>
@@ -106,8 +109,14 @@ export function useSidebarNavigation() {
     if (hasModule("appointments")) {
       main.push({ path: "/appointments", label: t("navigation.appointments"), icon: Calendar });
     }
-    if (hasModule("billing")) {
-      main.push({ path: "/billing", label: "Finanzas", icon: Wallet });
+    // Finanzas: solo con el módulo FINANCE activo en la clínica y permiso `billing`.
+    if (billingSections.length > 0) {
+      main.push({
+        path: "/billing",
+        label: "Finanzas",
+        icon: Wallet,
+        children: billingSections.map(({ path, label, icon }) => ({ path, label, icon })),
+      });
     }
 
     // Comunicación: solo aparece si tiene al menos un hijo visible.
@@ -143,5 +152,5 @@ export function useSidebarNavigation() {
       secondaryMenuItems: [] as MenuItem[],
       isActiveRoute,
     };
-  }, [can, isAdmin, t]);
+  }, [can, isAdmin, t, billingSections]);
 }
