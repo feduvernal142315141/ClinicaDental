@@ -21,3 +21,13 @@ export {
 } from "./use-idempotency-key";
 export * from "./use-billing-queries";
 export * from "./use-billing-mutations";
+export {
+  loadPlanLines,
+  useClinicReceiptHeader,
+  usePatientSearch,
+  usePatientTreatmentPlans,
+  useServiceCatalog,
+  type PatientOption,
+  type ServiceOption,
+  type TreatmentPlanOption,
+} from "./use-billing-catalogs";

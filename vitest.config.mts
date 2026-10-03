@@ -30,7 +30,18 @@ function aliasesFromTsconfig() {
 }
 
 export default defineConfig({
-  resolve: { alias: aliasesFromTsconfig() },
+  resolve: {
+    alias: [
+      // Algunos @radix-ui/* traen anidada @radix-ui/primitive 1.1.1, que no declara el subpath
+      // "./is-development" que importan sus hermanos; Node no lo resuelve (el bundler de Next sí).
+      // Se apunta a la copia de nivel superior (1.1.7), que sí lo exporta.
+      {
+        find: /^@radix-ui\/primitive\/is-development$/,
+        replacement: path.resolve(__dirname, "node_modules/@radix-ui/primitive/dist/internal/is-development.true.mjs"),
+      },
+      ...aliasesFromTsconfig(),
+    ],
+  },
   esbuild: { jsx: "automatic" },
   test: {
     environment: "jsdom",
@@ -38,5 +49,7 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/*.test.{ts,tsx}"],
     exclude: ["node_modules/**", ".next/**", ".next-build/**"],
+    // Los @radix-ui/* pasan por el resolver de Vite para que aplique el alias de "is-development".
+    server: { deps: { inline: [/@radix-ui\//] } },
   },
 });
