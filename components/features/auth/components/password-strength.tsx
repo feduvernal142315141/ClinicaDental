@@ -2,74 +2,72 @@
 
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import {
+  PASSWORD_RULES,
+  getPasswordStrength,
+  type PasswordStrengthLevel,
+} from "@/lib/validation/password-policy";
 
-const REQUIREMENTS: { label: string; test: (pwd: string) => boolean }[] = [
-  { label: "Entre 8 y 64 caracteres", test: (p) => p.length >= 8 && p.length <= 64 },
-  { label: "Una letra mayúscula", test: (p) => /[A-Z]/.test(p) },
-  { label: "Una letra minúscula", test: (p) => /[a-z]/.test(p) },
-  { label: "Un número", test: (p) => /\d/.test(p) },
-  { label: "Un carácter especial", test: (p) => /[^a-zA-Z0-9]/.test(p) },
-];
+const TONE: Record<PasswordStrengthLevel, { text: string; bar: string }> = {
+  weak: { text: "text-rose-500", bar: "bg-rose-500" },
+  medium: { text: "text-amber-500", bar: "bg-amber-500" },
+  // "Casi lista" sigue en ámbar: todavía falta una regla y no se puede enviar.
+  good: { text: "text-amber-500", bar: "bg-amber-500" },
+  excellent: { text: "text-emerald-500", bar: "bg-emerald-500" },
+};
 
 /**
- * Indicador de fortaleza de contraseña en estilo Bento (Radix/shadcn, sin antd).
- * Comparte criterios con el flujo de restablecimiento/cambio de contraseña.
+ * Indicador de fortaleza de contraseña (Bento, sin antd). Las reglas vienen de
+ * `lib/validation/password-policy` — las mismas que valida el backend —, así que "Excelente"
+ * solo aparece cuando la contraseña cumple las cinco y se puede enviar.
  */
-export function PasswordStrength({ password }: { password: string }) {
+export function PasswordStrength({ password, className }: { password: string; className?: string }) {
   if (!password) return null;
 
-  const met = REQUIREMENTS.filter((r) => r.test(password));
-  const strength = (met.length / REQUIREMENTS.length) * 100;
-
-  let label = "Débil";
-  let toneText = "text-rose-500";
-  let toneBar = "bg-rose-500";
-  if (strength >= 40 && strength < 60) {
-    label = "Media";
-    toneText = "text-amber-500";
-    toneBar = "bg-amber-500";
-  } else if (strength >= 60) {
-    label = strength >= 80 ? "Excelente" : "Buena";
-    toneText = "text-emerald-500";
-    toneBar = "bg-emerald-500";
-  }
+  const strength = getPasswordStrength(password);
+  const tone = TONE[strength.level];
 
   return (
-    <div className="space-y-3 rounded-2xl border border-hairline bg-elevated/60 p-3">
+    <div className={cn("space-y-3 rounded-2xl border border-hairline bg-elevated/60 p-3", className)}>
       <div>
         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs text-subtle">Fortaleza de contraseña</span>
-          <span className={cn("text-xs font-medium", toneText)}>{label}</span>
+          <span className={cn("text-xs font-medium", tone.text)} aria-live="polite">
+            {strength.label}
+          </span>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-hairline">
           <div
-            className={cn("h-full rounded-full transition-all duration-300", toneBar)}
-            style={{ width: `${strength}%` }}
+            className={cn("h-full rounded-full transition-all duration-300", tone.bar)}
+            style={{ width: `${strength.percent}%` }}
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-        {REQUIREMENTS.map((req) => {
-          const ok = req.test(password);
+      <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2" aria-label="Requisitos de la contraseña">
+        {PASSWORD_RULES.map((rule) => {
+          const ok = rule.test(password);
           return (
-            <div
-              key={req.label}
+            <li
+              key={rule.id}
               className={cn(
                 "flex items-center gap-2 text-xs transition-colors",
                 ok ? "text-emerald-600" : "text-subtle",
               )}
             >
               {ok ? (
-                <Check className="h-3.5 w-3.5 shrink-0" />
+                <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
               ) : (
-                <X className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                <X className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
               )}
-              <span className="leading-tight">{req.label}</span>
-            </div>
+              <span className="leading-tight">
+                <span className="sr-only">{ok ? "Cumple: " : "Falta: "}</span>
+                {rule.label}
+              </span>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </div>
   );
 }

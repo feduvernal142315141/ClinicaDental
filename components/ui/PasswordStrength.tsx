@@ -2,34 +2,10 @@
 
 import { Form, Progress, Card } from "antd";
 import { CheckCircleFilled, CloseCircleFilled } from "@ant-design/icons";
+import { PASSWORD_RULES, getPasswordStrength } from "@/lib/validation/password-policy";
 
-interface PasswordRequirement {
-  label: string;
-  test: (password: string) => boolean;
-}
-
-const requirements: PasswordRequirement[] = [
-  {
-    label: "Al menos 8 caracteres",
-    test: (pwd) => pwd.length >= 8,
-  },
-  {
-    label: "Una letra mayúscula",
-    test: (pwd) => /[A-Z]/.test(pwd),
-  },
-  {
-    label: "Una letra minúscula",
-    test: (pwd) => /[a-z]/.test(pwd),
-  },
-  {
-    label: "Un número",
-    test: (pwd) => /\d/.test(pwd),
-  },
-  {
-    label: "Un carácter especial",
-    test: (pwd) => /[^a-zA-Z0-9]/.test(pwd),
-  },
-];
+// Las reglas vienen de la política central (la misma que valida el backend).
+const requirements = PASSWORD_RULES;
 
 /**
  * PasswordStrength Component
@@ -44,21 +20,11 @@ export function PasswordStrength() {
 
         if (!password) return null;
 
-        // Calculate how many requirements are met
-        const metRequirements = requirements.filter((req) =>
-          req.test(password)
-        );
-        const strength = (metRequirements.length / requirements.length) * 100;
-
-        // Determine progress bar color
-        let progressColor = "#ff4d4f"; // Red (weak)
-        if (strength >= 40 && strength < 60) {
-          progressColor = "#faad14"; // Orange (medium)
-        } else if (strength >= 60 && strength < 80) {
-          progressColor = "#52c41a"; // Green (good)
-        } else if (strength >= 80) {
-          progressColor = "#52c41a"; // Green (excellent)
-        }
+        // "Excelente" solo cuando cumple las cinco reglas (ver password-policy).
+        const info = getPasswordStrength(password);
+        const strength = info.percent;
+        const progressColor =
+          info.level === "excellent" ? "#52c41a" : info.level === "weak" ? "#ff4d4f" : "#faad14";
 
         return (
           <Card
@@ -79,10 +45,7 @@ export function PasswordStrength() {
                     className="text-xs font-medium"
                     style={{ color: progressColor }}
                   >
-                    {strength < 40 && "Débil"}
-                    {strength >= 40 && strength < 60 && "Media"}
-                    {strength >= 60 && strength < 80 && "Buena"}
-                    {strength >= 80 && "Excelente"}
+                    {info.label}
                   </span>
                 </div>
                 <Progress

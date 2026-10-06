@@ -2,6 +2,16 @@
 
 import { Form, Input, Col, Row, Flex } from "antd";
 import { PasswordStrength } from "@/components/ui/PasswordStrength";
+import { PASSWORD_MIN_LENGTH, failedPasswordRules } from "@/lib/validation/password-policy";
+
+/** Regla antd que aplica la política central (la misma que valida el backend). Vacío = sin cambio. */
+const passwordPolicyRule = {
+  validator: (_: unknown, value?: string) => {
+    if (!value) return Promise.resolve();
+    const [firstFailed] = failedPasswordRules(value);
+    return firstFailed ? Promise.reject(new Error(firstFailed.message)) : Promise.resolve();
+  },
+};
 
 /**
  * SecurityFields Component
@@ -44,16 +54,11 @@ export function SecurityFields({
               required: true,
               message: "Ingresa tu nueva contraseña",
             },
-            { min: 8, message: "Mínimo 8 caracteres" },
-            { max: 50, message: "Máximo 50 caracteres" },
-            {
-              pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-              message: "Debe contener mayúsculas, minúsculas y números",
-            },
+            passwordPolicyRule,
           ]}
           help={<PasswordStrength />}
         >
-          <Input.Password placeholder="Mínimo 8 caracteres" />
+          <Input.Password placeholder={`Mínimo ${PASSWORD_MIN_LENGTH} caracteres`} />
         </Form.Item>
 
         <Form.Item
@@ -94,12 +99,7 @@ export function SecurityFields({
               required: !isEditing,
               message: "La contraseña es requerida",
             },
-            { min: 8, message: "Mínimo 8 caracteres" },
-            { max: 50, message: "Máximo 50 caracteres" },
-            {
-              pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-              message: "Debe contener mayúsculas, minúsculas y números",
-            },
+            passwordPolicyRule,
           ]}
           help={
             !isEditing ? (
@@ -111,7 +111,7 @@ export function SecurityFields({
         >
           <Input.Password
             placeholder={
-              isEditing ? "Dejar vacío para no cambiar" : "Mínimo 8 caracteres"
+              isEditing ? "Dejar vacío para no cambiar" : `Mínimo ${PASSWORD_MIN_LENGTH} caracteres`
             }
           />
         </Form.Item>

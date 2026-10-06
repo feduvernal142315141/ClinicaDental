@@ -25,6 +25,7 @@
  */
 
 import { z } from "zod";
+import { failedPasswordRules } from "./password-policy";
 
 // ---------------------------------------------------------------------------
 // Regex / constantes reutilizables
@@ -271,26 +272,16 @@ export const otp = z
   .regex(/^\d{6}$/, "El código debe tener 6 dígitos");
 
 /**
- * Contraseña (NIST SP 800-63B): 8-64 caracteres, con mensajes específicos
- * por clase de carácter faltante. Nunca se recorta ni normaliza el valor.
+ * Contraseña: mismas cinco reglas que exige el backend (ver
+ * `lib/validation/password-policy.ts`, única fuente de verdad). Un mensaje por cada regla
+ * que falte. Nunca se recorta ni normaliza el valor.
  */
 export const password = z
   .string({ required_error: "La contraseña es obligatoria" })
   .min(1, "La contraseña es obligatoria")
-  .min(8, "La contraseña debe tener al menos 8 caracteres")
-  .max(64, "La contraseña no puede superar los 64 caracteres")
   .superRefine((val, ctx) => {
-    if (!/[A-Z]/.test(val)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Falta al menos una letra mayúscula" });
-    }
-    if (!/[a-z]/.test(val)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Falta al menos una letra minúscula" });
-    }
-    if (!/\d/.test(val)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Falta al menos un número" });
-    }
-    if (!/[^A-Za-z0-9]/.test(val)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Falta al menos un carácter especial" });
+    for (const rule of failedPasswordRules(val)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: rule.message });
     }
   });
 
