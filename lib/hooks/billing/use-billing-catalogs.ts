@@ -4,6 +4,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { patientsService } from "@/lib/services/patients/patients.service";
 import { servicesService } from "@/lib/services/services";
 import { servicesQuery } from "@/lib/query/domains/services";
+import { patientsQuery } from "@/lib/query/domains/patients";
 import { treatmentPlanItemService, treatmentPlanService } from "@/lib/services/odontogram";
 import { countsTowardsPlanTotal } from "@/lib/entity/odontogram";
 import type { BillingLineItemInput } from "@/lib/entity/billing";
@@ -20,18 +21,31 @@ export interface PatientOption {
   phone?: string | null;
 }
 
-/** Búsqueda de pacientes activos (mínimo 2 caracteres). */
+/**
+ * Parámetros de la búsqueda de pacientes, EXACTAMENTE los de la lista de Pacientes
+ * (`PatientList`): página base 0 (el backend pagina desde 0) y el filtro estructurado
+ * `name` contiene, sin distinguir mayúsculas. Ordenado por nombre.
+ */
+export function buildPatientSearchParams(term: string) {
+  const { filters, orders } = patientsQuery().search(term).orderByName("asc").build();
+  return { page: 0, pageSize: 20, filters, orders };
+}
+
+/** Búsqueda de pacientes activos por nombre (mínimo 2 caracteres). */
 export function usePatientSearch(term: string) {
   const q = term.trim();
   return useQuery({
     queryKey: ["billing-catalog", "patients", q],
     queryFn: async (): Promise<PatientOption[]> => {
-      const page = await patientsService.getPatients({ q, page: 1, pageSize: 20, active: true });
-      return (page.entities ?? []).map((patient) => ({
-        id: patient.id,
-        name: patient.name,
-        phone: patient.phone ?? null,
-      }));
+      const page = await patientsService.getPatients(buildPatientSearchParams(q));
+      return (page.entities ?? [])
+        // Los inactivos se descartan aquí: no se cobra a un paciente dado de baja.
+        .filter((patient) => patient.active !== false)
+        .map((patient) => ({
+          id: patient.id,
+          name: patient.name,
+          phone: patient.phone ?? null,
+        }));
     },
     enabled: q.length >= 2,
     placeholderData: keepPreviousData,

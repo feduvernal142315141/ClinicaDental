@@ -17,7 +17,7 @@ interface PatientPickerProps {
   onBlur?: () => void;
 }
 
-/** Selector de paciente con búsqueda (mínimo 2 caracteres, 300 ms de espera). */
+/** Selector de paciente con búsqueda por nombre (mínimo 2 caracteres, 300 ms de espera). */
 export function PatientPicker({ value, selectedName, onChange, locked, invalid, onBlur }: PatientPickerProps) {
   const listId = useId();
   const [term, setTerm] = useState("");
@@ -47,7 +47,7 @@ export function PatientPicker({ value, selectedName, onChange, locked, invalid, 
     );
   }
 
-  const results = search.data ?? [];
+  const results = search.isError ? [] : (search.data ?? []);
   const showList = open && debounced.trim().length >= 2;
 
   return (
@@ -64,7 +64,7 @@ export function PatientPicker({ value, selectedName, onChange, locked, invalid, 
           setTimeout(() => setOpen(false), 150);
           onBlur?.();
         }}
-        placeholder="Buscar paciente por nombre o teléfono…"
+        placeholder="Buscar paciente por nombre…"
         className={cn("pl-9", invalid && "border-rose-500")}
         role="combobox"
         aria-expanded={showList}
@@ -83,8 +83,13 @@ export function PatientPicker({ value, selectedName, onChange, locked, invalid, 
               <Loader2 className="h-4 w-4 animate-spin" /> Buscando pacientes…
             </li>
           )}
-          {!search.isFetching && results.length === 0 && (
-            <li className="px-3 py-2 text-sm text-subtle">No se encontraron pacientes.</li>
+          {search.isError && (
+            <li role="alert" className="px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
+              No se pudo buscar pacientes. Revisa tu conexión e inténtalo de nuevo.
+            </li>
+          )}
+          {!search.isError && !search.isFetching && results.length === 0 && (
+            <li className="px-3 py-2 text-sm text-subtle">No se encontraron pacientes con ese nombre.</li>
           )}
           {results.map((patient) => (
             <li key={patient.id} role="option" aria-selected={false}>
