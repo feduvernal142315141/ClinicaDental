@@ -127,7 +127,12 @@ async function logout(data: { refreshToken: string }): Promise<void> {
  * POST /auth/forgot-password
  */
 async function forgotPassword(data: ForgotPasswordRequest): Promise<void> {
-  const response = await servicePost("/auth/forgot-password", data);
+  // Los dos campos son obligatorios para el backend. El slug va en minúscula, como en el
+  // login: identifica la clínica y el backend no perdona mayúsculas.
+  const response = await servicePost("/auth/forgot-password", {
+    email: data.email.trim(),
+    clinicSlug: data.clinicSlug.trim().toLowerCase(),
+  });
   // Validar por status: un error con body es truthy en data y se tragaba como éxito.
   if (!response?.status || response.status < 200 || response.status >= 300) {
     handleServiceError(typeof response !== "undefined" ? response : null, "No se pudo enviar el correo de recuperación");

@@ -218,6 +218,11 @@ export interface RefreshTokenResponse {
 
 export interface ForgotPasswordRequest {
   email: string;
+  /**
+   * Subdominio de la clínica (obligatorio). El mismo correo puede existir en varias
+   * clínicas, así que el backend busca por email + slug, igual que en /auth/login.
+   */
+  clinicSlug: string;
 }
 
 export interface ResetPasswordRequest {
