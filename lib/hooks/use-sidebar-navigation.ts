@@ -17,12 +17,14 @@ import {
   Filter,
   FileText,
   Wallet,
+  UserPlus,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { usePermission } from "./use-permission";
 import { useI18n } from "@/lib/contexts/i18n-context";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useBillingSections } from "@/lib/hooks/billing/use-billing-navigation";
+import { useLeadAccess } from "@/lib/hooks/leads/use-lead-module";
 
 export interface MenuItem {
   path: string;
@@ -49,6 +51,7 @@ export interface MenuGroups {
  * | /growth/segments           | `campaign`        (PatientSegmentController)        |
  * | /settings/notifications    | `notification`    (plantillas + recordatorios)      |
  * | /billing/*                 | módulo FINANCE + `billing` (y `billing_reports`)   |
+ * | /leads/*                   | módulo LEAD_CRM + cualquier acción sobre `leads`   |
  * | /settings/general          | `general_option`  (ClinicGeneralSettingsController) |
  * | /settings/doctors          | `doctor`          (DoctorController)                |
  * | /settings/user-types       | `doctor`          (UserTypeController)              |
@@ -60,6 +63,7 @@ export function useSidebarNavigation() {
   const { can, isAdmin } = usePermission();
   const { t } = useI18n();
   const billingSections = useBillingSections();
+  const { visible: leadsVisible } = useLeadAccess();
 
   return useMemo(() => {
     const hasModule = (moduleKey: string): boolean =>
@@ -137,6 +141,11 @@ export function useSidebarNavigation() {
       });
     }
 
+    // Adquisición de pacientes: solo con el módulo LEAD_CRM activo y permiso sobre `leads`.
+    if (leadsVisible) {
+      main.push({ path: "/leads", label: "Adquisición de pacientes", icon: UserPlus });
+    }
+
     // Comunicación: solo aparece si tiene al menos un hijo visible.
     if (comunicacionChildren.length > 0) {
       main.push({
@@ -171,5 +180,5 @@ export function useSidebarNavigation() {
       secondaryMenuItems: [] as MenuItem[],
       isActiveRoute,
     };
-  }, [can, isAdmin, t, billingSections]);
+  }, [can, isAdmin, t, billingSections, leadsVisible]);
 }
