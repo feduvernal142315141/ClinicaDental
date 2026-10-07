@@ -11,7 +11,8 @@ import { useSidebarNavigation } from "@/lib/hooks/use-sidebar-navigation";
 import { SidebarSection } from "@/components/ui/atomic/navigation/sidebar-section";
 import { SidebarNavItem } from "@/components/ui/atomic/navigation/sidebar-nav-item";
 import { LanguageSelector } from "@/components/ui/atomic/navigation/language-selector";
-import { Activity, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronsLeft, ChevronsRight } from "lucide-react";
+import { BrandMark } from "@/components/ui/atomic/branding/brand-mark";
 
 interface SidebarProps {
   currentPath: string;
@@ -144,8 +145,7 @@ export function Sidebar({
             <div
               className={cn(
                 "grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-2xl text-white",
-                !logoUrl && "bg-gradient-to-br from-brand to-brand-strong",
-                !logoUrl && "shadow-[0_4px_14px_-4px_rgb(var(--brand)/0.55)]",
+                !logoUrl && "shadow-[0_4px_14px_-4px_rgb(3_126_204/0.55)]",
               )}
             >
               {logoUrl ? (
@@ -155,7 +155,7 @@ export function Sidebar({
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <Activity className="h-[18px] w-[18px]" strokeWidth={2.5} />
+                <BrandMark rounded={false} className="h-full w-full" />
               )}
             </div>
             <div

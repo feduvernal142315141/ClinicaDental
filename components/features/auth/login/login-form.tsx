@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { AlertCircle, ArrowRight, Lock, Mail, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowRight, Lock, Mail } from "lucide-react";
+import { BrandMark } from "@/components/ui/atomic/branding/brand-mark";
 import { useLoginForm } from "@/lib/hooks/use-login-form";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
 import { Button } from "@/components/ui/primitives/shadcn/button";
@@ -59,7 +60,7 @@ export function LoginForm() {
                 className="h-full w-full rounded-2xl object-cover"
               />
             ) : (
-              <Sparkles className="h-7 w-7" />
+              <BrandMark rounded={false} className="h-full w-full" />
             )
           }
           eyebrow={clinicName}

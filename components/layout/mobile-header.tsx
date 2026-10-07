@@ -1,8 +1,8 @@
 "use client";
 
-import { Menu, X, Activity } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import { BrandMark } from "@/components/ui/atomic/branding/brand-mark";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils/utils";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
 import { useI18n } from "@/lib/contexts/i18n-context";
@@ -57,11 +57,7 @@ export function MobileHeader({
 
         <div className="flex min-w-0 items-center gap-2">
           <div
-            className={cn(
-              "grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-xl",
-              !logoUrl &&
-                "bg-gradient-to-br from-brand to-brand-strong text-white",
-            )}
+            className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-xl"
           >
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -71,7 +67,7 @@ export function MobileHeader({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <Activity className="h-4 w-4" strokeWidth={2.5} />
+              <BrandMark rounded={false} className="h-full w-full" />
             )}
           </div>
           <p className="truncate text-sm font-semibold leading-tight text-ink">
