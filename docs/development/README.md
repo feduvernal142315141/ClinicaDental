@@ -4,7 +4,7 @@
 
 Este directorio es la referencia técnica versionada de `front-clinic`. Sirve
 para implementar, revisar y desplegar cambios sin romper sus límites actuales.
-La fotografía fue verificada contra el repositorio el 22 de julio de 2026.
+La guía original es del 22 de julio de 2026; stack, pruebas y flujo de Codex se actualizaron mediante inspección dirigida el 2 de octubre de 2026.
 
 ## Orden de autoridad
 
@@ -24,11 +24,11 @@ decisión cambia una frontera arquitectónica, actualizar el código, el
 
 | Si vas a… | Leer |
 |---|---|
-| iniciar cualquier cambio | [Tecnología](technology-stack.md), [Arquitectura](architecture.md), [Flujo](development-workflow.md) |
+| iniciar un cambio | `AGENTS.md` raíz; guías de tecnología/arquitectura solo si la tarea lo requiere |
 | crear o extender UI | [Estándares](coding-standards.md), [Calidad](quality-and-testing.md) |
 | consumir o cambiar un endpoint | [Contratos API](api-contracts.md), [Datos](data-and-database.md), [Seguridad](security.md) |
 | tocar auth, cookies o permisos | [Seguridad](security.md), [Arquitectura](architecture.md) |
-| modificar el odontograma | [Arquitectura](architecture.md), `lib/odontogram/AGENTS.md`, `$odontogram-module` |
+| modificar el odontograma | [Arquitectura](architecture.md), `AGENTS.md` raíz y archivos relevantes de `lib/odontogram/` |
 | integrar Facturación (backend) | [Spec billing backend](billing-backend-spec.md), [Contratos API](api-contracts.md) |
 | preparar una entrega | [Despliegue](deployment.md), [Calidad](quality-and-testing.md) |
 | evaluar una refactorización | [Restricciones conocidas](known-constraints.md), [Estándares](coding-standards.md) |
@@ -41,13 +41,10 @@ decisión cambia una frontera arquitectónica, actualizar el código, el
   Design hacia las primitivas Bento/Radix.
 - La mayoría de las pantallas son Client Components; los layouts raíz conservan
   límites de servidor.
-- No existe runner de pruebas ni pipeline CI versionado actualmente.
+- Hay Vitest 3, jsdom y Testing Library con pruebas de facturación. No se detectó pipeline CI versionado.
 - El build ignora errores de TypeScript y ESLint; `typecheck` y `lint` son
   compuertas independientes.
 
 ## Skill principal
 
-Usar `$clinic-flow-development` para cambios transversales o cuando sea
-necesario seleccionar qué guía y qué skill especializada aplican. Las skills
-específicas (`$add-feature`, `$fix-bug`, `$code-review`,
-`$odontogram-module`, etc.) siguen siendo preferibles para tareas acotadas.
+No se detectaron skills locales en `.agents/skills/`. Usar las guías según la tarea y el flujo de `AGENTS.md`; las menciones históricas a skills no implican que estén instaladas. Crear una skill solo para un workflow recurrente que aporte valor.

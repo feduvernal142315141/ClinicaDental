@@ -4,6 +4,7 @@ import * as React from "react";
 import { AlertTriangle, Hand } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { Button } from "@/components/ui/primitives/shadcn/button";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 export interface InboxNeedsHumanBannerProps {
   onTakeover: () => void;
@@ -14,6 +15,7 @@ export function InboxNeedsHumanBanner({
   onTakeover,
   className,
 }: InboxNeedsHumanBannerProps) {
+  const { t } = useI18n();
   return (
     <div
       className={cn(
@@ -24,15 +26,15 @@ export function InboxNeedsHumanBanner({
       <AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
       <div className="flex flex-1 flex-col gap-0.5">
         <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
-          Requiere atención
+          {t("inbox.status.needsHuman")}
         </span>
         <span className="text-xs text-amber-600 dark:text-amber-400">
-          Dalia transfirió esta conversación al equipo.
+          {t("inbox.banner.needsHumanDescription")}
         </span>
       </div>
       <Button type="button" size="sm" onClick={onTakeover}>
         <Hand className="size-4 mr-1" />
-        Tomar conversación
+        {t("inbox.action.takeover")}
       </Button>
     </div>
   );

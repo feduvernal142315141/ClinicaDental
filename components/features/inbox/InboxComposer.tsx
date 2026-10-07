@@ -3,6 +3,7 @@
 import * as React from "react";
 import { SendHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -28,6 +29,7 @@ export function InboxComposer({
   sending,
   className,
 }: InboxComposerProps) {
+  const { t } = useI18n();
   const [text, setText] = React.useState("");
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -79,7 +81,7 @@ export function InboxComposer({
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={disabled ? "" : "Escribe un mensaje..."}
+          placeholder={disabled ? "" : t("inbox.composer.placeholder")}
           disabled={disabled || sending}
           rows={1}
           maxLength={MAX_CHARS}
@@ -96,7 +98,7 @@ export function InboxComposer({
           type="button"
           onClick={handleSend}
           disabled={!canSend}
-          aria-label="Enviar mensaje"
+          aria-label={t("inbox.action.sendMessage")}
           className={cn(
             "flex size-10 shrink-0 items-center justify-center rounded-full transition-all",
             canSend
@@ -113,7 +115,7 @@ export function InboxComposer({
         <div className="flex items-center justify-between px-4 pb-1.5">
           {!disabled && (
             <span className="text-[10px] text-subtle/40 select-none">
-              Enter enviar · Shift+Enter nueva línea
+              {t("inbox.composer.hint")}
             </span>
           )}
           <span className="flex-1" />

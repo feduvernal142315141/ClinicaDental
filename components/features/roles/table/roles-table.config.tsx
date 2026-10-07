@@ -5,15 +5,22 @@ import dayjs from "dayjs";
 
 interface GetRolesColumnsParams {
   onEdit: (id: string) => void;
+  labels: {
+    name: string;
+    createdAt: string;
+    actions: string;
+    edit: string;
+  };
 }
 
 export function getRolesColumns({
   onEdit,
+  labels,
 }: GetRolesColumnsParams): DataTableColumn<RoleListItem>[] {
   return [
     {
       key: "name",
-      title: "Nombre",
+      title: labels.name,
       dataIndex: "name",
       sorter: true,
       render: (value) => (
@@ -22,7 +29,7 @@ export function getRolesColumns({
     },
     {
       key: "createAt",
-      title: "Fecha Creación",
+      title: labels.createdAt,
       dataIndex: "createAt",
       render: (value) => (
         <span className="text-sm text-subtle tabular-nums">
@@ -32,7 +39,7 @@ export function getRolesColumns({
     },
     {
       key: "actions",
-      title: "Acciones",
+      title: labels.actions,
       align: "center",
       fixed: "right",
       width: 110,
@@ -40,7 +47,7 @@ export function getRolesColumns({
         <div className="flex items-center justify-center">
           <button
             onClick={() => onEdit(record.id)}
-            title="Editar rol"
+            title={labels.edit}
             className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink"
           >
             <Pencil className="h-4 w-4" />

@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/atomic/forms/select";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import type {
   ReminderConfigResponse,
   ClinicTemplate,
@@ -44,31 +45,35 @@ export interface RemindersPanelProps {
 // ── Time presets ──────────────────────────────────────────────────────────
 
 const TIME_PRESETS = [
-  { value: 30, label: "30 min" },
-  { value: 60, label: "1 hora" },
-  { value: 120, label: "2 horas" },
-  { value: 240, label: "4 horas" },
-  { value: 720, label: "12 horas" },
-  { value: 1440, label: "24 horas" },
-  { value: 2880, label: "48 horas" },
+  { value: 30 },
+  { value: 60 },
+  { value: 120 },
+  { value: 240 },
+  { value: 720 },
+  { value: 1440 },
+  { value: 2880 },
 ] as const;
 
-function formatMinutes(minutes: number): string {
+function formatMinutes(minutes: number, t: ReturnType<typeof useI18n>["t"]): string {
   if (minutes < 60) return `${minutes} min`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  if (m === 0) return h === 1 ? "1 hora" : `${h} horas`;
+  if (m === 0) {
+    return h === 1
+      ? t("settings.notifications.reminders.oneHour")
+      : t("settings.notifications.reminders.hours").replace("{count}", String(h));
+  }
   return `${h}h ${m}min`;
 }
 
-function getStatusConfig(status?: string): { label: string; className: string } | null {
+function getStatusConfig(status: string | undefined, t: ReturnType<typeof useI18n>["t"]): { label: string; className: string } | null {
   switch (status) {
     case "APPROVED":
-      return { label: "Aprobada", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
+      return { label: t("settings.notifications.templates.status.approved"), className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
     case "PENDING":
-      return { label: "Pendiente", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
+      return { label: t("settings.notifications.templates.status.pending"), className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
     case "REJECTED":
-      return { label: "Rechazada", className: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" };
+      return { label: t("settings.notifications.templates.status.rejected"), className: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" };
     default:
       return null;
   }
@@ -86,6 +91,7 @@ export function RemindersPanel({
   onToggle,
   onDelete,
 }: RemindersPanelProps) {
+  const { t } = useI18n();
   const [showForm, setShowForm] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
 
@@ -161,14 +167,14 @@ export function RemindersPanel({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-hairline px-5 py-4">
         <div>
-          <h3 className="text-sm font-semibold text-ink">Recordatorios de citas</h3>
+          <h3 className="text-sm font-semibold text-ink">{t("settings.notifications.reminders.title")}</h3>
           <p className="mt-0.5 text-xs text-subtle">
-            Envía recordatorios automáticos antes de cada cita
+            {t("settings.notifications.reminders.description")}
           </p>
         </div>
         <Button type="button" size="sm" onClick={openCreate} disabled={saving}>
           <Plus className="size-4 mr-1.5" />
-          Agregar
+          {t("settings.notifications.reminders.add")}
         </Button>
       </div>
 
@@ -176,14 +182,14 @@ export function RemindersPanel({
       {reminders.length === 0 && !showForm ? (
         <EmptyState
           icon={Bell}
-          title="Sin recordatorios"
-          description="Configura cuándo enviar recordatorios automáticos a los pacientes."
+          title={t("settings.notifications.reminders.emptyTitle")}
+          description={t("settings.notifications.reminders.emptyDescription")}
           className="py-16"
         />
       ) : (
         <div className="divide-y divide-hairline">
           {reminders.map((r) => {
-            const tplStatus = getStatusConfig(getTemplateStatus(r.templateId));
+            const tplStatus = getStatusConfig(getTemplateStatus(r.templateId), t);
             const isEditing = editingId === r.id && showForm;
             return (
               <div
@@ -213,7 +219,7 @@ export function RemindersPanel({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-[13.5px] font-semibold text-ink">
-                      {formatMinutes(r.reminderMinutesBefore)} antes
+                      {formatMinutes(r.reminderMinutesBefore, t)} {t("settings.notifications.reminders.before")}
                     </span>
                     {tplStatus && (
                       <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", tplStatus.className)}>
@@ -222,7 +228,7 @@ export function RemindersPanel({
                     )}
                   </div>
                   <p className="mt-0.5 text-xs text-subtle">
-                    Plantilla: <span className="font-medium text-ink">{getTemplateName(r.templateId)}</span>
+                    {t("settings.notifications.reminders.templateLabel")} <span className="font-medium text-ink">{getTemplateName(r.templateId)}</span>
                   </p>
                 </div>
 
@@ -233,7 +239,7 @@ export function RemindersPanel({
                     onCheckedChange={(checked) => onToggle(r.id, checked)}
                     disabled={saving}
                   />
-                  <Button type="button" variant="ghost" size="icon" onClick={() => onDelete(r.id)} disabled={saving} aria-label="Eliminar">
+                  <Button type="button" variant="ghost" size="icon" onClick={() => onDelete(r.id)} disabled={saving} aria-label={t("growth.actions.delete")}>
                     <Trash2 className="size-3.5 text-subtle hover:text-rose-500" />
                   </Button>
                 </div>
@@ -250,16 +256,16 @@ export function RemindersPanel({
             {/* Form header */}
             <div className="mb-4 flex items-center justify-between">
               <h4 className="text-sm font-semibold text-ink">
-                {editingId ? "Editar recordatorio" : "Nuevo recordatorio"}
+                {editingId ? t("settings.notifications.reminders.edit") : t("settings.notifications.reminders.new")}
               </h4>
-              <Button type="button" variant="ghost" size="icon" onClick={closeForm} aria-label="Cerrar">
+              <Button type="button" variant="ghost" size="icon" onClick={closeForm} aria-label={t("app.search.clear")}>
                 <X className="size-4" />
               </Button>
             </div>
 
             {/* Time selection */}
             <div className="space-y-3">
-              <Label className="text-xs">Cuánto antes de la cita</Label>
+              <Label className="text-xs">{t("settings.notifications.reminders.howLongBefore")}</Label>
               <div className="flex flex-wrap gap-2">
                 {TIME_PRESETS.map((preset) => (
                   <button
@@ -273,7 +279,7 @@ export function RemindersPanel({
                         : "bg-hover text-subtle hover:text-ink",
                     )}
                   >
-                    {preset.label}
+                    {formatMinutes(preset.value, t)}
                   </button>
                 ))}
                 <button
@@ -286,7 +292,7 @@ export function RemindersPanel({
                       : "bg-hover text-subtle hover:text-ink",
                   )}
                 >
-                  Personalizado
+                  {t("settings.schedule.saturday.custom")}
                 </button>
               </div>
 
@@ -297,14 +303,14 @@ export function RemindersPanel({
                     min="1"
                     value={formCustomMinutes}
                     onChange={(e) => setFormCustomMinutes(e.target.value)}
-                    placeholder="Minutos"
+                    placeholder={t("settings.notifications.reminders.minutes")}
                     className="w-32 text-sm"
                   />
                   <span className="text-xs text-subtle">
-                    minutos
+                    {t("settings.notifications.reminders.minutes")}
                     {parseInt(formCustomMinutes) > 0 && (
                       <span className="ml-1 font-medium text-ink">
-                        ({formatMinutes(parseInt(formCustomMinutes))})
+                        ({formatMinutes(parseInt(formCustomMinutes), t)})
                       </span>
                     )}
                   </span>
@@ -314,10 +320,10 @@ export function RemindersPanel({
 
             {/* Template selection */}
             <div className="mt-4 space-y-1.5">
-              <Label className="text-xs">Plantilla de WhatsApp</Label>
+              <Label className="text-xs">{t("settings.notifications.reminders.whatsappTemplate")}</Label>
               <Select value={formTemplateId} onValueChange={setFormTemplateId}>
                 <SelectTrigger className="text-sm">
-                  <SelectValue placeholder="Seleccionar plantilla..." />
+                  <SelectValue placeholder={t("settings.notifications.reminders.selectTemplate")} />
                 </SelectTrigger>
                 <SelectContent>
                   {approvedTemplates.length > 0 ? (
@@ -328,7 +334,7 @@ export function RemindersPanel({
                     ))
                   ) : (
                     <div className="px-3 py-2 text-xs text-subtle">
-                      No hay plantillas aprobadas
+                      {t("settings.notifications.reminders.noApprovedTemplates")}
                     </div>
                   )}
                 </SelectContent>
@@ -340,9 +346,9 @@ export function RemindersPanel({
               <div className="mt-4 flex items-center gap-2 rounded-lg bg-hover p-3">
                 <Clock className="size-4 shrink-0 text-brand" />
                 <p className="text-xs text-ink">
-                  Se enviará <span className="font-semibold">{formatMinutes(effectiveMinutes)}</span> antes de cada cita
+                  {t("settings.notifications.reminders.previewPrefix")} <span className="font-semibold">{formatMinutes(effectiveMinutes, t)}</span> {t("settings.notifications.reminders.previewSuffix")}
                   {formTemplateId && (
-                    <> usando <span className="font-semibold">{getTemplateName(formTemplateId)}</span></>
+                    <> {t("settings.notifications.reminders.using")} <span className="font-semibold">{getTemplateName(formTemplateId)}</span></>
                   )}
                 </p>
               </div>
@@ -356,10 +362,10 @@ export function RemindersPanel({
                 disabled={saving || !effectiveMinutes || !formTemplateId}
               >
                 {saving && <Loader2 className="size-4 mr-1.5 animate-spin" />}
-                {editingId ? "Guardar cambios" : "Agregar recordatorio"}
+                {editingId ? t("settings.actions.saveChanges") : t("settings.notifications.reminders.addReminder")}
               </Button>
               <Button size="sm" variant="outline" onClick={closeForm} disabled={saving}>
-                Cancelar
+                {t("settings.notifications.reminders.cancel")}
               </Button>
             </div>
           </div>

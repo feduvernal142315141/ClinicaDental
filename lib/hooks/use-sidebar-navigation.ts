@@ -74,14 +74,30 @@ export function useSidebarNavigation() {
     const comunicacionChildren: MenuItem[] = [];
 
     if (hasModule("whatsapp_inbox")) {
-      comunicacionChildren.push({ path: "/inbox", label: "Bandeja", icon: MessageSquare });
+      comunicacionChildren.push({
+        path: "/inbox",
+        label: t("navigation.inbox"),
+        icon: MessageSquare,
+      });
     }
     if (hasModule("campaign")) {
-      comunicacionChildren.push({ path: "/growth/campaigns", label: "Campañas", icon: Megaphone });
-      comunicacionChildren.push({ path: "/growth/segments", label: "Segmentos", icon: Filter });
+      comunicacionChildren.push({
+        path: "/growth/campaigns",
+        label: t("navigation.campaigns"),
+        icon: Megaphone,
+      });
+      comunicacionChildren.push({
+        path: "/growth/segments",
+        label: t("navigation.segments"),
+        icon: Filter,
+      });
     }
     if (hasModule("notification")) {
-      comunicacionChildren.push({ path: "/settings/notifications", label: "Plantillas", icon: FileText });
+      comunicacionChildren.push({
+        path: "/settings/notifications",
+        label: t("navigation.templates"),
+        icon: FileText,
+      });
     }
 
     // ── Configuración ───────────────────────────────────────────────────────
@@ -97,6 +113,8 @@ export function useSidebarNavigation() {
     )
       .filter((item) => hasModule(item.module))
       .map(({ path, label, icon }) => ({ path, label, icon }));
+
+    settingsChildren.push({ path: "/documentation", label: t("documentation.title"), icon: FileText });
 
     // ── Menú principal ──────────────────────────────────────────────────────
     const main: MenuItem[] = [];
@@ -123,7 +141,7 @@ export function useSidebarNavigation() {
     if (comunicacionChildren.length > 0) {
       main.push({
         path: "/inbox",
-        label: "Comunicación",
+        label: t("navigation.communication"),
         icon: MessageSquare,
         children: comunicacionChildren,
       });
@@ -138,6 +156,7 @@ export function useSidebarNavigation() {
         children: settingsChildren,
       });
     }
+
 
     const isActiveRoute = (currentPath: string, itemPath: string): boolean => {
       if (!currentPath) return false;

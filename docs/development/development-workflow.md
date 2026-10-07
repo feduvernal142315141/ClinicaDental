@@ -5,12 +5,12 @@
 1. Leer `AGENTS.md` raíz y el más cercano.
 2. Clasificar la tarea: feature, bug, refactor, review, odontograma, auth,
    contrato o despliegue.
-3. Invocar la skill más específica.
+3. Usar una skill específica solo si está disponible y aporta valor; no es requisito para cambios pequeños.
 4. Leer configuración base y archivos vecinos.
 5. Revisar `git status` y preservar cambios del usuario.
 6. Identificar contrato backend, permisos y estados afectados.
 
-## 2. Seleccionar skill
+## 2. Seleccionar contexto y skill
 
 | Tarea | Skill |
 |---|---|
@@ -23,7 +23,7 @@
 | revisión | `$code-review` |
 | preparar commits | `$atomic-commits` |
 
-Una skill no reemplaza la lectura de las instrucciones del directorio.
+La tabla anterior es una referencia histórica: no se detectaron skills locales instaladas. No bloquear tareas ni instalar skills automáticamente por estas menciones. Una skill disponible no reemplaza las instrucciones del directorio. Aplicar TRIVIAL/SMALL/MEDIUM/LARGE y Graphify/delegación bajo demanda según `AGENTS.md`.
 
 ## 3. Diseñar el cambio mínimo
 
@@ -66,7 +66,7 @@ modificar solo la frontera propietaria de la causa.
 - Resumir el resultado, no una cronología de comandos.
 - Listar archivos principales y validación.
 - Declarar lo no verificado.
-- Usar Conventional Commits mediante `$atomic-commits` cuando se solicite.
+- Hacer commits solo cuando se soliciten; seguir la convención del repositorio y usar una skill de commits únicamente si está disponible.
 
 El README documenta `develop` como rama de integración y `feature/*` para
 trabajo, pero la rama destino debe confirmarse en el flujo real de cada entrega;

@@ -11,6 +11,8 @@ import type {
   ConversationStatus,
   HandlingMode,
 } from "@/lib/entity/inbox";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -23,16 +25,16 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-function relativeTime(dateStr: string | null): string {
+function relativeTime(dateStr: string | null, language: string, t: (key: TranslationKey) => string): string {
   if (!dateStr) return "";
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diffMs = now - then;
   const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return "ahora";
-  if (diffMin < 60) return `hace ${diffMin}m`;
+  if (diffMin < 1) return t("inbox.time.now");
+  if (diffMin < 60) return t("inbox.time.minutesAgo").replace("{count}", String(diffMin));
   const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `hace ${diffH}h`;
+  if (diffH < 24) return t("inbox.time.hoursAgo").replace("{count}", String(diffH));
   const today = new Date();
   const thenDate = new Date(dateStr);
   const yesterday = new Date(today);
@@ -42,9 +44,9 @@ function relativeTime(dateStr: string | null): string {
     thenDate.getMonth() === yesterday.getMonth() &&
     thenDate.getFullYear() === yesterday.getFullYear()
   ) {
-    return "Ayer";
+    return t("inbox.time.yesterday");
   }
-  return thenDate.toLocaleDateString("es-MX", {
+  return thenDate.toLocaleDateString(language, {
     day: "numeric",
     month: "short",
   });
@@ -65,18 +67,19 @@ function getStatusDot(
 function getStatusConfig(
   status: ConversationStatus,
   handlingMode: HandlingMode,
+  t: (key: TranslationKey) => string,
 ): { label: string; className: string } {
   if (status === "NEEDS_HUMAN") {
     return {
-      label: "Requiere atención",
+      label: t("inbox.status.needsHuman"),
       className: "text-amber-600 dark:text-amber-400",
     };
   }
   if (status === "RESOLVED") {
-    return { label: "Resuelta", className: "text-subtle/60" };
+    return { label: t("inbox.status.resolved"), className: "text-subtle/60" };
   }
   if (handlingMode === "HUMAN") {
-    return { label: "Humano", className: "text-brand" };
+    return { label: t("inbox.handling.human"), className: "text-brand" };
   }
   return { label: "Dalia", className: "text-emerald-600 dark:text-emerald-400" };
 }
@@ -96,6 +99,7 @@ export function InboxConversationRow({
   onClick,
   className,
 }: InboxConversationRowProps) {
+  const { language, t } = useI18n();
   const {
     id,
     patientName,
@@ -107,21 +111,31 @@ export function InboxConversationRow({
     handlingMode,
   } = conversation;
 
-  const displayName = patientName || contactPhone || "Contacto no registrado";
+  const displayName = patientName || contactPhone || t("inbox.contact.unregistered");
   const initials = patientName
     ? getInitials(patientName)
     : contactPhone
       ? contactPhone.slice(-2)
       : "?";
-  const statusCfg = getStatusConfig(status, handlingMode);
+  const statusCfg = getStatusConfig(status, handlingMode, t);
   const dotColor = getStatusDot(status, handlingMode);
   const hasUnread = unreadCount > 0;
+  const ariaLabel = hasUnread
+    ? t("inbox.row.aria")
+        .replace("{name}", displayName)
+        .replace(
+          "{unread}",
+          t("inbox.row.unreadAria").replace("{count}", String(unreadCount)),
+        )
+    : t("inbox.row.aria")
+        .replace("{name}", displayName)
+        .replace("{unread}", "");
 
   return (
     <button
       type="button"
       onClick={() => onClick(id)}
-      aria-label={`Conversación con ${displayName}${hasUnread ? `, ${unreadCount} sin leer` : ""}`}
+      aria-label={ariaLabel.trim()}
       aria-selected={isSelected}
       className={cn(
         "group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
@@ -176,7 +190,7 @@ export function InboxConversationRow({
               hasUnread ? "font-bold text-brand" : "text-subtle",
             )}
           >
-            {relativeTime(lastMessageAt)}
+            {relativeTime(lastMessageAt, language, t)}
           </span>
         </div>
 

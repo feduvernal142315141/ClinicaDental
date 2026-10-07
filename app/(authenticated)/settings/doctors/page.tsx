@@ -2,18 +2,20 @@
 
 import { DoctorsList } from "@/components/doctors";
 import { PageHeader } from "@/components/ui/layout/page-header";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { useDoctorsPage } from "@/lib/hooks/doctors/use-doctors-page";
 
 export default function UsersPage() {
+  const { t } = useI18n();
   const { handleNewDoctor } = useDoctorsPage({ basePath: "/settings/doctors" });
 
   return (
     <>
       <PageHeader
-        title="Gestión de Usuarios"
-        subtitle="Administre los usuarios del sistema"
+        title={t("doctors.page.listTitle")}
+        subtitle={t("doctors.page.listDescription")}
         actionButton={{
-          label: "Nuevo Usuario",
+          label: t("doctors.actions.new"),
           onClick: handleNewDoctor,
         }}
       />

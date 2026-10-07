@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils/utils";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { ChevronLeft, MoreVertical, Phone, Video } from "lucide-react";
 
 export interface TemplatePhonePreviewProps {
@@ -17,6 +18,7 @@ export function TemplatePhonePreview({
   body,
   className,
 }: TemplatePhonePreviewProps) {
+  const { t } = useI18n();
   const isEmpty = !body.trim();
 
   return (
@@ -85,7 +87,7 @@ export function TemplatePhonePreview({
                 <div className="flex h-[300px] items-center justify-center">
                   <div className="rounded-lg bg-white/60 px-4 py-2 shadow-sm dark:bg-white/10">
                     <p className="text-center text-[11px] text-black/40 dark:text-white/30">
-                      El mensaje aparecerá aquí...
+                      {t("settings.notifications.templates.previewEmpty")}
                     </p>
                   </div>
                 </div>
@@ -113,7 +115,7 @@ export function TemplatePhonePreview({
               </svg>
             </div>
             <div className="h-9 flex-1 rounded-full bg-white px-3 dark:bg-[#2a3942]">
-              <span className="text-[13px] leading-9 text-[#8696a0]">Mensaje</span>
+              <span className="text-[13px] leading-9 text-[#8696a0]">{t("settings.notifications.templates.messageInput")}</span>
             </div>
             <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#00a884]">
               <svg viewBox="0 0 24 24" className="size-5 fill-white">

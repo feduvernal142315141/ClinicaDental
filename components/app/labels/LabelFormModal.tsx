@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { requiredText } from "@/lib/validation/fields";
 import { Tag, Check, Ban } from "lucide-react";
 import { Modal } from "@/components/ui/primitives/custom";
 import { Button } from "@/components/ui/primitives/shadcn/button";
@@ -23,6 +22,8 @@ import { DynamicIcon } from "./DynamicIcon";
 import { LabelChip } from "./LabelChip";
 import { useCreateLabel, useUpdateLabel } from "@/lib/hooks/labels";
 import type { Label, CreateLabelDto, UpdateLabelDto } from "@/lib/entity/label";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 interface LabelFormModalProps {
   isOpen: boolean;
@@ -79,9 +80,10 @@ const AVAILABLE_ICONS = [
 interface IconPickerProps {
   value?: string;
   onChange?: (value: string) => void;
+  noIconLabel: string;
 }
 
-function IconPicker({ value, onChange }: IconPickerProps) {
+function IconPicker({ value, onChange, noIconLabel }: IconPickerProps) {
   const isNone = !value;
   const tileBase =
     "grid h-9 w-9 place-items-center rounded-lg border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand/45";
@@ -90,8 +92,8 @@ function IconPicker({ value, onChange }: IconPickerProps) {
       <button
         type="button"
         onClick={() => onChange?.("")}
-        title="Sin ícono"
-        aria-label="Sin ícono"
+        title={noIconLabel}
+        aria-label={noIconLabel}
         aria-pressed={isNone}
         className={cn(
           tileBase,
@@ -142,14 +144,22 @@ const PRESET_COLORS = [
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
-const labelSchema = z.object({
-  name: requiredText({ min: 1, max: 50, label: "El nombre" }),
-  color: z.string().regex(HEX_RE, "Usa un color válido (#RRGGBB)"),
-  description: z.string().optional(),
-  icon: z.string().optional(),
-});
+type LabelFormTranslator = (key: TranslationKey) => string;
 
-type LabelFormValues = z.infer<typeof labelSchema>;
+function createLabelSchema(t: LabelFormTranslator) {
+  return z.object({
+    name: z
+      .string({ required_error: t("labels.validation.nameRequired") })
+      .trim()
+      .min(1, t("labels.validation.nameRequired"))
+      .max(50, t("labels.validation.nameMax")),
+    color: z.string().regex(HEX_RE, t("labels.validation.colorInvalid")),
+    description: z.string().optional(),
+    icon: z.string().optional(),
+  });
+}
+
+type LabelFormValues = z.infer<ReturnType<typeof createLabelSchema>>;
 
 export function LabelFormModal({
   isOpen,
@@ -157,7 +167,9 @@ export function LabelFormModal({
   onSuccess,
   label,
 }: LabelFormModalProps) {
+  const { language, t } = useI18n();
   const isEdit = !!label;
+  const labelSchema = useMemo(() => createLabelSchema(t), [t]);
   const { createLabel, loading: createLoading } = useCreateLabel();
   const { updateLabel, loading: updateLoading } = useUpdateLabel(label?.id ?? "");
 
@@ -188,6 +200,11 @@ export function LabelFormModal({
     }
   }, [isOpen, label, form]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    void form.trigger();
+  }, [language, isOpen, form]);
+
   const handleSubmit = async (values: LabelFormValues) => {
     const payload = { ...values, icon: values.icon || undefined };
     if (isEdit && label) {
@@ -214,8 +231,8 @@ export function LabelFormModal({
         if (!next) onClose();
       }}
       icon={<Tag className="h-5 w-5" />}
-      title={isEdit ? "Editar etiqueta" : "Nueva etiqueta"}
-      description="Personaliza el nombre, color e ícono de la etiqueta."
+      title={isEdit ? t("labels.modal.editTitle") : t("labels.modal.newTitle")}
+      description={t("labels.modal.description")}
       className="w-full sm:max-w-lg"
     >
       <Form {...form}>
@@ -227,10 +244,14 @@ export function LabelFormModal({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Nombre <span className="text-rose-500">*</span>
+                    {t("labels.form.name")} <span className="text-rose-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej. Urgencia" maxLength={50} {...field} />
+                    <Input
+                      placeholder={t("labels.form.namePlaceholder")}
+                      maxLength={50}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -247,7 +268,7 @@ export function LabelFormModal({
                 return (
                   <FormItem>
                     <FormLabel>
-                      Color <span className="text-rose-500">*</span>
+                      {t("labels.form.color")} <span className="text-rose-500">*</span>
                     </FormLabel>
                     <div className="space-y-3">
                       {/* Swatches preestablecidos */}
@@ -280,7 +301,7 @@ export function LabelFormModal({
                       <div className="flex items-center gap-2">
                         <label
                           className="relative grid h-9 w-9 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-lg border border-hairline"
-                          title="Color personalizado"
+                          title={t("labels.form.customColor")}
                         >
                           <span
                             className="h-5 w-5 rounded"
@@ -293,7 +314,7 @@ export function LabelFormModal({
                               field.onChange(e.target.value.toUpperCase())
                             }
                             className="absolute inset-0 cursor-pointer opacity-0"
-                            aria-label="Selector de color personalizado"
+                            aria-label={t("labels.form.customColor")}
                           />
                         </label>
                         <Input
@@ -318,12 +339,12 @@ export function LabelFormModal({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descripción (opcional)</FormLabel>
+                  <FormLabel>{t("labels.form.description")}</FormLabel>
                   <FormControl>
                     <TextArea
                       rows={2}
                       maxLength={255}
-                      placeholder="Descripción breve"
+                      placeholder={t("labels.form.descriptionPlaceholder")}
                       {...field}
                     />
                   </FormControl>
@@ -337,8 +358,12 @@ export function LabelFormModal({
               name="icon"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Ícono (opcional)</FormLabel>
-                  <IconPicker value={field.value} onChange={field.onChange} />
+                  <FormLabel>{t("labels.form.icon")}</FormLabel>
+                  <IconPicker
+                    value={field.value}
+                    onChange={field.onChange}
+                    noIconLabel={t("labels.form.noIcon")}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -346,12 +371,14 @@ export function LabelFormModal({
 
             {/* Live preview */}
             <div className="space-y-2">
-              <p className="text-sm font-medium text-ink">Vista previa</p>
+              <p className="text-sm font-medium text-ink">
+                {t("labels.form.preview")}
+              </p>
               <div className="flex items-center justify-center rounded-xl border border-hairline bg-canvas px-4 py-5">
                 <LabelChip
                   label={{
                     id: "preview",
-                    name: previewName || "Etiqueta",
+                    name: previewName || t("labels.form.previewFallback"),
                     color: previewColor || "#3498DB",
                     icon: previewIcon || undefined,
                   }}
@@ -363,10 +390,10 @@ export function LabelFormModal({
 
           <div className="flex justify-end gap-2 border-t border-hairline px-6 py-4">
             <Button variant="outline" type="button" onClick={onClose}>
-              Cancelar
+              {t("labels.actions.cancel")}
             </Button>
             <Button type="submit" loading={loading}>
-              Guardar etiqueta
+              {t("labels.actions.save")}
             </Button>
           </div>
         </form>

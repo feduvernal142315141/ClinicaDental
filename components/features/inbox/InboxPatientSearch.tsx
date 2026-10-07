@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/primitives/shadcn/sheet";
 import { patientsService } from "@/lib/services/patients";
 import type { Patient } from "@/lib/entity/patients";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ export function InboxPatientSearch({
   onSelect,
   onClose,
 }: InboxPatientSearchProps) {
+  const { t } = useI18n();
   const [query, setQuery] = React.useState("");
   const [results, setResults] = React.useState<Patient[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -87,9 +89,9 @@ export function InboxPatientSearch({
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
       <SheetContent side="right" className="flex flex-col">
         <SheetHeader>
-          <SheetTitle>Vincular paciente</SheetTitle>
+          <SheetTitle>{t("inbox.patientSearch.title")}</SheetTitle>
           <SheetDescription>
-            Busca y selecciona un paciente para vincular a esta conversación.
+            {t("inbox.patientSearch.description")}
           </SheetDescription>
         </SheetHeader>
 
@@ -99,7 +101,7 @@ export function InboxPatientSearch({
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Nombre o teléfono del paciente..."
+            placeholder={t("inbox.patientSearch.placeholder")}
             className="pl-9 text-sm"
             autoFocus
           />
@@ -109,17 +111,17 @@ export function InboxPatientSearch({
         <ScrollArea className="flex-1 px-4 pt-2">
           {loading ? (
             <div className="flex justify-center py-8">
-              <LoadingSpinner size="sm" message="Buscando pacientes..." />
+              <LoadingSpinner size="sm" message={t("inbox.patientSearch.loading")} />
             </div>
           ) : query.trim().length < 2 ? (
             <p className="py-8 text-center text-xs text-subtle">
-              Escribe al menos 2 caracteres para buscar.
+              {t("inbox.patientSearch.minChars")}
             </p>
           ) : results.length === 0 ? (
             <EmptyState
               icon={User}
-              title="Sin resultados"
-              description="No se encontraron pacientes con ese criterio."
+              title={t("inbox.patientSearch.noResults")}
+              description={t("inbox.patientSearch.noResultsDescription")}
               className="py-8"
             />
           ) : (

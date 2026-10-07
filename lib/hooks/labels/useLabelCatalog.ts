@@ -7,6 +7,7 @@ import type { Label } from "@/lib/entity/label";
 import { notifyApiError } from "@/lib/utils/notify-error";
 import { matchesQuery } from "@/lib/utils/text";
 import { useDebouncedValue } from "@/lib/hooks/useDebounce";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 /** Primera carga: si el total cabe aquí, el catálogo queda completo en cliente. */
 export const CATALOG_PAGE_SIZE = 200;
@@ -26,6 +27,7 @@ const SEARCH_DEBOUNCE_MS = 300;
  * Errores siempre vía `notifyApiError` (no reintroducir catch silenciosos).
  */
 export function useLabelCatalog(includeArchived = false) {
+  const { t } = useI18n();
   const [labels, setLabels] = useState<Label[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -50,12 +52,12 @@ export function useLabelCatalog(includeArchived = false) {
         pageRef.current = page;
         setLabels((prev) => (append ? [...prev, ...entities] : entities));
       } catch (error) {
-        notifyApiError("No se pudieron cargar las etiquetas", error);
+        notifyApiError(t("labels.notify.loadError"), error);
       } finally {
         setLoading(false);
       }
     },
-    [includeArchived],
+    [includeArchived, t],
   );
 
   // Carga inicial (y cuando cambia includeArchived).
@@ -90,7 +92,7 @@ export function useLabelCatalog(includeArchived = false) {
         });
         if (!cancelled) setServerResults(entities);
       } catch (error) {
-        if (!cancelled) notifyApiError("No se pudieron cargar las etiquetas", error);
+        if (!cancelled) notifyApiError(t("labels.notify.loadError"), error);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -99,7 +101,7 @@ export function useLabelCatalog(includeArchived = false) {
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery, isComplete, includeArchived]);
+  }, [debouncedQuery, isComplete, includeArchived, t]);
 
   const search = useCallback((next: string) => {
     setQuery(next);

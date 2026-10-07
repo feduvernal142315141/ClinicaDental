@@ -7,10 +7,10 @@ import {
 } from "@/components/ui/primitives/shadcn/dropdown-menu";
 import { DataTableColumn } from "@/components/ui/data-display/data-table";
 import { Switch } from "@/components/ui/atomic/forms";
-import type { ServiceListItem, ServiceType } from "@/lib/entity/services";
-import {
-  SERVICE_TYPE_LABELS,
-  SERVICE_CATEGORY_LABELS,
+import type {
+  ServiceCategory,
+  ServiceListItem,
+  ServiceType,
 } from "@/lib/entity/services";
 import { cn } from "@/lib/utils/utils";
 import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
@@ -27,6 +27,30 @@ interface GetServicesColumnsParams {
   pendingOdontogramIds: ReadonlySet<string>;
   /** Moneda configurada de la clínica (ISO-4217, ej. "BOB"). */
   currency: string;
+  labels: {
+    code: string;
+    name: string;
+    type: string;
+    category: string;
+    cost: string;
+    duration: string;
+    odontogramVisible: string;
+    status: string;
+    createdAt: string;
+    actions: string;
+    edit: string;
+    more: string;
+    activate: string;
+    deactivate: string;
+    active: string;
+    inactive: string;
+    serviceTypes: Record<ServiceType, string>;
+    serviceCategories: Record<ServiceCategory, string>;
+    odontogram: string;
+    general: string;
+    removeFromOdontogram: string;
+    showInOdontogram: string;
+  };
 }
 
 const TYPE_BADGE: Record<ServiceType, string> = {
@@ -44,11 +68,12 @@ export function getServicesColumns({
   canBlock,
   pendingOdontogramIds,
   currency,
+  labels,
 }: GetServicesColumnsParams): DataTableColumn<ServiceListItem>[] {
   return [
     {
       key: "code",
-      title: "Código",
+      title: labels.code,
       dataIndex: "code",
       sorter: true,
       width: 110,
@@ -60,7 +85,7 @@ export function getServicesColumns({
     },
     {
       key: "name",
-      title: "Nombre",
+      title: labels.name,
       dataIndex: "name",
       sorter: true,
       render: (value) => (
@@ -69,7 +94,7 @@ export function getServicesColumns({
     },
     {
       key: "type",
-      title: "Tipo",
+      title: labels.type,
       dataIndex: "type",
       render: (value) => {
         const type = value as ServiceType;
@@ -80,28 +105,26 @@ export function getServicesColumns({
               TYPE_BADGE[type] ?? "bg-hover text-subtle ring-hairline",
             )}
           >
-            {SERVICE_TYPE_LABELS[type] ?? type}
+            {labels.serviceTypes[type] ?? type}
           </span>
         );
       },
     },
     {
       key: "category",
-      title: "Categoría",
+      title: labels.category,
       dataIndex: "category",
       render: (value) => (
         <span className="text-sm text-ink">
           {value
-            ? SERVICE_CATEGORY_LABELS[
-                value as keyof typeof SERVICE_CATEGORY_LABELS
-              ] ?? (value as string)
+            ? labels.serviceCategories[value as ServiceCategory] ?? (value as string)
             : "—"}
         </span>
       ),
     },
     {
       key: "cost",
-      title: "Costo",
+      title: labels.cost,
       dataIndex: "cost",
       align: "right",
       render: (value) => (
@@ -114,7 +137,7 @@ export function getServicesColumns({
     },
     {
       key: "duration",
-      title: "Duración",
+      title: labels.duration,
       dataIndex: "duration",
       align: "right",
       render: (value) => (
@@ -129,7 +152,7 @@ export function getServicesColumns({
       // "general" (limpieza, radiografía, consulta) que se planifica a nivel
       // paciente. Por eso se puede conmutar desde la propia lista.
       key: "odontogramEnabled",
-      title: "Visible en odontograma",
+      title: labels.odontogramVisible,
       dataIndex: "odontogramEnabled",
       align: "center",
       width: 190,
@@ -139,11 +162,11 @@ export function getServicesColumns({
         if (!canEdit) {
           return enabled ? (
             <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-400/25 dark:text-emerald-300">
-              Odontograma
+              {labels.odontogram}
             </span>
           ) : (
             <span className="inline-flex items-center rounded-full bg-hover px-2.5 py-0.5 text-xs font-semibold text-subtle ring-1 ring-hairline">
-              General
+              {labels.general}
             </span>
           );
         }
@@ -161,12 +184,12 @@ export function getServicesColumns({
               }
               aria-label={
                 enabled
-                  ? `Quitar "${record.name}" del odontograma (pasa a servicio general)`
-                  : `Mostrar "${record.name}" en el odontograma`
+                  ? labels.removeFromOdontogram.replace("{name}", record.name)
+                  : labels.showInOdontogram.replace("{name}", record.name)
               }
             />
             <span className="text-xs font-medium text-subtle">
-              {enabled ? "Odontograma" : "General"}
+              {enabled ? labels.odontogram : labels.general}
             </span>
           </div>
         );
@@ -174,22 +197,22 @@ export function getServicesColumns({
     },
     {
       key: "active",
-      title: "Estado",
+      title: labels.status,
       dataIndex: "active",
       render: (value) =>
         value ? (
           <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-400/25 dark:text-emerald-300">
-            Activo
+            {labels.active}
           </span>
         ) : (
           <span className="inline-flex items-center rounded-full bg-hover px-2.5 py-0.5 text-xs font-semibold text-subtle ring-1 ring-hairline">
-            Inactivo
+            {labels.inactive}
           </span>
         ),
     },
     {
       key: "createAt",
-      title: "Fecha Creación",
+      title: labels.createdAt,
       dataIndex: "createAt",
       render: (value) => (
         <span className="text-sm tabular-nums text-subtle">
@@ -199,7 +222,7 @@ export function getServicesColumns({
     },
     {
       key: "actions",
-      title: "Acciones",
+      title: labels.actions,
       align: "center",
       fixed: "right",
       width: 110,
@@ -208,7 +231,7 @@ export function getServicesColumns({
           {canEdit && (
             <button
               onClick={() => onEdit(record.id)}
-              title="Editar servicio"
+              title={labels.edit}
               className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink"
             >
               <Pencil className="h-4 w-4" />
@@ -218,7 +241,7 @@ export function getServicesColumns({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  title="Más acciones"
+                  title={labels.more}
                   className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink"
                 >
                   <MoreHorizontal className="h-4 w-4" />
@@ -231,12 +254,12 @@ export function getServicesColumns({
                     onClick={() => onToggleStatus(record.id, true)}
                   >
                     <Ban className="h-4 w-4" />
-                    Desactivar
+                    {labels.deactivate}
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem onClick={() => onToggleStatus(record.id, false)}>
                     <CheckCircle2 className="h-4 w-4" />
-                    Activar
+                    {labels.activate}
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

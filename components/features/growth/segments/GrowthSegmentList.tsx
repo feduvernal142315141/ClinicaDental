@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { Alert, AlertDescription } from "@/components/ui";
 import { Plus, Filter, Pencil, Trash2, Users } from "lucide-react";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { useGrowthSegments, useSegmentEvaluation } from "@/lib/hooks/growth";
 import {
   SEGMENT_FIELD_OPTIONS,
@@ -42,6 +43,7 @@ function formatCondition(c: SegmentCondition): string {
 
 export function GrowthSegmentList() {
   const router = useRouter();
+  const { language, t } = useI18n();
   const { segments, loading, error, remove } = useGrowthSegments();
   const { evaluation, evaluating, evaluate } = useSegmentEvaluation();
   const [evaluatedSegmentId, setEvaluatedSegmentId] = useState<string | null>(null);
@@ -65,38 +67,38 @@ export function GrowthSegmentList() {
     <div className="space-y-6">
       <Header
         level={1}
-        title="Segmentos"
-        description="Define audiencias para tus campañas"
+        title={t("growth.segments.title")}
+        description={t("growth.segments.description")}
         action={
           <Button onClick={() => router.push("/growth/segments/new")}>
             <Plus className="mr-2 h-4 w-4" />
-            Nuevo segmento
+            {t("growth.segments.new")}
           </Button>
         }
       />
 
       {error && segments.length > 0 && (
         <Alert variant="destructive">
-          <AlertDescription>No se pudieron actualizar los segmentos.</AlertDescription>
+          <AlertDescription>{t("growth.segments.refreshError")}</AlertDescription>
         </Alert>
       )}
 
       {loading && (
         <div className="flex items-center justify-center min-h-64">
-          <LoadingSpinner message="Cargando segmentos..." />
+          <LoadingSpinner message={t("growth.segments.loading")} />
         </div>
       )}
 
       {!loading && segments.length === 0 && (
         <EmptyState
           icon={Filter}
-          title="Sin segmentos"
-          description="Crea tu primer segmento para definir audiencias de tus campañas."
+          title={t("growth.segments.emptyTitle")}
+          description={t("growth.segments.emptyDescription")}
           variant="card"
           action={
             <Button onClick={() => router.push("/growth/segments/new")}>
               <Plus className="mr-2 h-4 w-4" />
-              Nuevo segmento
+              {t("growth.segments.new")}
             </Button>
           }
         />
@@ -136,7 +138,10 @@ export function GrowthSegmentList() {
                     {segment.cachedCount != null && (
                       <p className="text-xs text-subtle mt-1 flex items-center gap-1">
                         <Users className="h-3 w-3" />
-                        ~{segment.cachedCount.toLocaleString("es")} pacientes
+                        ~{t("growth.segments.patientCount").replace(
+                          "{count}",
+                          segment.cachedCount.toLocaleString(language),
+                        )}
                       </p>
                     )}
                   </div>
@@ -149,7 +154,7 @@ export function GrowthSegmentList() {
                       size="icon"
                       onClick={() => handleEvaluate(segment.id)}
                       disabled={evaluating}
-                      title="Calcular audiencia"
+                      title={t("growth.segments.calculateAudience")}
                     >
                       <Users className="h-4 w-4" />
                     </Button>
@@ -159,33 +164,34 @@ export function GrowthSegmentList() {
                       onClick={() =>
                         router.push(`/growth/segments/${segment.id}`)
                       }
-                      title="Editar"
+                      title={t("growth.actions.edit")}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" title="Eliminar">
+                        <Button variant="ghost" size="icon" title={t("growth.actions.delete")}>
                           <Trash2 className="h-4 w-4 text-rose-500" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>
-                            ¿Eliminar este segmento?
+                            {t("growth.segments.deleteTitle")}
                           </AlertDialogTitle>
                           <AlertDialogDescription>
-                            Se eliminará permanentemente &ldquo;{segment.name}
-                            &rdquo;. Las campañas que lo usen perderán la
-                            referencia.
+                            {t("growth.segments.deleteDescription").replace(
+                              "{name}",
+                              segment.name,
+                            )}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogCancel>{t("growth.actions.cancel")}</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => remove(segment.id)}
                           >
-                            Eliminar
+                            {t("growth.actions.delete")}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -194,8 +200,10 @@ export function GrowthSegmentList() {
                 </div>
                 {evaluatedSegmentId === segment.id && evaluation && (
                   <p className="text-sm text-ink mt-2 font-medium">
-                    {evaluation.count.toLocaleString("es")} pacientes
-                    cumplen este segmento
+                    {t("growth.segments.matchesCount").replace(
+                      "{count}",
+                      evaluation.count.toLocaleString(language),
+                    )}
                   </p>
                 )}
               </div>

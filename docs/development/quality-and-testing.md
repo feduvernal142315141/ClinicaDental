@@ -2,9 +2,7 @@
 
 ## Estado actual
 
-No hay Jest, Vitest, React Testing Library, Playwright ni Cypress configurados.
-Tampoco existen archivos `*.test.*`/`*.spec.*` ni workflows CI. No afirmar
-cobertura automática.
+Hay Vitest 3 con jsdom, React Testing Library y `vitest.setup.ts`. Se detectaron diez archivos `*.test.ts`/`*.test.tsx` de facturación (services, hooks, utilidades y componentes). No se verificó cobertura global ni se detectó CI versionado.
 
 ## Compuertas disponibles
 
@@ -12,10 +10,17 @@ cobertura automática.
 yarn typecheck
 yarn lint
 yarn build
+yarn test
+# Selección concreta:
+yarn test lib/services/billing/billing.contract.test.ts
+yarn check:dictation-contract
 ```
 
 - `typecheck`: valida TypeScript estricto sin emitir.
 - `lint`: usa la configuración ESLint legacy de Next.
+- `test`: Vitest; seleccionar casos relevantes en cambios acotados.
+- `check:dictation-contract`: compara con el schema del backend hermano; si no existe, el aviso con exit 0 significa omitido, no validado.
+- Si falta el binario `yarn`, `corepack yarn` está disponible en el entorno inspeccionado.
 - `build`: valida compilación, rutas y generación, pero ignora errores de TS y
   ESLint por configuración.
 
@@ -26,10 +31,10 @@ ausencia de placeholders.
 
 | Cambio | Validación mínima |
 |---|---|
-| documentación/skill | enlaces, rutas y validator de skill |
+| documentación/skill | diff, enlaces, rutas; validator solo si se crea/modifica una skill |
 | componente visual | lint del área + smoke en claro/oscuro y responsive |
 | formulario | schema, blur, teclado, errores, submit éxito/fallo |
-| service/entidad | typecheck, lint, status/shapes y error de red |
+| service/entidad | typecheck, lint, tests relevantes, status/shapes y error de red |
 | ruta/layout | lint, build y navegación directa/refresh |
 | auth/cookies | typecheck, lint, build y matriz de sesión |
 | odontograma | entrada pública, carga, autosave, histórico y fallo de carga |
@@ -53,7 +58,7 @@ No ocultar una regresión como “deuda existente”.
 
 ## Estrategia futura recomendada
 
-Cuando se autorice agregar tooling:
+Ampliaciones futuras según necesidad de la tarea:
 
 1. unitarias para `lib/query`, validaciones, permisos y dominio puro;
 2. integración para services, hooks y adapters con respuestas simuladas;
@@ -61,9 +66,7 @@ Cuando se autorice agregar tooling:
 4. E2E para OTP/JWT, agenda, paciente, odontograma y logout;
 5. CI con typecheck, lint, tests y build.
 
-La selección del runner es una decisión arquitectónica pendiente. No agregar
-una herramienta como efecto lateral de una feature sin acordar mantenimiento,
-fixtures, cobertura y tiempo de CI.
+El runner unitario/de componentes existente es Vitest. No agregar otra herramienta como efecto lateral de una feature; una futura solución E2E/CI requiere definir mantenimiento, fixtures y tiempo de ejecución.
 
 ## Definition of Done
 

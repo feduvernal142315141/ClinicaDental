@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/primitives/shadcn/button";
 import { InboxConversationRow } from "./InboxConversationRow";
 import type { InboxConversation, InboxFilterPreset } from "@/lib/entity/inbox";
 import { INBOX_FILTER_PRESETS } from "@/lib/entity/inbox";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -32,24 +34,34 @@ export interface InboxConversationListProps {
 
 // ── Empty-state copy per filter ────────────────────────────────────────────
 
-const EMPTY_TITLES: Partial<Record<InboxFilterPreset, string>> = {
-  all: "Sin conversaciones",
-  unread: "Todo al día",
-  needs_human: "Sin pendientes",
-  dalia: "Sin conversaciones de Dalia",
-  human: "Sin conversaciones humanas",
-  assigned_to_me: "Sin asignaciones",
-  resolved: "Sin resueltas",
+const EMPTY_TITLE_KEYS: Record<InboxFilterPreset, TranslationKey> = {
+  all: "inbox.empty.allTitle",
+  unread: "inbox.empty.unreadTitle",
+  needs_human: "inbox.empty.needsHumanTitle",
+  dalia: "inbox.empty.daliaTitle",
+  human: "inbox.empty.humanTitle",
+  assigned_to_me: "inbox.empty.assignedTitle",
+  resolved: "inbox.empty.resolvedTitle",
 };
 
-const EMPTY_DESCRIPTIONS: Partial<Record<InboxFilterPreset, string>> = {
-  all: "Cuando los pacientes envíen mensajes aparecerán aquí.",
-  unread: "No hay mensajes sin leer.",
-  needs_human: "Dalia no ha transferido conversaciones.",
-  dalia: "No hay conversaciones atendidas por Dalia.",
-  human: "No hay conversaciones atendidas por humanos.",
-  assigned_to_me: "No tienes conversaciones asignadas.",
-  resolved: "No hay conversaciones resueltas.",
+const EMPTY_DESCRIPTION_KEYS: Record<InboxFilterPreset, TranslationKey> = {
+  all: "inbox.empty.allDescription",
+  unread: "inbox.empty.unreadDescription",
+  needs_human: "inbox.empty.needsHumanDescription",
+  dalia: "inbox.empty.daliaDescription",
+  human: "inbox.empty.humanDescription",
+  assigned_to_me: "inbox.empty.assignedDescription",
+  resolved: "inbox.empty.resolvedDescription",
+};
+
+const FILTER_LABEL_KEYS: Record<InboxFilterPreset, TranslationKey> = {
+  all: "inbox.filter.all",
+  unread: "inbox.filter.unread",
+  needs_human: "inbox.filter.needsHuman",
+  dalia: "inbox.filter.dalia",
+  human: "inbox.filter.human",
+  assigned_to_me: "inbox.filter.assignedToMe",
+  resolved: "inbox.filter.resolved",
 };
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -69,6 +81,7 @@ export function InboxConversationList({
   onLoadMore,
   className,
 }: InboxConversationListProps) {
+  const { t } = useI18n();
   const [localSearch, setLocalSearch] = React.useState(query);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -103,7 +116,7 @@ export function InboxConversationList({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold text-ink">Bandeja</h2>
+          <h2 className="text-base font-semibold text-ink">{t("inbox.title")}</h2>
           {totalUnread > 0 && (
             <span className="flex size-5 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">
               {totalUnread > 99 ? "99+" : totalUnread}
@@ -119,7 +132,7 @@ export function InboxConversationList({
           <Input
             value={localSearch}
             onChange={handleSearch}
-            placeholder="Buscar conversación..."
+            placeholder={t("inbox.search.placeholder")}
             className="pl-9 text-sm"
           />
         </div>
@@ -139,7 +152,7 @@ export function InboxConversationList({
                 : "bg-hover text-subtle hover:text-ink",
             )}
           >
-            {preset.label}
+            {t(FILTER_LABEL_KEYS[preset.value])}
           </button>
         ))}
       </div>
@@ -148,13 +161,13 @@ export function InboxConversationList({
       <ScrollArea className="flex-1">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <LoadingSpinner size="sm" message="Cargando conversaciones..." />
+            <LoadingSpinner size="sm" message={t("inbox.loading.conversations")} />
           </div>
         ) : conversations.length === 0 ? (
           <EmptyState
             icon={Inbox}
-            title={EMPTY_TITLES[activeFilter] ?? "Sin conversaciones"}
-            description={EMPTY_DESCRIPTIONS[activeFilter]}
+            title={t(EMPTY_TITLE_KEYS[activeFilter])}
+            description={t(EMPTY_DESCRIPTION_KEYS[activeFilter])}
             className="py-16"
           />
         ) : (
@@ -182,7 +195,7 @@ export function InboxConversationList({
                     block
                     onClick={onLoadMore}
                   >
-                    Cargar más
+                    {t("inbox.action.loadMore")}
                   </Button>
                 )}
               </div>

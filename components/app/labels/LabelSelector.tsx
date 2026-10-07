@@ -19,6 +19,7 @@ import {
   CommandList,
 } from "@/components/ui/primitives/shadcn/command";
 import type { LabelSummary } from "@/lib/entity/label";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 // Cap de opciones visibles en el desplegable (seleccionadas primero). Mismo
 // criterio que el sidebar de filtros — evita renderizar de golpe las ~200
@@ -49,6 +50,7 @@ export function LabelSelector({
   onCreateNew,
   assignedLabels = [],
 }: LabelSelectorProps) {
+  const { t } = useI18n();
   const { labels, loading, search, results, query } = useLabelCatalog(false);
   const [open, setOpen] = useState(false);
 
@@ -124,7 +126,9 @@ export function LabelSelector({
           >
             <span className="flex flex-1 flex-wrap items-center gap-1.5">
               {selected.length === 0 ? (
-                <span className="text-subtle">Seleccionar etiquetas...</span>
+                <span className="text-subtle">
+                  {t("labels.selector.placeholder")}
+                </span>
               ) : (
                 selected.map((label) => (
                   <LabelChip
@@ -154,14 +158,14 @@ export function LabelSelector({
               cmdk activo pelearía contra ese resultado durante el debounce. */}
           <Command className="bg-transparent" shouldFilter={false}>
             <CommandInput
-              placeholder="Buscar etiqueta..."
+              placeholder={t("labels.search.placeholder")}
               className="text-sm"
               value={query}
               onValueChange={search}
             />
             <CommandList>
               <CommandEmpty className="py-6 text-center text-sm text-subtle">
-                {loading ? "Cargando..." : "Sin etiquetas"}
+                {loading ? t("labels.loading") : t("labels.selector.empty")}
               </CommandEmpty>
               <CommandGroup className="p-1.5">
                 {visibleOptions.map((label) => {
@@ -196,7 +200,10 @@ export function LabelSelector({
               </CommandGroup>
               {hiddenCount > 0 && (
                 <p className="px-3 pb-2 text-center text-xs text-subtle">
-                  +{hiddenCount} más — refina la búsqueda para encontrarlas
+                  {t("labels.selector.hiddenCount").replace(
+                    "{count}",
+                    String(hiddenCount),
+                  )}
                 </p>
               )}
             </CommandList>
@@ -212,7 +219,7 @@ export function LabelSelector({
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-brand outline-none transition-colors hover:bg-brand/10 focus-visible:ring-2 focus-visible:ring-brand/45"
                 >
                   <Plus className="h-4 w-4" />
-                  Nueva etiqueta
+                  {t("labels.actions.new")}
                 </button>
               </div>
             )}
@@ -223,7 +230,10 @@ export function LabelSelector({
       {atLimit && (
         <p className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
           <Tag className="h-3 w-3" aria-hidden />
-          Límite de {maxLabels} etiquetas por cita alcanzado.
+          {t("labels.selector.limitReached").replace(
+            "{max}",
+            String(maxLabels),
+          )}
         </p>
       )}
     </div>

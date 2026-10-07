@@ -31,6 +31,7 @@ export const AUTH_ROUTES = [
  */
 export const PROTECTED_ROUTES = [
   "/dashboard",
+  "/documentation",
   "/patients",
   "/appointments",
   "/campaigns",

@@ -18,7 +18,7 @@ const contentSecurityPolicy = [
   "img-src 'self' data: blob: https: https://res.cloudinary.com",
   "font-src 'self' data:",
   "connect-src 'self' https: http://localhost:* ws: wss: https://api.cloudinary.com",
-  "frame-src 'self'",
+  "frame-src 'self' blob:",
 ].join("; ");
 
 // Cabeceras de seguridad HTTP (enforcing salvo la CSP). `microphone=(self)` se

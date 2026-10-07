@@ -5,12 +5,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useServices } from "@/lib/hooks/services/useServices";
 import {
-  serviceFormSchema,
+  createServiceFormSchema,
   type ServiceFormValues,
 } from "@/lib/hooks/services/service-form.schema";
 import type { CreateServiceRequest } from "@/lib/entity/services";
 import { notify } from "@/lib/utils/notify";
 import { applyServerErrorToFields } from "@/lib/validation/server-errors";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 export type { ServiceFormValues } from "@/lib/hooks/services/service-form.schema";
 
@@ -23,9 +24,11 @@ export function useServiceForm({
   serviceId,
   basePath = "/settings/services",
 }: UseServiceFormParams) {
+  const { t } = useI18n();
   const router = useRouter();
 
   const isEdit = useMemo(() => !!serviceId, [serviceId]);
+  const serviceFormSchema = useMemo(() => createServiceFormSchema(t), [t]);
 
   const { loading, getServiceById, createService, updateService } =
     useServices();
@@ -77,12 +80,11 @@ export function useServiceForm({
         });
       })
       .catch((err) => {
-        notify.error(err?.message || "No se pudo cargar el servicio", {
-          description:
-            "No pudimos obtener los datos de este servicio. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        notify.error(err?.message || t("services.notify.formLoadError"), {
+          description: t("services.notify.formLoadErrorDescription"),
         });
       });
-  }, [isEdit, serviceId, getServiceById, reset]);
+  }, [isEdit, serviceId, getServiceById, reset, t]);
 
   const handleSubmit = useCallback(
     async (values: ServiceFormValues) => {
@@ -121,12 +123,21 @@ export function useServiceForm({
           {
             field: "code",
             value: values.code,
-            message: "Ya existe un servicio con este código en tu clínica.",
+            message: t("services.validation.duplicateCode"),
           },
         ]);
       }
     },
-    [isEdit, serviceId, createService, updateService, router, basePath, form.setError],
+    [
+      isEdit,
+      serviceId,
+      createService,
+      updateService,
+      router,
+      basePath,
+      form.setError,
+      t,
+    ],
   );
 
   const handleCancel = useCallback(() => {

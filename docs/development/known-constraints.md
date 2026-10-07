@@ -5,7 +5,7 @@ arreglarlas fuera del alcance de una tarea.
 
 ## Calidad y entrega
 
-- No hay runner de pruebas ni cobertura automatizada.
+- Hay pruebas Vitest de facturación; no se verificó cobertura global ni cobertura de otros dominios.
 - No hay CI/CD versionado.
 - El build ignora errores de TypeScript y ESLint.
 - No está fijada una versión exacta de Node en archivos de runtime.

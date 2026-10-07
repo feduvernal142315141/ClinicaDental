@@ -42,6 +42,7 @@ import {
 import { cn } from "@/lib/utils/utils";
 import { CatalogListRow } from "@/components/app/catalog/catalog-list-row";
 import { matchesQuery } from "@/lib/utils/text";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 // ── Tipos locales ─────────────────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ type ViewMode = "cards" | "list";
 // ── Página ────────────────────────────────────────────────────────────────────
 
 export default function LabelsSettingsPage() {
+  const { language, t } = useI18n();
   const {
     labels,
     total,
@@ -115,14 +117,14 @@ export default function LabelsSettingsPage() {
     // Orden
     const sorted = [...list];
     if (sort === "name") {
-      sorted.sort((a, b) => a.name.localeCompare(b.name, "es"));
+      sorted.sort((a, b) => a.name.localeCompare(b.name, language));
     } else {
       sorted.sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
     }
     return sorted;
-  }, [isComplete, labels, results, statusFilter, search, sort]);
+  }, [isComplete, labels, results, statusFilter, search, sort, language]);
 
   const totalByFilter = useMemo(() => {
     if (statusFilter === "active") return labels.filter((l) => !l.isArchived).length;
@@ -133,6 +135,10 @@ export default function LabelsSettingsPage() {
   const hasLabels = labels.length > 0;
   const hasSearch = search.trim().length > 0;
   const canLoadMore = !isComplete && !loading;
+  const labelCount = (count: number) =>
+    count === 1
+      ? t("labels.count.singular").replace("{count}", String(count))
+      : t("labels.count.plural").replace("{count}", String(count));
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -141,9 +147,9 @@ export default function LabelsSettingsPage() {
       {/* ── Cabecera ── */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-ink">Etiquetas</h2>
+          <h2 className="text-xl font-semibold text-ink">{t("labels.page.title")}</h2>
           <p className="mt-0.5 text-sm text-subtle">
-            Administra las etiquetas para categorizar citas
+            {t("labels.page.description")}
           </p>
         </div>
         <Button
@@ -152,7 +158,7 @@ export default function LabelsSettingsPage() {
           icon={<Plus className="h-4 w-4" />}
           size="middle"
         >
-          Nueva etiqueta
+          {t("labels.actions.new")}
         </Button>
       </div>
 
@@ -167,8 +173,8 @@ export default function LabelsSettingsPage() {
                 type="text"
                 value={search}
                 onChange={(e) => searchCatalog(e.target.value)}
-                placeholder="Buscar etiqueta..."
-                aria-label="Buscar etiqueta por nombre o descripción"
+                placeholder={t("labels.search.placeholder")}
+                aria-label={t("labels.search.aria")}
                 className={cn(
                   "h-9 w-full rounded-lg border border-hairline bg-surface pl-9 pr-9 text-sm text-ink placeholder:text-subtle",
                   "outline-none transition-colors focus:border-brand/60 focus:ring-2 focus:ring-brand/20",
@@ -178,7 +184,7 @@ export default function LabelsSettingsPage() {
                 <button
                   type="button"
                   onClick={() => searchCatalog("")}
-                  aria-label="Limpiar búsqueda"
+                  aria-label={t("app.search.clear")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-subtle hover:text-ink"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -193,13 +199,13 @@ export default function LabelsSettingsPage() {
             >
               <TabsList className="h-9">
                 <TabsTrigger value="active" className="py-1 text-xs">
-                  Activas
+                  {t("labels.filters.active")}
                 </TabsTrigger>
                 <TabsTrigger value="archived" className="py-1 text-xs">
-                  Archivadas
+                  {t("labels.filters.archived")}
                 </TabsTrigger>
                 <TabsTrigger value="all" className="py-1 text-xs">
-                  Todas
+                  {t("labels.filters.all")}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -215,11 +221,11 @@ export default function LabelsSettingsPage() {
               <SelectContent className="border-hairline bg-elevated text-sm">
                 <SelectItem value="name">
                   <ArrowUpAZ className="mr-1.5 inline h-3.5 w-3.5 text-subtle" />
-                  Nombre A–Z
+                  {t("labels.sort.name")}
                 </SelectItem>
                 <SelectItem value="newest">
                   <Clock className="mr-1.5 inline h-3.5 w-3.5 text-subtle" />
-                  Más recientes
+                  {t("labels.sort.newest")}
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -231,7 +237,7 @@ export default function LabelsSettingsPage() {
                   <button
                     type="button"
                     onClick={() => setViewMode("cards")}
-                    aria-label="Vista en tarjetas"
+                    aria-label={t("labels.view.cards")}
                     aria-pressed={viewMode === "cards"}
                     className={cn(
                       "grid h-7 w-7 place-items-center rounded-md outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand/40",
@@ -243,14 +249,14 @@ export default function LabelsSettingsPage() {
                     <LayoutGrid className="h-3.5 w-3.5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Vista tarjetas</TooltipContent>
+                <TooltipContent>{t("labels.view.cardsShort")}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
                     onClick={() => setViewMode("list")}
-                    aria-label="Vista en lista"
+                    aria-label={t("labels.view.list")}
                     aria-pressed={viewMode === "list"}
                     className={cn(
                       "grid h-7 w-7 place-items-center rounded-md outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand/40",
@@ -262,7 +268,7 @@ export default function LabelsSettingsPage() {
                     <List className="h-3.5 w-3.5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Vista lista</TooltipContent>
+                <TooltipContent>{t("labels.view.listShort")}</TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -270,15 +276,19 @@ export default function LabelsSettingsPage() {
           {/* Contador de resultados */}
           <p className="text-xs text-subtle" aria-live="polite" aria-atomic>
             {!isComplete
-              ? `${labels.length} de ${total} etiquetas`
+              ? t("labels.count.partial")
+                  .replace("{shown}", String(labels.length))
+                  .replace("{total}", String(total))
               : hasSearch || statusFilter !== "all"
               ? filtered.length === totalByFilter
-                ? `${filtered.length} ${filtered.length === 1 ? "etiqueta" : "etiquetas"}`
-                : `${filtered.length} de ${totalByFilter} ${totalByFilter === 1 ? "etiqueta" : "etiquetas"}`
-              : `${filtered.length} ${filtered.length === 1 ? "etiqueta" : "etiquetas"}`}
+                ? labelCount(filtered.length)
+                : t("labels.count.filtered")
+                    .replace("{shown}", String(filtered.length))
+                    .replace("{total}", labelCount(totalByFilter))
+              : labelCount(filtered.length)}
             {statusFilter === "archived" && filtered.length > 0 && (
               <span className="ml-1.5 text-subtle/70">
-                — archivadas (ocultas para nuevas citas)
+                {t("labels.count.archivedHint")}
               </span>
             )}
           </p>
@@ -333,7 +343,7 @@ export default function LabelsSettingsPage() {
             onClick={loadMore}
             disabled={!canLoadMore}
           >
-            {loading ? "Cargando…" : "Cargar más etiquetas"}
+            {loading ? t("labels.loading") : t("labels.actions.loadMore")}
           </Button>
         </div>
       )}
@@ -396,20 +406,23 @@ function LabelGridSkeleton({ viewMode }: { viewMode: ViewMode }) {
 // ── Estados vacíos ─────────────────────────────────────────────────────────────
 
 function EmptyLabels({ onCreate }: { onCreate: () => void }) {
+  const { t } = useI18n();
+
   return (
     <div className="bento flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
       <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand/10 text-brand">
         <Tags className="h-7 w-7" />
       </span>
       <div className="space-y-1">
-        <h3 className="text-base font-semibold text-ink">Aún no hay etiquetas</h3>
+        <h3 className="text-base font-semibold text-ink">
+          {t("labels.empty.title")}
+        </h3>
         <p className="mx-auto max-w-sm text-sm text-subtle">
-          Crea tu primera etiqueta para clasificar y filtrar las citas por tipo,
-          prioridad o estado.
+          {t("labels.empty.description")}
         </p>
       </div>
       <Button type="primary" onClick={onCreate} icon={<Plus className="h-4 w-4" />}>
-        Nueva etiqueta
+        {t("labels.actions.new")}
       </Button>
     </div>
   );
@@ -426,6 +439,7 @@ function EmptyFiltered({
   onClearSearch: () => void;
   onSwitchFilter: () => void;
 }) {
+  const { t } = useI18n();
   const isArchived = statusFilter === "archived";
   const isActive = statusFilter === "active";
 
@@ -440,31 +454,31 @@ function EmptyFiltered({
       </span>
       <h3 className="mb-1 text-sm font-semibold text-ink">
         {hasSearch
-          ? "Sin resultados para esa búsqueda"
+          ? t("labels.emptyFiltered.noResults")
           : isArchived
-          ? "No hay etiquetas archivadas"
+          ? t("labels.emptyFiltered.noArchived")
           : isActive
-          ? "No hay etiquetas activas"
-          : "No hay etiquetas"}
+          ? t("labels.emptyFiltered.noActive")
+          : t("labels.emptyFiltered.noLabels")}
       </h3>
       <p className="mx-auto mb-4 max-w-xs text-xs text-subtle">
         {hasSearch
-          ? "Prueba con otro término o limpia el filtro de búsqueda."
+          ? t("labels.emptyFiltered.noResultsDescription")
           : isArchived
-          ? "Las etiquetas archivadas se muestran aquí. Puedes archivar cualquier etiqueta activa."
+          ? t("labels.emptyFiltered.noArchivedDescription")
           : isActive
-          ? "Todas tus etiquetas están archivadas. Puedes restaurarlas desde el filtro «Archivadas»."
-          : "No hay etiquetas que coincidan con los filtros activos."}
+          ? t("labels.emptyFiltered.noActiveDescription")
+          : t("labels.emptyFiltered.noLabelsDescription")}
       </p>
       <div className="flex items-center justify-center gap-2">
         {hasSearch && (
           <Button variant="outline" type="button" size="sm" onClick={onClearSearch}>
-            Limpiar búsqueda
+            {t("app.search.clear")}
           </Button>
         )}
         {(isArchived || isActive) && !hasSearch && (
           <Button variant="outline" type="button" size="sm" onClick={onSwitchFilter}>
-            Ver todas las etiquetas
+            {t("labels.actions.viewAll")}
           </Button>
         )}
       </div>
@@ -482,6 +496,7 @@ interface CardProps {
 }
 
 function LabelCard({ label, onEdit, onArchive, onRestore }: CardProps) {
+  const { t } = useI18n();
   const isArchived = label.isArchived;
 
   return (
@@ -508,7 +523,7 @@ function LabelCard({ label, onEdit, onArchive, onRestore }: CardProps) {
           /* Tarjeta archivada: badge + botón Restaurar */
           <div className="flex shrink-0 items-center gap-1.5">
             <span className="rounded-full bg-hover px-2 py-0.5 text-[11px] font-medium text-subtle">
-              Archivada
+              {t("labels.status.archived")}
             </span>
           </div>
         ) : (
@@ -519,13 +534,16 @@ function LabelCard({ label, onEdit, onArchive, onRestore }: CardProps) {
                 <button
                   type="button"
                   onClick={() => onEdit(label)}
-                  aria-label={`Editar ${label.name}`}
+                  aria-label={t("labels.actions.editNamed").replace(
+                    "{name}",
+                    label.name,
+                  )}
                   className="grid h-8 w-8 place-items-center rounded-lg text-subtle outline-none transition-colors hover:bg-hover hover:text-brand focus-visible:ring-2 focus-visible:ring-brand/45"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Editar</TooltipContent>
+              <TooltipContent>{t("labels.actions.edit")}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -533,14 +551,17 @@ function LabelCard({ label, onEdit, onArchive, onRestore }: CardProps) {
                 <button
                   type="button"
                   onClick={() => onArchive(label)}
-                  aria-label={`Archivar ${label.name}`}
+                  aria-label={t("labels.actions.archiveNamed").replace(
+                    "{name}",
+                    label.name,
+                  )}
                   className="grid h-8 w-8 place-items-center rounded-lg text-subtle outline-none transition-colors hover:bg-amber-500/10 hover:text-amber-600 focus-visible:ring-2 focus-visible:ring-amber-400/40 dark:hover:text-amber-400"
                 >
                   <Archive className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                Archivar — se ocultará para nuevas citas
+                {t("labels.actions.archiveTooltip")}
               </TooltipContent>
             </Tooltip>
           </div>
@@ -553,7 +574,7 @@ function LabelCard({ label, onEdit, onArchive, onRestore }: CardProps) {
           label.description ? "text-subtle" : "italic text-subtle/50",
         )}
       >
-        {label.description || "Sin descripción"}
+        {label.description || t("labels.noDescription")}
       </p>
 
       {/* Restaurar — solo en archivadas, siempre visible */}
@@ -562,7 +583,10 @@ function LabelCard({ label, onEdit, onArchive, onRestore }: CardProps) {
           <button
             type="button"
             onClick={() => onRestore(label)}
-            aria-label={`Restaurar ${label.name}`}
+            aria-label={t("labels.actions.restoreNamed").replace(
+              "{name}",
+              label.name,
+            )}
             className={cn(
               "flex w-full items-center justify-center gap-1.5 rounded-lg border border-hairline bg-hover px-3 py-1.5",
               "text-xs font-medium text-subtle outline-none transition-colors",
@@ -571,7 +595,7 @@ function LabelCard({ label, onEdit, onArchive, onRestore }: CardProps) {
             )}
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            Restaurar etiqueta
+            {t("labels.actions.restore")}
           </button>
         </div>
       )}

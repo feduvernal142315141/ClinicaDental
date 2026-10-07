@@ -16,6 +16,8 @@ import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import { Alert, AlertDescription } from "@/components/ui";
 import { Plus, Megaphone, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { ClinicLanguage } from "@/lib/entity/settings";
 import { useGrowthCampaigns } from "@/lib/hooks/growth";
 import { GrowthCampaignStatusBadge } from "./GrowthCampaignStatusBadge";
 import { GrowthCampaignActions } from "./GrowthCampaignActions";
@@ -23,10 +25,10 @@ import type { GrowthCampaign } from "@/lib/entity/growth";
 import { CAMPAIGN_TYPE_LABELS } from "@/lib/entity/growth";
 import type { GrowthCampaignType } from "@/lib/entity/growth";
 
-function formatDate(iso: string | undefined): string {
+function formatDate(iso: string | undefined, language: ClinicLanguage): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleDateString("es", {
+    return new Date(iso).toLocaleDateString(language, {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -39,6 +41,7 @@ function formatDate(iso: string | undefined): string {
 
 export function GrowthCampaignList() {
   const router = useRouter();
+  const { language, t } = useI18n();
   const { campaigns, pagination, loading, error, query, setQuery, refresh } =
     useGrowthCampaigns();
 
@@ -53,38 +56,38 @@ export function GrowthCampaignList() {
     <div className="space-y-6">
       <Header
         level={1}
-        title="Campañas"
-        description="Gestiona tus campañas de Growth Marketing"
+        title={t("growth.campaigns.title")}
+        description={t("growth.campaigns.description")}
         action={
           <Button onClick={() => router.push("/growth/campaigns/new")}>
             <Plus className="mr-2 h-4 w-4" />
-            Nueva campaña
+            {t("growth.campaigns.new")}
           </Button>
         }
       />
 
       {error && campaigns.length > 0 && (
         <Alert variant="destructive">
-          <AlertDescription>No se pudieron actualizar las campañas.</AlertDescription>
+          <AlertDescription>{t("growth.campaigns.refreshError")}</AlertDescription>
         </Alert>
       )}
 
       {loading && (
         <div className="flex items-center justify-center min-h-64">
-          <LoadingSpinner message="Cargando campañas..." />
+          <LoadingSpinner message={t("growth.campaigns.loading")} />
         </div>
       )}
 
       {!loading && campaigns.length === 0 && (
         <EmptyState
           icon={Megaphone}
-          title="Sin campañas"
-          description="Crea tu primera campaña de Growth para empezar a medir resultados."
+          title={t("growth.campaigns.emptyTitle")}
+          description={t("growth.campaigns.emptyDescription")}
           variant="card"
           action={
             <Button onClick={() => router.push("/growth/campaigns/new")}>
               <Plus className="mr-2 h-4 w-4" />
-              Nueva campaña
+              {t("growth.campaigns.new")}
             </Button>
           }
         />
@@ -98,20 +101,20 @@ export function GrowthCampaignList() {
               <div className="px-4 py-2 border-b border-hairline bg-hover/50">
                 <span className="inline-flex items-center gap-1.5 text-xs text-subtle">
                   <Info className="h-3 w-3" />
-                  Métricas totales de la campaña (lifetime)
+                  {t("growth.campaigns.lifetimeMetrics")}
                 </span>
               </div>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Campaña</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Audiencia</TableHead>
-                    <TableHead className="text-right">Enviados</TableHead>
-                    <TableHead className="text-right">Entregados</TableHead>
-                    <TableHead className="text-right">Leídos</TableHead>
-                    <TableHead className="text-right">Respondieron</TableHead>
-                    <TableHead>Fecha</TableHead>
+                    <TableHead>{t("growth.campaigns.column.campaign")}</TableHead>
+                    <TableHead>{t("growth.campaigns.column.status")}</TableHead>
+                    <TableHead className="text-right">{t("growth.campaigns.column.audience")}</TableHead>
+                    <TableHead className="text-right">{t("growth.metric.sent")}</TableHead>
+                    <TableHead className="text-right">{t("growth.metric.delivered")}</TableHead>
+                    <TableHead className="text-right">{t("growth.metric.read")}</TableHead>
+                    <TableHead className="text-right">{t("growth.metric.replied")}</TableHead>
+                    <TableHead>{t("growth.campaigns.column.date")}</TableHead>
                     <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
@@ -136,22 +139,22 @@ export function GrowthCampaignList() {
                         />
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {(c.estimatedAudienceCount ?? 0).toLocaleString("es")}
+                        {(c.estimatedAudienceCount ?? 0).toLocaleString(language)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {c.totalSent.toLocaleString("es")}
+                        {c.totalSent.toLocaleString(language)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {c.totalDelivered.toLocaleString("es")}
+                        {c.totalDelivered.toLocaleString(language)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {c.totalRead.toLocaleString("es")}
+                        {c.totalRead.toLocaleString(language)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {c.totalReplied.toLocaleString("es")}
+                        {c.totalReplied.toLocaleString(language)}
                       </TableCell>
                       <TableCell className="text-xs text-subtle">
-                        {formatDate(c.createdAt)}
+                        {formatDate(c.createdAt, language)}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <GrowthCampaignActions
@@ -171,12 +174,18 @@ export function GrowthCampaignList() {
           <div className="md:hidden space-y-3">
             <p className="text-xs text-subtle flex items-center gap-1">
               <Info className="h-3 w-3" />
-              Métricas totales de la campaña
+              {t("growth.campaigns.totalMetrics")}
             </p>
             {campaigns.map((c) => (
               <MobileCampaignCard
                 key={c.id}
                 campaign={c}
+                language={language}
+                labels={{
+                  sent: t("growth.metric.sent"),
+                  delivered: t("growth.metric.delivered"),
+                  read: t("growth.metric.read"),
+                }}
                 onClick={() => handleRowClick(c.id)}
                 onActionComplete={refresh}
               />
@@ -187,7 +196,10 @@ export function GrowthCampaignList() {
           {pagination && pagination.total > pagination.pageSize && (
             <div className="flex items-center justify-between pt-2">
               <p className="text-sm text-subtle">
-                {pagination.total.toLocaleString("es")} campañas
+                {t("growth.campaigns.totalCount").replace(
+                  "{count}",
+                  pagination.total.toLocaleString(language),
+                )}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -199,7 +211,7 @@ export function GrowthCampaignList() {
                   }
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  <span className="sr-only">Anterior</span>
+                  <span className="sr-only">{t("app.table.previousPage")}</span>
                 </Button>
                 <span className="text-sm tabular-nums text-ink">
                   {(query.page ?? 0) + 1} / {Math.ceil(pagination.total / pagination.pageSize)}
@@ -216,7 +228,7 @@ export function GrowthCampaignList() {
                   }
                 >
                   <ChevronRight className="h-4 w-4" />
-                  <span className="sr-only">Siguiente</span>
+                  <span className="sr-only">{t("app.table.nextPage")}</span>
                 </Button>
               </div>
             </div>
@@ -229,10 +241,18 @@ export function GrowthCampaignList() {
 
 function MobileCampaignCard({
   campaign: c,
+  language,
+  labels,
   onClick,
   onActionComplete,
 }: {
   campaign: GrowthCampaign;
+  language: ClinicLanguage;
+  labels: {
+    sent: string;
+    delivered: string;
+    read: string;
+  };
   onClick: () => void;
   onActionComplete: () => void;
 }) {
@@ -260,21 +280,21 @@ function MobileCampaignCard({
       <div className="grid grid-cols-3 gap-2 text-center">
         <div>
           <p className="text-sm font-semibold tabular-nums text-ink">
-            {c.totalSent.toLocaleString("es")}
+            {c.totalSent.toLocaleString(language)}
           </p>
-          <p className="text-[10px] text-subtle">Enviados</p>
+          <p className="text-[10px] text-subtle">{labels.sent}</p>
         </div>
         <div>
           <p className="text-sm font-semibold tabular-nums text-ink">
-            {c.totalDelivered.toLocaleString("es")}
+            {c.totalDelivered.toLocaleString(language)}
           </p>
-          <p className="text-[10px] text-subtle">Entregados</p>
+          <p className="text-[10px] text-subtle">{labels.delivered}</p>
         </div>
         <div>
           <p className="text-sm font-semibold tabular-nums text-ink">
-            {c.totalRead.toLocaleString("es")}
+            {c.totalRead.toLocaleString(language)}
           </p>
-          <p className="text-[10px] text-subtle">Leídos</p>
+          <p className="text-[10px] text-subtle">{labels.read}</p>
         </div>
       </div>
     </div>

@@ -4,19 +4,21 @@ import {
   StatusBadge,
   type StatusBadgeTone,
 } from "@/components/ui/atomic/data-display/status-badge";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import type { GrowthCampaignStatus } from "@/lib/entity/growth";
 
 const STATUS_CONFIG: Record<
   GrowthCampaignStatus,
-  { label: string; tone: StatusBadgeTone }
+  { labelKey: TranslationKey; tone: StatusBadgeTone }
 > = {
-  DRAFT: { label: "Borrador", tone: "neutral" },
-  SCHEDULED: { label: "Programada", tone: "info" },
-  RUNNING: { label: "En curso", tone: "progress" },
-  PAUSED: { label: "Pausada", tone: "warning" },
-  COMPLETED: { label: "Completada", tone: "success" },
-  CANCELLED: { label: "Cancelada", tone: "neutral" },
-  FAILED: { label: "Fallida", tone: "danger" },
+  DRAFT: { labelKey: "growth.campaign.status.draft", tone: "neutral" },
+  SCHEDULED: { labelKey: "growth.campaign.status.scheduled", tone: "info" },
+  RUNNING: { labelKey: "growth.campaign.status.running", tone: "progress" },
+  PAUSED: { labelKey: "growth.campaign.status.paused", tone: "warning" },
+  COMPLETED: { labelKey: "growth.campaign.status.completed", tone: "success" },
+  CANCELLED: { labelKey: "growth.campaign.status.cancelled", tone: "neutral" },
+  FAILED: { labelKey: "growth.campaign.status.failed", tone: "danger" },
 };
 
 interface GrowthCampaignStatusBadgeProps {
@@ -28,10 +30,11 @@ export function GrowthCampaignStatusBadge({
   status,
   className,
 }: GrowthCampaignStatusBadgeProps) {
+  const { t } = useI18n();
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.DRAFT;
   return (
     <StatusBadge tone={config.tone} className={className}>
-      {config.label}
+      {t(config.labelKey)}
     </StatusBadge>
   );
 }

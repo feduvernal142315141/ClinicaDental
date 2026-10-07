@@ -186,10 +186,11 @@ async function activatePatient(id: string): Promise<void> {
 
 /**
  * Restore a deleted patient
- * Convenience method that calls updatePatient with active: true
+ * Convenience method that uses the dedicated activation endpoint
  */
 async function restorePatient(id: string): Promise<boolean> {
-  return updatePatient({ id, active: true });
+  await activatePatient(id);
+  return true;
 }
 
 /**

@@ -51,7 +51,7 @@ interface UseAppointmentFormParams {
 }
 
 type CreateQuickPatientValues = Required<
-  Pick<CreatePatientRequest, "name" | "phone" | "dateOfBirth" | "gender">
+  Pick<CreatePatientRequest, "name" | "identificationNumber" | "phone" | "dateOfBirth" | "gender">
 > &
   Pick<CreatePatientRequest, "email" | "address" | "agreement">;
 
@@ -487,6 +487,7 @@ export function useAppointmentForm({
   const createQuickPatient = useCallback(
     async (values: CreateQuickPatientValues) => {
       const payload: CreatePatientRequest = {
+        identificationNumber: values.identificationNumber,
         name: values.name,
         email: values.email,
         phone: values.phone,

@@ -2,14 +2,16 @@
 
 import * as React from "react";
 import { Clock, Check, CheckCheck, AlertCircle } from "lucide-react";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { ClinicLanguage } from "@/lib/entity/settings";
 import { cn } from "@/lib/utils/utils";
 import type { InboxMessage, MessageDeliveryStatus } from "@/lib/entity/inbox";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function formatTime(dateStr: string): string {
+function formatTime(dateStr: string, language: ClinicLanguage): string {
   const d = new Date(dateStr);
-  return d.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return d.toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 function DeliveryIcon({ status }: { status: MessageDeliveryStatus }) {
@@ -30,12 +32,12 @@ function DeliveryIcon({ status }: { status: MessageDeliveryStatus }) {
   }
 }
 
-function getSenderLabel(senderType: InboxMessage["senderType"]): string {
+function getSenderLabel(senderType: InboxMessage["senderType"], youLabel: string): string {
   switch (senderType) {
     case "DALIA":
       return "Dalia";
     case "STAFF":
-      return "Tú";
+      return youLabel;
     default:
       return "";
   }
@@ -66,6 +68,7 @@ export function InboxMessageBubble({
   isConsecutive,
   className,
 }: InboxMessageBubbleProps) {
+  const { language, t } = useI18n();
   const { senderType, direction, content, createdAt, status } = message;
 
   // ── SYSTEM messages — event pill ───────────────────────────────────
@@ -88,7 +91,7 @@ export function InboxMessageBubble({
   // ── Chat bubbles ───────────────────────────────────────────────────
   const isOutbound = direction === "OUTBOUND";
   const isDalia = senderType === "DALIA";
-  const label = getSenderLabel(senderType);
+  const label = getSenderLabel(senderType, t("inbox.sender.you"));
 
   // The invisible spacer reserves room for the timestamp so text wraps
   // around it naturally (WhatsApp-style inline timestamp).
@@ -146,7 +149,7 @@ export function InboxMessageBubble({
         {/* Timestamp + delivery — floated bottom-right, overlapping the spacer */}
         <span className="float-right -mt-4 flex items-center gap-[3px]">
           <span className="text-[10px] leading-none text-subtle/60 select-none">
-            {formatTime(createdAt)}
+            {formatTime(createdAt, language)}
           </span>
           {isOutbound && <DeliveryIcon status={status} />}
         </span>

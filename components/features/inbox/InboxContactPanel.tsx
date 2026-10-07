@@ -11,10 +11,19 @@ import { StatusBadge } from "@/components/ui/atomic/data-display/status-badge";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import type { InboxConversationDetail } from "@/lib/entity/inbox";
-import {
-  CONVERSATION_STATUS_LABELS,
-  HANDLING_MODE_LABELS,
-} from "@/lib/entity/inbox";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
+
+const STATUS_KEYS: Record<InboxConversationDetail["status"], TranslationKey> = {
+  OPEN: "inbox.status.OPEN",
+  NEEDS_HUMAN: "inbox.status.NEEDS_HUMAN",
+  RESOLVED: "inbox.status.RESOLVED",
+};
+
+const HANDLING_KEYS: Record<InboxConversationDetail["handlingMode"], TranslationKey> = {
+  DALIA: "inbox.handling.DALIA",
+  HUMAN: "inbox.handling.HUMAN",
+};
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -27,8 +36,8 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("es-MX", {
+function formatDate(dateStr: string, language: string): string {
+  return new Date(dateStr).toLocaleDateString(language, {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -55,10 +64,11 @@ export function InboxContactPanel({
   canEdit = false,
   className,
 }: InboxContactPanelProps) {
+  const { language, t } = useI18n();
   if (!detail) {
     return (
       <div className={cn("flex items-center justify-center py-12", className)}>
-        <LoadingSpinner size="sm" message="Cargando contacto..." />
+        <LoadingSpinner size="sm" message={t("inbox.loading.contact")} />
       </div>
     );
   }
@@ -75,7 +85,7 @@ export function InboxContactPanel({
     nextAppointmentDoctorName,
   } = detail;
 
-  const displayName = patientName || contactPhone || "Contacto no registrado";
+  const displayName = patientName || contactPhone || t("inbox.contact.unregistered");
   const initials = patientName
     ? getInitials(patientName)
     : contactPhone
@@ -97,18 +107,20 @@ export function InboxContactPanel({
           <p className="mt-0.5 text-xs text-subtle">{contactPhone}</p>
         )}
         <p className="mt-1 text-xs text-subtle">
-          {isRegistered ? "Paciente registrado" : "Contacto no registrado"}
+          {isRegistered
+            ? t("inbox.contact.registered")
+            : t("inbox.contact.unregistered")}
         </p>
       </div>
 
       {/* Conversation section */}
       <div className="border-b border-hairline px-4 py-4">
         <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-subtle">
-          Conversación
+          {t("inbox.section.conversation")}
         </h4>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-subtle">Estado</span>
+            <span className="text-xs text-subtle">{t("inbox.field.status")}</span>
             <StatusBadge
               tone={
                 status === "NEEDS_HUMAN"
@@ -119,22 +131,22 @@ export function InboxContactPanel({
               }
               className="text-[10px] px-1.5 py-0"
             >
-              {CONVERSATION_STATUS_LABELS[status]}
+              {t(STATUS_KEYS[status])}
             </StatusBadge>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-subtle">Atención</span>
+            <span className="text-xs text-subtle">{t("inbox.field.handling")}</span>
             <StatusBadge
               tone={handlingMode === "HUMAN" ? "info" : "neutral"}
               className="text-[10px] px-1.5 py-0"
             >
-              {HANDLING_MODE_LABELS[handlingMode]}
+              {t(HANDLING_KEYS[handlingMode])}
             </StatusBadge>
           </div>
           {assignedTo && (
             <div className="flex items-center justify-between">
-              <span className="text-xs text-subtle">Asignado</span>
-              <span className="text-xs text-ink">Miembro del equipo</span>
+              <span className="text-xs text-subtle">{t("inbox.field.assigned")}</span>
+              <span className="text-xs text-ink">{t("inbox.field.teamMember")}</span>
             </div>
           )}
         </div>
@@ -144,14 +156,16 @@ export function InboxContactPanel({
       {nextAppointmentDate && (
         <div className="border-b border-hairline px-4 py-4">
           <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-subtle">
-            Próxima cita
+            {t("inbox.section.nextAppointment")}
           </h4>
           <div className="flex items-start gap-3 rounded-xl bg-hover p-3">
             <Calendar className="mt-0.5 size-4 shrink-0 text-brand" />
             <div className="space-y-0.5">
               <p className="text-sm font-medium text-ink">
-                {formatDate(nextAppointmentDate)}
-                {nextAppointmentTime && ` a las ${formatTime(nextAppointmentTime)}`}
+                {formatDate(nextAppointmentDate, language)}
+                {nextAppointmentTime &&
+                  t("inbox.field.appointmentTime")
+                    .replace("{time}", formatTime(nextAppointmentTime))}
               </p>
               {nextAppointmentDoctorName && (
                 <p className="text-xs text-subtle">
@@ -176,7 +190,7 @@ export function InboxContactPanel({
             }}
           >
             <ExternalLink className="size-4" />
-            Ver paciente
+            {t("inbox.action.viewPatient")}
           </Button>
         ) : (
           canEdit && (
@@ -188,7 +202,7 @@ export function InboxContactPanel({
               onClick={onLinkPatient}
             >
               <Link2 className="size-4" />
-              Vincular paciente
+              {t("inbox.action.linkPatient")}
             </Button>
           )
         )}

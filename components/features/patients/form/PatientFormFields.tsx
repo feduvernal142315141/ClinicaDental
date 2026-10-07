@@ -95,6 +95,26 @@ export function PatientFormFields({
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="identificationNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("patients.form.identificationNumber")} <span className="text-rose-500" aria-hidden="true">*</span></FormLabel>
+              <FormControl>
+                <Input
+                  disabled={disabled}
+                  required
+                  maxLength={255}
+                  {...field}
+                  value={field.value ?? ""}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         {/* Correo */}
         <FormField
           control={form.control}

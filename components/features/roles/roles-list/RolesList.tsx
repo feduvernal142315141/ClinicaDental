@@ -8,12 +8,14 @@ import { useRoles } from "@/lib/hooks/roles/useRoles";
 import { useRolesPage } from "@/lib/hooks/roles/use-roles-page";
 import { getRolesColumns } from "../table/roles-table.config";
 import { notify } from "@/lib/utils/notify";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface RolesListProps {
   basePath?: string;
 }
 
 export function RolesList({ basePath = "/settings/roles" }: RolesListProps) {
+  const { t } = useI18n();
   const { handleEditRole } = useRolesPage({ basePath });
 
   const { roles, loading, pagination, fetchRoles } = useRoles();
@@ -21,12 +23,11 @@ export function RolesList({ basePath = "/settings/roles" }: RolesListProps) {
 
   useEffect(() => {
     fetchRoles({ page: 0, pageSize: 10 }).catch((err) => {
-      notify.error(err?.message || "Error al cargar roles", {
-        description:
-          "No pudimos obtener la lista de roles. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+      notify.error(err?.message || t("roles.list.loadError"), {
+        description: t("roles.list.loadErrorDescription"),
       });
     });
-  }, [fetchRoles]);
+  }, [fetchRoles, t]);
 
   // Debounced search — Fase 2 (GET semántico): emitimos INTENCIÓN plana `{ q }`
   // (hook genérico compartido); el backend barre `name` server-side.
@@ -45,8 +46,14 @@ export function RolesList({ basePath = "/settings/roles" }: RolesListProps) {
     () =>
       getRolesColumns({
         onEdit: handleEditRole,
+        labels: {
+          name: t("roles.table.name"),
+          createdAt: t("roles.table.createdAt"),
+          actions: t("roles.table.actions"),
+          edit: t("roles.actions.edit"),
+        },
       }),
-    [handleEditRole]
+    [handleEditRole, t],
   );
 
   return (
@@ -54,7 +61,7 @@ export function RolesList({ basePath = "/settings/roles" }: RolesListProps) {
       <TableSearch
         value={search}
         onChange={setSearch}
-        placeholder="Buscar roles por nombre"
+        placeholder={t("roles.list.searchPlaceholder")}
         loading={loading}
       />
       <DataTable

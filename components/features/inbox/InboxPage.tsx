@@ -25,6 +25,7 @@ import { InboxContactPanel } from "./InboxContactPanel";
 import { InboxPatientSearch } from "./InboxPatientSearch";
 import { InboxNeedsHumanBanner } from "./InboxNeedsHumanBanner";
 import { InboxWindowClosedBanner } from "./InboxWindowClosedBanner";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 import {
   useInboxConversations,
@@ -44,6 +45,7 @@ import {
 type MobileView = "list" | "chat";
 
 export function InboxPage() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { can, isAdmin } = usePermission();
   const isMobile = useIsMobile();
@@ -204,13 +206,13 @@ export function InboxPage() {
 
   const composerDisabledReason = (() => {
     if (!d) return undefined;
-    if (d.status === "RESOLVED") return "Conversación resuelta";
-    if (d.status === "NEEDS_HUMAN") return "Toma la conversación para responder";
-    if (d.handlingMode === "DALIA") return "Toma la conversación para responder";
+    if (d.status === "RESOLVED") return t("inbox.composer.disabled.resolved");
+    if (d.status === "NEEDS_HUMAN") return t("inbox.composer.disabled.takeover");
+    if (d.handlingMode === "DALIA") return t("inbox.composer.disabled.takeover");
     if (d.handlingMode === "HUMAN" && d.assignedTo && d.assignedTo !== currentUserId)
-      return "Atendida por otro miembro del equipo";
-    if (!d.windowOpen) return "Ventana de WhatsApp cerrada";
-    if (!canCreate) return "Sin permisos para enviar mensajes";
+      return t("inbox.composer.disabled.assignedOther");
+    if (!d.windowOpen) return t("inbox.composer.disabled.windowClosed");
+    if (!canCreate) return t("inbox.composer.disabled.noPermission");
     return undefined;
   })();
 
@@ -277,8 +279,8 @@ export function InboxPage() {
           </svg>
         </div>
         <div className="space-y-1">
-          <p className="text-base font-semibold text-ink">Bandeja de WhatsApp</p>
-          <p className="text-sm text-subtle">Selecciona una conversación para comenzar</p>
+          <p className="text-base font-semibold text-ink">{t("inbox.whatsappTitle")}</p>
+          <p className="text-sm text-subtle">{t("inbox.selectConversation")}</p>
         </div>
       </div>
     </div>
@@ -292,7 +294,7 @@ export function InboxPage() {
         <Sheet open={showContactPanel} onOpenChange={setShowContactPanel}>
           <SheetContent side="right" className="w-full sm:max-w-sm p-0">
             <SheetHeader className="px-4 pt-4">
-              <SheetTitle>Detalles</SheetTitle>
+              <SheetTitle>{t("inbox.details")}</SheetTitle>
             </SheetHeader>
             <InboxContactPanel detail={d} onLinkPatient={() => setShowPatientSearch(true)} canEdit={canEdit} />
           </SheetContent>

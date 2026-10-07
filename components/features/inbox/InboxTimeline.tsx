@@ -8,10 +8,16 @@ import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { InboxMessageBubble } from "./InboxMessageBubble";
 import type { InboxMessage } from "@/lib/entity/inbox";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function formatDaySeparator(dateStr: string): string {
+function formatDaySeparator(
+  dateStr: string,
+  language: string,
+  t: (key: TranslationKey) => string,
+): string {
   const d = new Date(dateStr);
   const today = new Date();
   const yesterday = new Date(today);
@@ -22,16 +28,16 @@ function formatDaySeparator(dateStr: string): string {
     d.getMonth() === today.getMonth() &&
     d.getFullYear() === today.getFullYear()
   ) {
-    return "Hoy";
+    return t("inbox.time.today");
   }
   if (
     d.getDate() === yesterday.getDate() &&
     d.getMonth() === yesterday.getMonth() &&
     d.getFullYear() === yesterday.getFullYear()
   ) {
-    return "Ayer";
+    return t("inbox.time.yesterday");
   }
-  return d.toLocaleDateString("es", {
+  return d.toLocaleDateString(language, {
     day: "numeric",
     month: "long",
     year: d.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
@@ -80,6 +86,7 @@ export function InboxTimeline({
   onNewMessageVisible,
   className,
 }: InboxTimelineProps) {
+  const { language, t } = useI18n();
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const bottomRef = React.useRef<HTMLDivElement>(null);
   const [showNewButton, setShowNewButton] = React.useState(false);
@@ -148,7 +155,7 @@ export function InboxTimeline({
   if (loading) {
     return (
       <div className={cn("flex flex-1 items-center justify-center", chatBg, className)}>
-        <LoadingSpinner size="sm" message="Cargando mensajes..." />
+        <LoadingSpinner size="sm" message={t("inbox.loading.messages")} />
       </div>
     );
   }
@@ -159,8 +166,8 @@ export function InboxTimeline({
       <div className={cn("flex flex-1 items-center justify-center", chatBg, className)}>
         <EmptyState
           icon={MessageSquare}
-          title="No hay mensajes"
-          description="Los mensajes de esta conversación aparecerán aquí."
+          title={t("inbox.messages.emptyTitle")}
+          description={t("inbox.messages.emptyDescription")}
         />
       </div>
     );
@@ -175,7 +182,7 @@ export function InboxTimeline({
         onScroll={handleScroll}
         role="log"
         aria-live="polite"
-        aria-label="Mensajes de la conversación"
+        aria-label={t("inbox.messages.aria")}
       >
         {/* Load older button */}
         {hasMore && (
@@ -184,7 +191,7 @@ export function InboxTimeline({
               <LoadingSpinner size="sm" message="" />
             ) : (
               <Button type="button" variant="ghost" size="sm" onClick={onLoadOlder}>
-                Cargar mensajes anteriores
+                {t("inbox.action.loadOlderMessages")}
               </Button>
             )}
           </div>
@@ -207,7 +214,7 @@ export function InboxTimeline({
                 {showDaySeparator && (
                   <div className="my-3 flex justify-center">
                     <span className="rounded-lg bg-white/80 px-3 py-1 text-[11px] font-medium text-subtle shadow-sm dark:bg-white/10">
-                      {formatDaySeparator(msg.createdAt)}
+                      {formatDaySeparator(msg.createdAt, language, t)}
                     </span>
                   </div>
                 )}
@@ -232,7 +239,7 @@ export function InboxTimeline({
           className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-surface px-4 py-2 text-xs font-medium text-brand shadow-lg ring-1 ring-hairline transition-transform hover:scale-105 dark:bg-elevated"
         >
           <span className="flex items-center gap-1.5">
-            Nuevos mensajes
+            {t("inbox.action.newMessages")}
             <ArrowDown className="size-3" />
           </span>
         </button>

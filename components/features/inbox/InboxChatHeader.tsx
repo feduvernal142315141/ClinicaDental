@@ -25,10 +25,19 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/primitives/shadcn/dropdown-menu";
 import type { InboxConversationDetail } from "@/lib/entity/inbox";
-import {
-  CONVERSATION_STATUS_LABELS,
-  HANDLING_MODE_LABELS,
-} from "@/lib/entity/inbox";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
+
+const STATUS_KEYS: Record<InboxConversationDetail["status"], TranslationKey> = {
+  OPEN: "inbox.status.OPEN",
+  NEEDS_HUMAN: "inbox.status.NEEDS_HUMAN",
+  RESOLVED: "inbox.status.RESOLVED",
+};
+
+const HANDLING_KEYS: Record<InboxConversationDetail["handlingMode"], TranslationKey> = {
+  DALIA: "inbox.handling.DALIA",
+  HUMAN: "inbox.handling.HUMAN",
+};
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -88,6 +97,7 @@ export function InboxChatHeader({
   onShowDetails,
   className,
 }: InboxChatHeaderProps) {
+  const { t } = useI18n();
   if (!detail) return null;
 
   const {
@@ -98,7 +108,7 @@ export function InboxChatHeader({
     assignedTo,
   } = detail;
 
-  const displayName = patientName || contactPhone || "Contacto no registrado";
+  const displayName = patientName || contactPhone || t("inbox.contact.unregistered");
   const initials = patientName
     ? getInitials(patientName)
     : contactPhone
@@ -122,7 +132,7 @@ export function InboxChatHeader({
           size="icon"
           onClick={onBack}
           className="md:hidden"
-          aria-label="Volver a la lista"
+          aria-label={t("inbox.action.backToList")}
         >
           <ArrowLeft className="size-5" />
         </Button>
@@ -151,13 +161,13 @@ export function InboxChatHeader({
             tone={getStatusTone(status)}
             className="text-[10px] px-1.5 py-0"
           >
-            {CONVERSATION_STATUS_LABELS[status]}
+            {t(STATUS_KEYS[status])}
           </StatusBadge>
           <StatusBadge
             tone={getHandlingTone(handlingMode)}
             className="text-[10px] px-1.5 py-0"
           >
-            {HANDLING_MODE_LABELS[handlingMode]}
+            {t(HANDLING_KEYS[handlingMode])}
           </StatusBadge>
         </div>
       </div>
@@ -169,8 +179,8 @@ export function InboxChatHeader({
           variant="ghost"
           size="icon"
           onClick={onShowDetails}
-          title="Detalles del contacto"
-          aria-label="Detalles del contacto"
+          title={t("inbox.action.contactDetails")}
+          aria-label={t("inbox.action.contactDetails")}
         >
           <PanelRight className="size-4" />
         </Button>
@@ -182,7 +192,7 @@ export function InboxChatHeader({
         {(status === "NEEDS_HUMAN" || (!isHuman && status === "OPEN")) && (
           <Button type="button" size="sm" onClick={onTakeover}>
             <Hand className="size-4 mr-1" />
-            Tomar conversación
+            {t("inbox.action.takeover")}
           </Button>
         )}
 
@@ -190,19 +200,19 @@ export function InboxChatHeader({
         {isHuman && isMine && status === "OPEN" && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="icon" aria-label="Más opciones">
+              <Button type="button" variant="outline" size="icon" aria-label={t("inbox.action.more")}>
                 <MoreVertical className="size-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onRelease}>
                 <Bot className="size-4" />
-                Devolver a Dalia
+                {t("inbox.action.releaseToDalia")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onResolve}>
                 <CheckCircle2 className="size-4" />
-                Resolver
+                {t("inbox.action.resolve")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -211,7 +221,7 @@ export function InboxChatHeader({
         {/* HUMAN + not mine */}
         {isHuman && !isMine && status === "OPEN" && (
           <span className="text-xs text-subtle">
-            Atendida por otro miembro
+            {t("inbox.state.attendedByOther")}
           </span>
         )}
 
@@ -219,7 +229,7 @@ export function InboxChatHeader({
         {status === "RESOLVED" && (
           <Button type="button" variant="outline" size="sm" onClick={onReopen}>
             <RotateCcw className="size-4 mr-1" />
-            Reabrir
+            {t("inbox.action.reopen")}
           </Button>
         )}
       </div>

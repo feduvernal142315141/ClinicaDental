@@ -18,6 +18,7 @@ import {
 } from "@/components/ui";
 import { Input } from "@/components/ui";
 import { ArrowLeft, Save, Users } from "lucide-react";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import {
   useGrowthSegmentForm,
   useSegmentEvaluation,
@@ -29,6 +30,7 @@ interface GrowthSegmentFormProps {
 }
 
 export function GrowthSegmentForm({ segmentId }: GrowthSegmentFormProps) {
+  const { language, t } = useI18n();
   const { form, isEdit, handleSubmit, handleCancel } = useGrowthSegmentForm({
     segmentId,
   });
@@ -44,11 +46,11 @@ export function GrowthSegmentForm({ segmentId }: GrowthSegmentFormProps) {
     <div className="space-y-6 max-w-3xl mx-auto">
       <Header
         level={1}
-        title={isEdit ? "Editar segmento" : "Nuevo segmento"}
+        title={isEdit ? t("growth.segments.edit") : t("growth.segments.new")}
         action={
           <Button variant="ghost" onClick={handleCancel}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver
+            {t("growth.actions.back")}
           </Button>
         }
       />
@@ -57,9 +59,9 @@ export function GrowthSegmentForm({ segmentId }: GrowthSegmentFormProps) {
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Información</CardTitle>
+              <CardTitle>{t("growth.form.information")}</CardTitle>
               <CardDescription>
-                Nombre y descripción del segmento.
+                {t("growth.segments.infoDescription")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -68,11 +70,11 @@ export function GrowthSegmentForm({ segmentId }: GrowthSegmentFormProps) {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nombre</FormLabel>
+                    <FormLabel>{t("growth.form.name")}</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        placeholder="Ej: Pacientes sin cita hace 6 meses"
+                        placeholder={t("growth.segments.namePlaceholder")}
                       />
                     </FormControl>
                     <FormMessage />
@@ -84,11 +86,11 @@ export function GrowthSegmentForm({ segmentId }: GrowthSegmentFormProps) {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Descripción (opcional)</FormLabel>
+                    <FormLabel>{t("growth.form.descriptionOptional")}</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        placeholder="Descripción breve del segmento"
+                        placeholder={t("growth.segments.descriptionPlaceholder")}
                       />
                     </FormControl>
                     <FormMessage />
@@ -110,14 +112,14 @@ export function GrowthSegmentForm({ segmentId }: GrowthSegmentFormProps) {
                 disabled={evaluating}
               >
                 <Users className="mr-2 h-4 w-4" />
-                {evaluating ? "Calculando…" : "Calcular audiencia"}
+                {evaluating ? t("growth.segments.calculating") : t("growth.segments.calculateAudience")}
               </Button>
               {evaluation && (
                 <span className="text-sm text-ink">
                   <strong>
-                    {evaluation.count.toLocaleString("es")}
+                    {evaluation.count.toLocaleString(language)}
                   </strong>{" "}
-                  pacientes cumplen este segmento
+                  {t("growth.segments.matchesSuffix")}
                 </span>
               )}
             </div>
@@ -126,11 +128,11 @@ export function GrowthSegmentForm({ segmentId }: GrowthSegmentFormProps) {
           {/* Actions */}
           <div className="flex items-center justify-end gap-3">
             <Button type="button" variant="outline" onClick={handleCancel}>
-              Cancelar
+              {t("growth.actions.cancel")}
             </Button>
             <Button type="submit">
               <Save className="mr-2 h-4 w-4" />
-              {isEdit ? "Guardar cambios" : "Crear segmento"}
+              {isEdit ? t("growth.actions.saveChanges") : t("growth.segments.create")}
             </Button>
           </div>
         </form>
