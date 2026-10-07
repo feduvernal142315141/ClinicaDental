@@ -122,7 +122,7 @@ export function LeadFormDialog({ open, onOpenChange, lead, onCreated }: LeadForm
           <DialogTitle className="text-ink">{isEdit ? "Editar prospecto" : "Nuevo prospecto"}</DialogTitle>
           <DialogDescription className="text-subtle">
             {isEdit
-              ? "Actualiza los datos de contacto y el interés. El origen no se puede cambiar."
+              ? "Actualiza los datos de contacto, el interés y el detalle del origen. El origen en sí no se puede cambiar."
               : "Registra a una persona que todavía no es paciente. Basta con el nombre, el teléfono o el correo."}
           </DialogDescription>
         </DialogHeader>
@@ -234,6 +234,22 @@ export function LeadFormDialog({ open, onOpenChange, lead, onCreated }: LeadForm
                 )}
               />
             </div>
+
+            {isEdit && (
+              <FormField
+                control={form.control}
+                name="sourceCampaign"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Campaña</FormLabel>
+                    <FormControl>
+                      <Input {...field} maxLength={LEAD_SHORT_TEXT_MAX} placeholder="Campaña de la que llegó" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <FormField

@@ -58,6 +58,8 @@ export const leadFormSchema = z
     email: optionalEmail,
     source: z.enum(LEAD_SOURCES),
     sourceDetail: leadText(LEAD_SHORT_TEXT_MAX, "El detalle del origen"),
+    /** Solo se edita (PATCH): el alta manual no lo pide. */
+    sourceCampaign: leadText(LEAD_SHORT_TEXT_MAX, "La campaña"),
     interestServiceId: z.string(),
     interestNote: leadText(LEAD_NOTE_MAX, "La nota de interés"),
     temperature: temperatureField,
@@ -83,6 +85,7 @@ export const EMPTY_LEAD_FORM: LeadFormValues = {
   email: "",
   source: "MANUAL",
   sourceDetail: "",
+  sourceCampaign: "",
   interestServiceId: "",
   interestNote: "",
   temperature: "",
@@ -97,6 +100,7 @@ export function leadToFormValues(lead: Lead): LeadFormValues {
     email: lead.email ?? "",
     source: lead.source,
     sourceDetail: lead.sourceDetail ?? "",
+    sourceCampaign: lead.sourceCampaign ?? "",
     interestServiceId: lead.interestServiceId ?? "",
     interestNote: lead.interestNote ?? "",
     temperature: lead.temperature ?? "",
@@ -133,7 +137,7 @@ export function buildUpdateLeadRequest(lead: Lead, values: LeadFormValues): Upda
   const clear: LeadClearableField[] = [];
 
   const text = (
-    key: "fullName" | "phone" | "email" | "interestNote" | "sourceDetail",
+    key: "fullName" | "phone" | "email" | "interestNote" | "sourceDetail" | "sourceCampaign",
     next: string,
   ) => {
     const previous = lead[key] ?? "";
@@ -147,6 +151,7 @@ export function buildUpdateLeadRequest(lead: Lead, values: LeadFormValues): Upda
   text("email", values.email);
   text("interestNote", values.interestNote);
   text("sourceDetail", values.sourceDetail);
+  text("sourceCampaign", values.sourceCampaign);
 
   if (values.temperature !== (lead.temperature ?? "")) {
     if (values.temperature) request.temperature = values.temperature;

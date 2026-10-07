@@ -201,6 +201,7 @@ describe("formulario de alta", () => {
     expect(request).toMatchObject({ fullName: "Ana Prueba", phone: "8888-0000", source: "MANUAL" });
     expect(request).not.toHaveProperty("clinicId");
     expect(request).not.toHaveProperty("allowDuplicate");
+    expect(request).not.toHaveProperty("sourceCampaign");
     expect(buildCreateLeadRequest(values, true).allowDuplicate).toBe(true);
   });
 });
@@ -228,6 +229,18 @@ describe("edición: PATCH con version, solo cambios y `clear`", () => {
       clear: ["email", "temperature", "interest"],
     });
     expect(request).not.toHaveProperty("phone");
+  });
+
+  it("la campaña se edita y se vacía con `clear`", () => {
+    expect(buildUpdateLeadRequest(lead, { ...leadToFormValues(lead), sourceCampaign: "Verano 2026" })).toEqual({
+      version: 3,
+      sourceCampaign: "Verano 2026",
+    });
+    const withCampaign = makeLead({ sourceCampaign: "Verano 2026" });
+    expect(buildUpdateLeadRequest(withCampaign, { ...leadToFormValues(withCampaign), sourceCampaign: "" })).toEqual({
+      version: 3,
+      clear: ["sourceCampaign"],
+    });
   });
 
   it("nunca envía source", () => {
