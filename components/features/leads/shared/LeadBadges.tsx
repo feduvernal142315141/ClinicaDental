@@ -56,7 +56,7 @@ export function LeadOverdueFlag({ className }: { className?: string }) {
 
 export function LeadMatchFlag({ className }: { className?: string }) {
   return (
-    <StatusBadge tone="warning" className={cn("max-w-full gap-1 whitespace-normal text-left", className)}>
+    <StatusBadge tone="warning" className={cn("max-w-full gap-1 whitespace-normal rounded-lg text-left", className)}>
       <UserSearch className="h-3 w-3" aria-hidden />
       Podría ser un paciente existente
     </StatusBadge>
