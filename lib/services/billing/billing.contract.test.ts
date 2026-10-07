@@ -47,6 +47,12 @@ describe("contrato: interruptor del módulo", () => {
     expect((await api.getCapabilities()).modules).toContain("FINANCE");
   });
 
+  it("LEAD_CRM es independiente de FINANCE: sigue presente con Finanzas apagado", async () => {
+    expect((await api.getCapabilities()).modules).toContain("LEAD_CRM");
+    mock.controls.setFinanceEnabled(false);
+    expect((await api.getCapabilities()).modules).toEqual(["LEAD_CRM"]);
+  });
+
   it("con el módulo apagado: capabilities sin FINANCE y 403 con el mensaje exacto en /billing", async () => {
     mock.controls.setFinanceEnabled(false);
     expect((await api.getCapabilities()).modules).not.toContain("FINANCE");

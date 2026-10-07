@@ -15,6 +15,7 @@ import type {
   RefundResponse,
 } from "@/lib/entity/billing";
 import { canTransitionEstimate, FINANCE_MODULE } from "@/lib/entity/billing";
+import { LEAD_CRM_MODULE } from "@/lib/entity/leads";
 import {
   closeCashRequestSchema,
   createChargeRequestSchema,
@@ -457,7 +458,8 @@ export function createBillingMock(options: BillingMockOptions = {}) {
         specialty: "DENTAL",
         plan: "DEMO",
         operationalStatus: "ACTIVE",
-        modules: state.financeEnabled ? [FINANCE_MODULE] : [],
+        // LEAD_CRM siempre presente: en modo mock de Finanzas "Adquisición de pacientes" no desaparece.
+        modules: state.financeEnabled ? [FINANCE_MODULE, LEAD_CRM_MODULE] : [LEAD_CRM_MODULE],
       };
     },
 
