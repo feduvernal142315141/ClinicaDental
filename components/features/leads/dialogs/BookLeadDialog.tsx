@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { AlertCircle, Loader2 } from "lucide-react";
 import {
@@ -84,6 +85,15 @@ function BookLeadForm({
     isWorkingDay,
     selectedDayWorked,
   } = useLeadBookingForm({ open: true, lead, existingPatientId: existingPatient?.patientId });
+
+  // El diálogo es largo: el error se lleva a la vista para que no quede oculto bajo el formulario.
+  const errorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!error) return;
+    // Tras recargar las horas libres el alto del diálogo cambia: se espera a que se asiente.
+    const timer = setTimeout(() => errorRef.current?.scrollIntoView?.({ block: "center" }), 250);
+    return () => clearTimeout(timer);
+  }, [error, availabilityLoading]);
 
   if (result) {
     return (
@@ -278,18 +288,20 @@ function BookLeadForm({
           />
 
           {error && (
-            <Alert variant="destructive" role="alert">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="space-y-1">
-                <p>{error.message}</p>
-                {error.kind === "agenda" && <p>No se creó nada. Elige otro horario.</p>}
-                {error.kind === "already-converted" && (
-                  <Link href="/appointments" onClick={onClose} className="font-medium underline">
-                    Ir a la agenda
-                  </Link>
-                )}
-              </AlertDescription>
-            </Alert>
+            <div ref={errorRef}>
+              <Alert variant="destructive" role="alert">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="space-y-1">
+                  <p>{error.message}</p>
+                  {error.kind === "agenda" && <p>No se creó nada. Elige otro horario.</p>}
+                  {error.kind === "already-converted" && (
+                    <Link href="/appointments" onClick={onClose} className="font-medium underline">
+                      Ir a la agenda
+                    </Link>
+                  )}
+                </AlertDescription>
+              </Alert>
+            </div>
           )}
 
           <DialogFooter>

@@ -20,7 +20,8 @@ vi.mock("@/lib/services/patients", () => ({ patientsService: patients }));
 vi.mock("@/lib/services/appointments", () => ({ appointmentsService: appointments }));
 
 import type { Lead } from "@/lib/entity/leads";
-import { classifyBookingError, useLeadBookingForm } from "@/lib/hooks/leads/use-lead-booking-form";
+import { classifyBookingError, isAgendaRejection, useLeadBookingForm } from "@/lib/hooks/leads/use-lead-booking-form";
+import { LeadApiError } from "@/lib/services/leads/leads-errors";
 
 type Hook = { current: ReturnType<typeof useLeadBookingForm> };
 
@@ -96,6 +97,28 @@ describe("reserva de la primera cita", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it.each([
+    [404, "El doctor no existe."],
+    [422, "Falta la duración de la cita."],
+  ])("rechazo de la agenda con %i sin errorCode: mismo trato que el 400", async (statusCode, message) => {
+    service.book.mockRejectedValueOnce(leadError(statusCode, undefined, message));
+    const { result } = setup();
+    await fillAndSubmit(result, { notes: "Primera valoración" });
+
+    expect(result.current.result).toBeNull();
+    expect(result.current.error).toEqual({ kind: "agenda", message });
+    // El diálogo sigue abierto con lo escrito y deja elegir otro horario.
+    expect(result.current.form.getValues()).toMatchObject({
+      doctorId: "doctor-1",
+      date: "2026-10-12",
+      notes: "Primera valoración",
+      time: "",
+    });
+    expect(availability.refetch).toHaveBeenCalled();
+    expect(patients.createPatient).not.toHaveBeenCalled();
+    expect(appointments.createAppointment).not.toHaveBeenCalled();
+  });
+
   it("reintento: la misma petición devuelve la misma cita con replayed: true", async () => {
     const replay = makeConversion({ replayed: true, patientCreated: false });
     service.book.mockResolvedValueOnce(replay);
@@ -129,6 +152,25 @@ describe("reserva de la primera cita", () => {
     await fillAndSubmit(result);
     expect(service.book.mock.calls[0][1]).toMatchObject({ existingPatientId: "patient-1" });
     expect(result.current.result?.lead.outcome).toBe("EXISTING_PATIENT");
+  });
+
+  it("el rechazo de la agenda se reconoce por la ausencia de errorCode, no por el estado", () => {
+    for (const statusCode of [400, 404, 409, 422]) {
+      expect(isAgendaRejection(leadError(statusCode, undefined))).toBe(true);
+    }
+    // Con errorCode siguen su propio flujo, sea cual sea el estado.
+    expect(isAgendaRejection(leadError(400, "LEAD_INVALID"))).toBe(false);
+    expect(isAgendaRejection(leadError(404, "LEAD_NOT_FOUND"))).toBe(false);
+    expect(isAgendaRejection(leadError(403, "MODULE_NOT_ENABLED"))).toBe(false);
+    // Sesión, permiso, sin conexión y 5xx no son un rechazo de horario.
+    expect(isAgendaRejection(leadError(401, undefined))).toBe(false);
+    expect(isAgendaRejection(leadError(403, undefined))).toBe(false);
+    expect(isAgendaRejection(new LeadApiError("server", "Error", 500))).toBe(false);
+    expect(isAgendaRejection(new LeadApiError("network", "Sin conexión"))).toBe(false);
+    expect(classifyBookingError(leadError(404, "LEAD_NOT_FOUND", "El prospecto no existe."))).toEqual({
+      kind: "other",
+      message: "El prospecto no existe.",
+    });
   });
 
   it("clasifica los 409 de la reserva por errorCode", () => {

@@ -144,10 +144,10 @@ export const leadsService = {
   /**
    * Reserva la primera cita: el backend crea o enlaza el paciente, crea la cita y convierte el
    * prospecto en una sola operación. Es seguro reintentar (`replayed: true`). Un rechazo de la
-   * agenda llega como 400 y no deja nada creado.
+   * agenda llega sin `errorCode` (400, 404 o 422) y no deja nada creado.
    */
   book(id: string, data: BookLeadRequest) {
-    return leadRequest<LeadConversionResult>("POST", `${BASE}/${id}/book`, { data, expectedStatuses: [400] });
+    return leadRequest<LeadConversionResult>("POST", `${BASE}/${id}/book`, { data, expectedStatuses: [400, 404, 422] });
   },
 
   /** Convierte sin cita (`conversionMethod: "MANUAL"`). Requiere `leads_manage`. */

@@ -7,7 +7,13 @@ import dayjs, { type Dayjs } from "dayjs";
 import type { BookLeadRequest, Lead, LeadConversionResult } from "@/lib/entity/leads";
 import { leadBookingSchema, type LeadBookingValues } from "@/lib/entity/leads/schemas";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings/use-clinic-general-settings";
-import { hasLeadErrorCode, isLeadApiError, isLeadModuleDisabledError, leadErrorMessage } from "@/lib/services/leads";
+import {
+  hasLeadErrorCode,
+  isLeadApiError,
+  isLeadModuleDisabledError,
+  leadErrorMessage,
+  type LeadApiError,
+} from "@/lib/services/leads";
 import { buildDisabledDate, isDoctorWorkingDay } from "@/lib/utils/appointment-utils";
 import { useLeadAvailability, useLeadDoctorSchedule } from "./use-lead-catalogs";
 import { useBookLead } from "./use-lead-mutations";
@@ -38,6 +44,19 @@ export function buildBookLeadRequest(values: LeadBookingValues): BookLeadRequest
   };
 }
 
+/**
+ * Rechazo de la agenda en `POST /leads/{id}/book`: se reconoce porque NO trae `errorCode`, no
+ * por el número de estado. Llega como 400 (horario ocupado, fuera de horario, en el pasado),
+ * 404 (el doctor o un servicio no existe) o 422 (faltan datos de la cita) y en ningún caso
+ * queda nada creado. Se excluyen 401/403 (sesión y permiso) y lo que no es una respuesta de
+ * rechazo del backend (sin conexión, 5xx): ahí no se puede afirmar que no se creó nada.
+ */
+export function isAgendaRejection(error: unknown): error is LeadApiError {
+  if (!isLeadApiError(error) || error.errorCode) return false;
+  const { status } = error;
+  return status !== undefined && status >= 400 && status < 500 && status !== 401 && status !== 403;
+}
+
 export function classifyBookingError(error: unknown): LeadBookingError {
   if (hasLeadErrorCode(error, "LEAD_ALREADY_CONVERTED")) {
     return {
@@ -51,10 +70,7 @@ export function classifyBookingError(error: unknown): LeadBookingError {
       message: "Primero hay que resolver si este prospecto es un paciente existente.",
     };
   }
-  // Rechazo de la agenda (horario ocupado, fuera de horario…): 400 y no queda nada creado.
-  if (isLeadApiError(error) && error.status === 400 && error.errorCode !== "LEAD_INVALID") {
-    return { kind: "agenda", message: error.message };
-  }
+  if (isAgendaRejection(error)) return { kind: "agenda", message: error.message };
   return { kind: "other", message: leadErrorMessage(error) };
 }
 
