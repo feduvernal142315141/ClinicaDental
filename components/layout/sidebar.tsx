@@ -53,7 +53,12 @@ export function Sidebar({
     if (item.children?.length) {
       const children = item.children;
       const open = isGroupOpen(item);
-      const parentActive = children.some((c) => isActiveRoute(currentPath, c.path));
+      // Entre hermanos gana la ruta más específica: "/billing" (Resumen) no se marca
+      // estando en "/billing/charges".
+      const activeChildPath = children
+        .filter((c) => isActiveRoute(currentPath, c.path))
+        .sort((x, y) => y.path.length - x.path.length)[0]?.path;
+      const parentActive = activeChildPath !== undefined;
       const submenuId = `submenu-${item.path}`;
       return (
         <div key={item.path}>
@@ -86,7 +91,7 @@ export function Sidebar({
                     key={child.path}
                     icon={child.icon}
                     label={child.label}
-                    isActive={isActiveRoute(currentPath, child.path)}
+                    isActive={child.path === activeChildPath}
                     isCollapsed={false}
                     onClick={() => handleNavigation(child.path)}
                     className="h-9 text-[13px]"
