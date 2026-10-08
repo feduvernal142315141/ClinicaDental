@@ -108,7 +108,9 @@ export interface GrowthCampaignConversion {
   id: string;
   campaignId: string;
   campaignMessageId: string;
-  patientId: string;
+  /** `null` when the recipient was still a prospect. */
+  patientId: string | null;
+  leadId?: string | null;
   conversionType: "REPLIED" | "APPOINTMENT_CREATED" | "APPOINTMENT_COMPLETED";
   appointmentId?: string;
   doctorId?: string;
