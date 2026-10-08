@@ -580,3 +580,5 @@ export function leadActorLabel(activity: Pick<LeadActivity, "actorType" | "actor
   if (activity.actorType === "SYSTEM") return "Sistema";
   return activity.actorName?.trim() || "Usuario";
 }
+
+export * from "./public-booking";
