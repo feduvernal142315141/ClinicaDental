@@ -22,6 +22,7 @@ export type ServiceField =
   | "cost"
   | "duration"
   | "odontogramEnabled"
+  | "assistantVisible"
   | "active"
   | "createAt";
 
@@ -56,6 +57,10 @@ export class ServicesQuery extends QueryBuilder<ServiceField> {
 
   odontogramEnabled(v: boolean): this {
     return this.where("odontogramEnabled", "EQ", v);
+  }
+
+  assistantVisible(v: boolean): this {
+    return this.where("assistantVisible", "EQ", v);
   }
 }
 
