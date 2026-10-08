@@ -15,5 +15,6 @@ export {
 export * from "./use-lead-queries";
 export * from "./use-lead-mutations";
 export * from "./use-lead-catalogs";
+export * from "./use-lead-public-booking";
 export * from "./lead-filters";
 export { useLeadFilters } from "./use-lead-filters";

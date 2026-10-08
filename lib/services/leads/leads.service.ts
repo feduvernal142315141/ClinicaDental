@@ -17,9 +17,11 @@ import type {
   LeadOpenStage,
   LeadPage,
   LeadPipeline,
+  LeadPublicBookingSettings,
   LoseLeadRequest,
   ResolvePatientMatchRequest,
   ScheduleFollowUpRequest,
+  UpdateLeadPublicBookingSettingsRequest,
   UpdateLeadRequest,
 } from "@/lib/entity/leads";
 import { leadPageParams, leadRequest, type LeadParams } from "./leads-http";
@@ -157,6 +159,19 @@ export const leadsService = {
 
   resolvePatientMatch(id: string, data: ResolvePatientMatchRequest) {
     return leadRequest<Lead>("POST", `${BASE}/${id}/patient-match`, { data });
+  },
+
+  // ── Reservas en línea ──────────────────────────────────────────────
+  getPublicBookingSettings() {
+    return leadRequest<LeadPublicBookingSettings>("GET", `${BASE}/public-booking/settings`);
+  },
+
+  /** Reemplaza la configuración completa. Requiere `leads_manage`. */
+  updatePublicBookingSettings(data: UpdateLeadPublicBookingSettingsRequest) {
+    return leadRequest<LeadPublicBookingSettings>("PUT", `${BASE}/public-booking/settings`, {
+      data,
+      expectedStatuses: [400, 422],
+    });
   },
 };
 
