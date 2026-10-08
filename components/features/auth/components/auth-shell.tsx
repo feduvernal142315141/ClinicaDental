@@ -3,13 +3,13 @@
 import type { ReactNode } from "react";
 import {
   CalendarDays,
-  Sparkles,
   Stethoscope,
   ClipboardList,
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
+import { BrandMark } from "@/components/ui/atomic/branding/brand-mark";
 import { AuthParticles } from "./auth-particles";
 
 interface AuthShellProps {
@@ -126,7 +126,7 @@ function AuthBrandPanel() {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <Sparkles className="h-7 w-7" />
+              <BrandMark rounded={false} className="h-full w-full" />
             )}
           </div>
         </div>

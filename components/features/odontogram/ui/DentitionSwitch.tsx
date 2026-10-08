@@ -17,6 +17,8 @@ import {
   type DentitionType,
 } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 import { useOdontogramStore } from "@/lib/odontogram/store";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { notify } from "@/lib/utils/notify";
 import { cn } from "@/lib/utils/utils";
 
@@ -30,6 +32,17 @@ interface DentitionSwitchProps {
  * store, sin props del host.
  */
 export function DentitionSwitch({ className }: DentitionSwitchProps) {
+  const { t } = useI18n();
+  const text = (
+    key: TranslationKey,
+    params: Record<string, string | number>,
+  ) => {
+    let value = t(key);
+    for (const [name, replacement] of Object.entries(params)) {
+      value = value.replaceAll(`{${name}}`, String(replacement));
+    }
+    return value;
+  };
   const dentition = useOdontogramStore((state) => state.dentition);
   const readOnly = useOdontogramStore((state) => state.readOnly);
   const clinicalEvents = useOdontogramStore((state) => state.clinicalEvents);
@@ -38,6 +51,8 @@ export function DentitionSwitch({ className }: DentitionSwitchProps) {
   const current =
     DENTITION_CATALOG.find((entry) => entry.value === dentition) ??
     DENTITION_CATALOG.find((entry) => entry.value === DEFAULT_DENTITION)!;
+  const dentitionLabel = (value: DentitionType) =>
+    t(`clinical.header.dentition.${value}` as TranslationKey);
 
   // Piezas con registros que la dentición destino no dibuja: se avisa en el
   // momento del cambio, no se pierde nada.
@@ -56,14 +71,19 @@ export function DentitionSwitch({ className }: DentitionSwitchProps) {
     if (!entry) return;
     const hidden = hiddenCountFor(next);
     setDentition(next);
-    notify.success(`Odontograma en ${entry.label.toLowerCase()}`, {
-      description:
-        hidden === 0
-          ? `${entry.description}. ${entry.ageHint}.`
-          : hidden === 1
-            ? "1 pieza con registros no se muestra en esta dentición; sus datos se conservan."
-            : `${hidden} piezas con registros no se muestran en esta dentición; sus datos se conservan.`,
-    });
+    notify.success(
+      text("odontogram.dentition.changed", {
+        dentition: dentitionLabel(entry.value).toLowerCase(),
+      }),
+      {
+        description:
+          hidden === 0
+            ? `${entry.description}. ${entry.ageHint}.`
+            : hidden === 1
+              ? t("odontogram.dentition.hiddenOne")
+              : text("odontogram.dentition.hiddenMany", { count: hidden }),
+      },
+    );
   };
 
   return (
@@ -72,8 +92,10 @@ export function DentitionSwitch({ className }: DentitionSwitchProps) {
         <button
           type="button"
           disabled={readOnly}
-          aria-label={`Cambiar dentición del odontograma: ${current.label}`}
-          title="Cambiar la dentición que muestra el odontograma"
+          aria-label={text("odontogram.dentition.change", {
+            dentition: dentitionLabel(current.value),
+          })}
+          title={t("odontogram.dentition.title")}
           className={cn(
             "group flex touch-manipulation items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-medium shadow-lg backdrop-blur-md transition-all hover:shadow-xl",
             "outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
@@ -87,7 +109,7 @@ export function DentitionSwitch({ className }: DentitionSwitchProps) {
             aria-hidden="true"
             className="h-4 w-4 text-brand transition-transform group-hover:scale-110 group-data-[state=open]:text-white"
           />
-          <span>{current.label}</span>
+          <span>{dentitionLabel(current.value)}</span>
           <ChevronDown
             aria-hidden="true"
             className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180 group-data-[state=open]:text-white"
@@ -103,7 +125,7 @@ export function DentitionSwitch({ className }: DentitionSwitchProps) {
               value={entry.value}
               className="flex-col items-start gap-0.5"
             >
-              <span>{entry.label}</span>
+              <span>{dentitionLabel(entry.value)}</span>
               <span className="text-xs text-subtle">
                 {entry.description} · {entry.ageHint}
               </span>

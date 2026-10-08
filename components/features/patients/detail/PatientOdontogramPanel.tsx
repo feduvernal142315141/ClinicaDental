@@ -35,6 +35,7 @@ import type { VisitEditability } from "@/lib/hooks/patients/clinical-history-pag
 import { notify } from "@/lib/utils/notify";
 import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
 import type { DentitionType } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface PatientOdontogramPanelProps {
   patient: {
@@ -94,6 +95,7 @@ export function PatientOdontogramPanel({
   onFinalizeClose,
   onFinalizeSuccess,
 }: PatientOdontogramPanelProps) {
+  const { t } = useI18n();
   const { can, isAdmin } = usePermission();
   const { user } = useAuth();
 
@@ -341,8 +343,7 @@ export function PatientOdontogramPanel({
       {isOutOfConsultationEditing && (
         <div className="mb-3 flex items-center justify-center">
           <StatusBadge tone="neutral">
-            Editando fuera de una consulta — los cambios no quedan ligados a
-            ninguna visita
+            {t("odontogram.outOfConsultation")}
           </StatusBadge>
         </div>
       )}

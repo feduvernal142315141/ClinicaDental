@@ -47,6 +47,7 @@ export function usePatientForm({
     mode: "onBlur",
     defaultValues: {
       name: "",
+      identificationNumber: "",
       email: "",
       phone: "",
       dateOfBirth: "",
@@ -63,6 +64,7 @@ export function usePatientForm({
     if (initialData) {
       form.reset({
         name: initialData.name ?? "",
+        identificationNumber: initialData.identificationNumber ?? "",
         email: initialData.email ?? "",
         phone: initialData.phone ?? "",
         dateOfBirth: initialData.dateOfBirth?.slice(0, 10) ?? "",
@@ -82,6 +84,7 @@ export function usePatientForm({
         if (patient) {
           form.reset({
             name: patient.name ?? "",
+            identificationNumber: patient.identificationNumber ?? "",
             email: patient.email ?? "",
             phone: patient.phone ?? "",
             dateOfBirth: patient.dateOfBirth?.slice(0, 10) ?? "",
@@ -108,6 +111,7 @@ export function usePatientForm({
           const success = await updatePatient({
             id: patientId,
             name: values.name,
+            identificationNumber: values.identificationNumber ?? "",
             email: values.email,
             phone: values.phone,
             dateOfBirth: values.dateOfBirth,
@@ -126,6 +130,7 @@ export function usePatientForm({
         } else {
           const newPatientId = await createPatient({
             name: values.name,
+            identificationNumber: values.identificationNumber ?? "",
             email: values.email,
             phone: values.phone,
             dateOfBirth: values.dateOfBirth,

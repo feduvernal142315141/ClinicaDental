@@ -6,10 +6,13 @@ import { SidebarFooter } from "@/components/ui/atomic/navigation/sidebar-footer"
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { useSidebarNavigation } from "@/lib/hooks/use-sidebar-navigation";
 import { SidebarSection } from "@/components/ui/atomic/navigation/sidebar-section";
 import { SidebarNavItem } from "@/components/ui/atomic/navigation/sidebar-nav-item";
-import { Activity, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { LanguageSelector } from "@/components/ui/atomic/navigation/language-selector";
+import { ChevronsLeft, ChevronsRight } from "lucide-react";
+import { BrandMark } from "@/components/ui/atomic/branding/brand-mark";
 
 interface SidebarProps {
   currentPath: string;
@@ -29,6 +32,7 @@ export function Sidebar({
 }: SidebarProps) {
   const { name: clinicName, logoUrl } = useClinicBranding();
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   const router = useRouter();
   const { mainMenuItems, secondaryMenuItems, isActiveRoute } =
     useSidebarNavigation();
@@ -49,7 +53,7 @@ export function Sidebar({
     if (item.children?.length) {
       const children = item.children;
       const open = isGroupOpen(item);
-      const parentActive = isActiveRoute(currentPath, item.path);
+      const parentActive = children.some((c) => isActiveRoute(currentPath, c.path));
       const submenuId = `submenu-${item.path}`;
       return (
         <div key={item.path}>
@@ -141,8 +145,7 @@ export function Sidebar({
             <div
               className={cn(
                 "grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-2xl text-white",
-                !logoUrl && "bg-gradient-to-br from-brand to-brand-strong",
-                !logoUrl && "shadow-[0_4px_14px_-4px_rgb(var(--brand)/0.55)]",
+                !logoUrl && "shadow-[0_4px_14px_-4px_rgb(3_126_204/0.55)]",
               )}
             >
               {logoUrl ? (
@@ -152,7 +155,7 @@ export function Sidebar({
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <Activity className="h-[18px] w-[18px]" strokeWidth={2.5} />
+                <BrandMark rounded={false} className="h-full w-full" />
               )}
             </div>
             <div
@@ -166,32 +169,43 @@ export function Sidebar({
                   {clinicName}
                 </p>
                 <p className="truncate text-[11px] leading-tight text-subtle">
-                  Gestión clínica
+                  {t("clinic.management")}
                 </p>
               </div>
             </div>
           </div>
           {onToggleCollapse && (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              aria-label={isCollapsed ? "Expandir menú" : "Colapsar menú"}
+            <div
               className={cn(
-                "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-subtle",
-                "transition-colors duration-200 hover:bg-hover hover:text-ink",
-                "outline-none focus-visible:ring-2 focus-visible:ring-brand/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+                "flex shrink-0 items-center gap-1",
+                isCollapsed && "flex-col",
               )}
             >
-              {isCollapsed ? (
-                <ChevronsRight className="h-4 w-4" />
-              ) : (
-                <ChevronsLeft className="h-4 w-4" />
-              )}
-            </button>
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                aria-label={
+                  isCollapsed
+                    ? t("navigation.expandMenu")
+                    : t("navigation.collapseMenu")
+                }
+                className={cn(
+                  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-subtle",
+                  "transition-colors duration-200 hover:bg-hover hover:text-ink",
+                  "outline-none focus-visible:ring-2 focus-visible:ring-brand/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+                )}
+              >
+                {isCollapsed ? (
+                  <ChevronsRight className="h-4 w-4" />
+                ) : (
+                  <ChevronsLeft className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           )}
         </div>
         <nav
-          aria-label="Navegación principal"
+          aria-label={t("navigation.primary")}
           className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 [contain:layout_paint]"
         >
           <SidebarSection className="space-y-1">
@@ -207,12 +221,20 @@ export function Sidebar({
         {showAccountFooter && (
           <div
             className={cn(
-              "shrink-0 border-t border-hairline p-3",
-              isCollapsed && "flex justify-center px-2",
+              "shrink-0 space-y-2 border-t border-hairline p-3",
+              isCollapsed && "flex flex-col items-center px-2",
             )}
           >
+            <LanguageSelector
+              className={isCollapsed ? "w-14" : "w-full"}
+              compact={isCollapsed}
+              placement="top"
+            />
             <SidebarFooter
-              userName={user?.email?.split(String.fromCharCode(64))[0] || "Usuario"}
+              userName={
+                user?.email?.split(String.fromCharCode(64))[0] ||
+                t("app.user.fallback")
+              }
               userEmail={user?.email || ""}
               compact={isCollapsed}
               onLogout={logout}

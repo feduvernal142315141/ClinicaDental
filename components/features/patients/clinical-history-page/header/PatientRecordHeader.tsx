@@ -10,10 +10,10 @@ import type {
   ClinicalHistoryAlert,
 } from "@/lib/entity/clinical-history";
 import {
-  DENTITION_CATALOG,
   type DentitionType,
 } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 import { cn } from "@/lib/utils/utils";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 export interface PatientRecordHeaderProps {
   name: string;
@@ -47,6 +47,17 @@ const ALERT_WEIGHT: Record<AlertSeverity, number> = {
 };
 const MAX_VISIBLE_ALERTS = 3;
 const COARSE_TOUCH = "[@media(pointer:coarse)]:h-11";
+function dentitionLabelKey(dentition: DentitionType) {
+  switch (dentition) {
+    case "primary":
+      return "clinical.header.dentition.primary";
+    case "mixed":
+      return "clinical.header.dentition.mixed";
+    case "permanent":
+    default:
+      return "clinical.header.dentition.permanent";
+  }
+}
 function getInitials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return "?";
@@ -54,8 +65,16 @@ function getInitials(name: string): string {
   const second = words.length > 1 ? (words[1]?.[0] ?? "") : "";
   return (first + second).toUpperCase() || "?";
 }
-function formatAge(age: number): string {
-  return age === 1 ? "1 año" : `${age} años`;
+function normalizeGender(gender: string | undefined, translate: (key: "clinical.header.gender.male" | "clinical.header.gender.female") => string): string {
+  const normalized = gender?.trim().toLowerCase();
+  if (!normalized) return "";
+  if (["m", "male", "masculino", "hombre"].includes(normalized)) {
+    return translate("clinical.header.gender.male");
+  }
+  if (["f", "female", "femenino", "mujer"].includes(normalized)) {
+    return translate("clinical.header.gender.female");
+  }
+  return gender?.trim() ?? "";
 }
 export function PatientRecordHeader({
   name,
@@ -73,21 +92,24 @@ export function PatientRecordHeader({
   onEdit,
   primaryAction,
 }: PatientRecordHeaderProps) {
+  const { t } = useI18n();
 
   const metaItems = React.useMemo(() => {
     const birthLabel = birthDate ? formatDate(birthDate) : "";
     const dentitionLabel = dentition
-      ? DENTITION_CATALOG.find((entry) => entry.value === dentition)?.label
+      ? t(dentitionLabelKey(dentition))
       : undefined;
     return [
-      typeof age === "number" && Number.isFinite(age) ? formatAge(age) : "",
-      gender?.trim() ?? "",
+      typeof age === "number" && Number.isFinite(age)
+        ? `${age} ${age === 1 ? t("clinical.header.year") : t("clinical.header.years")}`
+        : "",
+      normalizeGender(gender, t),
       birthLabel,
       phone?.trim() ?? "",
       email?.trim() ?? "",
-      dentitionLabel ? `Odontograma: ${dentitionLabel}` : "",
+      dentitionLabel ? `${t("clinical.header.dentition")}: ${dentitionLabel}` : "",
     ].filter((item): item is string => item.length > 0);
-  }, [age, gender, birthDate, phone, email, dentition]);
+  }, [age, gender, birthDate, phone, email, dentition, t]);
   const { visibleAlerts, hiddenAlerts } = React.useMemo(() => {
     const sorted = [...(alerts ?? [])].sort(
       (a, b) => ALERT_WEIGHT[a.severity] - ALERT_WEIGHT[b.severity],
@@ -175,7 +197,7 @@ export function PatientRecordHeader({
                 className={cn(COARSE_TOUCH)}
               >
                 <Pencil className="h-4 w-4" aria-hidden="true" />
-                Editar
+                {t("clinical.header.edit")}
               </Button>
             ) : null}
             {primaryAction}

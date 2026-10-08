@@ -7,12 +7,14 @@ import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface EditServicePageProps {
   params: Promise<{ id: string }>;
 }
 
 export default function EditServicePage({ params }: EditServicePageProps) {
+  const { t } = useI18n();
   const { id } = use(params);
   const router = useRouter();
   const { can, isAdmin } = usePermission();
@@ -27,10 +29,10 @@ export default function EditServicePage({ params }: EditServicePageProps) {
   return (
     <>
       <PageHeader
-        title="Editar Servicio"
-        subtitle="Modifique los datos del servicio clínico."
+        title={t("services.page.editTitle")}
+        subtitle={t("services.page.editDescription")}
         actionButton={{
-          label: "Atrás",
+          label: t("services.actions.back"),
           onClick: () => router.push("/settings/services"),
           variant: "back",
         }}

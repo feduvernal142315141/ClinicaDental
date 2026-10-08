@@ -6,10 +6,12 @@ import { labelsService } from "@/lib/services/labels";
 import type { Label, CreateLabelDto, UpdateLabelDto } from "@/lib/entity/label";
 import { notify } from "@/lib/utils/notify";
 import { notifyApiError } from "@/lib/utils/notify-error";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 // ── useLabels ────────────────────────────────────────────────────────────────
 
 export function useLabels(includeArchived = false) {
+  const { t } = useI18n();
   const [labels, setLabels] = useState<Label[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -19,11 +21,11 @@ export function useLabels(includeArchived = false) {
       const data = await labelsService.getLabels(includeArchived);
       setLabels(data);
     } catch (error) {
-      notifyApiError("No se pudieron cargar las etiquetas", error);
+      notifyApiError(t("labels.notify.loadError"), error);
     } finally {
       setLoading(false);
     }
-  }, [includeArchived]);
+  }, [includeArchived, t]);
 
   useEffect(() => {
     fetchLabels();
@@ -35,6 +37,7 @@ export function useLabels(includeArchived = false) {
 // ── useCreateLabel ────────────────────────────────────────────────────────────
 
 export function useCreateLabel() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
 
   const createLabel = useCallback(
@@ -42,21 +45,21 @@ export function useCreateLabel() {
       setLoading(true);
       try {
         const label = await labelsService.createLabel(data);
-        notify.success("Etiqueta creada", {
-          description: "Ya está disponible para asignarla a tus citas.",
+        notify.success(t("labels.notify.createSuccess"), {
+          description: t("labels.notify.createSuccessDescription"),
         });
         return label;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Error al crear etiqueta";
+        const msg = err instanceof Error ? err.message : t("labels.notify.createError");
         notify.error(msg, {
-          description: "No pudimos crear la etiqueta. Revisa tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+          description: t("labels.notify.createErrorDescription"),
         });
         return null;
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [t],
   );
 
   return { createLabel, loading };
@@ -65,6 +68,7 @@ export function useCreateLabel() {
 // ── useUpdateLabel ────────────────────────────────────────────────────────────
 
 export function useUpdateLabel(id: string) {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
 
   const updateLabel = useCallback(
@@ -72,21 +76,21 @@ export function useUpdateLabel(id: string) {
       setLoading(true);
       try {
         const label = await labelsService.updateLabel(id, data);
-        notify.success("Etiqueta actualizada", {
-          description: "Los cambios se aplicaron en todas las citas que la usan.",
+        notify.success(t("labels.notify.updateSuccess"), {
+          description: t("labels.notify.updateSuccessDescription"),
         });
         return label;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Error al actualizar etiqueta";
+        const msg = err instanceof Error ? err.message : t("labels.notify.updateError");
         notify.error(msg, {
-          description: "No se guardaron los cambios de la etiqueta. Inténtalo de nuevo; si persiste, contacta a soporte.",
+          description: t("labels.notify.updateErrorDescription"),
         });
         return null;
       } finally {
         setLoading(false);
       }
     },
-    [id],
+    [id, t],
   );
 
   return { updateLabel, loading };
@@ -95,6 +99,7 @@ export function useUpdateLabel(id: string) {
 // ── useArchiveLabel ───────────────────────────────────────────────────────────
 
 export function useArchiveLabel(id: string) {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
 
   const archiveLabel = useCallback(
@@ -102,20 +107,20 @@ export function useArchiveLabel(id: string) {
       setLoading(true);
       try {
         await labelsService.archiveLabel(id);
-        notify.success("Etiqueta archivada", {
-          description: "Ya no aparecerá al asignar etiquetas; podrás restaurarla cuando lo necesites.",
+        notify.success(t("labels.notify.archiveSuccess"), {
+          description: t("labels.notify.archiveSuccessDescription"),
         });
         onSuccess?.();
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Error al archivar etiqueta";
+        const msg = err instanceof Error ? err.message : t("labels.notify.archiveError");
         notify.error(msg, {
-          description: "No pudimos archivar la etiqueta. Inténtalo de nuevo; si persiste, contacta a soporte.",
+          description: t("labels.notify.archiveErrorDescription"),
         });
       } finally {
         setLoading(false);
       }
     },
-    [id],
+    [id, t],
   );
 
   return { archiveLabel, loading };
@@ -124,6 +129,7 @@ export function useArchiveLabel(id: string) {
 // ── useUnarchiveLabel ─────────────────────────────────────────────────────────
 
 export function useUnarchiveLabel() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
 
   const unarchiveLabel = useCallback(
@@ -131,20 +137,23 @@ export function useUnarchiveLabel() {
       setLoading(true);
       try {
         await labelsService.unarchiveLabel(id);
-        notify.success("Etiqueta restaurada", {
-          description: `"${name}" ya está disponible para asignarla a nuevas citas.`,
+        notify.success(t("labels.notify.restoreSuccess"), {
+          description: t("labels.notify.restoreSuccessDescription").replace(
+            "{name}",
+            name,
+          ),
         });
         onSuccess?.();
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Error al restaurar etiqueta";
+        const msg = err instanceof Error ? err.message : t("labels.notify.restoreError");
         notify.error(msg, {
-          description: "No pudimos restaurar la etiqueta. Inténtalo de nuevo; si persiste, contacta a soporte.",
+          description: t("labels.notify.restoreErrorDescription"),
         });
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [t],
   );
 
   return { unarchiveLabel, loading };
@@ -156,6 +165,7 @@ export function useUnarchiveLabel() {
 // tarjeta que disparó la acción ya no esté montada.
 
 export function useArchiveLabelWithUndo(refetch: () => void) {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
 
   const archiveWithUndo = useCallback(
@@ -165,38 +175,43 @@ export function useArchiveLabelWithUndo(refetch: () => void) {
         await labelsService.archiveLabel(id);
         refetch();
         notify.action(
-          `"${name}" archivada`,
+          t("labels.notify.archivedWithName").replace("{name}", name),
           {
-            title: "Deshacer",
+            title: t("labels.actions.undo"),
             onClick: async () => {
               try {
                 await labelsService.unarchiveLabel(id);
                 refetch();
-                notify.success("Acción deshecha", {
-                  description: `"${name}" vuelve a estar disponible para nuevas citas.`,
+                notify.success(t("labels.notify.undoSuccess"), {
+                  description: t("labels.notify.undoSuccessDescription").replace(
+                    "{name}",
+                    name,
+                  ),
                 });
               } catch {
-                notify.error("No se pudo deshacer", {
-                  description: `Puedes restaurar "${name}" desde el filtro de archivadas.`,
+                notify.error(t("labels.notify.undoError"), {
+                  description: t("labels.notify.undoErrorDescription").replace(
+                    "{name}",
+                    name,
+                  ),
                 });
               }
             },
           },
           {
-            description:
-              "Se ocultará para nuevas citas; las existentes conservan la etiqueta. Podrás restaurarla cuando quieras.",
+            description: t("labels.notify.archiveUndoDescription"),
           },
         );
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Error al archivar etiqueta";
+        const msg = err instanceof Error ? err.message : t("labels.notify.archiveError");
         notify.error(msg, {
-          description: "No pudimos archivar la etiqueta. Inténtalo de nuevo.",
+          description: t("labels.notify.archiveErrorShortDescription"),
         });
       } finally {
         setLoading(false);
       }
     },
-    [refetch],
+    [refetch, t],
   );
 
   return { archiveWithUndo, loading };
@@ -205,6 +220,7 @@ export function useArchiveLabelWithUndo(refetch: () => void) {
 // ── useAssignLabels ───────────────────────────────────────────────────────────
 
 export function useAssignLabels(appointmentId: string) {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
 
   const assignLabels = useCallback(
@@ -212,20 +228,20 @@ export function useAssignLabels(appointmentId: string) {
       setLoading(true);
       try {
         await labelsService.assignLabels(appointmentId, labelIds);
-        notify.success("Etiquetas asignadas", {
-          description: "Ya están visibles en la cita para identificarla más rápido.",
+        notify.success(t("labels.notify.assignSuccess"), {
+          description: t("labels.notify.assignSuccessDescription"),
         });
         onSuccess?.();
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Error al asignar etiquetas";
+        const msg = err instanceof Error ? err.message : t("labels.notify.assignError");
         notify.error(msg, {
-          description: "No pudimos asignar las etiquetas a la cita. Inténtalo de nuevo; si persiste, contacta a soporte.",
+          description: t("labels.notify.assignErrorDescription"),
         });
       } finally {
         setLoading(false);
       }
     },
-    [appointmentId],
+    [appointmentId, t],
   );
 
   return { assignLabels, loading };
@@ -234,6 +250,7 @@ export function useAssignLabels(appointmentId: string) {
 // ── useRemoveLabel ────────────────────────────────────────────────────────────
 
 export function useRemoveLabel(appointmentId: string) {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
 
   const removeLabel = useCallback(
@@ -241,20 +258,20 @@ export function useRemoveLabel(appointmentId: string) {
       setLoading(true);
       try {
         await labelsService.removeLabel(appointmentId, labelId);
-        notify.success("Etiqueta removida", {
-          description: "Se quitó de la cita; puedes volver a asignarla cuando quieras.",
+        notify.success(t("labels.notify.removeSuccess"), {
+          description: t("labels.notify.removeSuccessDescription"),
         });
         onSuccess?.();
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Error al remover etiqueta";
+        const msg = err instanceof Error ? err.message : t("labels.notify.removeError");
         notify.error(msg, {
-          description: "No pudimos quitar la etiqueta de la cita. Inténtalo de nuevo; si persiste, contacta a soporte.",
+          description: t("labels.notify.removeErrorDescription"),
         });
       } finally {
         setLoading(false);
       }
     },
-    [appointmentId],
+    [appointmentId, t],
   );
 
   return { removeLabel, loading };

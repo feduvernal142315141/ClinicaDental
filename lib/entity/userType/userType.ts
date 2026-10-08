@@ -1,7 +1,7 @@
 /**
  * UserType Entity Types
  *
- * Catálogo GESTIONABLE (per-clínica) de tipos de usuario (profesión/cargo:
+ * Catálogo de solo lectura global de tipos de usuario (profesión/cargo:
  * Dentista, Higienista, Recepcionista, ...). Reemplaza el enum hardcodeado
  * `UserType` del backend y la lista estática `USER_TYPE_CODES` del front
  * (ver `lib/entity/doctors`, marcada @deprecated).
@@ -17,7 +17,6 @@ export interface UserType {
   description?: string;
   /** "Atiende citas": si es agendable como proveedor de cita. */
   attendsAppointments: boolean;
-  clinicId: string;
   createdBy?: string;
   createdAt: string;
   updatedAt?: string;
@@ -27,24 +26,12 @@ export interface UserType {
 /**
  * Forma reducida tal como viaja embebida en Doctor (`GET /doctor` /
  * `GET /doctor/{id}`): `{ id, name, attendsAppointments }`, resuelta por el
- * backend a partir del catálogo de la clínica. `null` si el `userTypeId` del
+ * backend a partir del catálogo global. `null` si el `userTypeId` del
  * doctor no matchea ningún tipo del catálogo.
  */
 export interface UserTypeRef {
   id: string;
   name: string;
-  attendsAppointments: boolean;
-}
-
-export interface CreateUserTypeDto {
-  name: string;
-  description?: string;
-  attendsAppointments: boolean;
-}
-
-export interface UpdateUserTypeDto {
-  name: string;
-  description?: string;
   attendsAppointments: boolean;
 }
 

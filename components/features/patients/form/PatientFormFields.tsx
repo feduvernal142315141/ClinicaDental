@@ -15,12 +15,8 @@ import { Select } from "@/components/ui/controls/select";
 import { DateTimePicker } from "@/components/ui/controls/date-time-picker";
 import { AvatarField } from "@/components/ui/controls/avatar-field";
 import { imageUploadService } from "@/lib/services/cloudinary/cloudinary.service";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import type { PatientFormValues } from "@/lib/entity/patients";
-
-const GENDER_OPTIONS = [
-  { value: "M", label: "Masculino" },
-  { value: "F", label: "Femenino" },
-];
 
 interface PatientFormFieldsProps {
   /** Deshabilita todos los campos (cargando o modo readOnly). */
@@ -43,8 +39,13 @@ export function PatientFormFields({
   disabled = false,
   showStatus = false,
 }: PatientFormFieldsProps) {
+  const { t } = useI18n();
   const form = useFormContext<PatientFormValues>();
   const { errors } = form.formState;
+  const genderOptions = [
+    { value: "M", label: t("patients.form.genderMale") },
+    { value: "F", label: t("patients.form.genderFemale") },
+  ];
 
   return (
     <div className="space-y-5">
@@ -63,6 +64,7 @@ export function PatientFormFields({
               onChange={field.onChange}
               disabled={disabled}
               size={112}
+              label={t("patients.form.uploadPhoto")}
               uploader={(file) =>
                 imageUploadService.uploadImage(file, "patients")
               }
@@ -79,13 +81,33 @@ export function PatientFormFields({
           render={({ field }) => (
             <FormItem className="lg:col-span-1 sm:col-span-2">
               <FormLabel>
-                Nombre completo <span className="text-rose-500">*</span>
+                {t("patients.form.fullName")} <span className="text-rose-500">*</span>
               </FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Ej: María González López"
+                  placeholder={t("patients.form.fullNamePlaceholder")}
                   disabled={disabled}
                   {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="identificationNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("patients.form.identificationNumber")} <span className="text-rose-500" aria-hidden="true">*</span></FormLabel>
+              <FormControl>
+                <Input
+                  disabled={disabled}
+                  required
+                  maxLength={255}
+                  {...field}
+                  value={field.value ?? ""}
                 />
               </FormControl>
               <FormMessage />
@@ -99,11 +121,11 @@ export function PatientFormFields({
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Correo electrónico</FormLabel>
+              <FormLabel>{t("patients.form.email")}</FormLabel>
               <FormControl>
                 <Input
                   type="email"
-                  placeholder="Ej: maria@email.com"
+                  placeholder={t("patients.form.emailPlaceholder")}
                   disabled={disabled}
                   {...field}
                 />
@@ -120,11 +142,11 @@ export function PatientFormFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Teléfono <span className="text-rose-500">*</span>
+                {t("patients.form.phone")} <span className="text-rose-500">*</span>
               </FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Ej: +505 8275-8275"
+                  placeholder={t("patients.form.phonePlaceholder")}
                   disabled={disabled}
                   {...field}
                 />
@@ -141,7 +163,7 @@ export function PatientFormFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Fecha de nacimiento <span className="text-rose-500">*</span>
+                {t("patients.form.birthDate")} <span className="text-rose-500">*</span>
               </FormLabel>
               <DateTimePicker
                 value={field.value}
@@ -150,7 +172,8 @@ export function PatientFormFields({
                 max={localTodayInput()}
                 toYear={new Date().getFullYear()}
                 disabled={disabled}
-                aria-label="Fecha de nacimiento"
+                placeholder={t("patients.form.birthDatePlaceholder")}
+                aria-label={t("patients.form.birthDate")}
                 aria-invalid={!!errors.dateOfBirth}
               />
               <FormMessage />
@@ -165,16 +188,16 @@ export function PatientFormFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Género <span className="text-rose-500">*</span>
+                {t("patients.form.gender")} <span className="text-rose-500">*</span>
               </FormLabel>
               <Select
                 value={field.value ?? ""}
                 onChange={field.onChange}
                 onBlur={field.onBlur}
-                options={GENDER_OPTIONS}
-                placeholder="Seleccione género"
+                options={genderOptions}
+                placeholder={t("patients.form.genderPlaceholder")}
                 disabled={disabled}
-                aria-label="Género"
+                aria-label={t("patients.form.gender")}
                 aria-invalid={!!errors.gender}
               />
               <FormMessage />
@@ -188,10 +211,10 @@ export function PatientFormFields({
           name="address"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Dirección</FormLabel>
+              <FormLabel>{t("patients.form.address")}</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Ej: Calle Mayor 123, ..."
+                  placeholder={t("patients.form.addressPlaceholder")}
                   disabled={disabled}
                   {...field}
                   value={field.value ?? ""}
@@ -210,9 +233,9 @@ export function PatientFormFields({
         render={({ field }) => (
           <FormItem className="flex flex-row items-center justify-between rounded-xl border border-hairline bg-elevated px-4 py-3">
             <div className="space-y-0.5">
-              <FormLabel>Convenio</FormLabel>
+              <FormLabel>{t("patients.form.agreement")}</FormLabel>
               <p className="text-xs text-subtle">
-                ¿El paciente cuenta con convenio?
+                {t("patients.form.agreementDescription")}
               </p>
             </div>
             <FormControl>
@@ -234,11 +257,11 @@ export function PatientFormFields({
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-xl border border-hairline bg-elevated px-4 py-3">
               <div className="space-y-0.5">
-                <FormLabel>Paciente activo</FormLabel>
+                <FormLabel>{t("patients.form.active")}</FormLabel>
                 <p className="text-xs text-subtle">
                   {field.value
-                    ? "Aparece en el listado y se le pueden agendar citas."
-                    : "Queda inactivo: seguirá en el listado y conserva su historia clínica, pero se marca como no vigente."}
+                    ? t("patients.form.activeDescription")
+                    : t("patients.form.inactiveDescription")}
                 </p>
               </div>
               <FormControl>
@@ -246,7 +269,7 @@ export function PatientFormFields({
                   checked={!!field.value}
                   onCheckedChange={field.onChange}
                   disabled={disabled}
-                  aria-label="Paciente activo"
+                  aria-label={t("patients.form.active")}
                 />
               </FormControl>
             </FormItem>

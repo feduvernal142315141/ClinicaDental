@@ -39,6 +39,7 @@ explícita, no patrones para copiar indiscriminadamente.
 | etiquetas | `/labels` |
 | configuración | `/clinic/*` |
 | dashboard | `/dashboard/summary` |
+| facturación | `/billing/*` (ver [billing-backend-spec.md](billing-backend-spec.md)) |
 | adjuntos | `/patients/{id}/attachments` |
 | subida de imagen | `/api/v1/cloudinary/upload` |
 | voz | `/speech/transcribe` |
@@ -90,3 +91,19 @@ conserva el tamaño solicitado. Replicar la semántica del dominio vecino.
 
 No usar tipos del frontend como evidencia de que una columna o restricción
 existe en base de datos.
+
+## Tipos de usuario: catálogo global de solo lectura
+
+`GET /user-types` conserva autenticación, filtros, orden y paginación. Sin
+paginación devuelve la lista; con `pageSize > 0`, `{entities, pagination}`.
+Existen exactamente tres tipos globales: Doctor, Asistente y Administrativo.
+Los dos primeros atienden citas. `clinicId` desaparece del DTO y del modelo.
+Usuarios y citas mantienen su aislamiento por clínica; solo el catálogo es global.
+No hay pantalla ni endpoints de gestión. El onboarding usa el Administrativo global.
+
+Despliegue coordinado: detener escrituras, respaldar datos, aplicar el SQL global
+que reasigna las referencias y elimina `user_types.clinic_id`, desplegar el backend
+actualizado y luego el frontoffice. No arrancar el backend anterior sobre el esquema
+global. La migración debe registrarse con una versión Flyway verificada antes del
+despliegue automatizado; falta acceso al historial dev para asignarla. El rollback
+de datos requiere el backup previo; no basta con revertir el código.

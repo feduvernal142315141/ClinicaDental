@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/primitives/shadcn/dropdown-menu";
 import { Button } from "@/components/ui/primitives/shadcn/button";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface SidebarFooterProps {
   userName: string;
@@ -35,6 +36,8 @@ export function SidebarFooter({
   onSettings,
   compact = false,
 }: SidebarFooterProps) {
+  const { t } = useI18n();
+
   return (
     <div className={compact ? "" : "mt-auto p-2"}>
       <DropdownMenu>
@@ -43,7 +46,7 @@ export function SidebarFooter({
             <Button
               type="button"
               variant="ghost"
-              aria-label="Cuenta"
+              aria-label={t("app.account")}
               className="h-10 w-10 rounded-full p-0 hover:bg-hover"
             >
               <UserAvatar src={userAvatar} name={userName} size="sm" />
@@ -85,16 +88,16 @@ export function SidebarFooter({
           </div>
 
           <DropdownMenuItem className={itemClass} onClick={onProfile}>
-            <User className="h-4 w-4 text-subtle" /> Mi Perfil
+            <User className="h-4 w-4 text-subtle" /> {t("app.profile")}
           </DropdownMenuItem>
           {onSupport && (
             <DropdownMenuItem className={itemClass} onClick={onSupport}>
-              <LifeBuoy className="h-4 w-4 text-subtle" /> Soporte
+              <LifeBuoy className="h-4 w-4 text-subtle" /> {t("app.support")}
             </DropdownMenuItem>
           )}
           {onSettings && (
             <DropdownMenuItem className={itemClass} onClick={onSettings}>
-              <Settings className="h-4 w-4 text-subtle" /> Configuración
+              <Settings className="h-4 w-4 text-subtle" /> {t("app.settings")}
             </DropdownMenuItem>
           )}
 
@@ -104,7 +107,7 @@ export function SidebarFooter({
             className="cursor-pointer gap-2 rounded-lg px-3 py-2 text-sm text-rose-600 focus:bg-rose-500/10 focus:text-rose-600 dark:text-rose-400 dark:focus:text-rose-300"
             onClick={onLogout}
           >
-            <LogOut className="h-4 w-4" /> Cerrar sesión
+            <LogOut className="h-4 w-4" /> {t("app.logout")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

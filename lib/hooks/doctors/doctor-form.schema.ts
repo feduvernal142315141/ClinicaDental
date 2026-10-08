@@ -157,7 +157,7 @@ export function makeDoctorFormSchema(
       specialty: optionalText({ max: 100 }),
       gender: z.enum(DOCTOR_GENDERS, { message: "El género es obligatorio" }),
       // Tipo de usuario (profesión/cargo): ORTOGONAL al Rol (permisos).
-      // FK al catálogo gestionable (`GET /user-types`), no un código fijo.
+      // FK al catálogo de solo lectura (`GET /user-types`), no un código fijo.
       userTypeId: requiredId("El tipo de usuario"),
       description: optionalText({ max: 1000 }),
       avatarUrl: z.string().optional(),

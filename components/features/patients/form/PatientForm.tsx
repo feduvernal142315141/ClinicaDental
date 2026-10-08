@@ -3,6 +3,7 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { Form, FormActionBar } from "@/components/ui/atomic/forms";
 import { usePatientForm } from "@/lib/hooks/patients";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { PatientFormFields } from "./PatientFormFields";
 import type { Patient } from "@/lib/entity/patients";
 
@@ -75,6 +76,7 @@ export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
     },
     ref,
   ) {
+    const { t } = useI18n();
     const { form, isEdit, loading, handleSubmit, handleCancel } =
       usePatientForm({
         patientId,
@@ -100,7 +102,7 @@ export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
       <FormActionBar
         isDirty={isEdit ? form.formState.isDirty : undefined}
         onSecondary={handleCancel}
-        submitLabel={isEdit ? "Actualizar" : "Guardar"}
+        submitLabel={isEdit ? t("patients.actions.update") : t("patients.actions.save")}
         loading={loading}
       />
     );
@@ -129,7 +131,7 @@ export const PatientForm = forwardRef<PatientFormRef, PatientFormProps>(
         >
           <section className="bento space-y-5 p-6">
             <h3 className="text-sm font-semibold text-ink">
-              Información del paciente
+              {t("patients.form.section")}
             </h3>
             {fields}
           </section>

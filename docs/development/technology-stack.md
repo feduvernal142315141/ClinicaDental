@@ -47,7 +47,7 @@ La guía detallada está en
 - Zustand 5 para el odontograma, consulta activa y estado de autosave.
 - Axios como cliente HTTP central en `lib/services/apiConfig.ts`.
 - Helpers de transporte en `lib/services/baseService.ts`.
-- No hay TanStack Query, Redux ni una capa GraphQL activa.
+- TanStack Query 5 se usa en facturación (`lib/hooks/billing/`); conservar query keys e invalidaciones del dominio. No inferir el uso de Redux o GraphQL.
 
 ## Seguridad e integración
 
@@ -61,8 +61,6 @@ La guía detallada está en
 
 ## Herramientas presentes y ausentes
 
-Presentes: ESLint 8, TypeScript, Knip y scripts de generación internos.
+Presentes: ESLint 8, TypeScript, Knip, Vitest 3, jsdom, React Testing Library y scripts internos. Hay i18n local en `lib/i18n/` y `lib/contexts/i18n-context.tsx`.
 
-No detectados: Jest, Vitest, React Testing Library, Playwright, Cypress,
-Storybook, Dockerfile, configuración de CI/CD o herramienta repo-wide de i18n.
-No asumir esas capacidades en una tarea.
+No detectados en esta inspección: configuración de E2E, Storybook, Dockerfile ni CI/CD versionado. No asumir esas capacidades en una tarea.

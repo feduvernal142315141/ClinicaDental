@@ -5,18 +5,13 @@ import dayjs from "dayjs";
 import "dayjs/locale/es";
 import { cn } from "@/lib/utils/utils";
 import { DateTimePicker } from "@/components/ui/controls/date-time-picker";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import type {
   SchedulerViewMode,
   SchedulerDateRange,
 } from "@/lib/entity/appointment";
 
 dayjs.locale("es");
-
-const VIEW_OPTIONS: { label: string; value: SchedulerViewMode }[] = [
-  { label: "Día", value: "day" },
-  { label: "Semana", value: "week" },
-  { label: "Mes", value: "month" },
-];
 
 interface AppointmentsSchedulerToolbarProps {
   viewMode: SchedulerViewMode;
@@ -33,25 +28,56 @@ function formatRangeLabel(
   viewMode: SchedulerViewMode,
   currentDate: string,
   dateRange: SchedulerDateRange,
+  language: string,
 ): string {
-  const ref = dayjs(currentDate);
+  const formatDate = (
+    date: string | Date,
+    options: Intl.DateTimeFormatOptions,
+  ) => new Intl.DateTimeFormat(language, options).format(new Date(date));
 
   switch (viewMode) {
     case "day":
-      return ref.format("dddd, D [de] MMMM [de] YYYY");
+      return formatDate(`${currentDate}T00:00:00`, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
     case "week": {
       const start = dayjs(dateRange.start);
       const end = dayjs(dateRange.end);
       if (start.month() === end.month()) {
-        return `${start.format("D")} – ${end.format("D [de] MMMM [de] YYYY")}`;
+        return `${start.format("D")} – ${formatDate(`${dateRange.end}T00:00:00`, {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}`;
       }
       if (start.year() === end.year()) {
-        return `${start.format("D [de] MMM")} – ${end.format("D [de] MMM [de] YYYY")}`;
+        return `${formatDate(`${dateRange.start}T00:00:00`, {
+          day: "numeric",
+          month: "short",
+        })} – ${formatDate(`${dateRange.end}T00:00:00`, {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })}`;
       }
-      return `${start.format("D MMM YYYY")} – ${end.format("D MMM YYYY")}`;
+      return `${formatDate(`${dateRange.start}T00:00:00`, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })} – ${formatDate(`${dateRange.end}T00:00:00`, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })}`;
     }
     case "month":
-      return ref.format("MMMM [de] YYYY");
+      return formatDate(`${currentDate}T00:00:00`, {
+        month: "long",
+        year: "numeric",
+      });
   }
 }
 
@@ -65,7 +91,13 @@ export function AppointmentsSchedulerToolbar({
   onToday,
   onDateChange,
 }: AppointmentsSchedulerToolbarProps) {
-  const rangeLabel = formatRangeLabel(viewMode, currentDate, dateRange);
+  const { language, t } = useI18n();
+  const rangeLabel = formatRangeLabel(viewMode, currentDate, dateRange, language);
+  const viewOptions: { label: string; value: SchedulerViewMode }[] = [
+    { label: t("appointments.view.day"), value: "day" },
+    { label: t("appointments.view.week"), value: "week" },
+    { label: t("appointments.view.month"), value: "month" },
+  ];
 
   return (
     <div className="mb-4">
@@ -73,10 +105,10 @@ export function AppointmentsSchedulerToolbar({
         {/* Izquierda: modo de vista (control segmentado Bento) */}
         <div
           role="group"
-          aria-label="Modo de vista"
+          aria-label={t("appointments.viewMode")}
           className="inline-flex items-center rounded-xl border border-hairline bg-elevated p-0.5 text-sm"
         >
-          {VIEW_OPTIONS.map((opt) => {
+          {viewOptions.map((opt) => {
             const isActive = opt.value === viewMode;
             return (
               <button
@@ -101,7 +133,7 @@ export function AppointmentsSchedulerToolbar({
         <div className="inline-flex items-center gap-1">
           <button
             type="button"
-            aria-label="Anterior"
+            aria-label={t("appointments.previous")}
             onClick={onPrev}
             className="grid h-9 w-9 place-items-center rounded-xl border border-hairline bg-elevated text-subtle transition-colors hover:bg-hover hover:text-ink"
           >
@@ -112,11 +144,11 @@ export function AppointmentsSchedulerToolbar({
             onClick={onToday}
             className="h-9 rounded-xl border border-hairline bg-elevated px-3 text-sm font-medium text-subtle transition-colors hover:bg-hover hover:text-ink"
           >
-            Hoy
+            {t("appointments.today")}
           </button>
           <button
             type="button"
-            aria-label="Siguiente"
+            aria-label={t("appointments.next")}
             onClick={onNext}
             className="grid h-9 w-9 place-items-center rounded-xl border border-hairline bg-elevated text-subtle transition-colors hover:bg-hover hover:text-ink"
           >
@@ -138,7 +170,7 @@ export function AppointmentsSchedulerToolbar({
           onChange={(val) => {
             if (val) onDateChange(val);
           }}
-          aria-label="Ir a una fecha"
+          aria-label={t("appointments.goToDate")}
           className="ml-auto w-44"
           align="end"
         />

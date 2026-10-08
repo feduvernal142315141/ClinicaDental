@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/primitives/shadcn/tooltip";
 import { cn } from "@/lib/utils/utils";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 export interface CatalogListRowProps {
   /** Acento/indicador a la izquierda (punto de color, avatar…). Opcional. */
@@ -45,6 +46,8 @@ export function CatalogListRow({
   onArchive,
   onRestore,
 }: CatalogListRowProps) {
+  const { t } = useI18n();
+
   return (
     <div
       className={cn(
@@ -60,7 +63,7 @@ export function CatalogListRow({
           {meta}
           {archived && (
             <span className="rounded-full bg-hover px-2 py-0.5 text-[10px] font-medium text-subtle">
-              Archivado
+              {t("labels.status.archived")}
             </span>
           )}
         </div>
@@ -70,7 +73,7 @@ export function CatalogListRow({
             description ? "text-subtle" : "italic text-subtle/50",
           )}
         >
-          {description || "Sin descripción"}
+          {description || t("labels.noDescription")}
         </p>
       </div>
 
@@ -79,7 +82,10 @@ export function CatalogListRow({
           <button
             type="button"
             onClick={onRestore}
-            aria-label={`Restaurar ${entityName}`}
+            aria-label={t("labels.actions.restoreNamed").replace(
+              "{name}",
+              entityName,
+            )}
             className={cn(
               "flex items-center gap-1 rounded-md border border-hairline px-2 py-1 text-[11px] font-medium text-subtle",
               "outline-none transition-colors hover:border-brand/40 hover:bg-brand/5 hover:text-brand",
@@ -87,7 +93,7 @@ export function CatalogListRow({
             )}
           >
             <RotateCcw className="h-3 w-3" />
-            Restaurar
+            {t("labels.actions.restoreShort")}
           </button>
         ) : (
           <>
@@ -96,13 +102,16 @@ export function CatalogListRow({
                 <button
                   type="button"
                   onClick={onEdit}
-                  aria-label={`Editar ${entityName}`}
+                  aria-label={t("labels.actions.editNamed").replace(
+                    "{name}",
+                    entityName,
+                  )}
                   className="grid h-8 w-8 place-items-center rounded-lg text-subtle/70 outline-none transition-colors hover:bg-hover hover:text-brand focus-visible:ring-2 focus-visible:ring-brand/45 group-hover:text-subtle"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Editar</TooltipContent>
+              <TooltipContent>{t("labels.actions.edit")}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -110,13 +119,16 @@ export function CatalogListRow({
                 <button
                   type="button"
                   onClick={onArchive}
-                  aria-label={`Archivar ${entityName}`}
+                  aria-label={t("labels.actions.archiveNamed").replace(
+                    "{name}",
+                    entityName,
+                  )}
                   className="grid h-8 w-8 place-items-center rounded-lg text-subtle/70 outline-none transition-colors hover:bg-amber-500/10 hover:text-amber-600 focus-visible:ring-2 focus-visible:ring-amber-400/40 group-hover:text-subtle dark:hover:text-amber-400"
                 >
                   <Archive className="h-3.5 w-3.5" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Archivar</TooltipContent>
+              <TooltipContent>{t("labels.actions.archive")}</TooltipContent>
             </Tooltip>
           </>
         )}

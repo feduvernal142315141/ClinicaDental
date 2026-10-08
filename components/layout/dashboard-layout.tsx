@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/contexts/auth-context";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import { AppHeader } from "@/components/layout/app-header";
@@ -17,6 +18,7 @@ export function DashboardLayout({
   currentPath,
 }: DashboardLayoutProps) {
   const { user, loading } = useAuth();
+  const { t } = useI18n();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const router = useRouter();
 
@@ -39,7 +41,7 @@ export function DashboardLayout({
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Cargando...</p>
+          <p className="mt-2 text-muted-foreground">{t("app.loading")}</p>
         </div>
       </div>
     );

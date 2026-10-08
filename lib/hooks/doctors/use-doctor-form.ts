@@ -19,6 +19,7 @@ import type {
 import type { ClinicSchedule } from "@/lib/entity/settings";
 import type { UserTypeRef } from "@/lib/entity/userType";
 import { deriveProviderUserTypeIds } from "@/lib/entity/userType";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 export type { DoctorFormValues } from "@/lib/hooks/doctors/doctor-form.schema";
 
@@ -129,11 +130,12 @@ export function useDoctorForm({
   clinicSchedule = null,
 }: UseDoctorFormParams) {
   const router = useRouter();
+  const { t } = useI18n();
   const isEdit = !!doctorId;
 
   const { createDoctor, updateDoctor, getDoctorById, loading } = useDoctors();
 
-  // Catálogo GESTIONABLE de tipos de usuario (solo activos): reemplaza el
+  // Catálogo de solo lectura de tipos de usuario (solo activos): reemplaza el
   // enum hardcodeado. Se centraliza aquí (capa hook) porque tanto el resolver
   // (especialidad condicional) como el Select de `DoctorForm` lo necesitan.
   const { userTypes, loading: userTypesLoading } = useUserTypes();
@@ -293,28 +295,28 @@ export function useDoctorForm({
           {
             field: "licenceNumber",
             value: values.licenceNumber,
-            message: "Ya existe un doctor con este número de licencia.",
+            message: t("doctors.error.duplicateLicense"),
           },
           {
             field: "email",
             value: values.email,
-            message: "Ya existe un doctor con este correo electrónico.",
+            message: t("doctors.error.duplicateEmail"),
           },
           {
             field: "name",
             value: values.name,
-            message: "Ya existe un doctor con este nombre.",
+            message: t("doctors.error.duplicateName"),
           },
         ]);
         notifyApiError(
           isEdit
-            ? "No se pudo actualizar el doctor"
-            : "No se pudo crear el doctor",
+            ? t("doctors.error.updateFailed")
+            : t("doctors.error.createFailed"),
           error,
         );
       }
     },
-    [isEdit, doctorId, createDoctor, updateDoctor, router, basePath, form],
+    [isEdit, doctorId, createDoctor, updateDoctor, router, basePath, form, t],
   );
 
   const handleCancel = useCallback(() => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Info, Stethoscope, Sparkles } from "lucide-react";
 
 import {
@@ -19,11 +20,8 @@ import { useServiceForm } from "@/lib/hooks/services/use-service-form";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings";
 import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
 import { getClinicCurrencySymbol } from "@/lib/utils/clinic-regional-format";
-import {
-  SERVICE_TYPE_LABELS,
-  SERVICE_CATEGORY_LABELS,
-} from "@/lib/entity/services";
-import type { ServiceType, ServiceCategory } from "@/lib/entity/services";
+import type { ServiceType } from "@/lib/entity/services";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface ServiceFormProps {
   serviceId?: string;
@@ -31,23 +29,6 @@ interface ServiceFormProps {
 }
 
 const Req = () => <span className="text-rose-500">*</span>;
-
-const TYPE_OPTIONS = (
-  Object.entries(SERVICE_TYPE_LABELS) as [ServiceType, string][]
-).map(([value, label]) => ({ value, label }));
-
-const CATEGORY_OPTIONS = [
-  { value: "", label: "Sin categoría" },
-  ...(Object.entries(SERVICE_CATEGORY_LABELS) as [ServiceCategory, string][]).map(
-    ([value, label]) => ({ value, label }),
-  ),
-];
-
-const SYMBOL_MODE_OPTIONS = [
-  { value: "NONE", label: "Automático (por categoría)" },
-  { value: "TEXT", label: "Texto personalizado" },
-  { value: "ASSET", label: "Imagen personalizada" },
-];
 
 function SectionHeader({
   icon,
@@ -78,10 +59,14 @@ function SymbolPreview({
   mode,
   text,
   image,
+  previewLabel,
+  previewAlt,
 }: {
   mode: string;
   text?: string;
   image?: string;
+  previewLabel: string;
+  previewAlt: string;
 }) {
   const hasImage = mode === "ASSET" && !!image;
   const hasText = mode === "TEXT" && !!text?.trim();
@@ -92,7 +77,7 @@ function SymbolPreview({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={image}
-            alt="Vista previa del símbolo"
+            alt={previewAlt}
             className="h-10 w-10 object-contain"
           />
         ) : hasText ? (
@@ -103,7 +88,7 @@ function SymbolPreview({
           <Sparkles className="h-5 w-5 text-subtle/50" />
         )}
       </div>
-      <span className="text-[0.7rem] text-subtle">Vista previa</span>
+      <span className="text-[0.7rem] text-subtle">{previewLabel}</span>
     </div>
   );
 }
@@ -112,6 +97,7 @@ export function ServiceForm({
   serviceId,
   basePath = "/settings/services",
 }: ServiceFormProps) {
+  const { t } = useI18n();
   const { form, isEdit, loading, handleSubmit, handleCancel } = useServiceForm({
     serviceId,
     basePath,
@@ -132,6 +118,41 @@ export function ServiceForm({
   const symbolMode = form.watch("odontogramSymbolMode");
   const symbolText = form.watch("symbolText");
   const symbolImageValue = form.watch("symbolImage") || form.watch("symbolUrl") || "";
+  const typeOptions = useMemo(
+    () =>
+      [
+        ["TREATMENT", t("services.type.TREATMENT")],
+        ["PROCEDURE", t("services.type.PROCEDURE")],
+        ["PRODUCT", t("services.type.PRODUCT")],
+        ["ADVANCE", t("services.type.ADVANCE")],
+      ].map(([value, label]) => ({ value: value as ServiceType, label })),
+    [t],
+  );
+  const categoryOptions = useMemo(
+    () => [
+      { value: "", label: t("services.form.noCategory") },
+      { value: "DIAGNOSTICO", label: t("services.category.DIAGNOSTICO") },
+      { value: "PREVENTIVO", label: t("services.category.PREVENTIVO") },
+      { value: "RESTAURADOR", label: t("services.category.RESTAURADOR") },
+      { value: "ENDODONCIA", label: t("services.category.ENDODONCIA") },
+      { value: "PERIODONCIA", label: t("services.category.PERIODONCIA") },
+      { value: "PROTESIS", label: t("services.category.PROTESIS") },
+      { value: "IMPLANTE", label: t("services.category.IMPLANTE") },
+      { value: "CIRUGIA", label: t("services.category.CIRUGIA") },
+      { value: "ORTODONCIA", label: t("services.category.ORTODONCIA") },
+      { value: "ESTETICO", label: t("services.category.ESTETICO") },
+      { value: "GENERAL", label: t("services.category.GENERAL") },
+    ],
+    [t],
+  );
+  const symbolModeOptions = useMemo(
+    () => [
+      { value: "NONE", label: t("services.form.symbolModeAuto") },
+      { value: "TEXT", label: t("services.form.symbolModeText") },
+      { value: "ASSET", label: t("services.form.symbolModeAsset") },
+    ],
+    [t],
+  );
 
   return (
     <Form {...form}>
@@ -144,8 +165,8 @@ export function ServiceForm({
         <section className="bento p-4 lg:p-6">
           <SectionHeader
             icon={<Info className="h-5 w-5" />}
-            title="Información del Servicio"
-            subtitle="Datos básicos, costo y duración del procedimiento."
+            title={t("services.form.sectionInfo")}
+            subtitle={t("services.form.sectionInfoDescription")}
           />
 
           <div className="grid grid-cols-1 gap-x-5 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -155,11 +176,11 @@ export function ServiceForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Código <Req />
+                    {t("services.form.code")} <Req />
                   </FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Ej: SRV-001"
+                      placeholder={t("services.form.codePlaceholder")}
                       autoComplete="off"
                       disabled={loading}
                       {...field}
@@ -176,11 +197,11 @@ export function ServiceForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Nombre <Req />
+                    {t("services.form.name")} <Req />
                   </FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Ej: Limpieza dental"
+                      placeholder={t("services.form.namePlaceholder")}
                       disabled={loading}
                       {...field}
                     />
@@ -196,15 +217,15 @@ export function ServiceForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Tipo de servicio <Req />
+                    {t("services.form.type")} <Req />
                   </FormLabel>
                   <FormControl>
                     <Select
                       value={field.value}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
-                      options={TYPE_OPTIONS}
-                      placeholder="Seleccione tipo…"
+                      options={typeOptions}
+                      placeholder={t("services.form.typePlaceholder")}
                       disabled={loading}
                     />
                   </FormControl>
@@ -219,7 +240,7 @@ export function ServiceForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Costo <Req />
+                    {t("services.form.cost")} <Req />
                   </FormLabel>
                   <FormControl>
                     <div className="relative">
@@ -260,7 +281,7 @@ export function ServiceForm({
               name="duration"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Duración</FormLabel>
+                  <FormLabel>{t("services.form.duration")}</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Input
@@ -268,7 +289,7 @@ export function ServiceForm({
                         inputMode="numeric"
                         min={0}
                         step={5}
-                        placeholder="Ej: 30"
+                        placeholder={t("services.form.durationPlaceholder")}
                         className="pr-12"
                         disabled={loading}
                         value={field.value ?? ""}
@@ -298,14 +319,14 @@ export function ServiceForm({
               name="category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Categoría</FormLabel>
+                  <FormLabel>{t("services.form.category")}</FormLabel>
                   <FormControl>
                     <Select
                       value={field.value ?? ""}
                       onChange={(v) => field.onChange(v || undefined)}
                       onBlur={field.onBlur}
-                      options={CATEGORY_OPTIONS}
-                      placeholder="Seleccione categoría"
+                      options={categoryOptions}
+                      placeholder={t("services.form.categoryPlaceholder")}
                       searchable
                       disabled={loading}
                     />
@@ -321,8 +342,8 @@ export function ServiceForm({
         <section className="bento p-4 lg:p-6">
           <SectionHeader
             icon={<Stethoscope className="h-5 w-5" />}
-            title="Odontograma"
-            subtitle="Cómo se representa este servicio en el mapa dental."
+            title={t("services.form.odontogramTitle")}
+            subtitle={t("services.form.odontogramDescription")}
           />
 
           <FormField
@@ -332,10 +353,10 @@ export function ServiceForm({
               <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-hairline bg-hover/40 px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-ink">
-                    Visible en el odontograma
+                    {t("services.form.visibleInOdontogram")}
                   </p>
                   <p className="text-xs text-subtle">
-                    Permite registrar este servicio sobre los dientes.
+                    {t("services.form.visibleInOdontogramDescription")}
                   </p>
                 </div>
                 <Switch
@@ -354,14 +375,14 @@ export function ServiceForm({
                 name="odontogramSymbolMode"
                 render={({ field }) => (
                   <FormItem className="max-w-xs">
-                    <FormLabel>Modo de símbolo</FormLabel>
+                    <FormLabel>{t("services.form.symbolMode")}</FormLabel>
                     <FormControl>
                       <Select
                         value={field.value}
                         onChange={field.onChange}
                         onBlur={field.onBlur}
-                        options={SYMBOL_MODE_OPTIONS}
-                        placeholder="Seleccione modo"
+                        options={symbolModeOptions}
+                        placeholder={t("services.form.symbolModePlaceholder")}
                         disabled={loading}
                       />
                     </FormControl>
@@ -376,9 +397,7 @@ export function ServiceForm({
                   <div className="flex items-start gap-3">
                     <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
                     <p className="text-sm text-subtle">
-                      El símbolo se asignará{" "}
-                      <span className="font-medium text-ink">automáticamente</span>{" "}
-                      según la categoría del servicio. No necesitas configurar nada.
+                      {t("services.form.autoSymbolDescription")}
                     </p>
                   </div>
                 )}
@@ -391,11 +410,11 @@ export function ServiceForm({
                       render={({ field }) => (
                         <FormItem className="w-full sm:max-w-xs">
                           <FormLabel>
-                            Texto del símbolo <Req />
+                            {t("services.form.symbolText")} <Req />
                           </FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Ej: LD"
+                              placeholder={t("services.form.symbolTextPlaceholder")}
                               maxLength={5}
                               disabled={loading}
                               {...field}
@@ -403,13 +422,18 @@ export function ServiceForm({
                             />
                           </FormControl>
                           <p className="text-xs text-subtle">
-                            1–5 caracteres que se mostrarán sobre el diente.
+                            {t("services.form.symbolTextHint")}
                           </p>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <SymbolPreview mode="TEXT" text={symbolText} />
+                    <SymbolPreview
+                      mode="TEXT"
+                      text={symbolText}
+                      previewLabel={t("services.form.symbolPreview")}
+                      previewAlt={t("services.form.symbolPreviewAlt")}
+                    />
                   </div>
                 )}
 
@@ -424,7 +448,7 @@ export function ServiceForm({
                         return (
                           <FormItem className="w-full sm:max-w-xs">
                             <FormLabel>
-                              Imagen del símbolo <Req />
+                              {t("services.form.symbolImage")} <Req />
                             </FormLabel>
                             <AvatarField
                               value={current}
@@ -445,21 +469,26 @@ export function ServiceForm({
                                 "image/png",
                                 "image/svg+xml",
                               ]}
-                              label="Subir símbolo"
-                              changeLabel="Cambiar símbolo"
-                              alt="Símbolo del servicio"
+                              label={t("services.form.uploadSymbol")}
+                              changeLabel={t("services.form.changeSymbol")}
+                              alt={t("services.form.symbolAlt")}
                               disabled={loading}
                               className="items-start"
                             />
                             <p className="text-xs text-subtle">
-                              PNG, JPG o SVG · máx 2 MB.
+                              {t("services.form.symbolImageHint")}
                             </p>
                             <FormMessage />
                           </FormItem>
                         );
                       }}
                     />
-                    <SymbolPreview mode="ASSET" image={symbolImageValue} />
+                    <SymbolPreview
+                      mode="ASSET"
+                      image={symbolImageValue}
+                      previewLabel={t("services.form.symbolPreview")}
+                      previewAlt={t("services.form.symbolPreviewAlt")}
+                    />
                   </div>
                 )}
               </div>
@@ -471,7 +500,12 @@ export function ServiceForm({
         <FormActionBar
           isDirty={isEdit ? isDirty : undefined}
           onSecondary={handleCancel}
-          submitLabel={isEdit ? "Guardar cambios" : "Guardar servicio"}
+          secondaryLabel={t("services.actions.cancel")}
+          submitLabel={
+            isEdit
+              ? t("services.actions.saveChanges")
+              : t("services.actions.save")
+          }
           loading={loading}
         />
       </form>

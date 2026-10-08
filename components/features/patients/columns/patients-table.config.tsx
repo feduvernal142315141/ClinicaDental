@@ -19,6 +19,24 @@ interface GetPatientsColumnsParams {
   onToggleStatus: (patient: Patient) => void;
   /** When false, the edit action button is hidden */
   canEdit?: boolean;
+  labels: {
+    patient: string;
+    age: string;
+    contact: string;
+    address: string;
+    status: string;
+    actions: string;
+    active: string;
+    inactive: string;
+    years: string;
+    months: string;
+    ageJoiner: string;
+    viewHistory: string;
+    editPatient: string;
+    moreActions: string;
+    deactivate: string;
+    activate: string;
+  };
 }
 
 /** Derive initials from a full name */
@@ -43,11 +61,12 @@ export function getPatientsColumns({
   onDelete,
   onToggleStatus,
   canEdit = true,
+  labels,
 }: GetPatientsColumnsParams): DataTableColumn<Patient>[] {
   return [
     {
       key: "name",
-      title: "Paciente",
+      title: labels.patient,
       dataIndex: "name",
       sorter: true,
       render: (_value: unknown, record) => (
@@ -72,21 +91,21 @@ export function getPatientsColumns({
     },
     {
       key: "age",
-      title: "Edad",
+      title: labels.age,
       dataIndex: "dateOfBirth",
       render: (value: unknown) => {
         if (!value) return <span className="text-sm text-ink">-</span>;
         const age = calculateAge(value as string);
         return (
           <span className="text-sm text-ink">
-            {age.years} años y {age.months} meses
+            {age.years} {labels.years} {labels.ageJoiner} {age.months} {labels.months}
           </span>
         );
       },
     },
     {
       key: "contact",
-      title: "Contacto",
+      title: labels.contact,
       render: (_value: unknown, record) => (
         <div>
           <div className="text-[13px] font-medium text-ink">
@@ -109,7 +128,7 @@ export function getPatientsColumns({
     },
     {
       key: "address",
-      title: "Dirección",
+      title: labels.address,
       dataIndex: "address",
       render: (value: unknown) => (
         <span className="block max-w-[200px] truncate text-[13px] text-subtle">
@@ -119,13 +138,19 @@ export function getPatientsColumns({
     },
     {
       key: "active",
-      title: "Estado",
+      title: labels.status,
       dataIndex: "active",
-      render: (value: unknown) => <ActiveBadge active={Boolean(value)} />,
+      render: (value: unknown) => (
+        <ActiveBadge
+          active={Boolean(value)}
+          activeLabel={labels.active}
+          inactiveLabel={labels.inactive}
+        />
+      ),
     },
     {
       key: "actions",
-      title: "Acciones",
+      title: labels.actions,
       align: "center",
       fixed: "right",
       width: 120,
@@ -134,8 +159,8 @@ export function getPatientsColumns({
           <button
             type="button"
             onClick={() => onView(record.id)}
-            aria-label={`Ver historial de ${record.name}`}
-            title="Ver historial"
+            aria-label={`${labels.viewHistory} ${record.name}`}
+            title={labels.viewHistory}
             className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-brand"
           >
             <Eye className="h-4 w-4" />
@@ -145,8 +170,8 @@ export function getPatientsColumns({
             <button
               type="button"
               onClick={() => onEdit(record.id)}
-              aria-label={`Editar paciente ${record.name}`}
-              title="Editar paciente"
+              aria-label={`${labels.editPatient} ${record.name}`}
+              title={labels.editPatient}
               className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink"
             >
               <Pencil className="h-4 w-4" />
@@ -158,8 +183,8 @@ export function getPatientsColumns({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  aria-label={`Más acciones para ${record.name}`}
-                  title="Más acciones"
+                  aria-label={`${labels.moreActions} ${record.name}`}
+                  title={labels.moreActions}
                   className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink"
                 >
                   <MoreHorizontal className="h-4 w-4" />
@@ -172,12 +197,12 @@ export function getPatientsColumns({
                     onClick={() => onDelete(record)}
                   >
                     <Ban className="h-4 w-4" />
-                    Desactivar
+                    {labels.deactivate}
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem onClick={() => onToggleStatus(record)}>
                     <CheckCircle2 className="h-4 w-4" />
-                    Activar
+                    {labels.activate}
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

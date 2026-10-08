@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 
 import { servicesService } from "@/lib/services/services";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import type {
   ServiceListItem,
   CreateServiceRequest,
@@ -21,6 +22,7 @@ function errMsg(error: unknown, fallback: string): string {
  * Hook for managing clinic services CRUD operations
  */
 export function useServices() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [services, setServices] = useState<ServiceListItem[]>([]);
   const [pagination, setPagination] = useState({
@@ -50,16 +52,15 @@ export function useServices() {
 
         return response;
       } catch (error: unknown) {
-        notify.error(errMsg(error, "Error al cargar servicios"), {
-          description:
-            "No pudimos obtener el listado de servicios. Revisa tu conexión e inténtalo de nuevo; si continúa, contacta a soporte.",
+        notify.error(errMsg(error, t("services.notify.loadListError")), {
+          description: t("services.notify.loadListDescription"),
         });
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [t],
   );
 
   /**
@@ -72,16 +73,15 @@ export function useServices() {
         const service = await servicesService.getServiceById(id);
         return service;
       } catch (error: unknown) {
-        notify.error(errMsg(error, "Error al cargar servicio"), {
-          description:
-            "No pudimos cargar los datos de este servicio. Vuelve a intentarlo en unos segundos; si persiste, contacta a soporte.",
+        notify.error(errMsg(error, t("services.notify.loadOneError")), {
+          description: t("services.notify.loadOneDescription"),
         });
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [t],
   );
 
   /**
@@ -93,25 +93,23 @@ export function useServices() {
       try {
         const success = await servicesService.createService(data);
         if (success) {
-          notify.success("Servicio creado", {
-            description:
-              "El servicio ya está disponible en el listado y puedes asignarlo a las citas.",
+          notify.success(t("services.notify.createSuccess"), {
+            description: t("services.notify.createSuccessDescription"),
           });
           // No refrescamos aquí: el form navega de vuelta a la lista, que
           // re-monta y refetch-ea (evita un request desperdiciado).
         }
         return success;
       } catch (error: unknown) {
-        notify.error(errMsg(error, "Error al crear servicio"), {
-          description:
-            "No se pudo registrar el servicio. Verifica los datos y tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        notify.error(errMsg(error, t("services.notify.createError")), {
+          description: t("services.notify.createErrorDescription"),
         });
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [t],
   );
 
   /**
@@ -123,24 +121,22 @@ export function useServices() {
       try {
         const success = await servicesService.updateService(id, data);
         if (success) {
-          notify.success("Servicio actualizado", {
-            description:
-              "Los cambios se guardaron y ya se reflejan en el listado de servicios.",
+          notify.success(t("services.notify.updateSuccess"), {
+            description: t("services.notify.updateSuccessDescription"),
           });
           // El form navega de vuelta a la lista (que refetch-ea al montar).
         }
         return success;
       } catch (error: unknown) {
-        notify.error(errMsg(error, "Error al actualizar servicio"), {
-          description:
-            "No se pudieron guardar los cambios. Revisa los datos y tu conexión e inténtalo de nuevo; si persiste, contacta a soporte.",
+        notify.error(errMsg(error, t("services.notify.updateError")), {
+          description: t("services.notify.updateErrorDescription"),
         });
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [t],
   );
 
   /**
@@ -153,11 +149,13 @@ export function useServices() {
         const success = await servicesService.toggleServiceStatus(id);
         if (success) {
           notify.success(
-            currentlyActive ? "Servicio inactivado" : "Servicio activado",
+            currentlyActive
+              ? t("services.notify.deactivateSuccess")
+              : t("services.notify.activateSuccess"),
             {
               description: currentlyActive
-                ? "El servicio queda oculto para nuevas citas; puedes reactivarlo cuando lo necesites."
-                : "El servicio vuelve a estar disponible para asignarlo a las citas.",
+                ? t("services.notify.deactivateSuccessDescription")
+                : t("services.notify.activateSuccessDescription"),
             },
           );
           // El refetch lo dispara la lista CON sus filtros/orden/página activos
@@ -165,16 +163,15 @@ export function useServices() {
         }
         return success;
       } catch (error: unknown) {
-        notify.error(errMsg(error, "Error al cambiar estado del servicio"), {
-          description:
-            "No se pudo actualizar el estado del servicio. Inténtalo de nuevo en unos segundos; si persiste, contacta a soporte.",
+        notify.error(errMsg(error, t("services.notify.statusError")), {
+          description: t("services.notify.statusErrorDescription"),
         });
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [t],
   );
 
   /**
@@ -203,11 +200,13 @@ export function useServices() {
       try {
         await servicesService.setOdontogramVisibility(id, next);
         notify.success(
-          next ? "Servicio visible en odontograma" : "Servicio general",
+          next
+            ? t("services.notify.odontogramVisibleSuccess")
+            : t("services.notify.generalSuccess"),
           {
             description: next
-              ? "Se planificará diente a diente desde el odontograma del paciente."
-              : "Se planificará a nivel de paciente, sin asignarlo a una pieza dental.",
+              ? t("services.notify.odontogramVisibleDescription")
+              : t("services.notify.generalDescription"),
           },
         );
         return true;
@@ -216,16 +215,15 @@ export function useServices() {
         // volver a `!next` (no hace falta capturar el valor previo).
         applyLocally(!next);
         notify.error(
-          errMsg(error, "No se pudo cambiar la visibilidad en el odontograma"),
+          errMsg(error, t("services.notify.odontogramVisibilityError")),
           {
-            description:
-              "El servicio se quedó como estaba. Inténtalo de nuevo en unos segundos; si persiste, contacta a soporte.",
+            description: t("services.notify.odontogramVisibilityErrorDescription"),
           },
         );
         return false;
       }
     },
-    [],
+    [t],
   );
 
   return {

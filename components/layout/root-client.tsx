@@ -4,6 +4,7 @@ import { Theme } from "@radix-ui/themes";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/lib/contexts/auth-context";
 import { AlertProvider } from "@/lib/contexts/alert-context";
+import { I18nProvider } from "@/lib/contexts/i18n-context";
 import { ClinicBrandingProvider } from "@/lib/contexts/clinic-branding-context";
 import { ToothNotationProvider } from "@/lib/contexts/tooth-notation-context";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
@@ -19,6 +20,9 @@ import { CommandPalette } from "@/components/ui/navigation/command-palette";
 import { GlobalErrorListeners } from "@/components/layout/global-error-listeners";
 import { PointerEventsGuard } from "@/components/layout/pointer-events-guard";
 import { FeedbackFAB } from "@/components/features/feedback/FeedbackFAB";
+import { QueryProvider } from "@/components/layout/query-provider";
+import { FinanceModuleBridge } from "@/components/features/billing/module/FinanceModuleBridge";
+import { LeadModuleBridge } from "@/components/features/leads/module/LeadModuleBridge";
 
 interface RootClientProps {
   children: React.ReactNode;
@@ -39,29 +43,35 @@ export function RootClient({ children }: RootClientProps) {
           <Theme>
             <Suspense fallback={null}>
               <InterceptorProvider>
-                {/* Marca de la clínica: fuera de AuthProvider a propósito, el
-                    endpoint es público y el login (sin sesión) también la
-                    consume (auth-shell, login-form). */}
-                <ClinicBrandingProvider>
-                  {/* Nomenclatura dental: también ENVUELVE a AuthProvider,
-                      que la refresca al completar el login y la limpia en el
-                      logout (un proveedor debe ser ancestro de quien lo usa).
-                      Su fetch sí exige sesión: sin token no pide nada. */}
-                  <ToothNotationProvider>
-                    <AuthProvider>
-                      <AlertProvider>
-                        <GlobalErrorListeners />
-                        <PointerEventsGuard />
-                        <InterceptorsInitializer />
-                        <GlobalLoadingBar />
-                        <GlobalAlertDialog />
-                        <CommandPalette />
-                        <AppChrome>{children}</AppChrome>
-                        <FeedbackFAB />
-                      </AlertProvider>
-                    </AuthProvider>
-                  </ToothNotationProvider>
-                </ClinicBrandingProvider>
+                <I18nProvider>
+                  {/* Marca de la clínica: fuera de AuthProvider a propósito, el
+                      endpoint es público y el login (sin sesión) también la
+                      consume (auth-shell, login-form). */}
+                  <ClinicBrandingProvider>
+                    {/* Nomenclatura dental: también ENVUELVE a AuthProvider,
+                        que la refresca al completar el login y la limpia en el
+                        logout (un proveedor debe ser ancestro de quien lo usa).
+                        Su fetch sí exige sesión: sin token no pide nada. */}
+                    <ToothNotationProvider>
+                      <AuthProvider>
+                        <QueryProvider>
+                        <AlertProvider>
+                          <FinanceModuleBridge />
+                          <LeadModuleBridge />
+                          <GlobalErrorListeners />
+                          <PointerEventsGuard />
+                          <InterceptorsInitializer />
+                          <GlobalLoadingBar />
+                          <GlobalAlertDialog />
+                          <CommandPalette />
+                          <AppChrome>{children}</AppChrome>
+                          <FeedbackFAB />
+                        </AlertProvider>
+                        </QueryProvider>
+                      </AuthProvider>
+                    </ToothNotationProvider>
+                  </ClinicBrandingProvider>
+                </I18nProvider>
               </InterceptorProvider>
             </Suspense>
             <Analytics />

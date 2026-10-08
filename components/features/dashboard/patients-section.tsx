@@ -28,6 +28,7 @@ import {
   formatClinicCurrency,
   formatClinicCurrencyShort,
 } from "@/lib/utils/clinic-regional-format";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 type DemandSource = "consolidated" | "appointments" | "plans" | "performed";
 
@@ -37,6 +38,7 @@ interface PatientsSectionProps {
 }
 
 export function PatientsSection({ data, currency }: PatientsSectionProps) {
+  const { t } = useI18n();
   const { patientSignals, serviceDemand } = data;
   const c = useChartPalette();
   const [topSource, setTopSource] = useState<DemandSource>("consolidated");
@@ -52,11 +54,22 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
   const tooltipLabelStyle = { color: c.tooltipText };
   const tooltipItemStyle = { color: c.tooltipText };
   const axisTick = { fill: c.axis };
+  const chartLabels = {
+    appointments: t("dashboard.chart.appointments"),
+    plans: t("dashboard.chart.plans"),
+    performed: t("dashboard.chart.performed"),
+    estimated: t("dashboard.chart.estimated"),
+    uncollectedEstimate: t("dashboard.chart.uncollectedEstimate"),
+  };
 
   const newVsRecurringData = [
-    { name: "Nuevos", value: patientSignals.newPatients, color: c.brand },
     {
-      name: "Recurrentes",
+      name: t("dashboard.kpi.newPatients"),
+      value: patientSignals.newPatients,
+      color: c.brand,
+    },
+    {
+      name: t("dashboard.kpi.recurring"),
       value: patientSignals.recurringPatients,
       color: c.success,
     },
@@ -79,22 +92,22 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
   };
 
   const topDemandData = resolveSource(topSource).map((s) => ({
-    name: s.serviceName || "Sin nombre",
-    Citas: s.appointmentCount,
-    Estimado: s.estimatedRevenue,
+    name: s.serviceName || t("dashboard.patients.unnamed"),
+    [chartLabels.appointments]: s.appointmentCount,
+    [chartLabels.estimated]: s.estimatedRevenue,
   }));
 
   const bottomDemandData = resolveSource(bottomSource).map((s) => ({
-    name: s.serviceName || "Sin nombre",
-    Citas: s.appointmentCount,
-    Estimado: s.estimatedRevenue,
+    name: s.serviceName || t("dashboard.patients.unnamed"),
+    [chartLabels.appointments]: s.appointmentCount,
+    [chartLabels.estimated]: s.estimatedRevenue,
   }));
 
   const categoryData = (serviceDemand.categoryDistribution ?? []).map((c) => ({
     name: c.category,
-    Citas: c.appointmentCount,
-    Planes: c.planCount,
-    Realizados: c.performedCount,
+    [chartLabels.appointments]: c.appointmentCount,
+    [chartLabels.plans]: c.planCount,
+    [chartLabels.performed]: c.performedCount,
   }));
 
   const CATEGORY_COLORS = c.series.slice(0, 3);
@@ -105,10 +118,10 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
   };
 
   const sourceTabs: { key: DemandSource; label: string }[] = [
-    { key: "consolidated", label: "Consolidado" },
-    { key: "appointments", label: "Citas" },
-    { key: "plans", label: "Planes" },
-    { key: "performed", label: "Realizados" },
+    { key: "consolidated", label: t("dashboard.patients.source.consolidated") },
+    { key: "appointments", label: t("dashboard.patients.source.appointments") },
+    { key: "plans", label: t("dashboard.patients.source.plans") },
+    { key: "performed", label: t("dashboard.patients.source.performed") },
   ];
 
   return (
@@ -116,14 +129,14 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
       <Header
         level={2}
         size="lg"
-        title="Análisis de Pacientes & Servicios"
-        description="Segmentación y demanda de servicios"
+        title={t("dashboard.patients.title")}
+        description={t("dashboard.patients.description")}
       />
 
       {/* Patient Overview */}
       <KpiGrid cols={{ default: 1, md: 3 }} gap={6}>
         <KpiCard
-          title="Total Pacientes Atendidos"
+          title={t("dashboard.patients.totalAttended")}
           value={patientSignals.uniquePatientsAttended}
           icon={Users}
           iconColor="text-blue-600"
@@ -131,7 +144,7 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
 
         <KpiCard
           variant="badges"
-          title="Nuevos"
+          title={t("dashboard.kpi.newPatients")}
           value={patientSignals.newPatients}
           icon={UserPlus}
           iconColor="text-green-600"
@@ -151,7 +164,7 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
 
         <KpiCard
           variant="badges"
-          title="Recurrentes"
+          title={t("dashboard.kpi.recurring")}
           value={patientSignals.recurringPatients}
           icon={Users}
           iconColor="text-purple-600"
@@ -174,8 +187,8 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* New vs Recurring */}
         <DataCard
-          title="Nuevos vs Recurrentes"
-          description="Distribución de tipos de pacientes"
+          title={t("dashboard.patients.newVsRecurring")}
+          description={t("dashboard.patients.typeDistribution")}
         >
           {totalPatients > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
@@ -202,7 +215,7 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
             </ResponsiveContainer>
           ) : (
             <p className="py-12 text-center text-sm text-muted-foreground">
-              No hay pacientes atendidos en este periodo.
+              {t("dashboard.patients.noAttended")}
             </p>
           )}
           <div className="flex justify-center gap-4 mt-4">
@@ -222,8 +235,8 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
 
         {/* Category distribution */}
         <DataCard
-          title="Distribución por Categoría"
-          description="Citas · Planes · Realizados del odontograma"
+          title={t("dashboard.patients.categoryDistribution")}
+          description={t("dashboard.patients.categoryDescription")}
         >
           {categoryData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
@@ -243,7 +256,11 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                 />
                 <Legend />
                 {CATEGORY_COLORS.map((color, idx) => {
-                  const keys = ["Citas", "Planes", "Realizados"] as const;
+                  const keys = [
+                    chartLabels.appointments,
+                    chartLabels.plans,
+                    chartLabels.performed,
+                  ] as const;
                   return (
                     <Bar
                       key={keys[idx]}
@@ -257,7 +274,7 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
             </ResponsiveContainer>
           ) : (
             <p className="py-12 text-center text-sm text-muted-foreground">
-              Sin datos de categorías para el periodo.
+              {t("dashboard.patients.noCategoryData")}
             </p>
           )}
         </DataCard>
@@ -267,8 +284,8 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Demand */}
         <DataCard
-          title="Mayor Demanda de Servicios"
-          description="Selecciona la fuente de datos"
+          title={t("dashboard.patients.topDemand")}
+          description={t("dashboard.patients.selectSource")}
           icon={Briefcase}
           iconColor="text-blue-600"
         >
@@ -325,6 +342,8 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                       value as number | string,
                       name as string,
                       currency,
+                      chartLabels.estimated,
+                      chartLabels.uncollectedEstimate,
                     )
                   }
                   contentStyle={tooltipContentStyle}
@@ -339,14 +358,14 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                 <Area
                   yAxisId="left"
                   type="monotone"
-                  dataKey="Citas"
+                  dataKey={chartLabels.appointments}
                   fill="url(#colorTopCitas)"
                   stroke={c.brand}
                   strokeWidth={0}
                 />
                 <Bar
                   yAxisId="left"
-                  dataKey="Citas"
+                  dataKey={chartLabels.appointments}
                   fill={c.brand}
                   barSize={28}
                   radius={[4, 4, 0, 0]}
@@ -354,7 +373,7 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                 <Line
                   yAxisId="right"
                   type="monotone"
-                  dataKey="Estimado"
+                  dataKey={chartLabels.estimated}
                   stroke={c.success}
                   strokeWidth={2}
                   dot={{ r: 4 }}
@@ -364,15 +383,15 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
             </ResponsiveContainer>
           ) : (
             <p className="py-12 text-center text-sm text-muted-foreground">
-              Sin datos para la fuente seleccionada.
+              {t("dashboard.patients.noSourceData")}
             </p>
           )}
         </DataCard>
 
         {/* Bottom demand */}
         <DataCard
-          title="Menor Demanda de Servicios"
-          description="Incluye servicios activos sin actividad"
+          title={t("dashboard.patients.bottomDemand")}
+          description={t("dashboard.patients.bottomDemandDescription")}
           icon={AlertTriangle}
           iconColor="text-amber-500"
         >
@@ -431,6 +450,8 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                       value as number | string,
                       name as string,
                       currency,
+                      chartLabels.estimated,
+                      chartLabels.uncollectedEstimate,
                     )
                   }
                   contentStyle={tooltipContentStyle}
@@ -445,14 +466,14 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                 <Area
                   yAxisId="left"
                   type="monotone"
-                  dataKey="Citas"
+                  dataKey={chartLabels.appointments}
                   fill="url(#colorBottomCitas)"
                   stroke={c.warning}
                   strokeWidth={0}
                 />
                 <Bar
                   yAxisId="left"
-                  dataKey="Citas"
+                  dataKey={chartLabels.appointments}
                   fill={c.warning}
                   barSize={28}
                   radius={[4, 4, 0, 0]}
@@ -460,7 +481,7 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                 <Line
                   yAxisId="right"
                   type="monotone"
-                  dataKey="Estimado"
+                  dataKey={chartLabels.estimated}
                   stroke={c.danger}
                   strokeWidth={2}
                   dot={{ r: 4 }}
@@ -470,7 +491,7 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
             </ResponsiveContainer>
           ) : (
             <p className="py-12 text-center text-sm text-muted-foreground">
-              Sin datos para la fuente seleccionada.
+              {t("dashboard.patients.noSourceData")}
             </p>
           )}
         </DataCard>
@@ -479,16 +500,16 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
       {/* Data quality */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DataCard
-          title="Calidad de Datos de Agenda"
-          description="Señales para mejorar estimaciones de demanda"
+          title={t("dashboard.patients.dataQuality")}
+          description={t("dashboard.patients.dataQualityDescription")}
           icon={AlertTriangle}
           iconColor="text-amber-500"
         >
           <AlertCardGrid
             alerts={[
               {
-                title: "Citas Sin Servicio",
-                description: "No entran al ranking de demanda",
+                title: t("dashboard.signals.noServiceAppointments"),
+                description: t("dashboard.patients.notInDemandRanking"),
                 badgeValue: serviceDemand.appointmentsWithoutService,
                 variant:
                   serviceDemand.appointmentsWithoutService > 0
@@ -497,8 +518,8 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                 badgeVariant: "secondary",
               },
               {
-                title: "Servicios Sin Demanda",
-                description: "Activos con cero citas",
+                title: t("dashboard.patients.servicesNoDemand"),
+                description: t("dashboard.patients.activeZeroAppointments"),
                 badgeValue: (serviceDemand.bottom ?? []).filter(
                   (item) => item.appointmentCount === 0,
                 ).length,
@@ -510,8 +531,8 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
                 badgeVariant: "secondary",
               },
               {
-                title: "Ticket Promedio",
-                description: "Estimado sobre citas completadas",
+                title: t("dashboard.patients.averageTicket"),
+                description: t("dashboard.patients.averageTicketDescription"),
                 badgeValue: formatClinicCurrency(data.kpis.averageTicket, currency),
                 variant: "info",
                 badgeVariant: "outline",
@@ -524,8 +545,8 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
 
         {/* Conversion summary */}
         <DataCard
-          title="Conversión Plan → Realizado"
-          description="Top 5 servicios con mayor planificación"
+          title={t("dashboard.patients.conversion")}
+          description={t("dashboard.patients.conversionDescription")}
         >
           {(serviceDemand.planConversion ?? []).length > 0 ? (
             <div className="space-y-3 mt-2">
@@ -552,7 +573,7 @@ export function PatientsSection({ data, currency }: PatientsSectionProps) {
             </div>
           ) : (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Sin datos de conversión para el periodo.
+              {t("dashboard.patients.noConversionData")}
             </p>
           )}
         </DataCard>
@@ -589,11 +610,17 @@ function SourceTabs({ tabs, active, onChange }: SourceTabsProps) {
   );
 }
 
-function formatDemandTooltip(value: number | string, name: string, currency: string) {
-  if (name === "Estimado") {
+function formatDemandTooltip(
+  value: number | string,
+  name: string,
+  currency: string,
+  estimatedLabel: string,
+  uncollectedEstimateLabel: string,
+) {
+  if (name === estimatedLabel) {
     return [
       formatClinicCurrency(Number(value), currency),
-      "Estimado no cobrado",
+      uncollectedEstimateLabel,
     ];
   }
   return [value, name];

@@ -30,6 +30,7 @@ import type {
 } from "@/lib/odontogram/application/dictation";
 import { OdontogramDictationControl } from "./odontogram-dictation-control";
 import { OdontogramDictationProvider } from "./odontogram-dictation-session";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface OdontogramModuleProps {
   initialTab?:
@@ -57,6 +58,7 @@ function OdontogramModuleContent({
   showHeader = true,
   dictationAdapter,
 }: OdontogramModuleProps) {
+  const { t } = useI18n();
   const {
     teeth,
     isModalOpen,
@@ -130,11 +132,10 @@ function OdontogramModuleContent({
 
   const handleClearAll = () => {
     odontogramConfirm({
-      title: "¿Estás seguro?",
-      description:
-        "Esta acción eliminará todos los datos del odontograma, incluyendo diagnósticos, planes y eventos clínicos. Esta acción no se puede deshacer.",
-      okText: "Sí, limpiar todo",
-      cancelText: "Cancelar",
+      title: t("odontogram.confirm.clearTitle"),
+      description: t("odontogram.confirm.clearDescription"),
+      okText: t("odontogram.confirm.clearOk"),
+      cancelText: t("odontogram.confirm.cancel"),
       danger: true,
       onOk: handlers.handleClearAll,
     });
@@ -172,7 +173,7 @@ function OdontogramModuleContent({
                 // la tarjeta es su `createdAt` —el día del registro—, así que sin
                 // este distintivo la lista afirmaría que lo hicimos nosotros.
                 typeLabel={
-                  event.preexisting ? "Previo" : getEventTypeLabel(event.type)
+                  event.preexisting ? t("odontogram.type.previous") : getEventTypeLabel(event.type)
                 }
                 tagColor={
                   getEventTagColor(
@@ -193,7 +194,7 @@ function OdontogramModuleContent({
   const tabItems: OdontogramTabItem[] = [
     {
       key: "odontogram",
-      label: "Odontograma",
+      label: t("odontogram.tab.odontogram"),
       children: (
         <OdontogramGrid teeth={teeth} onToothClick={handlers.handleToothClick} />
       ),
@@ -202,38 +203,38 @@ function OdontogramModuleContent({
       key: "suggestions",
       label: (
         <OdontogramTabLabel
-          label="Sugerencias"
+          label={t("odontogram.tab.suggestions")}
           count={suggestionEvents.length}
         />
       ),
-      children: renderEventList(suggestionEvents, "No hay sugerencias activas"),
+      children: renderEventList(suggestionEvents, t("odontogram.empty.suggestions")),
     },
     {
       key: "diagnosis",
       label: (
         <OdontogramTabLabel
-          label="Diagnósticos"
+          label={t("odontogram.tab.diagnosis")}
           count={diagnosisEvents.length}
         />
       ),
       children: renderEventList(
         diagnosisEvents,
-        "No hay diagnósticos registrados",
+        t("odontogram.empty.diagnosis"),
       ),
     },
     {
       key: "plans",
-      label: <OdontogramTabLabel label="Planes" count={planEvents.length} />,
-      children: renderEventList(planEvents, "No hay planes registrados"),
+      label: <OdontogramTabLabel label={t("odontogram.tab.plans")} count={planEvents.length} />,
+      children: renderEventList(planEvents, t("odontogram.empty.plans")),
     },
     {
       key: "performed",
       label: (
-        <OdontogramTabLabel label="Realizados" count={performedEvents.length} />
+        <OdontogramTabLabel label={t("odontogram.tab.performed")} count={performedEvents.length} />
       ),
       children: renderEventList(
         performedEvents,
-        "No hay procedimientos realizados",
+        t("odontogram.empty.performed"),
       ),
     },
   ];
@@ -247,9 +248,9 @@ function OdontogramModuleContent({
         {showHeader && (
           <div className="flex items-center justify-between shrink-0">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Odontograma</h1>
+              <h1 className="text-3xl font-bold tracking-tight">{t("odontogram.tab.odontogram")}</h1>
               <p className="text-muted-foreground">
-                Sistema de gestión dental profesional
+                {t("odontogram.header.description")}
               </p>
             </div>
             {activeTab === "odontogram" && (
@@ -259,7 +260,7 @@ function OdontogramModuleContent({
                 disabled={readOnly}
                 onClick={handleClearAll}
               >
-                Limpiar Todo
+                {t("odontogram.clearAll")}
               </OdontogramButton>
             )}
           </div>

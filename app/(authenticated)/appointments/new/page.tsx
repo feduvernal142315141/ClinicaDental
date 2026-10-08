@@ -8,11 +8,13 @@ import { useAppointmentsPage } from "@/lib/hooks/appointments";
 import type { AppointmentFormPrefill } from "@/lib/hooks/appointments/use-appointment-form";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 export default function NewAppointmentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { can, isAdmin } = usePermission();
+  const { t } = useI18n();
   const { handleBackToList } = useAppointmentsPage({
     basePath: "/appointments",
   });
@@ -49,10 +51,10 @@ export default function NewAppointmentPage() {
   return (
     <>
       <PageHeader
-        title="Nueva Cita"
-        subtitle="Programe una nueva cita en el sistema"
+        title={t("appointments.page.newTitle")}
+        subtitle={t("appointments.page.newDescription")}
         actionButton={{
-          label: "Atrás",
+          label: t("patients.actions.back"),
           onClick: handleBackToList,
           variant: "back",
         }}

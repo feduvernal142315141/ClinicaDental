@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Input } from "@/components/ui/atomic/forms/input";
 import { Label } from "@/components/ui/atomic/forms/label";
-import { Switch } from "@/components/ui/atomic/forms/switch";
 import {
   Select,
   SelectContent,
@@ -25,58 +24,420 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/primitives/shadcn/tabs";
-import { Badge } from "@/components/ui/atomic/data-display/badge";
 import { Separator } from "@/components/ui/primitives/shadcn/separator";
-import { MessageSquare, Mail, Clock, Edit, Save } from "lucide-react";
+import {
+  MessageSquare,
+  Mail,
+  Clock,
+  Save,
+} from "lucide-react";
 import {
   type NotificationSettings,
-  type WhatsAppTemplate,
   getNotificationSettings,
   saveNotificationSettings,
 } from "@/lib/notifications";
 import TextArea from "@/components/ui/atomic/forms/textarea";
 import { notify } from "@/lib/utils/notify";
+import { reminderConfigService } from "@/lib/services/settings/reminder-config.service";
+import { clinicTemplateService } from "@/lib/services/template/clinic-template.service";
+import type {
+  ReminderConfigResponse,
+  ClinicTemplate,
+  CreateReminderConfigRequest,
+  UpdateReminderConfigRequest,
+} from "@/lib/entity/settings";
+
+import { useSyncMetaTemplates } from "@/lib/hooks/use-sync-meta-templates";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import { WhatsAppTemplatesPanel, RemindersPanel } from "./whatsapp-templates";
 
 export function NotificationsSettings() {
+  const { t } = useI18n();
+  // Estado para Email general (localStorage, compatible con anterior)
   const [settings, setSettings] = useState<NotificationSettings>(
     getNotificationSettings()
   );
-  const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
-  const [tempTemplate, setTempTemplate] = useState<WhatsAppTemplate | null>(
-    null
-  );
 
+  // Estado para templates y recordatorios desde backend
+  const [clinicTemplates, setClinicTemplates] = useState<ClinicTemplate[]>([]);
+  const [reminderConfigs, setReminderConfigs] = useState<
+    ReminderConfigResponse[]
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const { sync: syncMetaTemplates, isSyncing } = useSyncMetaTemplates(setClinicTemplates);
+  const [savingReminder, setSavingReminder] = useState(false);
+
+  // Estado para crear template Meta
+  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({
+    name: "",
+    body: "",
+    category: "MARKETING" as "UTILITY" | "MARKETING",
+  });
+  const [templateVariables, setTemplateVariables] = useState<Array<{ id: string; placeholder: string; sampleContent: string }>>([]);
+  const [placeholderError, setPlaceholderError] = useState("");
+
+  // Estado para crear/editar recordatorio
+  const [isAddingReminder, setIsAddingReminder] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<string | null>(null);
+  const [editReminderData, setEditReminderData] = useState({
+    minutes: "",
+    templateId: "",
+  });
+  const [newReminderMinutes, setNewReminderMinutes] = useState<string>("1440");
+  const [newReminderTemplate, setNewReminderTemplate] = useState<string>("");
+
+  // Cargar data del backend
   useEffect(() => {
-    setSettings(getNotificationSettings());
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [configs, templates] = await Promise.all([
+          reminderConfigService.getReminderConfigs(),
+          clinicTemplateService.getClinicTemplates(),
+        ]);
+        setReminderConfigs(configs);
+        setClinicTemplates(templates);
+      } catch (error) {
+        console.error("Error loading data:", error);
+        notify.error(t("settings.notifications.loadError"));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
-  const handleSave = () => {
+  // Guardar cambios en Email config
+  const handleSaveEmailConfig = () => {
     saveNotificationSettings(settings);
-    notify.success("Notificaciones guardadas", {
-      description:
-        "Las preferencias de notificaciones y plantillas quedaron guardadas y se aplicarán a los próximos mensajes.",
-    });
+    notify.success(t("settings.notifications.emailSaved"));
   };
 
-  const handleEditTemplate = (template: WhatsAppTemplate) => {
-    setEditingTemplate(template.id);
-    setTempTemplate({ ...template });
-  };
+  // Crear nuevo template Meta
+  const handleCreateTemplate = async () => {
+    if (!newTemplate.name.trim() || !newTemplate.body.trim()) {
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.templateRequired"),
+      });
+      return;
+    }
 
-  const handleSaveTemplate = () => {
-    if (tempTemplate && editingTemplate) {
-      const updatedTemplates = settings.whatsappTemplates.map((t) =>
-        t.id === editingTemplate ? tempTemplate : t
-      );
-      setSettings({ ...settings, whatsappTemplates: updatedTemplates });
-      setEditingTemplate(null);
-      setTempTemplate(null);
+    setSavingTemplate(true);
+    try {
+      const result = await clinicTemplateService.createClinicTemplate({
+        name: newTemplate.name,
+        body: newTemplate.body,
+        type: "APPOINTMENT_REMINDER",
+        category: newTemplate.category,
+        variables: templateVariables.map((v) => ({
+          id: v.id,
+          placeholder: v.placeholder,
+          sampleContent: v.sampleContent,
+          type: "text",
+        })),
+      });
+
+      if (result) {
+        // Recargar templates
+        const updated = await clinicTemplateService.getClinicTemplates();
+        setClinicTemplates(updated);
+        setIsCreatingTemplate(false);
+        setNewTemplate({ name: "", body: "", category: "MARKETING" });
+        setTemplateVariables([]);
+        setPlaceholderError("");
+        notify.success(t("settings.notifications.templateCreated"), {
+          description: t("settings.notifications.templateCreatedDescription"),
+        });
+      }
+    } catch (error) {
+      console.error("Error creating template:", error);
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.templateCreateFailed"),
+      });
+    } finally {
+      setSavingTemplate(false);
     }
   };
 
-  const handleCancelEdit = () => {
-    setEditingTemplate(null);
-    setTempTemplate(null);
+  // Crear template — interfaz para WhatsAppTemplatesPanel
+  const handleCreateTemplateFromPanel = async (data: {
+    name: string;
+    body: string;
+    category: "MARKETING" | "UTILITY";
+    variables: Array<{ id: string; placeholder: string; sampleContent: string }>;
+  }) => {
+    setSavingTemplate(true);
+    try {
+      const result = await clinicTemplateService.createClinicTemplate({
+        name: data.name,
+        body: data.body,
+        type: "APPOINTMENT_REMINDER",
+        category: data.category,
+        variables: data.variables.map((v) => ({
+          id: v.id,
+          placeholder: v.placeholder,
+          sampleContent: v.sampleContent,
+          type: "text",
+        })),
+      });
+      if (result) {
+        const updated = await clinicTemplateService.getClinicTemplates();
+        setClinicTemplates(updated);
+        notify.success(t("settings.notifications.templateCreated"), {
+          description: t("settings.notifications.templateCreatedDescription"),
+        });
+      }
+    } catch (error) {
+      console.error("Error creating template:", error);
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.templateCreateFailed"),
+      });
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  // Agregar nuevo recordatorio
+  const handleAddReminder = async () => {
+    if (!newReminderMinutes || !newReminderTemplate) {
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.reminderRequired"),
+      });
+      return;
+    }
+
+    setSavingReminder(true);
+    try {
+      const payload: CreateReminderConfigRequest = {
+        reminderMinutesBefore: parseInt(newReminderMinutes),
+        templateId: newReminderTemplate,
+      };
+
+      const result = await reminderConfigService.createReminderConfig(payload);
+      if (result) {
+        const updated = await reminderConfigService.getReminderConfigs();
+        setReminderConfigs(updated);
+        setIsAddingReminder(false);
+        setNewReminderMinutes("1440");
+        setNewReminderTemplate("");
+        notify.success(t("settings.notifications.reminderAdded"));
+      }
+    } catch (error) {
+      console.error("Error adding reminder:", error);
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.reminderAddFailed"),
+      });
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
+  // Editar recordatorio
+  const handleStartEditReminder = (reminder: ReminderConfigResponse) => {
+    setEditingReminder(reminder.id);
+    setEditReminderData({
+      minutes: reminder.reminderMinutesBefore.toString(),
+      templateId: reminder.templateId,
+    });
+  };
+
+  const handleSaveEditReminder = async () => {
+    if (!editingReminder || !editReminderData.minutes || !editReminderData.templateId) {
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.incompleteData"),
+      });
+      return;
+    }
+
+    setSavingReminder(true);
+    try {
+      const payload: UpdateReminderConfigRequest = {
+        reminderMinutesBefore: parseInt(editReminderData.minutes),
+        templateId: editReminderData.templateId,
+      };
+
+      const success = await reminderConfigService.updateReminderConfig(
+        editingReminder,
+        payload
+      );
+
+      if (success) {
+        const updated = await reminderConfigService.getReminderConfigs();
+        setReminderConfigs(updated);
+        setEditingReminder(null);
+        notify.success(t("settings.notifications.reminderUpdated"));
+      }
+    } catch (error) {
+      console.error("Error updating reminder:", error);
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.reminderUpdateFailed"),
+      });
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
+  const handleCancelEditReminder = () => {
+    setEditingReminder(null);
+    setEditReminderData({ minutes: "", templateId: "" });
+  };
+
+  // Actualizar estado de recordatorio (enabled/disabled)
+  const handleToggleReminder = async (
+    reminderId: string,
+    enabled: boolean
+  ) => {
+    setSavingReminder(true);
+    try {
+      const payload: UpdateReminderConfigRequest = { enabled };
+      const success = await reminderConfigService.updateReminderConfig(
+        reminderId,
+        payload
+      );
+      if (success) {
+        const updated = await reminderConfigService.getReminderConfigs();
+        setReminderConfigs(updated);
+      }
+    } catch (error) {
+      console.error("Error toggling reminder:", error);
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.reminderUpdateFailed"),
+      });
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
+  // Eliminar recordatorio
+  const handleDeleteReminder = async (reminderId: string) => {
+    if (!confirm(t("settings.notifications.deleteReminderConfirm"))) {
+      return;
+    }
+
+    setSavingReminder(true);
+    try {
+      const success = await reminderConfigService.deleteReminderConfig(
+        reminderId
+      );
+      if (success) {
+        const updated = await reminderConfigService.getReminderConfigs();
+        setReminderConfigs(updated);
+        notify.success(t("settings.notifications.reminderDeleted"));
+      }
+    } catch (error) {
+      console.error("Error deleting reminder:", error);
+      notify.error(t("settings.notifications.error"), {
+        description: t("settings.notifications.reminderDeleteFailed"),
+      });
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
+  // Helpers
+  const getTemplateName = (templateId: string): string => {
+    const template = clinicTemplates.find((t) => t.id === templateId);
+    return template?.name || templateId;
+  };
+
+  const getTemplateStatus = (
+    templateId: string
+  ): "PENDING" | "APPROVED" | "REJECTED" | undefined => {
+    const template = clinicTemplates.find((t) => t.id === templateId);
+    return template?.metaTemplateStatus;
+  };
+
+  const approvedTemplates = clinicTemplates.filter(
+    (t) => t.metaTemplateStatus === "APPROVED" && t.provider === "META"
+  );
+
+  // --- Variable handling for template creation ---
+  const handleBodyChange = (text: string) => {
+    setNewTemplate((prev) => ({ ...prev, body: text }));
+    // Extract {{N}} placeholders
+    const regex = /\{\{(\d+)}}/g;
+    const found = new Map<string, boolean>();
+    let m;
+    while ((m = regex.exec(text)) !== null) {
+      found.set(m[1], true);
+    }
+    // Check for stray braces
+    const cleaned = text.replace(/\{\{\d+}}/g, "");
+    if (cleaned.includes("{") || cleaned.includes("}")) {
+      setPlaceholderError("Llaves malformadas. Use el formato {{1}}, {{2}}, etc.");
+      return;
+    }
+    const ids = Array.from(found.keys()).map(Number).sort((a, b) => a - b);
+    for (let i = 0; i < ids.length; i++) {
+      if (ids[i] !== i + 1) {
+        setPlaceholderError(`Las variables deben ser consecutivas. Se esperaba {{${i + 1}}}.`);
+        return;
+      }
+    }
+    setPlaceholderError("");
+    setTemplateVariables((prev) =>
+      ids.map((id) => {
+        const existing = prev.find((v) => v.id === String(id));
+        return {
+          id: String(id),
+          placeholder: `{{${id}}}`,
+          sampleContent: existing?.sampleContent ?? "",
+        };
+      })
+    );
+  };
+
+  const addTemplateVariable = () => {
+    const nextId = templateVariables.length + 1;
+    setNewTemplate((prev) => ({
+      ...prev,
+      body: prev.body + `{{${nextId}}}`,
+    }));
+    setTemplateVariables((prev) => [
+      ...prev,
+      { id: String(nextId), placeholder: `{{${nextId}}}`, sampleContent: "" },
+    ]);
+  };
+
+  const previewBody = (text: string) => {
+    let result = text;
+    templateVariables.forEach((v) => {
+      if (v.sampleContent) {
+        result = result.replace(
+          new RegExp(`\\{\\{${v.id}\\}\\}`, "g"),
+          v.sampleContent
+        );
+      }
+    });
+    return result;
+  };
+
+  const formatMinutesToLabel = (minutes: number): string => {
+    if (minutes < 60) return `${minutes}m`;
+    if (minutes === 60) return "1h";
+    if (minutes === 1440) return "24h";
+    if (minutes === 120) return "2h";
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  };
+
+  const getStatusBadgeColor = (
+    status?: "PENDING" | "APPROVED" | "REJECTED"
+  ) => {
+    switch (status) {
+      case "APPROVED":
+        return "bg-green-100 text-green-800";
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-800";
+      case "REJECTED":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
   };
 
   return (
@@ -84,18 +445,18 @@ export function NotificationsSettings() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
-            Notificaciones y Comunicación
+            {t("settings.notifications.title")}
           </h2>
           <p className="text-muted-foreground">
-            Configura las notificaciones automáticas y plantillas de mensajes
+            {t("settings.notifications.description")}
           </p>
         </div>
         <Button
-          onClick={handleSave}
+          onClick={handleSaveEmailConfig}
           className="bg-medical-primary hover:bg-medical-primary/90"
         >
           <Save className="w-4 h-4 mr-2" />
-          Guardar Cambios
+          {t("settings.notifications.saveChanges")}
         </Button>
       </div>
 
@@ -103,114 +464,45 @@ export function NotificationsSettings() {
         <TabsList>
           <TabsTrigger value="whatsapp">
             <MessageSquare className="w-4 h-4 mr-2" />
-            WhatsApp
+            {t("settings.notifications.tabs.whatsapp")}
           </TabsTrigger>
           <TabsTrigger value="email">
             <Mail className="w-4 h-4 mr-2" />
-            Email
+            {t("settings.notifications.tabs.email")}
           </TabsTrigger>
           <TabsTrigger value="reminders">
             <Clock className="w-4 h-4 mr-2" />
-            Recordatorios
+            {t("settings.notifications.tabs.reminders")}
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="whatsapp" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Plantillas de WhatsApp</CardTitle>
-              <CardDescription>
-                Personaliza los mensajes que se envían automáticamente por
-                WhatsApp
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {settings.whatsappTemplates.map((template) => (
-                <div
-                  key={template.id}
-                  className="border rounded-lg p-4 space-y-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-semibold">{template.name}</h4>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {template.variables.map((variable) => (
-                          <Badge
-                            key={variable}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {`{{${variable}}}`}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditTemplate(template)}
-                      disabled={editingTemplate === template.id}
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Editar
-                    </Button>
-                  </div>
-
-                  {editingTemplate === template.id && tempTemplate ? (
-                    <div className="space-y-4 border-t pt-4">
-                      <div className="space-y-2">
-                        <Label htmlFor={`template-${template.id}`}>
-                          Contenido del Mensaje
-                        </Label>
-                        <TextArea
-                          id={`template-${template.id}`}
-                          value={tempTemplate.content}
-                          onChange={(e) =>
-                            setTempTemplate({
-                              ...tempTemplate,
-                              content: e.target.value,
-                            })
-                          }
-                          rows={4}
-                          className="resize-none"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={handleSaveTemplate}>
-                          Guardar
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleCancelEdit}
-                        >
-                          Cancelar
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-muted p-3 rounded text-sm">
-                      {template.content}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+        {/* TAB: WhatsApp Templates */}
+        <TabsContent value="whatsapp">
+          <WhatsAppTemplatesPanel
+            templates={clinicTemplates}
+            loading={loading}
+            onSync={syncMetaTemplates}
+            isSyncing={isSyncing}
+            onCreate={handleCreateTemplateFromPanel}
+            savingTemplate={savingTemplate}
+          />
         </TabsContent>
 
+        {/* TAB: Email */}
         <TabsContent value="email" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Configuración de Email</CardTitle>
+              <CardTitle>{t("settings.notifications.email.title")}</CardTitle>
               <CardDescription>
-                Configura el proveedor de email para envío de notificaciones
+                {t("settings.notifications.email.description")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email-provider">Proveedor</Label>
+                  <Label htmlFor="email-provider">
+                    {t("settings.notifications.email.provider")}
+                  </Label>
                   <Select
                     value={settings.emailConfig.provider}
                     onValueChange={(value: "smtp" | "sendgrid" | "resend") =>
@@ -227,7 +519,9 @@ export function NotificationsSettings() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="smtp">SMTP Personalizado</SelectItem>
+                      <SelectItem value="smtp">
+                        {t("settings.notifications.email.smtpCustom")}
+                      </SelectItem>
                       <SelectItem value="sendgrid">SendGrid</SelectItem>
                       <SelectItem value="resend">Resend</SelectItem>
                     </SelectContent>
@@ -239,7 +533,9 @@ export function NotificationsSettings() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="from-email">Email Remitente</Label>
+                  <Label htmlFor="from-email">
+                    {t("settings.notifications.email.fromEmail")}
+                  </Label>
                   <Input
                     id="from-email"
                     type="email"
@@ -256,7 +552,9 @@ export function NotificationsSettings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="from-name">Nombre Remitente</Label>
+                  <Label htmlFor="from-name">
+                    {t("settings.notifications.email.fromName")}
+                  </Label>
                   <Input
                     id="from-name"
                     value={settings.emailConfig.fromName}
@@ -275,10 +573,14 @@ export function NotificationsSettings() {
 
               {settings.emailConfig.provider === "smtp" && (
                 <div className="space-y-4 border-t pt-4">
-                  <h4 className="font-semibold">Configuración SMTP</h4>
+                  <h4 className="font-semibold">
+                    {t("settings.notifications.email.smtpConfig")}
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="smtp-host">Servidor SMTP</Label>
+                      <Label htmlFor="smtp-host">
+                        {t("settings.notifications.email.smtpServer")}
+                      </Label>
                       <Input
                         id="smtp-host"
                         value={settings.emailConfig.smtpHost || ""}
@@ -294,7 +596,9 @@ export function NotificationsSettings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="smtp-port">Puerto</Label>
+                      <Label htmlFor="smtp-port">
+                        {t("settings.notifications.email.port")}
+                      </Label>
                       <Input
                         id="smtp-port"
                         type="number"
@@ -311,7 +615,9 @@ export function NotificationsSettings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="smtp-user">Usuario</Label>
+                      <Label htmlFor="smtp-user">
+                        {t("settings.notifications.email.user")}
+                      </Label>
                       <Input
                         id="smtp-user"
                         value={settings.emailConfig.smtpUser || ""}
@@ -327,7 +633,9 @@ export function NotificationsSettings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="smtp-password">Contraseña</Label>
+                      <Label htmlFor="smtp-password">
+                        {t("settings.notifications.email.password")}
+                      </Label>
                       <Input
                         id="smtp-password"
                         type="password"
@@ -352,7 +660,9 @@ export function NotificationsSettings() {
                 <div className="space-y-4 border-t pt-4">
                   <h4 className="font-semibold">API Key</h4>
                   <div className="space-y-2">
-                    <Label htmlFor="api-key">Clave API</Label>
+                    <Label htmlFor="api-key">
+                      {t("settings.notifications.email.apiKey")}
+                    </Label>
                     <Input
                       id="api-key"
                       type="password"
@@ -374,196 +684,70 @@ export function NotificationsSettings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="reminders" className="space-y-4">
-          <div className="grid gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recordatorio 24 Horas Antes</CardTitle>
-                <CardDescription>
-                  Envía recordatorios automáticos 24 horas antes de la cita
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="reminder-24h"
-                    checked={settings.reminders.reminder24h.enabled}
-                    onCheckedChange={(checked) =>
-                      setSettings({
-                        ...settings,
-                        reminders: {
-                          ...settings.reminders,
-                          reminder24h: {
-                            ...settings.reminders.reminder24h,
-                            enabled: checked,
-                          },
-                        },
-                      })
-                    }
-                  />
-                  <Label htmlFor="reminder-24h">
-                    Activar recordatorio 24h antes
-                  </Label>
-                </div>
-
-                {settings.reminders.reminder24h.enabled && (
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                    <div className="space-y-2">
-                      <Label>Plantilla WhatsApp</Label>
-                      <Select
-                        value={settings.reminders.reminder24h.whatsappTemplate}
-                        onValueChange={(value) =>
-                          setSettings({
-                            ...settings,
-                            reminders: {
-                              ...settings.reminders,
-                              reminder24h: {
-                                ...settings.reminders.reminder24h,
-                                whatsappTemplate: value,
-                              },
-                            },
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {settings.whatsappTemplates.map((template) => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Plantilla Email</Label>
-                      <Select
-                        value={settings.reminders.reminder24h.emailTemplate}
-                        onValueChange={(value) =>
-                          setSettings({
-                            ...settings,
-                            reminders: {
-                              ...settings.reminders,
-                              reminder24h: {
-                                ...settings.reminders.reminder24h,
-                                emailTemplate: value,
-                              },
-                            },
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="reminder">Recordatorio</SelectItem>
-                          <SelectItem value="confirmation">
-                            Confirmación
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Recordatorio 2 Horas Antes</CardTitle>
-                <CardDescription>
-                  Envía recordatorios automáticos 2 horas antes de la cita
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="reminder-2h"
-                    checked={settings.reminders.reminder2h.enabled}
-                    onCheckedChange={(checked) =>
-                      setSettings({
-                        ...settings,
-                        reminders: {
-                          ...settings.reminders,
-                          reminder2h: {
-                            ...settings.reminders.reminder2h,
-                            enabled: checked,
-                          },
-                        },
-                      })
-                    }
-                  />
-                  <Label htmlFor="reminder-2h">
-                    Activar recordatorio 2h antes
-                  </Label>
-                </div>
-
-                {settings.reminders.reminder2h.enabled && (
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                    <div className="space-y-2">
-                      <Label>Plantilla WhatsApp</Label>
-                      <Select
-                        value={settings.reminders.reminder2h.whatsappTemplate}
-                        onValueChange={(value) =>
-                          setSettings({
-                            ...settings,
-                            reminders: {
-                              ...settings.reminders,
-                              reminder2h: {
-                                ...settings.reminders.reminder2h,
-                                whatsappTemplate: value,
-                              },
-                            },
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {settings.whatsappTemplates.map((template) => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Plantilla Email</Label>
-                      <Select
-                        value={settings.reminders.reminder2h.emailTemplate}
-                        onValueChange={(value) =>
-                          setSettings({
-                            ...settings,
-                            reminders: {
-                              ...settings.reminders,
-                              reminder2h: {
-                                ...settings.reminders.reminder2h,
-                                emailTemplate: value,
-                              },
-                            },
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="reminder">Recordatorio</SelectItem>
-                          <SelectItem value="confirmation">
-                            Confirmación
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+        {/* TAB: Recordatorios */}
+        <TabsContent value="reminders">
+          <RemindersPanel
+            reminders={reminderConfigs}
+            templates={clinicTemplates}
+            loading={loading}
+            saving={savingReminder}
+            onAdd={async (minutes, templateId) => {
+              setSavingReminder(true);
+              try {
+                const result = await reminderConfigService.createReminderConfig({ reminderMinutesBefore: minutes, templateId });
+                if (result) {
+                  const updated = await reminderConfigService.getReminderConfigs();
+                  setReminderConfigs(updated);
+                  notify.success(t("settings.notifications.reminderAdded"));
+                }
+              } catch {
+                notify.error(t("settings.notifications.error"), { description: t("settings.notifications.reminderAddFailed") });
+              } finally {
+                setSavingReminder(false);
+              }
+            }}
+            onUpdate={async (id, data) => {
+              setSavingReminder(true);
+              try {
+                const success = await reminderConfigService.updateReminderConfig(id, data);
+                if (success) {
+                  const updated = await reminderConfigService.getReminderConfigs();
+                  setReminderConfigs(updated);
+                  notify.success(t("settings.notifications.reminderUpdated"));
+                }
+              } catch {
+                notify.error(t("settings.notifications.error"), { description: t("settings.notifications.reminderUpdateFailed") });
+              } finally {
+                setSavingReminder(false);
+              }
+            }}
+            onToggle={async (id, enabled) => {
+              setSavingReminder(true);
+              try {
+                const success = await reminderConfigService.updateReminderConfig(id, { enabled });
+                if (success) {
+                  const updated = await reminderConfigService.getReminderConfigs();
+                  setReminderConfigs(updated);
+                }
+              } catch {
+                notify.error(t("settings.notifications.error"), { description: t("settings.notifications.reminderUpdateFailed") });
+              } finally {
+                setSavingReminder(false);
+              }
+            }}
+            onDelete={(id) => {
+              if (!confirm(t("settings.notifications.deleteReminderConfirm"))) return;
+              setSavingReminder(true);
+              reminderConfigService.deleteReminderConfig(id).then((success) => {
+                if (success) {
+                  reminderConfigService.getReminderConfigs().then(setReminderConfigs);
+                  notify.success(t("settings.notifications.reminderDeleted"));
+                }
+              }).catch(() => {
+                notify.error(t("settings.notifications.error"), { description: t("settings.notifications.reminderDeleteFailed") });
+              }).finally(() => setSavingReminder(false));
+            }}
+          />
         </TabsContent>
       </Tabs>
     </div>

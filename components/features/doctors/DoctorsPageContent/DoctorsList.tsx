@@ -9,6 +9,7 @@ import { useDoctors } from "@/lib/hooks/doctors";
 import { useDoctorsPage } from "@/lib/hooks/doctors/use-doctors-page";
 import { getDoctorsColumns } from "../columns/doctors-table.config";
 import { useUserTypes } from "@/lib/hooks/userTypes";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 /**
  * Convierte el `id` de tipo seleccionado en el filtro estructurado
@@ -40,6 +41,7 @@ interface DoctorsListProps {
 export function DoctorsList({
   basePath = "/settings/users",
 }: DoctorsListProps) {
+  const { t } = useI18n();
   const { handleViewDoctor, handleEditDoctor } = useDoctorsPage({ basePath });
 
   const { doctors, loading, pagination, fetchDoctors } = useDoctors();
@@ -58,7 +60,9 @@ export function DoctorsList({
    */
   const userTypeFilterOptions: SelectOption[] = useMemo(() => {
     const seen = new Set<string>();
-    const options: SelectOption[] = [{ value: "", label: "Todos los tipos" }];
+    const options: SelectOption[] = [
+      { value: "", label: t("doctors.list.allTypes") },
+    ];
 
     for (const t of userTypes) {
       if (seen.has(t.id)) continue;
@@ -70,11 +74,14 @@ export function DoctorsList({
       const assigned = doc.userType;
       if (!assigned || seen.has(assigned.id)) continue;
       seen.add(assigned.id);
-      options.push({ value: assigned.id, label: `${assigned.name} (archivado)` });
+      options.push({
+        value: assigned.id,
+        label: `${assigned.name} (${t("doctors.list.archived")})`,
+      });
     }
 
     return options;
-  }, [userTypes, doctors]);
+  }, [userTypes, doctors, t]);
 
   // Fase 2 (GET semántico): la búsqueda viaja como intención plana `q`
   // (el backend barre name). Se persiste `q`, el tipo de usuario y el
@@ -130,8 +137,25 @@ export function DoctorsList({
       getDoctorsColumns({
         onView: handleViewDoctor,
         onEdit: handleEditDoctor,
+        labels: {
+          user: t("doctors.table.user"),
+          license: t("doctors.table.license"),
+          phone: t("doctors.table.phone"),
+          role: t("doctors.table.role"),
+          type: t("doctors.table.type"),
+          status: t("doctors.table.status"),
+          createdAt: t("doctors.table.createdAt"),
+          actions: t("doctors.table.actions"),
+          view: t("doctors.actions.view"),
+          edit: t("doctors.actions.edit"),
+          more: t("doctors.actions.more"),
+          activate: t("doctors.actions.activate"),
+          deactivate: t("doctors.actions.deactivate"),
+          active: t("doctors.status.active"),
+          inactive: t("doctors.status.inactive"),
+        },
       }),
-    [handleViewDoctor, handleEditDoctor],
+    [handleViewDoctor, handleEditDoctor, t],
   );
 
   return (
@@ -142,14 +166,14 @@ export function DoctorsList({
             value={userType}
             onChange={handleUserTypeChange}
             options={userTypeFilterOptions}
-            placeholder="Filtrar por tipo"
-            aria-label="Filtrar usuarios por tipo"
+            placeholder={t("doctors.list.filterByType")}
+            aria-label={t("doctors.list.filterByTypeAria")}
           />
         </div>
         <TableSearch
           value={search}
           onChange={setSearch}
-          placeholder="Buscar usuario por nombre..."
+          placeholder={t("doctors.list.searchPlaceholder")}
           loading={loading}
         />
       </div>
@@ -162,7 +186,7 @@ export function DoctorsList({
         pageSize={pagination.pageSize}
         total={pagination.total}
         showSizeChanger={true}
-        emptyText="No se encontraron usuarios."
+        emptyText={t("doctors.list.empty")}
         onPageChange={(page, pageSize) => {
           fetchDoctors({
             page: page - 1,

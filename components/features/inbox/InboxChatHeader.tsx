@@ -1,0 +1,238 @@
+"use client";
+
+import * as React from "react";
+import {
+  ArrowLeft,
+  MoreVertical,
+  Hand,
+  RotateCcw,
+  CheckCircle2,
+  Bot,
+  PanelRight,
+} from "lucide-react";
+import { cn } from "@/lib/utils/utils";
+import { Button } from "@/components/ui/primitives/shadcn/button";
+import {
+  Avatar,
+  AvatarFallback,
+} from "@/components/ui/atomic/data-display/avatar";
+import { StatusBadge } from "@/components/ui/atomic/data-display/status-badge";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/primitives/shadcn/dropdown-menu";
+import type { InboxConversationDetail } from "@/lib/entity/inbox";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
+
+const STATUS_KEYS: Record<InboxConversationDetail["status"], TranslationKey> = {
+  OPEN: "inbox.status.OPEN",
+  NEEDS_HUMAN: "inbox.status.NEEDS_HUMAN",
+  RESOLVED: "inbox.status.RESOLVED",
+};
+
+const HANDLING_KEYS: Record<InboxConversationDetail["handlingMode"], TranslationKey> = {
+  DALIA: "inbox.handling.DALIA",
+  HUMAN: "inbox.handling.HUMAN",
+};
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+}
+
+function getStatusTone(
+  status: InboxConversationDetail["status"],
+): "warning" | "success" | "neutral" {
+  switch (status) {
+    case "NEEDS_HUMAN":
+      return "warning";
+    case "RESOLVED":
+      return "success";
+    default:
+      return "neutral";
+  }
+}
+
+function getHandlingTone(
+  mode: InboxConversationDetail["handlingMode"],
+): "info" | "neutral" {
+  return mode === "HUMAN" ? "info" : "neutral";
+}
+
+// ── Component ──────────────────────────────────────────────────────────────
+
+export interface InboxChatHeaderProps {
+  detail: InboxConversationDetail | null;
+  currentUserId: string | null;
+  onTakeover: () => void;
+  onRelease: () => void;
+  onResolve: () => void;
+  onReopen: () => void;
+  onBack?: () => void;
+  onShowDetails?: () => void;
+  canEdit?: boolean;
+  canCreate?: boolean;
+  canBlock?: boolean;
+  className?: string;
+}
+
+export function InboxChatHeader({
+  detail,
+  currentUserId,
+  onTakeover,
+  onRelease,
+  onResolve,
+  onReopen,
+  onBack,
+  onShowDetails,
+  className,
+}: InboxChatHeaderProps) {
+  const { t } = useI18n();
+  if (!detail) return null;
+
+  const {
+    patientName,
+    contactPhone,
+    status,
+    handlingMode,
+    assignedTo,
+  } = detail;
+
+  const displayName = patientName || contactPhone || t("inbox.contact.unregistered");
+  const initials = patientName
+    ? getInitials(patientName)
+    : contactPhone
+      ? contactPhone.slice(-2)
+      : "?";
+  const isMine = !!currentUserId && assignedTo === currentUserId;
+  const isHuman = handlingMode === "HUMAN";
+
+  return (
+    <div
+      className={cn(
+        "flex h-[60px] shrink-0 items-center gap-3 border-b border-hairline bg-surface px-4",
+        className,
+      )}
+    >
+      {/* Mobile back */}
+      {onBack && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onBack}
+          className="md:hidden"
+          aria-label={t("inbox.action.backToList")}
+        >
+          <ArrowLeft className="size-5" />
+        </Button>
+      )}
+
+      {/* Avatar */}
+      <Avatar className="size-9 shrink-0">
+        <AvatarFallback className="bg-brand/10 text-brand text-xs font-semibold">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+
+      {/* Contact info */}
+      <div
+        className="flex min-w-0 flex-1 cursor-pointer flex-col"
+        onClick={onShowDetails}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter") onShowDetails?.(); }}
+      >
+        <span className="truncate text-sm font-semibold text-ink">
+          {displayName}
+        </span>
+        <div className="flex items-center gap-1.5">
+          <StatusBadge
+            tone={getStatusTone(status)}
+            className="text-[10px] px-1.5 py-0"
+          >
+            {t(STATUS_KEYS[status])}
+          </StatusBadge>
+          <StatusBadge
+            tone={getHandlingTone(handlingMode)}
+            className="text-[10px] px-1.5 py-0"
+          >
+            {t(HANDLING_KEYS[handlingMode])}
+          </StatusBadge>
+        </div>
+      </div>
+
+      {/* Details toggle */}
+      {onShowDetails && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onShowDetails}
+          title={t("inbox.action.contactDetails")}
+          aria-label={t("inbox.action.contactDetails")}
+        >
+          <PanelRight className="size-4" />
+        </Button>
+      )}
+
+      {/* Action buttons */}
+      <div className="flex shrink-0 items-center gap-2">
+        {/* NEEDS_HUMAN or DALIA: show "Tomar conversación" */}
+        {(status === "NEEDS_HUMAN" || (!isHuman && status === "OPEN")) && (
+          <Button type="button" size="sm" onClick={onTakeover}>
+            <Hand className="size-4 mr-1" />
+            {t("inbox.action.takeover")}
+          </Button>
+        )}
+
+        {/* HUMAN + mine: dropdown with release & resolve */}
+        {isHuman && isMine && status === "OPEN" && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="icon" aria-label={t("inbox.action.more")}>
+                <MoreVertical className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onRelease}>
+                <Bot className="size-4" />
+                {t("inbox.action.releaseToDalia")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onResolve}>
+                <CheckCircle2 className="size-4" />
+                {t("inbox.action.resolve")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
+        {/* HUMAN + not mine */}
+        {isHuman && !isMine && status === "OPEN" && (
+          <span className="text-xs text-subtle">
+            {t("inbox.state.attendedByOther")}
+          </span>
+        )}
+
+        {/* RESOLVED: reopen */}
+        {status === "RESOLVED" && (
+          <Button type="button" variant="outline" size="sm" onClick={onReopen}>
+            <RotateCcw className="size-4 mr-1" />
+            {t("inbox.action.reopen")}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}

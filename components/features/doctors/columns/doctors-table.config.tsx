@@ -24,6 +24,23 @@ interface GetDoctorsColumnsParams {
   onEdit: (id: string) => void;
   onDeactivate?: (doctor: DoctorListItem) => void;
   onActivate?: (doctor: DoctorListItem) => void;
+  labels: {
+    user: string;
+    license: string;
+    phone: string;
+    role: string;
+    type: string;
+    status: string;
+    createdAt: string;
+    actions: string;
+    view: string;
+    edit: string;
+    more: string;
+    activate: string;
+    deactivate: string;
+    active: string;
+    inactive: string;
+  };
 }
 
 function getInitials(name: string): string {
@@ -40,11 +57,12 @@ export function getDoctorsColumns({
   onEdit,
   onDeactivate,
   onActivate,
+  labels,
 }: GetDoctorsColumnsParams): DataTableColumn<DoctorListItem>[] {
   return [
     {
       key: "name",
-      title: "Usuario",
+      title: labels.user,
       dataIndex: "name",
       sorter: true,
       render: (_, record) => (
@@ -63,7 +81,7 @@ export function getDoctorsColumns({
     },
     {
       key: "licenceNumber",
-      title: "Licencia",
+      title: labels.license,
       dataIndex: "licenceNumber",
       render: (value) => (
         <span className="font-mono text-xs text-subtle">
@@ -73,7 +91,7 @@ export function getDoctorsColumns({
     },
     {
       key: "phone",
-      title: "Teléfono",
+      title: labels.phone,
       dataIndex: "phone",
       render: (value) => (
         <span className="text-sm text-ink tabular-nums">
@@ -83,7 +101,7 @@ export function getDoctorsColumns({
     },
     {
       key: "role",
-      title: "Rol",
+      title: labels.role,
       dataIndex: ["role", "name"],
       render: (_, record) => (
         <span className="text-sm text-ink">{record.role?.name || "-"}</span>
@@ -91,7 +109,7 @@ export function getDoctorsColumns({
     },
     {
       key: "userType",
-      title: "Tipo",
+      title: labels.type,
       dataIndex: "userType",
       render: (_, record) => {
         const userType = record.userType;
@@ -107,13 +125,19 @@ export function getDoctorsColumns({
     },
     {
       key: "active",
-      title: "Estado",
+      title: labels.status,
       dataIndex: "active",
-      render: (value) => <ActiveBadge active={Boolean(value)} />,
+      render: (value) => (
+        <ActiveBadge
+          active={Boolean(value)}
+          activeLabel={labels.active}
+          inactiveLabel={labels.inactive}
+        />
+      ),
     },
     {
       key: "createAt",
-      title: "Fecha Creación",
+      title: labels.createdAt,
       dataIndex: "createAt",
       render: (value) => (
         <span className="text-sm text-subtle tabular-nums">
@@ -123,21 +147,21 @@ export function getDoctorsColumns({
     },
     {
       key: "actions",
-      title: "Acciones",
+      title: labels.actions,
       align: "center",
       width: 120,
       render: (_, record) => (
         <div className="flex items-center justify-center gap-1">
           <button
             onClick={() => onView(record.id)}
-            title="Ver usuario"
+            title={labels.view}
             className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-brand"
           >
             <Eye className="h-4 w-4" />
           </button>
           <button
             onClick={() => onEdit(record.id)}
-            title="Editar usuario"
+            title={labels.edit}
             className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink"
           >
             <Pencil className="h-4 w-4" />
@@ -145,7 +169,7 @@ export function getDoctorsColumns({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                title="Más acciones"
+                title={labels.more}
                 className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink"
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -158,12 +182,12 @@ export function getDoctorsColumns({
                   onClick={() => onDeactivate?.(record)}
                 >
                   <Ban className="h-4 w-4" />
-                  Desactivar
+                  {labels.deactivate}
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem onClick={() => onActivate?.(record)}>
                   <CheckCircle2 className="h-4 w-4" />
-                  Activar
+                  {labels.activate}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>

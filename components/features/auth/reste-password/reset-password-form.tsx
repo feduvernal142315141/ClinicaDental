@@ -1,21 +1,23 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, KeyRound, Save, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowLeft, KeyRound, Save, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/primitives/shadcn/button";
-import { notify } from "@/lib/utils/notify";
 import { useDoctorAuth } from "@/lib/hooks/doctors/useDoctorAuth";
 import { requiredText, password, confirmPasswordRefine } from "@/lib/validation/fields";
 import { AuthShell } from "../components/auth-shell";
 import { AuthCard } from "../components/auth-card";
 import { FloatingField } from "../components/floating-field";
 import { PasswordStrength } from "../components/password-strength";
+import { isPasswordValid } from "@/lib/validation/password-policy";
 
-// Compuesto desde lib/validation/fields (unifica política con change-password: 8-64 + mensajes por clase).
+// Compuesto desde lib/validation/fields; la política vive en lib/validation/password-policy
+// (las mismas cinco reglas que valida el backend).
 const schema = z.object({
   code: requiredText({ min: 1, label: "El código" }),
   password,
@@ -46,19 +48,24 @@ export function ResetPasswordForm() {
   } = form;
 
   const passwordValue = watch("password") ?? "";
+  const confirmValue = watch("confirmPassword") ?? "";
+  // El botón solo se habilita con las cinco reglas cumplidas y las dos contraseñas iguales.
+  const canSubmit = isPasswordValid(passwordValue) && passwordValue === confirmValue;
+
+  /** Error del backend: `message` tal cual; `expired` = 404 (enlace vencido o ya usado). */
+  const [submitError, setSubmitError] = useState<{ message: string; expired: boolean } | null>(null);
 
   const onSubmit = handleSubmit(async (values) => {
+    setSubmitError(null);
     try {
       await resetPassword({ code: values.code, password: values.password });
       router.push("/login");
     } catch (err) {
-      notify.error(
-        err instanceof Error ? err.message : "Error al restablecer contraseña",
-        {
-          description:
-            "No pudimos cambiar tu contraseña. Verifica que el código sea correcto y no haya caducado; vuelve a solicitarlo si es necesario.",
-        },
-      );
+      const status = (err as { status?: number } | null)?.status;
+      setSubmitError({
+        message: err instanceof Error && err.message ? err.message : "No se pudo guardar la contraseña",
+        expired: status === 404,
+      });
     }
   });
 
@@ -128,9 +135,31 @@ export function ResetPasswordForm() {
 
           <PasswordStrength password={passwordValue} />
 
+          {submitError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-300"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <div className="space-y-1">
+                <p>{submitError.message}</p>
+                {submitError.expired && (
+                  <p>
+                    El enlace venció (dura 15 minutos) o ya se usó.{" "}
+                    <Link href="/forgot-password" className="font-medium underline underline-offset-2">
+                      Pide uno nuevo en «Olvidé mi contraseña»
+                    </Link>
+                    .
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           <Button
             type="submit"
             loading={loading}
+            disabled={!canSubmit}
             className="auth-sheen relative h-12 w-full overflow-hidden bg-brand text-white hover:bg-brand-strong"
           >
             <Save className="mr-2 h-4 w-4" />

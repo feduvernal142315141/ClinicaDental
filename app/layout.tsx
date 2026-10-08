@@ -7,8 +7,9 @@ import "./globals.css";
 import { RootClient } from "@/components/layout/root-client";
 
 export const metadata: Metadata = {
-  title: "Sistema Médico Dental",
-  description: "Created by Kode Wave Solutions S.A",
+  title: "ClinicFlow360",
+  description: "Gestión de clínicas dentales: agenda, pacientes, odontograma e historia clínica.",
+  applicationName: "ClinicFlow360",
   generator: "v1.0.0",
 };
 

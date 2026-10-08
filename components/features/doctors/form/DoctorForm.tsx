@@ -49,12 +49,8 @@ import type { Doctor } from "@/lib/entity/doctors";
 import type { SelectOption } from "@/components/ui/controls/select";
 import type { ClinicScheduleDay } from "@/lib/entity/settings";
 import type { DoctorFormValues } from "@/lib/hooks/doctors/doctor-form.schema";
-
-const GENDER_OPTIONS = [
-  { value: "male", label: "Masculino" },
-  { value: "female", label: "Femenino" },
-  { value: "other", label: "Otro" },
-];
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 interface DoctorFormProps {
   doctorId?: string;
@@ -70,17 +66,6 @@ const Req = () => <span className="text-rose-500">*</span>;
 /** Horario de respaldo cuando la clínica no define horas válidas ese día. */
 const FALLBACK_START = "09:00";
 const FALLBACK_END = "18:00";
-
-/** Inicial de cada día para el resumen (convención ES: miércoles = X). */
-const DAY_SHORT: Record<string, string> = {
-  monday: "L",
-  tuesday: "M",
-  wednesday: "X",
-  thursday: "J",
-  friday: "V",
-  saturday: "S",
-  sunday: "D",
-};
 
 /**
  * Una fila de día del editor de horarios. El horario del doctor queda
@@ -110,6 +95,7 @@ function ScheduleDayRow({
   onToggle: (next: boolean) => void;
 }) {
   const { control } = form;
+  const { t } = useI18n();
 
   const enabledField = useController({
     control,
@@ -185,9 +171,9 @@ function ScheduleDayRow({
               y Descanso Intermedio, cada uno con labels flotantes. */}
           <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
             <TimeRangeField
-              heading="Horario de Consulta"
-              startLabel="Desde"
-              endLabel="Hasta"
+              heading={t("settings.schedule.consultationHours")}
+              startLabel={t("settings.schedule.from")}
+              endLabel={t("settings.schedule.to")}
               start={{
                 value: startField.field.value,
                 onChange: startField.field.onChange,
@@ -209,10 +195,10 @@ function ScheduleDayRow({
               disabled={disabled}
             />
             <TimeRangeField
-              heading="Descanso Intermedio"
+              heading={t("settings.schedule.intermediateBreak")}
               icon={<Coffee className="h-3.5 w-3.5 shrink-0" />}
-              startLabel="Inicio"
-              endLabel="Fin"
+              startLabel={t("settings.schedule.start")}
+              endLabel={t("settings.schedule.end")}
               start={{
                 value: breakStartField.field.value,
                 onChange: breakStartField.field.onChange,
@@ -248,6 +234,7 @@ export function DoctorForm({
   readOnly = false,
   showRoleStatusFields = true,
 }: DoctorFormProps) {
+  const { t } = useI18n();
   // Único punto de montaje de useClinicGeneralSettings en esta pantalla: se
   // inyecta en useDoctorForm (validación) y se reutiliza aquí para la UI
   // (contexto/límites por día) sin volver a disparar el fetch.
@@ -277,6 +264,10 @@ export function DoctorForm({
   const { errors, isDirty } = form.formState;
   const { roles, loading: rolesLoading, fetchRoles } = useRoles();
   const [tab, setTab] = useState("datos");
+  const dayLabel = (key: string) =>
+    t(`settings.schedule.days.${key}` as TranslationKey);
+  const dayShort = (key: string) =>
+    t(`settings.schedule.daysShort.${key}` as TranslationKey);
 
   useEffect(() => {
     fetchRoles({ page: 0, pageSize: 0 });
@@ -348,8 +339,8 @@ export function DoctorForm({
     const clinicClosedForDay = clinicSchedule?.[d.key]?.enabled === false;
     const chipDisabled = formDisabled || (clinicClosedForDay && !active);
     return {
-      short: DAY_SHORT[d.key],
-      label: d.label,
+      short: dayShort(d.key),
+      label: dayLabel(d.key),
       active,
       disabled: chipDisabled,
       onToggle: chipDisabled ? undefined : () => setDayEnabled(d.key, !active),
@@ -375,6 +366,14 @@ export function DoctorForm({
     (assignedUserType?.id === userTypeIdWatch ? assignedUserType : undefined);
   const specialtyRequired = !!selectedUserType?.attendsAppointments;
   const horariosError = Boolean(errors.schedule);
+  const genderOptions = useMemo(
+    () => [
+      { value: "male", label: t("doctors.gender.male") },
+      { value: "female", label: t("doctors.gender.female") },
+      { value: "other", label: t("doctors.gender.other") },
+    ],
+    [t],
+  );
 
   return (
     <Form {...form}>
@@ -386,13 +385,13 @@ export function DoctorForm({
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="datos" className="gap-1.5">
-              <User className="h-4 w-4" /> Datos del doctor
+              <User className="h-4 w-4" /> {t("doctors.tabs.data")}
               {datosError && (
                 <CircleAlert className="h-3.5 w-3.5 text-rose-500" />
               )}
             </TabsTrigger>
             <TabsTrigger value="horarios" className="gap-1.5">
-              <Clock className="h-4 w-4" /> Horarios de atención
+              <Clock className="h-4 w-4" /> {t("doctors.tabs.schedule")}
               {horariosError && (
                 <CircleAlert className="h-3.5 w-3.5 text-rose-500" />
               )}
@@ -413,6 +412,8 @@ export function DoctorForm({
                     value={field.value ?? ""}
                     onChange={field.onChange}
                     disabled={formDisabled}
+                    label={t("patients.form.uploadPhoto")}
+                    changeLabel={t("patients.form.changePhoto")}
                     uploader={(file) =>
                       imageUploadService.uploadImage(file, "doctors")
                     }
@@ -424,7 +425,7 @@ export function DoctorForm({
             <div className="space-y-6">
               <section className="bento space-y-5 p-6">
                 <h3 className="text-sm font-semibold text-ink">
-                  Información básica
+                  {t("doctors.section.basic")}
                 </h3>
                 <div className="grid gap-5 sm:grid-cols-2">
                   <FormField
@@ -433,11 +434,11 @@ export function DoctorForm({
                     render={({ field }) => (
                       <FormItem className="sm:col-span-2">
                         <FormLabel>
-                          Nombre <Req />
+                          {t("doctors.field.name")} <Req />
                         </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Nombre del doctor"
+                            placeholder={t("doctors.placeholder.name")}
                             disabled={formDisabled}
                             {...field}
                           />
@@ -472,7 +473,7 @@ export function DoctorForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Teléfono <Req />
+                          {t("doctors.field.phone")} <Req />
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -493,7 +494,7 @@ export function DoctorForm({
 
               <section className="bento space-y-5 p-6">
                 <h3 className="text-sm font-semibold text-ink">
-                  Información profesional
+                  {t("doctors.section.professional")}
                 </h3>
                 {/* items-start: evita que los FormItem se estiren a la altura
                     del más alto (el de "Tipo de usuario" con su descripción) y
@@ -505,7 +506,7 @@ export function DoctorForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Tipo de usuario <Req />
+                          {t("doctors.field.userType")} <Req />
                         </FormLabel>
                         <FormControl>
                           {showRoleStatusFields ? (
@@ -516,12 +517,12 @@ export function DoctorForm({
                               options={userTypeOptions}
                               placeholder={
                                 userTypesLoading
-                                  ? "Cargando tipos…"
-                                  : "Seleccione un tipo"
+                                  ? t("doctors.placeholder.userTypeLoading")
+                                  : t("doctors.placeholder.userType")
                               }
                               disabled={formDisabled || userTypesLoading}
                               searchable
-                              searchPlaceholder="Buscar tipo…"
+                              searchPlaceholder={t("doctors.placeholder.userTypeSearch")}
                             />
                           ) : (
                             <Input
@@ -532,8 +533,7 @@ export function DoctorForm({
                           )}
                         </FormControl>
                         <FormDescription className="text-xs leading-snug text-subtle">
-                          Cargo o profesión del usuario. Es distinto del Rol,
-                          que define los permisos.
+                          {t("doctors.description.userType")}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -545,7 +545,7 @@ export function DoctorForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Número de licencia <Req />
+                          {t("doctors.field.license")} <Req />
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -564,11 +564,11 @@ export function DoctorForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Especialidad {specialtyRequired && <Req />}
+                          {t("doctors.field.specialty")} {specialtyRequired && <Req />}
                         </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Ej: Ortodoncia"
+                            placeholder={t("doctors.placeholder.specialty")}
                             disabled={formDisabled}
                             {...field}
                             value={field.value ?? ""}
@@ -584,15 +584,15 @@ export function DoctorForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Género <Req />
+                          {t("doctors.field.gender")} <Req />
                         </FormLabel>
                         <FormControl>
                           <Select
                             value={field.value ?? ""}
                             onChange={field.onChange}
                             onBlur={field.onBlur}
-                            options={GENDER_OPTIONS}
-                            placeholder="Seleccione género"
+                            options={genderOptions}
+                            placeholder={t("doctors.placeholder.gender")}
                             disabled={formDisabled}
                           />
                         </FormControl>
@@ -607,11 +607,11 @@ export function DoctorForm({
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Descripción / biografía</FormLabel>
+                      <FormLabel>{t("doctors.field.description")}</FormLabel>
                       <FormControl>
                         <TextArea
                           rows={3}
-                          placeholder="Información adicional sobre el doctor…"
+                          placeholder={t("doctors.placeholder.description")}
                           disabled={formDisabled}
                           {...field}
                           value={field.value ?? ""}
@@ -625,7 +625,7 @@ export function DoctorForm({
 
               {showRoleStatusFields && (
                 <section className="bento space-y-5 p-6">
-                  <h3 className="text-sm font-semibold text-ink">Acceso</h3>
+                  <h3 className="text-sm font-semibold text-ink">{t("doctors.section.access")}</h3>
                   <div className="grid items-start gap-5 sm:grid-cols-2">
                     <FormField
                       control={form.control}
@@ -633,7 +633,7 @@ export function DoctorForm({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            Rol <Req />
+                            {t("doctors.field.role")} <Req />
                           </FormLabel>
                           <FormControl>
                             <Select
@@ -643,17 +643,16 @@ export function DoctorForm({
                               options={roleOptions}
                               placeholder={
                                 rolesLoading
-                                  ? "Cargando roles…"
-                                  : "Seleccione un rol"
+                                  ? t("doctors.placeholder.roleLoading")
+                                  : t("doctors.placeholder.role")
                               }
                               disabled={formDisabled || rolesLoading}
                               searchable
-                              searchPlaceholder="Buscar rol…"
+                              searchPlaceholder={t("doctors.placeholder.roleSearch")}
                             />
                           </FormControl>
                           <FormDescription className="text-xs leading-snug text-subtle">
-                            Define los permisos y accesos del doctor en el
-                            sistema.
+                            {t("doctors.description.role")}
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -666,7 +665,7 @@ export function DoctorForm({
                         const isActive = !!field.value;
                         return (
                           <FormItem>
-                            <FormLabel>Estado</FormLabel>
+                            <FormLabel>{t("doctors.field.status")}</FormLabel>
                             <div
                               className={cn(
                                 // Compacto: la caja se ajusta al contenido (w-fit) y
@@ -694,7 +693,7 @@ export function DoctorForm({
                                     isActive ? "bg-emerald-500" : "bg-subtle",
                                   )}
                                 />
-                                {isActive ? "Activo" : "Inactivo"}
+                                {isActive ? t("doctors.status.active") : t("doctors.status.inactive")}
                               </span>
                               <FormControl>
                                 <Switch
@@ -707,8 +706,8 @@ export function DoctorForm({
                             </div>
                             <FormDescription className="text-xs leading-snug text-subtle">
                               {isActive
-                                ? "Puede iniciar sesión en el sistema."
-                                : "No podrá iniciar sesión en el sistema."}
+                                ? t("doctors.description.active")
+                                : t("doctors.description.inactive")}
                             </FormDescription>
                           </FormItem>
                         );
@@ -724,8 +723,8 @@ export function DoctorForm({
           <TabsContent value="horarios" className="mt-4">
             <section className="bento space-y-4 p-4 sm:p-6">
               <ScheduleHeader
-                title="Horarios de atención"
-                subtitle="Configura los días y horarios de atención del doctor."
+                title={t("doctors.schedule.title")}
+                subtitle={t("doctors.schedule.subtitle")}
               />
               <DayOverviewStrip days={overviewDays} />
               {/* Mismo grid de 2 columnas que el editor de Opciones Generales. */}
@@ -735,7 +734,7 @@ export function DoctorForm({
                     key={day.key}
                     form={form}
                     dayKey={day.key}
-                    label={day.label}
+                    label={dayLabel(day.key)}
                     disabled={formDisabled}
                     clinicDay={clinicSchedule?.[day.key]}
                     onToggle={(next) => setDayEnabled(day.key, next)}
@@ -750,7 +749,7 @@ export function DoctorForm({
           <FormActionBar
             isDirty={isEdit ? isDirty : undefined}
             onSecondary={handleCancel}
-            submitLabel={isEdit ? "Actualizar" : "Guardar"}
+            submitLabel={isEdit ? t("patients.actions.update") : t("patients.actions.save")}
             loading={loading}
           />
         )}

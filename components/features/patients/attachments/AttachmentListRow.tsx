@@ -16,8 +16,9 @@ import {
   getAttachmentMediaType,
   getFileExtension,
   MEDIA_TYPE_STYLES,
-  attachmentCategoryLabel,
 } from "@/lib/utils/attachment-helpers";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { useAttachmentBlob } from "./use-attachment-thumbnail";
 import { MEDIA_TYPE_ICON } from "./media-type-icon";
 import { AttachmentDeleteDialog } from "./AttachmentDeleteDialog";
@@ -41,6 +42,14 @@ export function AttachmentListRow({
   canDelete,
   downloading,
 }: AttachmentListRowProps) {
+  const { t } = useI18n();
+  const text = (key: TranslationKey, params: Record<string, string>) => {
+    let value = t(key);
+    for (const [name, replacement] of Object.entries(params)) {
+      value = value.replaceAll(`{${name}}`, replacement);
+    }
+    return value;
+  };
   const [confirmDelete, setConfirmDelete] = useState(false);
   const mediaType = getAttachmentMediaType(attachment.fileName, attachment.mimeType);
   const isImage = mediaType === "image";
@@ -49,7 +58,7 @@ export function AttachmentListRow({
 
   const { blobUrl } = useAttachmentBlob(patientId, attachment.id, isImage);
 
-  const categoryLabel = attachmentCategoryLabel(attachment.category);
+  const categoryLabel = t(`attachments.category.${attachment.category}` as TranslationKey);
   const categoryClassName = ATTACHMENT_CATEGORY_COLORS[attachment.category];
 
   const handleRowClick = () => {
@@ -78,7 +87,9 @@ export function AttachmentListRow({
         }}
         tabIndex={0}
         role="button"
-        aria-label={`Ver archivo ${displayFileName(attachment.fileName)}`}
+        aria-label={text("attachments.card.viewFile", {
+          name: displayFileName(attachment.fileName),
+        })}
         className="group flex items-center justify-between gap-3 rounded-xl border border-hairline bg-surface p-2.5 transition-colors hover:border-brand/40 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand cursor-pointer text-left"
       >
         <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -134,7 +145,7 @@ export function AttachmentListRow({
             onClick={handleRowClick}
           >
             <Eye className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Ver</span>
+            <span className="hidden sm:inline">{t("attachments.card.view")}</span>
           </Button>
 
           <Button
@@ -144,7 +155,9 @@ export function AttachmentListRow({
             className="h-8 w-8 text-subtle hover:text-ink"
             onClick={handleDownloadClick}
             disabled={downloading}
-            aria-label={`Descargar ${attachment.fileName}`}
+            aria-label={text("attachments.card.downloadFile", {
+              name: attachment.fileName,
+            })}
           >
             {downloading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -160,7 +173,9 @@ export function AttachmentListRow({
               type="button"
               className="h-8 w-8 text-subtle hover:bg-destructive/10 hover:text-destructive"
               onClick={handleDeleteClick}
-              aria-label={`Eliminar ${attachment.fileName}`}
+              aria-label={text("attachments.card.deleteFile", {
+                name: attachment.fileName,
+              })}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

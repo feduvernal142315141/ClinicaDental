@@ -482,6 +482,7 @@ export function useClinicalHistoryPage({
       try {
         await patientsService.updatePatient({
           id: patient.id,
+          identificationNumber: patient.identificationNumber ?? "",
           name: patient.name,
           email: patient.email,
           phone: patient.phone,

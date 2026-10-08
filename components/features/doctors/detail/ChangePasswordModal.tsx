@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check, KeyRound, X } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { Modal as CustomModal } from "@/components/ui/primitives/custom";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import {
@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/atomic/forms";
 import { PasswordInput } from "@/components/ui/atomic/forms/password-input";
 import { useDoctorChangePassword } from "@/lib/hooks/doctors";
-import { cn } from "@/lib/utils/utils";
+import { PasswordStrength } from "@/components/features/auth/components/password-strength";
+import { PASSWORD_MIN_LENGTH, isPasswordValid } from "@/lib/validation/password-policy";
 import {
   password,
   requiredText,
@@ -30,9 +31,8 @@ interface ChangePasswordModalProps {
   onClose: () => void;
 }
 
-// Compone las primitivas compartidas de lib/validation/fields: unifica la
-// política de contraseña de doctores con el resto del sistema (mayúsculas +
-// minúsculas + número + carácter especial, acorde a PasswordStrength debajo).
+// Compone las primitivas compartidas de lib/validation/fields. La política vive en
+// lib/validation/password-policy (la misma regla que valida el backend).
 const changePasswordSchema = z
   .object({
     oldPassword: requiredText({ min: 1, label: "La contraseña actual" }),
@@ -42,83 +42,6 @@ const changePasswordSchema = z
   .superRefine(confirmPasswordRefine("password", "confirmPassword"));
 
 type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
-
-const STRENGTH_REQUIREMENTS: { label: string; test: (pwd: string) => boolean }[] =
-  [
-    { label: "Al menos 8 caracteres", test: (pwd) => pwd.length >= 8 },
-    { label: "Una letra mayúscula", test: (pwd) => /[A-Z]/.test(pwd) },
-    { label: "Una letra minúscula", test: (pwd) => /[a-z]/.test(pwd) },
-    { label: "Un número", test: (pwd) => /\d/.test(pwd) },
-    {
-      label: "Un carácter especial",
-      test: (pwd) => /[^a-zA-Z0-9]/.test(pwd),
-    },
-  ];
-
-/**
- * Indicador de fortaleza de contraseña en estilo Bento (sin Ant Design).
- * Reemplaza al antiguo PasswordStrength (acoplado al Form de AntD).
- */
-function PasswordStrength({ password }: { password: string }) {
-  if (!password) return null;
-
-  const met = STRENGTH_REQUIREMENTS.filter((req) => req.test(password));
-  const strength = (met.length / STRENGTH_REQUIREMENTS.length) * 100;
-
-  let strengthLabel = "Débil";
-  let toneText = "text-rose-500";
-  let toneBar = "bg-rose-500";
-  if (strength >= 40 && strength < 60) {
-    strengthLabel = "Media";
-    toneText = "text-amber-500";
-    toneBar = "bg-amber-500";
-  } else if (strength >= 60) {
-    strengthLabel = strength >= 80 ? "Excelente" : "Buena";
-    toneText = "text-emerald-500";
-    toneBar = "bg-emerald-500";
-  }
-
-  return (
-    <div className="mt-2 space-y-3 rounded-xl border border-hairline bg-elevated p-3">
-      <div>
-        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs text-subtle">Fortaleza de contraseña</span>
-          <span className={cn("text-xs font-medium", toneText)}>
-            {strengthLabel}
-          </span>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-hairline">
-          <div
-            className={cn("h-full rounded-full transition-all", toneBar)}
-            style={{ width: `${strength}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {STRENGTH_REQUIREMENTS.map((req) => {
-          const isMet = req.test(password);
-          return (
-            <div
-              key={req.label}
-              className={cn(
-                "flex items-start gap-2 text-xs transition-colors",
-                isMet ? "text-emerald-600" : "text-subtle"
-              )}
-            >
-              {isMet ? (
-                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              ) : (
-                <X className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-60" />
-              )}
-              <span className="leading-tight">{req.label}</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 export function ChangePasswordModal({
   open,
@@ -138,6 +61,11 @@ export function ChangePasswordModal({
   });
 
   const passwordValue = form.watch("password");
+  const confirmValue = form.watch("confirmPassword");
+  const oldPasswordValue = form.watch("oldPassword");
+  // Solo se puede enviar con las cinco reglas cumplidas y las dos contraseñas iguales.
+  const canSubmit =
+    oldPasswordValue.length > 0 && isPasswordValid(passwordValue) && passwordValue === confirmValue;
 
   const close = useCallback(() => {
     onClose();
@@ -202,14 +130,14 @@ export function ChangePasswordModal({
                   </FormLabel>
                   <FormControl>
                     <PasswordInput
-                      placeholder="Mínimo 8 caracteres"
+                      placeholder={`Mínimo ${PASSWORD_MIN_LENGTH} caracteres`}
                       autoComplete="new-password"
                       disabled={loading}
                       {...field}
                     />
                   </FormControl>
                   <FormMessage />
-                  <PasswordStrength password={passwordValue} />
+                  <PasswordStrength password={passwordValue} className="mt-2" />
                 </FormItem>
               )}
             />
@@ -245,7 +173,7 @@ export function ChangePasswordModal({
             >
               Cancelar
             </Button>
-            <Button type="submit" loading={loading}>
+            <Button type="submit" loading={loading} disabled={!canSubmit}>
               Cambiar
             </Button>
           </div>

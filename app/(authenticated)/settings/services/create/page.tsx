@@ -6,8 +6,10 @@ import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 export default function CreateServicePage() {
+  const { t } = useI18n();
   const router = useRouter();
   const { can, isAdmin } = usePermission();
 
@@ -21,10 +23,10 @@ export default function CreateServicePage() {
   return (
     <>
       <PageHeader
-        title="Nuevo Servicio"
-        subtitle="Cree un nuevo servicio clínico para su catálogo."
+        title={t("services.page.newTitle")}
+        subtitle={t("services.page.newDescription")}
         actionButton={{
-          label: "Atrás",
+          label: t("services.actions.back"),
           onClick: () => router.push("/settings/services"),
           variant: "back",
         }}

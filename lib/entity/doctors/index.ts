@@ -21,7 +21,7 @@ export interface Role {
  * define qué puede hacer en el sistema (Administrador/DOCTOR); el tipo de
  * usuario describe su cargo clínico o administrativo. No mezclar.
  *
- * El tipo de usuario es un CATÁLOGO GESTIONABLE per-clínica (`GET /user-types`,
+ * El tipo de usuario es un CATÁLOGO DE SOLO LECTURA global (`GET /user-types`,
  * ver `lib/entity/userType`): el front NUNCA hardcodea la lista ni sus labels.
  * Un `Doctor` referencia el catálogo por `userTypeId` (FK) y el backend resuelve
  * el objeto embebido `userType` (`{ id, name, attendsAppointments }`). La
@@ -52,7 +52,7 @@ export interface Doctor {
   /**
    * Tipo de usuario resuelto por el backend a partir del catálogo:
    * `{ id, name, attendsAppointments }`. `null` si `userTypeId` no matchea
-   * ningún tipo del catálogo de la clínica. Distinto del Rol (permisos).
+   * ningún tipo del catálogo global. Distinto del Rol (permisos).
    */
   userType?: UserTypeRef | null;
   role?: Role;
@@ -218,6 +218,11 @@ export interface RefreshTokenResponse {
 
 export interface ForgotPasswordRequest {
   email: string;
+  /**
+   * Subdominio de la clínica (obligatorio). El mismo correo puede existir en varias
+   * clínicas, así que el backend busca por email + slug, igual que en /auth/login.
+   */
+  clinicSlug: string;
 }
 
 export interface ResetPasswordRequest {

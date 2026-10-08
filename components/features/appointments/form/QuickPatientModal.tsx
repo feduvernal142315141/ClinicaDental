@@ -84,6 +84,7 @@ export function QuickPatientModal({
     mode: "onBlur",
     defaultValues: {
       name: "",
+      identificationNumber: "",
       email: "",
       phone: "",
       dateOfBirth: "",
@@ -141,6 +142,20 @@ export function QuickPatientModal({
                         disabled={loading}
                         {...field}
                       />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="identificationNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Número de identificación<RequiredMark /></FormLabel>
+                    <FormControl>
+                      <Input {...field} required maxLength={255} disabled={loading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

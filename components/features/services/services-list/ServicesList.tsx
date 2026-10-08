@@ -17,11 +17,13 @@ import { useServices } from "@/lib/hooks/services/useServices";
 import { useServicesPage } from "@/lib/hooks/services/use-services-page";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings";
 import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
+import type { ServiceCategory, ServiceType } from "@/lib/entity/services";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { servicesQuery, type ServiceField } from "@/lib/query/domains/services";
 import { getServicesColumns } from "../table/services-table.config";
 import { notify } from "@/lib/utils/notify";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface ServicesListProps {
   basePath?: string;
@@ -30,18 +32,10 @@ interface ServicesListProps {
 /** Faceta de la barra de chips: dónde se planifica el servicio. */
 type PlacementFacet = "all" | "odontogram" | "general";
 
-const PLACEMENT_OPTIONS: { value: PlacementFacet; label: string }[] = [
-  { value: "all", label: "Todos" },
-  // Etiquetas cortas y alineadas con los chips de la columna "Visible en
-  // odontograma" de la propia tabla ("Odontograma" / "General"): el eje ya
-  // queda nombrado por el aria-label del grupo y por la cabecera de columna.
-  { value: "odontogram", label: "Odontograma" },
-  { value: "general", label: "Generales" },
-];
-
 export function ServicesList({
   basePath = "/settings/services",
 }: ServicesListProps) {
+  const { t } = useI18n();
   const { handleEditService } = useServicesPage({ basePath });
   const { can, isAdmin } = usePermission();
   const { settings, loading: loadingSettings } = useClinicGeneralSettings();
@@ -117,12 +111,11 @@ export function ServicesList({
       filters,
       orders: activeOrdersRef.current,
     }).catch((err) => {
-      notify.error(err?.message || "No se pudo cargar la lista de servicios", {
-        description:
-          "Revisa tu conexión e inténtalo de nuevo; si el problema persiste, contacta a soporte.",
+      notify.error(err?.message || t("services.list.loadError"), {
+        description: t("services.list.loadErrorDescription"),
       });
     });
-  }, [filters, fetchServices]);
+  }, [filters, fetchServices, t]);
 
   const canEdit = isAdmin || can("service", PermissionAction.EDIT);
   const canBlock = isAdmin || can("service", PermissionAction.BLOCK);
@@ -167,6 +160,47 @@ export function ServicesList({
         canBlock,
         pendingOdontogramIds,
         currency,
+        labels: {
+          code: t("services.table.code"),
+          name: t("services.table.name"),
+          type: t("services.table.type"),
+          category: t("services.table.category"),
+          cost: t("services.table.cost"),
+          duration: t("services.table.duration"),
+          odontogramVisible: t("services.table.odontogramVisible"),
+          status: t("services.table.status"),
+          createdAt: t("services.table.createdAt"),
+          actions: t("services.table.actions"),
+          edit: t("services.actions.edit"),
+          more: t("services.actions.more"),
+          activate: t("services.actions.activate"),
+          deactivate: t("services.actions.deactivate"),
+          active: t("services.status.active"),
+          inactive: t("services.status.inactive"),
+          serviceTypes: {
+            TREATMENT: t("services.type.TREATMENT"),
+            PROCEDURE: t("services.type.PROCEDURE"),
+            PRODUCT: t("services.type.PRODUCT"),
+            ADVANCE: t("services.type.ADVANCE"),
+          } satisfies Record<ServiceType, string>,
+          serviceCategories: {
+            DIAGNOSTICO: t("services.category.DIAGNOSTICO"),
+            PREVENTIVO: t("services.category.PREVENTIVO"),
+            RESTAURADOR: t("services.category.RESTAURADOR"),
+            ENDODONCIA: t("services.category.ENDODONCIA"),
+            PERIODONCIA: t("services.category.PERIODONCIA"),
+            PROTESIS: t("services.category.PROTESIS"),
+            IMPLANTE: t("services.category.IMPLANTE"),
+            CIRUGIA: t("services.category.CIRUGIA"),
+            ORTODONCIA: t("services.category.ORTODONCIA"),
+            ESTETICO: t("services.category.ESTETICO"),
+            GENERAL: t("services.category.GENERAL"),
+          } satisfies Record<ServiceCategory, string>,
+          odontogram: t("services.placement.odontogram"),
+          general: t("services.placement.general"),
+          removeFromOdontogram: t("services.odontogram.removeAria"),
+          showInOdontogram: t("services.odontogram.showAria"),
+        },
       }),
     [
       handleEditService,
@@ -177,7 +211,17 @@ export function ServicesList({
       canBlock,
       pendingOdontogramIds,
       currency,
+      t,
     ],
+  );
+
+  const placementOptions = useMemo(
+    () => [
+      { value: "all" as const, label: t("services.list.all") },
+      { value: "odontogram" as const, label: t("services.list.odontogram") },
+      { value: "general" as const, label: t("services.list.general") },
+    ],
+    [t],
   );
 
   return (
@@ -198,10 +242,10 @@ export function ServicesList({
           onValueChange={(v) => {
             if (v) setPlacement(v as PlacementFacet);
           }}
-          aria-label="Filtrar servicios por dónde se planifican"
+          aria-label={t("services.list.filterPlacement")}
           className="h-9 shrink-0 self-start rounded-xl lg:self-auto"
         >
-          {PLACEMENT_OPTIONS.map((option) => (
+          {placementOptions.map((option) => (
             <ToggleGroupItem
               key={option.value}
               value={option.value}
@@ -229,7 +273,7 @@ export function ServicesList({
           <TableSearch
             value={search}
             onChange={setSearch}
-            placeholder="Buscar servicio por nombre..."
+            placeholder={t("services.list.searchPlaceholder")}
             loading={loading}
             className="sm:w-72"
           />
@@ -238,7 +282,7 @@ export function ServicesList({
               checked={showInactive}
               onCheckedChange={(c) => setShowInactive(c === true)}
             />
-            Mostrar inactivos
+            {t("services.list.showInactive")}
           </label>
         </div>
       </div>
@@ -256,8 +300,8 @@ export function ServicesList({
         // pasa a ser un camino habitual y merece copy propio.
         emptyText={
           search
-            ? `No se encontraron servicios para «${search}».`
-            : "Aún no hay servicios registrados."
+            ? t("services.list.noSearchResults").replace("{query}", search)
+            : t("services.list.empty")
         }
         page={pagination.page + 1}
         pageSize={pagination.pageSize}

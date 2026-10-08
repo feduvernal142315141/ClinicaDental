@@ -2,6 +2,7 @@
 
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/primitives/shadcn/button";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { useTheme } from "@/lib/hooks/use-theme";
 import { cn } from "@/lib/utils/utils";
 
@@ -27,6 +28,7 @@ export function ThemeToggle({
   showLabel = false,
 }: ThemeToggleProps) {
   const { resolvedTheme, toggleTheme, mounted } = useTheme();
+  const { t } = useI18n();
 
   // Prevent hydration mismatch
   if (!mounted) {
@@ -38,7 +40,7 @@ export function ThemeToggle({
         disabled
       >
         <Sun className="h-5 w-5 bg-amber-400" />
-        {showLabel && <span className="ml-2">Tema</span>}
+        {showLabel && <span className="ml-2">{t("app.theme.label")}</span>}
       </Button>
     );
   }
@@ -51,8 +53,8 @@ export function ThemeToggle({
       size={size}
       onClick={toggleTheme}
       className={cn("relative", className)}
-      aria-label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-      title={isDark ? "Modo claro" : "Modo oscuro"}
+      aria-label={isDark ? t("app.theme.light") : t("app.theme.dark")}
+      title={isDark ? t("app.theme.light") : t("app.theme.dark")}
     >
       {/* Animated icon transition */}
       <div className="relative h-5 w-5">
@@ -73,7 +75,11 @@ export function ThemeToggle({
           )}
         />
       </div>
-      {showLabel && <span className="ml-2">{isDark ? "Oscuro" : "Claro"}</span>}
+      {showLabel && (
+        <span className="ml-2">
+          {isDark ? t("app.theme.darkMode") : t("app.theme.lightMode")}
+        </span>
+      )}
     </Button>
   );
 }

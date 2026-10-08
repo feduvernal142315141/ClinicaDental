@@ -7,8 +7,10 @@ import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 export default function RolesSettingsPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const { can, isAdmin } = usePermission();
   const { handleNewRole } = useRolesPage({ basePath: "/settings/roles" });
@@ -31,12 +33,12 @@ export default function RolesSettingsPage() {
   return (
     <>
       <PageHeader
-        title="Gestión de Roles"
-        subtitle="Administre los roles del sistema"
+        title={t("roles.page.title")}
+        subtitle={t("roles.page.description")}
         actionButton={
           canCreate
             ? {
-                label: "Nuevo Rol",
+                label: t("roles.actions.new"),
                 onClick: handleNewRole,
               }
             : undefined

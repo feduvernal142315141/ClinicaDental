@@ -162,12 +162,9 @@ export function useDoctorAuth() {
           description:
             "Tu nueva contraseña ya está activa. Inicia sesión con ella para acceder a tu cuenta.",
         });
-      } catch (error: unknown) {
-        notify.error(error.message || "No se pudo restablecer la contraseña", {
-          description:
-            "El enlace pudo haber expirado. Solicita uno nuevo e inténtalo de nuevo; si persiste, contacta a soporte.",
-        });
-        throw error;
+        // Los errores NO se notifican aquí: el formulario muestra el `message` del backend tal
+        // cual y, si el enlace venció (404), ofrece pedir uno nuevo. El toast genérico de
+        // "enlace expirado" confundía cuando el rechazo era por la política de contraseñas (400).
       } finally {
         setLoading(false);
       }

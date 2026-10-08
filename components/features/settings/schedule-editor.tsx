@@ -10,24 +10,16 @@ import {
   TimeRangeField,
   type ScheduleDayStatus,
 } from "@/components/ui/atomic/schedule";
+import { SaturdayConfigPanel } from "@/components/features/settings/saturday-config-panel";
 import { CLINIC_SCHEDULE_DAYS } from "@/lib/entity/settings";
 import type { ClinicScheduleDayKey } from "@/lib/entity/settings";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import type { GeneralSettingsFormValues } from "@/lib/hooks/settings";
 
 /** Horario por defecto al abrir un día que no tenía horas definidas. */
 const DEFAULT_OPEN_START = "08:00";
 const DEFAULT_OPEN_END = "17:00";
-
-/** Inicial de cada día para el resumen (convención ES: miércoles = X). */
-const DAY_SHORT: Record<ClinicScheduleDayKey, string> = {
-  monday: "L",
-  tuesday: "M",
-  wednesday: "X",
-  thursday: "J",
-  friday: "V",
-  saturday: "S",
-  sunday: "D",
-};
 
 interface ScheduleEditorProps {
   disabled?: boolean;
@@ -45,7 +37,12 @@ interface ScheduleEditorProps {
  */
 export function ScheduleEditor({ disabled = false }: ScheduleEditorProps) {
   const { control, getValues, setValue } = useFormContext<GeneralSettingsFormValues>();
+  const { t } = useI18n();
   const schedule = useWatch({ control, name: "schedule" });
+  const dayLabel = (key: ClinicScheduleDayKey) =>
+    t(`settings.schedule.days.${key}` as TranslationKey);
+  const dayShort = (key: ClinicScheduleDayKey) =>
+    t(`settings.schedule.daysShort.${key}` as TranslationKey);
 
   // Abre/cierra un día. Lo usan tanto el chip del resumen como el switch del
   // tile → misma acción sobre `schedule.<day>.enabled`, siempre en sync.
@@ -70,10 +67,10 @@ export function ScheduleEditor({ disabled = false }: ScheduleEditorProps) {
     });
   };
 
-  const overviewDays = CLINIC_SCHEDULE_DAYS.map(({ key, label }) => ({
-    short: DAY_SHORT[key],
-    label,
-    active: !!schedule?.[key]?.enabled,
+  const overviewDays = CLINIC_SCHEDULE_DAYS.map(({ key }) => ({
+    short: dayShort(key),
+    label: dayLabel(key),
+    active: schedule?.[key]?.enabled,
     disabled,
     onToggle: disabled
       ? undefined
@@ -85,15 +82,19 @@ export function ScheduleEditor({ disabled = false }: ScheduleEditorProps) {
       <DayOverviewStrip days={overviewDays} />
       {/* Rejilla de 2 columnas en desktop; una sola en móvil/tablet. */}
       <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
-        {CLINIC_SCHEDULE_DAYS.map(({ key, label }) => (
-          <ScheduleDayRow
-            key={key}
-            dayKey={key}
-            label={label}
-            disabled={disabled}
-            onToggle={(next) => setDayEnabled(key, next)}
-          />
-        ))}
+        {CLINIC_SCHEDULE_DAYS.map(({ key }) =>
+          key === "saturday" ? (
+            <SaturdayConfigPanel key={key} disabled={disabled} />
+          ) : (
+            <ScheduleDayRow
+              key={key}
+              dayKey={key}
+              label={dayLabel(key)}
+              disabled={disabled}
+              onToggle={(next) => setDayEnabled(key, next)}
+            />
+          ),
+        )}
       </div>
     </div>
   );
@@ -111,6 +112,7 @@ function ScheduleDayRow({
   onToggle: (next: boolean) => void;
 }) {
   const { control } = useFormContext<GeneralSettingsFormValues>();
+  const { t } = useI18n();
 
   const enabledField = useController({
     control,
@@ -151,14 +153,14 @@ function ScheduleDayRow({
     >
       {enabled ? (
         <TimeRangeField
-          heading="Horario de Consulta"
-          startLabel="Desde"
-          endLabel="Hasta"
+          heading={t("settings.schedule.consultationHours")}
+          startLabel={t("settings.schedule.from")}
+          endLabel={t("settings.schedule.to")}
           start={{
             value: startField.field.value ?? "",
             onChange: startField.field.onChange,
             onBlur: startField.field.onBlur,
-            ariaLabel: `${label}: hora de apertura`,
+            ariaLabel: t("settings.schedule.openingTime").replace("{day}", label),
             ariaInvalid: !!startField.fieldState.error,
             errorMessage: startField.fieldState.error?.message,
           }}
@@ -166,7 +168,7 @@ function ScheduleDayRow({
             value: endField.field.value ?? "",
             onChange: endField.field.onChange,
             onBlur: endField.field.onBlur,
-            ariaLabel: `${label}: hora de cierre`,
+            ariaLabel: t("settings.schedule.closingTime").replace("{day}", label),
             ariaInvalid: !!endField.fieldState.error,
             errorMessage: endField.fieldState.error?.message,
           }}
@@ -175,7 +177,10 @@ function ScheduleDayRow({
       ) : isWeekend ? (
         <ClosedState
           variant="clinic-closed"
-          message={`La clínica permanece cerrada los ${label.toLowerCase()} por política institucional.`}
+          message={t("settings.schedule.clinicClosedDay").replace(
+            "{day}",
+            label.toLowerCase(),
+          )}
         />
       ) : (
         <ClosedState variant="off" />

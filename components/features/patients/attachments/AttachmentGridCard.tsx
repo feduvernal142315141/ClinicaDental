@@ -16,8 +16,9 @@ import {
   getAttachmentMediaType,
   getFileExtension,
   MEDIA_TYPE_STYLES,
-  attachmentCategoryLabel,
 } from "@/lib/utils/attachment-helpers";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { useAttachmentBlob } from "./use-attachment-thumbnail";
 import { MEDIA_TYPE_ICON } from "./media-type-icon";
 import { AttachmentDeleteDialog } from "./AttachmentDeleteDialog";
@@ -41,6 +42,14 @@ export function AttachmentGridCard({
   canDelete,
   downloading,
 }: AttachmentGridCardProps) {
+  const { t } = useI18n();
+  const text = (key: TranslationKey, params: Record<string, string>) => {
+    let value = t(key);
+    for (const [name, replacement] of Object.entries(params)) {
+      value = value.replaceAll(`{${name}}`, replacement);
+    }
+    return value;
+  };
   const [confirmDelete, setConfirmDelete] = useState(false);
   const mediaType = getAttachmentMediaType(attachment.fileName, attachment.mimeType);
   const isImage = mediaType === "image";
@@ -54,7 +63,7 @@ export function AttachmentGridCard({
     isImage,
   );
 
-  const categoryLabel = attachmentCategoryLabel(attachment.category);
+  const categoryLabel = t(`attachments.category.${attachment.category}` as TranslationKey);
   const categoryClassName = ATTACHMENT_CATEGORY_COLORS[attachment.category];
 
   const handleCardClick = () => {
@@ -83,7 +92,9 @@ export function AttachmentGridCard({
         }}
         tabIndex={0}
         role="button"
-        aria-label={`Ver archivo ${displayFileName(attachment.fileName)}`}
+        aria-label={text("attachments.card.viewFile", {
+          name: displayFileName(attachment.fileName),
+        })}
         className="group relative flex flex-col overflow-hidden rounded-2xl border border-hairline bg-surface shadow-bento transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand cursor-pointer select-none text-left"
       >
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-elevated/70">
@@ -148,7 +159,7 @@ export function AttachmentGridCard({
               }}
             >
               <Eye className="h-3.5 w-3.5" />
-              Ver
+              {t("attachments.card.view")}
             </Button>
             <Button
               variant="ghost"
@@ -157,7 +168,7 @@ export function AttachmentGridCard({
               className="h-8 w-8 rounded-lg bg-black/60 text-white hover:bg-black/90 hover:text-white"
               onClick={handleDownloadClick}
               disabled={downloading}
-              title="Descargar archivo"
+              title={t("attachments.card.download")}
             >
               {downloading ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -172,7 +183,7 @@ export function AttachmentGridCard({
                 type="button"
                 className="h-8 w-8 rounded-lg bg-black/60 text-white hover:bg-destructive hover:text-white"
                 onClick={handleDeleteClick}
-                title="Eliminar archivo"
+                title={t("attachments.card.delete")}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>

@@ -16,6 +16,7 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/atomic/data-display/table";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { cn } from "@/lib/utils/utils";
 
 // ── API (compatible con el antiguo DataTable de antd) ──────────────────
@@ -40,6 +41,9 @@ export interface DataTableProps<T extends object> {
   page?: number;
   pageSize?: number;
   total?: number;
+  /** Cursor/offset APIs without a total count can supply the next-page flag. */
+  hasNextPage?: boolean;
+  paginationDisabled?: boolean;
   onPageChange?: (page: number, pageSize: number) => void;
   onSortChange?: (field: string, order: "asc" | "desc" | null) => void;
   showSizeChanger?: boolean;
@@ -80,6 +84,8 @@ export function DataTable<T extends object>({
   page = 1,
   pageSize = 10,
   total = 0,
+  hasNextPage,
+  paginationDisabled = false,
   onPageChange,
   onSortChange,
   showSizeChanger = true,
@@ -89,6 +95,7 @@ export function DataTable<T extends object>({
   showPagination = true,
   onRowClick,
 }: DataTableProps<T>) {
+  const { t } = useI18n();
   const [sort, setSort] = React.useState<{
     field: string;
     order: "asc" | "desc";
@@ -114,10 +121,18 @@ export function DataTable<T extends object>({
   };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, total);
+  const knownTotal = hasNextPage === undefined || !hasNextPage;
+  const displayedTotal = hasNextPage === false ? (page - 1) * pageSize + data.length : total;
+  const from = (hasNextPage === undefined ? total === 0 : data.length === 0) ? 0 : (page - 1) * pageSize + 1;
+  const to = hasNextPage === undefined ? Math.min(page * pageSize, total) : (page - 1) * pageSize + data.length;
 
   const isEmpty = !loading && data.length === 0;
+  const recordsRangeLabel = t(
+    knownTotal ? "app.table.recordsRange" : "app.table.recordsRangeUnknown",
+  )
+    .replace("{from}", String(from))
+    .replace("{to}", String(to))
+    .replace("{total}", String(displayedTotal));
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
@@ -180,7 +195,7 @@ export function DataTable<T extends object>({
                   colSpan={columns.length}
                   className="h-32 text-center text-subtle"
                 >
-                  {emptyText ?? "No hay datos disponibles"}
+                  {emptyText ?? t("app.table.empty")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -214,13 +229,14 @@ export function DataTable<T extends object>({
       {showPagination && (
         <div className="flex flex-col items-center justify-between gap-3 px-1 text-sm text-subtle sm:flex-row">
           <span className="tabular-nums">
-            {from}-{to} de {total} registros
+            {recordsRangeLabel}
           </span>
           <div className="flex items-center gap-2">
             {showSizeChanger && (
               <select
-                aria-label="Registros por página"
+                aria-label={t("app.table.pageSizeAria")}
                 value={pageSize}
+                disabled={paginationDisabled}
                 onChange={(e) =>
                   onPageChange?.(1, Number(e.target.value))
                 }
@@ -228,7 +244,7 @@ export function DataTable<T extends object>({
               >
                 {pageSizeOptions.map((opt) => (
                   <option key={opt} value={opt}>
-                    {opt} / pág.
+                    {t("app.table.pageSize").replace("{size}", String(opt))}
                   </option>
                 ))}
               </select>
@@ -236,8 +252,8 @@ export function DataTable<T extends object>({
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                aria-label="Página anterior"
-                disabled={page <= 1}
+                aria-label={t("app.table.previousPage")}
+                disabled={paginationDisabled || page <= 1}
                 onClick={() => onPageChange?.(page - 1, pageSize)}
                 className="grid h-8 w-8 place-items-center rounded-lg border border-hairline bg-elevated text-ink transition-colors hover:bg-hover disabled:opacity-40"
               >
@@ -248,8 +264,8 @@ export function DataTable<T extends object>({
               </span>
               <button
                 type="button"
-                aria-label="Página siguiente"
-                disabled={page >= totalPages}
+                aria-label={t("app.table.nextPage")}
+                disabled={paginationDisabled || (hasNextPage === undefined ? page >= totalPages : !hasNextPage)}
                 onClick={() => onPageChange?.(page + 1, pageSize)}
                 className="grid h-8 w-8 place-items-center rounded-lg border border-hairline bg-elevated text-ink transition-colors hover:bg-hover disabled:opacity-40"
               >

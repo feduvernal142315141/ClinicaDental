@@ -24,6 +24,8 @@ import { fullName, emailOptional, phone, dateOfBirth, address } from "@/lib/vali
 export const patientFormSchema = z.object({
   name: fullName,
 
+  identificationNumber: z.string({ required_error: "El número de identificación es obligatorio" }).trim().min(1, "El número de identificación es obligatorio").max(255),
+
   email: emailOptional,
 
   phone,

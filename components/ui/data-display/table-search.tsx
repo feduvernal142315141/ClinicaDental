@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, X, Loader2 } from "lucide-react";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { cn } from "@/lib/utils/utils";
 
 interface TableSearchProps {
@@ -22,6 +23,7 @@ export function TableSearch({
   loading,
   className,
 }: TableSearchProps) {
+  const { t } = useI18n();
   return (
     <div className={cn("flex justify-end", className)}>
       <div className="relative w-full max-w-sm">
@@ -39,7 +41,7 @@ export function TableSearch({
           value && (
             <button
               type="button"
-              aria-label="Limpiar búsqueda"
+              aria-label={t("app.search.clear")}
               onClick={() => onChange("")}
               className="absolute right-2.5 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded text-subtle hover:text-ink"
             >

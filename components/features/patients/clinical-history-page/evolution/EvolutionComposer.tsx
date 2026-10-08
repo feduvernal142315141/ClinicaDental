@@ -6,6 +6,7 @@ import { Loader2, Lock, Mic, Paperclip } from "lucide-react";
 import { Switch } from "@/components/ui";
 import { cn } from "@/lib/utils/utils";
 import { draftToHtml, type ComposerMode } from "./use-evolution-composer";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 const COARSE_TOUCH = "[@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11";
 
@@ -43,6 +44,7 @@ export function EvolutionComposer({
   onDictate,
   className,
 }: EvolutionComposerProps) {
+  const { t } = useI18n();
   const soapId = useId();
   const textareaId = useId();
   const [submitting, setSubmitting] = useState(false);
@@ -71,11 +73,10 @@ export function EvolutionComposer({
           <Lock className="mt-0.5 h-4 w-4 shrink-0 text-subtle" aria-hidden="true" />
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-ink">
-              Evolución clínica
+              {t("clinical.composer.readOnlyTitle")}
             </h2>
             <p className="mt-1 text-xs text-subtle">
-              Tu rol no permite escribir en la historia clínica. Puedes leer las
-              consultas registradas más abajo.
+              {t("clinical.composer.readOnlyDescription")}
             </p>
           </div>
         </div>
@@ -84,8 +85,8 @@ export function EvolutionComposer({
   }
   const isLoading = mode.kind === "loading";
 
-  const saveLabel = "Guardar";
-  const busyLabel = "Guardando…";
+  const saveLabel = t("clinical.composer.save");
+  const busyLabel = t("clinical.composer.saving");
   return (
     <section
       className={cn("bento overflow-hidden", className)}
@@ -93,19 +94,19 @@ export function EvolutionComposer({
     >
       <div className="flex items-center justify-between gap-3 px-4 pt-3.5">
         <h2 className="text-sm font-semibold text-ink">
-          Escribir evolución de hoy…
+          {t("clinical.composer.title")}
         </h2>
         <div className="flex shrink-0 items-center gap-2">
           <label htmlFor={soapId} className="text-xs text-subtle">
-            IA (SOAP)
+            {t("clinical.composer.soap")}
           </label>
           <Switch
             id={soapId}
             checked={soapEnabled}
             onCheckedChange={onSoapToggle}
             disabled={isLoading}
-            aria-label="Estructurar el dictado como SOAP"
-            title="Solo afecta al dictado: pide a la IA que estructure el audio en subjetivo, objetivo, apreciación y plan. La nota se guarda como un único texto."
+            aria-label={t("clinical.composer.soapAria")}
+            title={t("clinical.composer.soapTitle")}
           />
         </div>
       </div>
@@ -120,7 +121,7 @@ export function EvolutionComposer({
           id={textareaId}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="Redacta la nota clínica…"
+          placeholder={t("clinical.composer.placeholder")}
           rows={5}
           className={cn(
             "min-h-28 w-full resize-none bg-transparent px-4 py-3",
@@ -137,8 +138,8 @@ export function EvolutionComposer({
             onClick={onAttach}
             disabled={!onAttach || isLoading}
             className={ICON_BUTTON_CLASS}
-            aria-label="Adjuntar archivo"
-            title="Adjuntar archivo"
+            aria-label={t("clinical.composer.attach")}
+            title={t("clinical.composer.attach")}
           >
             <Paperclip className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -147,8 +148,8 @@ export function EvolutionComposer({
             onClick={onDictate}
             disabled={!onDictate || isLoading}
             className={ICON_BUTTON_CLASS}
-            aria-label="Dictar evolución"
-            title="Dictar evolución"
+            aria-label={t("clinical.composer.dictate")}
+            title={t("clinical.composer.dictate")}
           >
             <Mic className="h-4 w-4" aria-hidden="true" />
           </button>

@@ -1,6 +1,6 @@
 # CLAUDE.md — front-clinic
 
-Sub-repo **Next.js 15 App Router, TypeScript**. Repo git propio; commits a **`develop`** (skill `commit-flow`). Doc raíz: `../CLAUDE.md`. Este archivo es la **única** instrucción permanente del sub-repo: si algo no está aquí, está en el código o en una skill.
+Sub-repo **Next.js 15 App Router, TypeScript**. Repo git propio; commits a **`develop`** (skill `commit-flow`). Doc raíz: `../CLAUDE.md`. Para Codex/IA, consultar `AGENTS.md`: contiene el flujo proporcional y los comandos vigentes. Las referencias a skills y agentes de este archivo son históricas; comprobar su disponibilidad antes de usarlas.
 
 ## Verificar (skill `verify-front` — ahí viven los baselines, no aquí)
 ```bash

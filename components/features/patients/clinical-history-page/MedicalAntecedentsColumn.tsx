@@ -26,6 +26,7 @@ import {
   useTreatmentPlansPendingSection,
   type TreatmentStatusCounts,
 } from "@/lib/hooks/patients/clinical-history-page/use-treatment-plans-pending-section";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface MedicalAntecedentsColumnProps {
   medicalHistory: ClinicalHistoryMedicalHistory | null;
@@ -48,23 +49,24 @@ function TreatmentStatusCounters({
   loading: boolean;
   loadFailed: boolean;
 }) {
+  const { t } = useI18n();
   const unknown = loadFailed || loading;
   const unknownTitle = loadFailed
-    ? "No se pudieron leer los planes de tratamiento de este paciente. El recuento no se está mostrando."
-    : "Cargando los planes de tratamiento…";
+    ? t("clinical.treatment.countLoadFailed")
+    : t("clinical.treatment.countLoading");
   const items: { label: string; value: number; className: string }[] = [
     {
-      label: "Pendiente",
+      label: t("clinical.treatment.pending"),
       value: counts.pendiente,
       className: "text-amber-600 dark:text-amber-400",
     },
     {
-      label: "En curso",
+      label: t("clinical.treatment.inProgress"),
       value: counts.enCurso,
       className: "text-sky-600 dark:text-sky-400",
     },
     {
-      label: "Completado",
+      label: t("clinical.treatment.completed"),
       value: counts.completado,
       className: "text-emerald-600 dark:text-emerald-400",
     },
@@ -149,6 +151,7 @@ export function MedicalAntecedentsColumn({
   loadError = null,
   onRetry,
 }: MedicalAntecedentsColumnProps) {
+  const { t } = useI18n();
   const { alertBadges, clinicalNote } = useMedicalAntecedentsColumn({
     medicalHistory,
     patientHeader,
@@ -165,18 +168,18 @@ export function MedicalAntecedentsColumn({
           <AlertTriangle />
           <AlertTitle>
             {forbidden
-              ? "Sin acceso a los antecedentes"
-              : "No se pudieron cargar los antecedentes"}
+              ? t("clinical.antecedents.noAccessTitle")
+              : t("clinical.antecedents.loadFailedTitle")}
           </AlertTitle>
           <AlertDescription className="flex flex-col items-start gap-2">
             <span>
               {forbidden
-                ? "Tu rol no permite ver la historia clínica de este paciente. Lo que no se muestra aquí no significa que el paciente no tenga antecedentes."
-                : "No hemos podido leer la historia clínica. No se está mostrando información médica de este paciente."}
+                ? t("clinical.antecedents.noAccessDescription")
+                : t("clinical.antecedents.loadFailedDescription")}
             </span>
             {!forbidden && onRetry && (
               <Button variant="outline" size="sm" onClick={onRetry}>
-                Reintentar
+                {t("clinical.visit.retry")}
               </Button>
             )}
           </AlertDescription>
@@ -189,7 +192,7 @@ export function MedicalAntecedentsColumn({
       {alertBadges.length > 0 && (
         <Alert live={false} className="mt-3">
           <AlertTriangle />
-          <AlertTitle>Alertas</AlertTitle>
+          <AlertTitle>{t("clinical.antecedents.alerts")}</AlertTitle>
           <AlertDescription className="flex flex-row flex-wrap gap-2">
             {alertBadges.map((alert) => (
               <StatusBadge
@@ -212,7 +215,7 @@ export function MedicalAntecedentsColumn({
           <div className="flex items-center gap-2">
             <Shield className="h-4 w-4 text-brand" aria-hidden="true" />
             <h3 className="text-sm font-semibold text-ink">
-              Antecedentes Médicos
+              {t("clinical.antecedents.title")}
             </h3>
           </div>
           {canEdit && (
@@ -221,8 +224,8 @@ export function MedicalAntecedentsColumn({
               size="icon"
               className="h-8 w-8 rounded-lg text-subtle hover:bg-hover hover:text-brand"
               onClick={() => onEditClick?.()}
-              aria-label="Editar antecedentes médicos"
-              title="Editar antecedentes médicos"
+              aria-label={t("clinical.antecedents.edit")}
+              title={t("clinical.antecedents.edit")}
             >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
@@ -230,26 +233,26 @@ export function MedicalAntecedentsColumn({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
           <AntecedentCell
-            label="Alergias"
+            label={t("clinical.antecedents.allergies")}
             items={medicalHistory?.allergies}
-            empty="Sin alergias registradas"
+            empty={t("clinical.antecedents.noAllergies")}
             valueClassName="font-semibold text-rose-600 dark:text-rose-400"
             withWarningIcon
           />
           <AntecedentCell
-            label="Medicamentos"
+            label={t("clinical.antecedents.medications")}
             items={medicalHistory?.currentMedications}
-            empty="Ninguno"
+            empty={t("clinical.antecedents.noneMale")}
           />
           <AntecedentCell
-            label="Cirugías"
+            label={t("clinical.antecedents.surgeries")}
             items={medicalHistory?.previousSurgeries}
-            empty="Ninguna"
+            empty={t("clinical.antecedents.noneFemale")}
           />
           <AntecedentCell
-            label="Enfermedades"
+            label={t("clinical.antecedents.diseases")}
             items={medicalHistory?.systemicDiseases}
-            empty="Ninguna"
+            empty={t("clinical.antecedents.noneFemale")}
             valueClassName="font-medium text-amber-700 dark:text-amber-400"
           />
         </div>
@@ -257,17 +260,17 @@ export function MedicalAntecedentsColumn({
       <section className="bento shrink-0 p-4">
         <div className="mb-3 flex items-center gap-2">
           <NotebookText className="h-4 w-4 text-brand" aria-hidden="true" />
-          <h3 className="text-sm font-semibold text-ink">Notas permanentes</h3>
+          <h3 className="text-sm font-semibold text-ink">
+            {t("clinical.permanentNotes.title")}
+          </h3>
         </div>
         {clinicalNote.kind === "no-record" ? (
           <p className="text-xs text-subtle/70">
-            Este paciente todavía no tiene historia clínica registrada, así que
-            no hay notas permanentes que mostrar.
+            {t("clinical.permanentNotes.noRecord")}
           </p>
         ) : clinicalNote.kind === "empty" ? (
           <p className="text-xs text-subtle/70">
-            La historia clínica está registrada y no tiene ninguna nota
-            permanente.
+            {t("clinical.permanentNotes.empty")}
           </p>
         ) : (
           <>
@@ -278,7 +281,7 @@ export function MedicalAntecedentsColumn({
             <div className="mt-3 border-t border-hairline pt-2 text-[11px] text-subtle">
               {clinicalNote.author ? (
                 <span>
-                  Última edición:{" "}
+                  {t("clinical.permanentNotes.lastEdit")}:{" "}
                   <span className="text-ink">{clinicalNote.author}</span>
                   {clinicalNote.editedAt ? ` · ${clinicalNote.editedAt}` : null}
                 </span>
@@ -286,7 +289,7 @@ export function MedicalAntecedentsColumn({
                 <span>
                   <span className="italic">{NO_AUTHORSHIP_LABEL}</span>
                   {clinicalNote.editedAt
-                    ? ` · Última edición: ${clinicalNote.editedAt}`
+                    ? ` · ${t("clinical.permanentNotes.lastEdit")}: ${clinicalNote.editedAt}`
                     : null}
                 </span>
               )}

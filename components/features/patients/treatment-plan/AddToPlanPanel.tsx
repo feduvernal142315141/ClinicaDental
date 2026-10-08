@@ -18,6 +18,7 @@ import type { UseAddToPlanCatalogResult } from "@/lib/hooks/odontogram";
 import type { AddPlanItemRequest } from "@/lib/entity/odontogram";
 import type { ServiceListItem } from "@/lib/entity/services";
 import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import type { ToothNotation } from "@/lib/odontogram/notation";
 import type { DentitionType } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
@@ -81,6 +82,7 @@ export function AddToPlanPanel({
 }: AddToPlanPanelProps) {
   const uid = useId();
   const hintId = `${uid}-hint`;
+  const { t } = useI18n();
   const { notation } = useToothNotation();
 
   const [scope, setScope] = useState<AddToPlanScope>("general");
@@ -399,7 +401,7 @@ export function AddToPlanPanel({
             aria-describedby={hintId}
             className="shrink-0 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
           >
-            {submitting ? "Añadiendo…" : "Añadir al plan"}
+            {submitting ? `${t("treatmentPlan.add")}...` : t("treatmentPlan.add")}
           </Button>
         </div>
       </div>

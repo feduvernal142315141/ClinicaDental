@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowLeft, Mail, Send } from "lucide-react";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { useDoctorAuth } from "@/lib/hooks/doctors/useDoctorAuth";
+import { resolveClinicSlug } from "@/lib/auth/clinic-slug";
 import { AuthShell } from "../components/auth-shell";
 import { AuthCard } from "../components/auth-card";
 import { FloatingField } from "../components/floating-field";
@@ -34,8 +35,20 @@ export function ForgotPasswordForm() {
     if (!emailValid) {
       return;
     }
+    // Se resuelve aquí, dentro del submit: lee `window.location` y hacerlo en render
+    // rompería la hidratación. El slug sale del subdominio por el que se entró
+    // (diente-sable-360.clinic.dev… → "diente-sable-360").
+    const clinicSlug = resolveClinicSlug();
+    if (!clinicSlug) {
+      // Sin slug el backend responde "El slug de la clínica no puede estar vacío".
+      // Mejor decir qué pasa y cómo resolverlo, igual que en el login.
+      setLocalError(
+        "No pudimos identificar la clínica desde esta dirección. Entra por el enlace de tu clínica.",
+      );
+      return;
+    }
     try {
-      await forgotPassword({ email });
+      await forgotPassword({ email: email.trim(), clinicSlug });
       router.push("/login");
     } catch (err) {
       setLocalError(

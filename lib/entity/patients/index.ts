@@ -20,6 +20,7 @@ export { calculateAge, formatDate } from "./patients-utils";
  * Patient entity - Full representation from API
  */
 export interface Patient {
+  identificationNumber?: string | null;
   id: string;
   clinicId: string;
   name: string;
@@ -59,6 +60,7 @@ export interface PatientListItem {
  * por validación de formulario; email, address y agreement son opcionales.
  */
 export interface CreatePatientRequest {
+  identificationNumber: string;
   name: string;
   email?: string;
   phone: string;
@@ -74,6 +76,7 @@ export interface CreatePatientRequest {
  * Update patient request payload
  */
 export interface UpdatePatientRequest {
+  identificationNumber: string;
   id: string;
   name?: string;
   email?: string;

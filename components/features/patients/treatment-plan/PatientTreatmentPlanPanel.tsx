@@ -29,6 +29,8 @@ import {
   SheetTitle,
 } from "@/components/ui";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import {
   useAddToPlanCatalog,
   useTreatmentPlanBoard,
@@ -44,6 +46,9 @@ import {
 } from "./PlanItemPropertySelects";
 import { TreatmentPlanFiltersBar } from "./TreatmentPlanFiltersBar";
 import { TreatmentPlanItemsTable } from "./TreatmentPlanItemsTable";
+import { FilePlus2 } from "lucide-react";
+import { LinkButton } from "@/components/features/billing/shared/LinkButton";
+import { useBillingPermissions, useFinanceModule } from "@/lib/hooks/billing";
 
 /** `min-w-[50rem]` de {@link TreatmentPlanItemsTable} (creció con el menú). */
 const TABLE_MIN_WIDTH_PX = 800;
@@ -151,6 +156,18 @@ export function PatientTreatmentPlanPanel({
   patientName,
   dentition,
 }: PatientTreatmentPlanPanelProps) {
+  const { t } = useI18n();
+  const text = (
+    key: TranslationKey,
+    params?: Record<string, string | number>,
+  ) => {
+    let value = t(key);
+    if (!params) return value;
+    for (const [name, replacement] of Object.entries(params)) {
+      value = value.replaceAll(`{${name}}`, String(replacement));
+    }
+    return value;
+  };
   const {
     toothGroup,
     generalGroup,
@@ -165,7 +182,13 @@ export function PatientTreatmentPlanPanel({
     addItems,
     updateItem,
     removeItem,
+    planId,
   } = useTreatmentPlanBoard(patientId);
+  // Finanzas (§9): "Crear presupuesto" precarga las líneas del plan. Solo con el
+  // módulo FINANCE activo y permiso para crear presupuestos.
+  const financeModule = useFinanceModule();
+  const billingPermissions = useBillingPermissions();
+  const canCreateEstimate = financeModule.enabled && billingPermissions.canCreate;
 
 
   // Estado y prioridad se editan SOBRE su valor en la fila (skill
@@ -245,7 +268,7 @@ export function PatientTreatmentPlanPanel({
             <div className="flex min-h-[16rem] flex-1 items-center justify-center">
               <LoadingSpinner
                 size="lg"
-                message="Cargando plan de tratamiento..."
+                message={t("treatmentPlan.loading")}
               />
             </div>
           )}
@@ -262,7 +285,7 @@ export function PatientTreatmentPlanPanel({
             <div className="flex min-h-[16rem] flex-1 items-center justify-center px-6">
               <Alert variant="destructive" live className="max-w-md">
                 <AlertTriangle />
-                <AlertTitle>No se pudo abrir el plan de tratamiento</AlertTitle>
+                <AlertTitle>{t("treatmentPlan.openFailedTitle")}</AlertTitle>
                 <AlertDescription>
                   {/* El mensaje REAL del backend (plan no activo, permisos,
                       mezcla de monedas…). Se muestra tal cual: es lo único que
@@ -276,7 +299,7 @@ export function PatientTreatmentPlanPanel({
                     className="mt-1 gap-2"
                   >
                     <RotateCw aria-hidden="true" className="h-4 w-4" />
-                    Reintentar
+                    {t("clinical.visit.retry")}
                   </Button>
                 </AlertDescription>
               </Alert>
@@ -322,9 +345,19 @@ export function PatientTreatmentPlanPanel({
                       {/* Sin "aceptados": la clínica no registra la decisión del
                           paciente, así que no hay subtotal que declarar. */}
                       <span className="block text-xs text-subtle">
-                        Importe estimado
+                        {t("treatmentPlan.estimatedAmount")}
                       </span>
                     </p>
+                  )}
+                  {canCreateEstimate && hasItems && planId && (
+                    <LinkButton
+                      href={`/billing/estimates/new?patientId=${patientId}&patientName=${encodeURIComponent(patientName)}&treatmentPlanId=${planId}`}
+                      variant="outline"
+                      className="shrink-0 gap-1.5"
+                    >
+                      <FilePlus2 aria-hidden="true" className="h-4 w-4" />
+                      Crear presupuesto
+                    </LinkButton>
                   )}
                   <Button
                   type="button"
@@ -336,7 +369,7 @@ export function PatientTreatmentPlanPanel({
                   className="shrink-0 gap-1.5"
                 >
                   <Plus aria-hidden="true" className="h-4 w-4" />
-                  Añadir al plan
+                  {t("treatmentPlan.add")}
                   </Button>
                 </div>
               </div>
@@ -350,12 +383,10 @@ export function PatientTreatmentPlanPanel({
                     />
                   </div>
                   <p className="text-sm font-semibold text-ink">
-                    El plan aún no tiene líneas
+                    {t("treatmentPlan.emptyTitle")}
                   </p>
                   <p className="max-w-sm text-xs text-subtle">
-                    Usa «Añadir al plan» para presupuestar tratamientos. Los que
-                    se marcan sobre una pieza y los servicios generales van en
-                    pestañas distintas.
+                    {t("treatmentPlan.emptyDescription")}
                   </p>
                 </div>
               )}
@@ -370,12 +401,17 @@ export function PatientTreatmentPlanPanel({
                     <SearchX aria-hidden="true" className="h-6 w-6 text-subtle" />
                   </div>
                   <p className="text-sm font-semibold text-ink">
-                    Ninguna línea coincide con el filtro
+                    {t("treatmentPlan.noMatchesTitle")}
                   </p>
                   <p className="max-w-sm text-xs text-subtle">
-                    El plan tiene {totals.totalCount}{" "}
-                    {totals.totalCount === 1 ? "línea" : "líneas"}, pero ninguna
-                    cumple lo que has elegido arriba.
+                    {text("treatmentPlan.noMatchesDescription", {
+                      count: totals.totalCount,
+                      line: t(
+                        totals.totalCount === 1
+                          ? "treatmentPlan.lineSingular"
+                          : "treatmentPlan.linePlural",
+                      ),
+                    })}
                   </p>
                   <Button
                     type="button"
@@ -385,7 +421,7 @@ export function PatientTreatmentPlanPanel({
                     className="mt-1 gap-2"
                   >
                     <FilterX aria-hidden="true" className="h-4 w-4" />
-                    Quitar filtros
+                    {t("treatmentPlan.clearFilters")}
                   </Button>
                 </div>
               )}
@@ -405,7 +441,7 @@ export function PatientTreatmentPlanPanel({
                   <div
                     tabIndex={0}
                     role="region"
-                    aria-label="Líneas del plan de tratamiento"
+                    aria-label={t("treatmentPlan.linesRegion")}
                     className="min-h-0 flex-1 overflow-auto rounded-bento border border-hairline bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
                   >
                     <TreatmentPlanItemsTable
@@ -434,7 +470,7 @@ export function PatientTreatmentPlanPanel({
                   y acaba en reclamación. */}
               {hasItems && (
                 <p className="shrink-0 text-xs text-subtle">
-                  Importe estimado — no incluye pagos.
+                  {t("treatmentPlan.estimateFootnote")}
                 </p>
               )}
             </>
@@ -457,16 +493,16 @@ export function PatientTreatmentPlanPanel({
                   id={asideTitleId}
                   className="text-sm font-semibold text-ink"
                 >
-                  Añadir al plan
+                  {t("treatmentPlan.add")}
                 </h3>
                 <p className="mt-0.5 text-xs text-subtle">
-                  Elige los servicios que quieres presupuestar.
+                  {t("treatmentPlan.addPanelDescription")}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={closeAddPanel}
-                aria-label="Cerrar el panel de añadir al plan"
+                aria-label={t("treatmentPlan.closeAddPanel")}
                 className="-mr-1 shrink-0 rounded-lg p-1.5 text-subtle transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
               >
                 <X aria-hidden="true" className="h-4 w-4" />
@@ -488,9 +524,9 @@ export function PatientTreatmentPlanPanel({
           className="w-full gap-0 border-hairline bg-surface p-0 sm:max-w-md"
         >
           <SheetHeader className="shrink-0 px-4 pb-2 pt-4">
-            <SheetTitle className="text-sm">Añadir al plan</SheetTitle>
+            <SheetTitle className="text-sm">{t("treatmentPlan.add")}</SheetTitle>
             <SheetDescription className="text-xs">
-              Elige los servicios que quieres presupuestar.
+              {t("treatmentPlan.addPanelDescription")}
             </SheetDescription>
           </SheetHeader>
           {addPanel}
