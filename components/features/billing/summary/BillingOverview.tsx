@@ -26,6 +26,7 @@ import {
   useChargeList,
   useCurrentCashSession,
 } from "@/lib/hooks/billing";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { billingErrorMessage } from "@/lib/services/billing";
 import { localTodayInput } from "@/lib/datetime";
 import { Money } from "../shared/Money";
@@ -66,6 +67,7 @@ function StatCard({
 /** A. Resumen de Finanzas: caja del día, estado de la caja y accesos rápidos. */
 export function BillingOverview() {
   const permissions = useBillingPermissions();
+  const { t } = useI18n();
   const [date, setDate] = useState(() => localTodayInput());
 
   const summary = useCashSummary(date, { enabled: permissions.canViewReports });
@@ -77,18 +79,18 @@ export function BillingOverview() {
     <div className="space-y-6">
       <Header
         level={1}
-        title="Finanzas"
-        description="Cobros, recibos y caja de la clínica"
+        title={t("billing.overview.title")}
+        description={t("billing.overview.description")}
         action={
           permissions.canCreate ? (
             <div className="flex flex-wrap gap-2">
               <LinkButton href="/billing/estimates/new" variant="outline">
                   <FilePlus2 className="mr-2 h-4 w-4" />
-                  Nuevo presupuesto
+                  {t("billing.actions.newEstimate")}
                 </LinkButton>
               <LinkButton href="/billing/invoices/new">
                   <ReceiptText className="mr-2 h-4 w-4" />
-                  Nuevo recibo
+                  {t("billing.actions.newInvoice")}
                 </LinkButton>
             </div>
           ) : undefined
@@ -104,38 +106,38 @@ export function BillingOverview() {
           <div>
             <h2 id="cash-status" className="text-sm font-semibold text-ink">
               {cash.isPending
-                ? "Consultando la caja…"
+                ? t("billing.cash.checking")
                 : cash.data
-                  ? `Caja abierta desde ${formatBillingTime(cash.data.openedAt)}`
-                  : "Caja cerrada"}
+                  ? t("billing.cash.openSince").replace("{time}", formatBillingTime(cash.data.openedAt))
+                  : t("billing.cash.closed")}
             </h2>
             {cash.data && (
               <p className="text-sm text-subtle">
-                Esperado <Money amount={cash.data.expectedCash} currency={cash.data.currency} className="font-medium text-ink" />
+                {t("billing.cash.expected")} <Money amount={cash.data.expectedCash} currency={cash.data.currency} className="font-medium text-ink" />
               </p>
             )}
             {cash.isError && <p className="text-sm text-rose-700 dark:text-rose-300">{billingErrorMessage(cash.error)}</p>}
           </div>
         </div>
         {!cash.isPending && !cash.data && permissions.canOpenCash ? (
-          <LinkButton href="/billing/cash?open=1">Abrir caja</LinkButton>
+          <LinkButton href="/billing/cash?open=1">{t("billing.cash.open")}</LinkButton>
         ) : (
           <LinkButton href="/billing/cash" variant="outline">
-              Ver caja
+              {t("billing.cash.view")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </LinkButton>
         )}
       </section>
 
       {/* Accesos rápidos */}
-      <section aria-label="Accesos rápidos" className="grid gap-3 sm:grid-cols-3">
+      <section aria-label={t("billing.overview.quickAccess")} className="grid gap-3 sm:grid-cols-3">
         <Link
           href="/billing/charges"
           className="bento flex items-center justify-between gap-3 p-4 transition-colors hover:bg-hover"
         >
           <span className="flex items-center gap-2 font-medium text-ink">
             <ClipboardList className="h-4 w-4 text-brand" />
-            Cargos pendientes{pendingCount !== undefined ? ` (${pendingCount})` : ""}
+            {t("billing.navigation.charges")}{pendingCount !== undefined ? ` (${pendingCount})` : ""}
           </span>
           <ArrowRight className="h-4 w-4 text-subtle" />
         </Link>
@@ -145,7 +147,7 @@ export function BillingOverview() {
         >
           <span className="flex items-center gap-2 font-medium text-ink">
             <FilePlus2 className="h-4 w-4 text-brand" />
-            Presupuestos
+            {t("billing.navigation.estimates")}
           </span>
           <ArrowRight className="h-4 w-4 text-subtle" />
         </Link>
@@ -155,7 +157,7 @@ export function BillingOverview() {
         >
           <span className="flex items-center gap-2 font-medium text-ink">
             <ReceiptText className="h-4 w-4 text-brand" />
-            Recibos
+            {t("billing.navigation.invoices")}
           </span>
           <ArrowRight className="h-4 w-4 text-subtle" />
         </Link>
@@ -166,11 +168,11 @@ export function BillingOverview() {
         <section aria-labelledby="day-summary" className="space-y-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <h2 id="day-summary" className="text-base font-semibold text-ink">
-              Caja del día
+              {t("billing.overview.dayCash")}
             </h2>
             <div className="flex items-center gap-2">
               <Label htmlFor="summary-date" className="text-sm text-subtle">
-                Fecha
+                {t("billing.date")}
               </Label>
               <Input
                 id="summary-date"
@@ -190,20 +192,20 @@ export function BillingOverview() {
           )}
 
           {summary.isPending ? (
-            <CardsSkeleton label="Cargando la caja del día…" />
+            <CardsSkeleton label={t("billing.loading.dayCash")} />
           ) : summary.data ? (
             <>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard label="Cobrado" icon={Banknote}>
+                <StatCard label={t("billing.metric.collected")} icon={Banknote}>
                   <Money amount={summary.data.collectedTotal} currency={summary.data.currency} />
                 </StatCard>
-                <StatCard label="Devuelto" icon={RotateCcw}>
+                <StatCard label={t("billing.metric.refunded")} icon={RotateCcw}>
                   <Money amount={summary.data.refundedTotal} currency={summary.data.currency} />
                 </StatCard>
-                <StatCard label="Por cobrar" icon={ReceiptText} hint="Saldo de todos los recibos abiertos">
+                <StatCard label={t("billing.metric.pending")} icon={ReceiptText} hint={t("billing.metric.pendingHint")}>
                   <Money amount={summary.data.pendingTotal} currency={summary.data.currency} />
                 </StatCard>
-                <StatCard label="Pacientes con saldo" icon={Users}>
+                <StatCard label={t("billing.metric.patientsWithBalance")} icon={Users}>
                   <span className="tabular-nums">{summary.data.patientsWithBalance}</span>
                 </StatCard>
               </div>

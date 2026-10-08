@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { HandCoins } from "lucide-react";
 import { Alert, AlertDescription, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { useReceivables } from "@/lib/hooks/billing";
 import { useDebouncedValue } from "@/lib/hooks/billing/use-debounced-value";
 import { billingErrorMessage } from "@/lib/services/billing";
@@ -19,6 +20,7 @@ const PAGE_SIZE = 20;
 /** I. Por cobrar: mayor saldo primero, con antigüedad 0–30, 31–60, 61–90 y +90 días. */
 export function ReceivablesReport() {
   const router = useRouter();
+  const { t } = useI18n();
   const [page, setPage] = useState(0);
   const [q, setQ] = useState("");
   const debouncedQ = useDebouncedValue(q);
@@ -33,7 +35,7 @@ export function ReceivablesReport() {
             setQ(value);
             setPage(0);
           },
-          placeholder: "Nombre del paciente",
+          placeholder: t("billing.reports.patientName"),
         }}
       />
       {isError && (
@@ -42,23 +44,23 @@ export function ReceivablesReport() {
         </Alert>
       )}
       {isPending ? (
-        <TableSkeleton columns={8} label="Cargando saldos…" />
+        <TableSkeleton columns={8} label={t("billing.reports.loadingBalances")} />
       ) : data && data.entities.length === 0 ? (
         <EmptyState
           icon={HandCoins}
           variant="card"
-          title="Nadie debe"
-          description={q ? "Ningún paciente con saldo coincide con la búsqueda." : "No hay recibos con saldo pendiente."}
+          title={t("billing.reports.nobodyOwes")}
+          description={q ? t("billing.reports.noReceivablesFiltered") : t("billing.reports.noReceivables")}
         />
       ) : data ? (
         <div className="bento overflow-x-auto p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Paciente</TableHead>
-                <TableHead className="text-right">Saldo</TableHead>
-                <TableHead className="text-right">Recibos</TableHead>
-                <TableHead>Vencimiento más antiguo</TableHead>
+                <TableHead>{t("billing.table.patient")}</TableHead>
+                <TableHead className="text-right">{t("billing.table.balance")}</TableHead>
+                <TableHead className="text-right">{t("billing.navigation.invoices")}</TableHead>
+                <TableHead>{t("billing.reports.oldestDue")}</TableHead>
                 <TableHead className="text-right">0–30</TableHead>
                 <TableHead className="text-right">31–60</TableHead>
                 <TableHead className="text-right">61–90</TableHead>
@@ -72,7 +74,7 @@ export function ReceivablesReport() {
                   className="cursor-pointer"
                   onClick={() => router.push(`/patients/${row.patientId}?tab=cuenta`)}
                 >
-                  <TableCell className="font-medium text-brand">{row.patientName ?? "Paciente"}</TableCell>
+                  <TableCell className="font-medium text-brand">{row.patientName ?? t("billing.fallback.patient")}</TableCell>
                   <TableCell className="text-right font-semibold">
                     <Money amount={row.balance} currency={row.currency} />
                   </TableCell>

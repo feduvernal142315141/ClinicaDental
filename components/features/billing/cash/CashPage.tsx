@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import {
   useBillingPermissions,
   useCashSessionHistory,
@@ -40,6 +41,7 @@ function Figure({ label, children, emphasis }: { label: string; children: React.
 /** G. Caja: la actual en vivo (cada 30 s y al volver el foco), abrir/cerrar e historial. */
 export function CashPage({ openOnLoad = false }: { openOnLoad?: boolean }) {
   const permissions = useBillingPermissions();
+  const { t } = useI18n();
   const settings = useFinanceSettings();
   const current = useCurrentCashSession({ live: true });
   const [historyPage, setHistoryPage] = useState(0);
@@ -58,7 +60,7 @@ export function CashPage({ openOnLoad = false }: { openOnLoad?: boolean }) {
 
   return (
     <div className="space-y-6">
-      <Header level={1} title="Caja" description="Efectivo de la clínica: fondo, cobros y devoluciones del turno." />
+      <Header level={1} title={t("billing.cash.title")} description={t("billing.cash.description")} />
 
       {current.isError && (
         <Alert variant="destructive">
@@ -71,39 +73,41 @@ export function CashPage({ openOnLoad = false }: { openOnLoad?: boolean }) {
           <h2 id="current-cash" className="flex items-center gap-2 text-base font-semibold text-ink">
             {session ? <Unlock className="h-5 w-5 text-emerald-600" /> : <LockKeyhole className="h-5 w-5 text-subtle" />}
             {current.isPending
-              ? "Consultando la caja…"
+              ? t("billing.cash.checking")
               : session
-                ? `Caja abierta desde ${formatBillingTime(session.openedAt)} · ${session.openedBy}`
-                : "Caja cerrada"}
+                ? t("billing.cash.openSinceBy")
+                    .replace("{time}", formatBillingTime(session.openedAt))
+                    .replace("{user}", session.openedBy)
+                : t("billing.cash.closed")}
           </h2>
           {!current.isPending &&
             (session
-              ? permissions.canCloseCash && <Button onClick={() => setClosing(true)}>Cerrar caja</Button>
-              : permissions.canOpenCash && <Button onClick={() => setOpening(true)}>Abrir caja</Button>)}
+              ? permissions.canCloseCash && <Button onClick={() => setClosing(true)}>{t("billing.cash.close")}</Button>
+              : permissions.canOpenCash && <Button onClick={() => setOpening(true)}>{t("billing.cash.open")}</Button>)}
         </div>
 
         {current.isPending ? (
-          <LinesSkeleton lines={3} label="Consultando la caja…" />
+          <LinesSkeleton lines={3} label={t("billing.cash.checking")} />
         ) : session ? (
           <>
             <div className="grid gap-4 sm:grid-cols-4">
-              <Figure label="Fondo inicial">
+              <Figure label={t("billing.cash.openingFloat")}>
                 <Money amount={session.openingFloat} currency={session.currency} />
               </Figure>
-              <Figure label="Efectivo recibido">
+              <Figure label={t("billing.cash.cashIn")}>
                 <Money amount={session.cashIn} currency={session.currency} />
               </Figure>
-              <Figure label="Efectivo devuelto">
+              <Figure label={t("billing.cash.cashOut")}>
                 <Money amount={session.cashOut} currency={session.currency} />
               </Figure>
-              <Figure label="Esperado" emphasis>
+              <Figure label={t("billing.cash.expected")} emphasis>
                 <Money amount={session.expectedCash} currency={session.currency} />
               </Figure>
             </div>
             {otherCurrencies.length > 0 && (
               <div className="rounded-xl border border-hairline p-3">
                 <p className="mb-2 text-xs font-medium uppercase tracking-wider text-subtle">
-                  Otras monedas (no entran al arqueo)
+                  {t("billing.cash.otherCurrencies")}
                 </p>
                 <ul className="flex flex-wrap gap-4 text-sm">
                   {otherCurrencies.map(([currency, amount]) => (
@@ -114,14 +118,13 @@ export function CashPage({ openOnLoad = false }: { openOnLoad?: boolean }) {
                 </ul>
               </div>
             )}
-            <p className="text-xs text-subtle">Se actualiza sola cada 30 segundos y al volver a esta pestaña.</p>
+            <p className="text-xs text-subtle">{t("billing.cash.liveUpdate")}</p>
           </>
         ) : (
           <p className="text-sm text-subtle">
-            No hay caja abierta.{" "}
             {settings.data?.requireCashSession
-              ? "La clínica exige caja abierta para cobrar en efectivo."
-              : "Los cobros en efectivo se registran igual, sin arqueo."}
+              ? t("billing.cash.noOpenRequired")
+              : t("billing.cash.noOpenOptional")}
           </p>
         )}
       </section>
@@ -129,7 +132,7 @@ export function CashPage({ openOnLoad = false }: { openOnLoad?: boolean }) {
       {permissions.canViewCashHistory && (
         <section aria-labelledby="cash-history" className="space-y-3">
           <h2 id="cash-history" className="text-base font-semibold text-ink">
-            Historial de cajas
+            {t("billing.cash.history")}
           </h2>
           {history.isError && (
             <Alert variant="destructive">
@@ -137,19 +140,19 @@ export function CashPage({ openOnLoad = false }: { openOnLoad?: boolean }) {
             </Alert>
           )}
           {history.isPending ? (
-            <TableSkeleton columns={5} rows={4} label="Cargando historial de cajas…" />
+            <TableSkeleton columns={5} rows={4} label={t("billing.cash.loadingHistory")} />
           ) : history.data && history.data.entities.length === 0 ? (
-            <EmptyState icon={Wallet} variant="card" title="Sin cajas registradas" />
+            <EmptyState icon={Wallet} variant="card" title={t("billing.cash.emptySessions")} />
           ) : history.data ? (
             <div className="bento overflow-x-auto p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Apertura</TableHead>
-                    <TableHead>Cierre</TableHead>
-                    <TableHead className="text-right">Esperado</TableHead>
-                    <TableHead className="text-right">Contado</TableHead>
-                    <TableHead className="text-right">Diferencia</TableHead>
+                    <TableHead>{t("billing.table.opened")}</TableHead>
+                    <TableHead>{t("billing.table.closed")}</TableHead>
+                    <TableHead className="text-right">{t("billing.table.expected")}</TableHead>
+                    <TableHead className="text-right">{t("billing.table.counted")}</TableHead>
+                    <TableHead className="text-right">{t("billing.table.difference")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -161,7 +164,7 @@ export function CashPage({ openOnLoad = false }: { openOnLoad?: boolean }) {
                       </TableCell>
                       <TableCell>
                         {item.status === "OPEN" ? (
-                          <span className="text-emerald-700 dark:text-emerald-300">Abierta</span>
+                          <span className="text-emerald-700 dark:text-emerald-300">{t("billing.cash.openStatus")}</span>
                         ) : (
                           <>
                             <p>{formatBillingDateTime(item.closedAt)}</p>

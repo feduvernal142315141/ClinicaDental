@@ -135,7 +135,7 @@ export function useDoctorForm({
 
   const { createDoctor, updateDoctor, getDoctorById, loading } = useDoctors();
 
-  // Catálogo GESTIONABLE de tipos de usuario (solo activos): reemplaza el
+  // Catálogo de solo lectura de tipos de usuario (solo activos): reemplaza el
   // enum hardcodeado. Se centraliza aquí (capa hook) porque tanto el resolver
   // (especialidad condicional) como el Select de `DoctorForm` lo necesitan.
   const { userTypes, loading: userTypesLoading } = useUserTypes();

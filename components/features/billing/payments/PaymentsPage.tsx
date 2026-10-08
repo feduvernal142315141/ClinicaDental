@@ -26,6 +26,7 @@ import {
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
 import { PAYMENT_METHOD_LABELS, refundableAmount, type PaymentResponse } from "@/lib/entity/billing";
 import { useBillingPermissions, usePaymentList, useRefundList, useVoidPayment } from "@/lib/hooks/billing";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { billingErrorMessage, isConflictError } from "@/lib/services/billing";
 import { notify } from "@/lib/utils/notify";
 import { PaymentStateBadge } from "../shared/BillingBadges";
@@ -46,6 +47,7 @@ function canBeRefunded(payment: PaymentResponse) {
 /** F. Pagos y devoluciones. */
 export function PaymentsPage({ initialPatient }: { initialPatient?: PatientFilterValue | null }) {
   const permissions = useBillingPermissions();
+  const { t } = useI18n();
   const [tab, setTab] = useState("payments");
   const [patient, setPatient] = useState<PatientFilterValue | null>(initialPatient ?? null);
   const [range, setRange] = useState({ from: "", to: "" });
@@ -76,8 +78,8 @@ export function PaymentsPage({ initialPatient }: { initialPatient?: PatientFilte
     <div className="space-y-6">
       <Header
         level={1}
-        title="Pagos y devoluciones"
-        description="Anular corrige un error de registro. Devolver registra dinero que sale."
+        title={t("billing.payments.title")}
+        description={t("billing.payments.description")}
       />
 
       <ListFilters
@@ -87,8 +89,8 @@ export function PaymentsPage({ initialPatient }: { initialPatient?: PatientFilte
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="payments">Pagos</TabsTrigger>
-          <TabsTrigger value="refunds">Devoluciones</TabsTrigger>
+          <TabsTrigger value="payments">{t("billing.payments.paymentsTab")}</TabsTrigger>
+          <TabsTrigger value="refunds">{t("billing.payments.refundsTab")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="payments" className="mt-4">
@@ -98,22 +100,22 @@ export function PaymentsPage({ initialPatient }: { initialPatient?: PatientFilte
             </Alert>
           )}
           {payments.isPending ? (
-            <TableSkeleton columns={8} label="Cargando pagos…" />
+            <TableSkeleton columns={8} label={t("billing.payments.loadingPayments")} />
           ) : payments.data && payments.data.entities.length === 0 ? (
-            <EmptyState icon={Banknote} variant="card" title="Sin pagos" description="No hay pagos con estos filtros." />
+            <EmptyState icon={Banknote} variant="card" title={t("billing.payments.emptyPayments")} description={t("billing.payments.emptyPaymentsDescription")} />
           ) : payments.data ? (
             <div className="bento overflow-x-auto p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Paciente</TableHead>
-                    <TableHead>Aplicado a</TableHead>
-                    <TableHead>Método</TableHead>
-                    <TableHead>Referencia</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
-                    <TableHead className="text-right">Devuelto</TableHead>
+                    <TableHead>{t("billing.table.date")}</TableHead>
+                    <TableHead>{t("billing.table.patient")}</TableHead>
+                    <TableHead>{t("billing.table.appliedTo")}</TableHead>
+                    <TableHead>{t("billing.table.method")}</TableHead>
+                    <TableHead>{t("billing.table.reference")}</TableHead>
+                    <TableHead>{t("billing.table.status")}</TableHead>
+                    <TableHead className="text-right">{t("billing.table.amount")}</TableHead>
+                    <TableHead className="text-right">{t("billing.table.refunded")}</TableHead>
                     <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
@@ -126,7 +128,7 @@ export function PaymentsPage({ initialPatient }: { initialPatient?: PatientFilte
                         <TableCell className="whitespace-nowrap">{formatBillingDateTime(payment.paidAt)}</TableCell>
                         <TableCell>
                           <Link href={`/patients/${payment.patientId}?tab=cuenta`} className="text-brand hover:underline">
-                            {payment.patientName ?? "Paciente"}
+                            {payment.patientName ?? t("billing.fallback.patient")}
                           </Link>
                         </TableCell>
                         <TableCell>
@@ -197,19 +199,19 @@ export function PaymentsPage({ initialPatient }: { initialPatient?: PatientFilte
             </Alert>
           )}
           {refunds.isPending ? (
-            <TableSkeleton columns={5} label="Cargando devoluciones…" />
+            <TableSkeleton columns={5} label={t("billing.payments.loadingRefunds")} />
           ) : refunds.data && refunds.data.entities.length === 0 ? (
-            <EmptyState icon={Undo2} variant="card" title="Sin devoluciones" description="No hay devoluciones con estos filtros." />
+            <EmptyState icon={Undo2} variant="card" title={t("billing.payments.emptyRefunds")} description={t("billing.payments.emptyRefundsDescription")} />
           ) : refunds.data ? (
             <div className="bento overflow-x-auto p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Método</TableHead>
-                    <TableHead>Motivo</TableHead>
-                    <TableHead>Registró</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
+                    <TableHead>{t("billing.table.date")}</TableHead>
+                    <TableHead>{t("billing.table.method")}</TableHead>
+                    <TableHead>{t("billing.table.reason")}</TableHead>
+                    <TableHead>{t("billing.table.registeredBy")}</TableHead>
+                    <TableHead className="text-right">{t("billing.table.amount")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

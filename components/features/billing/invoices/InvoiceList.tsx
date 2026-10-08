@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
 import { INVOICE_STATUS_LABELS, type InvoiceStatus } from "@/lib/entity/billing";
 import { useBillingPermissions, useInvoiceList } from "@/lib/hooks/billing";
 import { useDebouncedValue } from "@/lib/hooks/billing/use-debounced-value";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { billingErrorMessage } from "@/lib/services/billing";
 import { InvoiceStatusBadge } from "../shared/BillingBadges";
 import { BillingPager } from "../shared/BillingPager";
@@ -25,6 +26,7 @@ const PAGE_SIZE = 20;
 export function InvoiceList({ initialPatient }: { initialPatient?: PatientFilterValue | null }) {
   const router = useRouter();
   const permissions = useBillingPermissions();
+  const { t } = useI18n();
   const [page, setPage] = useState(0);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState(ALL_STATUSES);
@@ -52,20 +54,20 @@ export function InvoiceList({ initialPatient }: { initialPatient?: PatientFilter
     <div className="space-y-6">
       <Header
         level={1}
-        title="Recibos"
-        description="Documentos no fiscales emitidos al paciente: lo que debe y lo que ya pagó."
+        title={t("billing.invoices.title")}
+        description={t("billing.invoices.description")}
         action={
           permissions.canCreate ? (
             <LinkButton href="/billing/invoices/new">
               <Plus className="mr-2 h-4 w-4" />
-              Nuevo recibo
+              {t("billing.actions.newInvoice")}
             </LinkButton>
           ) : undefined
         }
       />
 
       <ListFilters
-        search={{ value: q, onChange: resetPage(setQ), placeholder: "Código o paciente" }}
+        search={{ value: q, onChange: resetPage(setQ), placeholder: t("billing.invoices.searchPlaceholder") }}
         status={{
           value: status,
           onChange: resetPage(setStatus),
@@ -82,16 +84,16 @@ export function InvoiceList({ initialPatient }: { initialPatient?: PatientFilter
       )}
 
       {isPending ? (
-        <TableSkeleton columns={7} label="Cargando recibos…" />
+        <TableSkeleton columns={7} label={t("billing.invoices.loading")} />
       ) : data && data.entities.length === 0 ? (
         <EmptyState
           icon={ReceiptText}
           variant="card"
-          title="Sin recibos"
+          title={t("billing.invoices.emptyTitle")}
           description={
             q || patient || status !== ALL_STATUSES || range.from || range.to
-              ? "Ningún recibo coincide con los filtros."
-              : "Aún no se ha emitido ningún recibo."
+              ? t("billing.invoices.emptyFiltered")
+              : t("billing.invoices.emptyDescription")
           }
         />
       ) : data ? (
@@ -99,13 +101,13 @@ export function InvoiceList({ initialPatient }: { initialPatient?: PatientFilter
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Paciente</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Emitido</TableHead>
-                <TableHead>Vence</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Saldo</TableHead>
+                <TableHead>{t("billing.table.code")}</TableHead>
+                <TableHead>{t("billing.table.patient")}</TableHead>
+                <TableHead>{t("billing.table.status")}</TableHead>
+                <TableHead>{t("billing.table.issued")}</TableHead>
+                <TableHead>{t("billing.table.due")}</TableHead>
+                <TableHead className="text-right">{t("billing.table.total")}</TableHead>
+                <TableHead className="text-right">{t("billing.table.balance")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

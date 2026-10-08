@@ -20,7 +20,8 @@ import {
   Switch,
 } from "@/components/ui";
 import { Select as SearchSelect } from "@/components/ui/controls/select";
-import { CHARGE_POLICY_LABELS, type ChargePolicy } from "@/lib/entity/billing";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import type { ChargePolicy } from "@/lib/entity/billing";
 import { useBillingPermissions, useExchangeRate, useFinanceSettings } from "@/lib/hooks/billing";
 import {
   CLINIC_CURRENCY,
@@ -37,13 +38,35 @@ import { DetailSkeleton } from "../shared/BillingSkeletons";
 
 const POLICIES: ChargePolicy[] = ["SUGGEST", "AUTO", "OFF"];
 
+function chargePolicyLabel(policy: ChargePolicy, t: ReturnType<typeof useI18n>["t"]) {
+  switch (policy) {
+    case "OFF":
+      return {
+        label: t("billing.settings.chargePolicy.off"),
+        description: t("billing.settings.chargePolicy.offDescription"),
+      };
+    case "AUTO":
+      return {
+        label: t("billing.settings.chargePolicy.auto"),
+        description: t("billing.settings.chargePolicy.autoDescription"),
+      };
+    case "SUGGEST":
+    default:
+      return {
+        label: t("billing.settings.chargePolicy.suggest"),
+        description: t("billing.settings.chargePolicy.suggestDescription"),
+      };
+  }
+}
+
 function SettingsForm() {
+  const { t } = useI18n();
   const { form, submit, settings, loading, loadError, submitting, baseCurrencyLocked } = useFinanceSettingsForm({
-    onSaved: () => notify.success("Configuración guardada"),
+    onSaved: () => notify.success(t("billing.settings.saved")),
   });
   const rootError = form.formState.errors.root?.message;
 
-  if (loading) return <DetailSkeleton label="Cargando configuración…" />;
+  if (loading) return <DetailSkeleton label={t("billing.settings.loading")} />;
   if (loadError) {
     return (
       <Alert variant="destructive">
@@ -64,23 +87,23 @@ function SettingsForm() {
           name="baseCurrency"
           render={({ field }) => (
             <FormItem className="max-w-sm">
-              <FormLabel>Moneda base</FormLabel>
+              <FormLabel>{t("billing.settings.baseCurrency")}</FormLabel>
               <FormControl>
                 <SearchSelect
                   value={field.value || "__clinic__"}
                   onChange={(value) => field.onChange(value === "__clinic__" ? CLINIC_CURRENCY : value)}
                   options={[
-                    { value: "__clinic__", label: "Usar la de la clínica" },
+                    { value: "__clinic__", label: t("billing.settings.useClinicCurrency") },
                     ...currencyOptions(settings?.baseCurrency).filter((o) => o.value),
                   ]}
                   disabled={baseCurrencyLocked}
-                  aria-label="Moneda base"
+                  aria-label={t("billing.settings.baseCurrency")}
                 />
               </FormControl>
               <FormDescription>
                 {baseCurrencyLocked ? (
                   <span className="inline-flex items-center gap-1">
-                    <Lock className="h-3.5 w-3.5" /> Bloqueada: ya hay documentos de finanzas.
+                    <Lock className="h-3.5 w-3.5" /> {t("billing.settings.currencyLocked")}
                   </span>
                 ) : (
                   `Vigente: ${settings?.baseCurrency}. Se bloquea en cuanto existan documentos.`
@@ -96,21 +119,24 @@ function SettingsForm() {
           name="chargePolicy"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Política de cargos al completar una cita</FormLabel>
+              <FormLabel>{t("billing.settings.chargePolicy")}</FormLabel>
               <FormControl>
                 <RadioGroup value={field.value} onValueChange={field.onChange} className="grid gap-2 sm:grid-cols-3">
-                  {POLICIES.map((policy) => (
-                    <label
-                      key={policy}
-                      className="flex cursor-pointer gap-3 rounded-xl border border-hairline p-3 has-[:checked]:border-brand has-[:checked]:bg-brand/5"
-                    >
-                      <RadioGroupItem value={policy} className="mt-0.5" />
-                      <span>
-                        <span className="block text-sm font-medium text-ink">{CHARGE_POLICY_LABELS[policy].label}</span>
-                        <span className="block text-xs text-subtle">{CHARGE_POLICY_LABELS[policy].description}</span>
-                      </span>
-                    </label>
-                  ))}
+                  {POLICIES.map((policy) => {
+                    const policyText = chargePolicyLabel(policy, t);
+                    return (
+                      <label
+                        key={policy}
+                        className="flex cursor-pointer gap-3 rounded-xl border border-hairline p-3 has-[:checked]:border-brand has-[:checked]:bg-brand/5"
+                      >
+                        <RadioGroupItem value={policy} className="mt-0.5" />
+                        <span>
+                          <span className="block text-sm font-medium text-ink">{policyText.label}</span>
+                          <span className="block text-xs text-subtle">{policyText.description}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
                 </RadioGroup>
               </FormControl>
               <FormMessage />
@@ -125,8 +151,8 @@ function SettingsForm() {
             render={({ field }) => (
               <FormItem className="flex items-start justify-between gap-4 rounded-xl border border-hairline p-3">
                 <div>
-                  <FormLabel>Permitir anticipos</FormLabel>
-                  <FormDescription>Pagos sin recibo que quedan como saldo a favor.</FormDescription>
+                  <FormLabel>{t("billing.settings.allowAdvances")}</FormLabel>
+                  <FormDescription>{t("billing.settings.allowAdvancesDescription")}</FormDescription>
                 </div>
                 <FormControl>
                   <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -140,8 +166,8 @@ function SettingsForm() {
             render={({ field }) => (
               <FormItem className="flex items-start justify-between gap-4 rounded-xl border border-hairline p-3">
                 <div>
-                  <FormLabel>Exigir caja abierta para efectivo</FormLabel>
-                  <FormDescription>Sin caja abierta no se cobra ni devuelve en efectivo.</FormDescription>
+                  <FormLabel>{t("billing.settings.requireCashSession")}</FormLabel>
+                  <FormDescription>{t("billing.settings.requireCashSessionDescription")}</FormDescription>
                 </div>
                 <FormControl>
                   <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -156,11 +182,11 @@ function SettingsForm() {
           name="maxDiscountPercent"
           render={({ field }) => (
             <FormItem className="max-w-xs">
-              <FormLabel>Descuento máximo (%)</FormLabel>
+              <FormLabel>{t("billing.settings.maxDiscount")}</FormLabel>
               <FormControl>
                 <NumberInput {...field} min={0} max={100} />
               </FormControl>
-              <FormDescription>Sobre el bruto del documento. No aplica al Administrador.</FormDescription>
+              <FormDescription>{t("billing.settings.maxDiscountDescription")}</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -170,7 +196,7 @@ function SettingsForm() {
           <Alert variant="destructive" role="alert">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {rootError} Se recargaron los valores vigentes.
+              {rootError} {t("billing.settings.reloadedCurrent")}
             </AlertDescription>
           </Alert>
         )}
@@ -178,7 +204,7 @@ function SettingsForm() {
         <div className="flex justify-end">
           <Button type="submit" disabled={submitting}>
             {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            Guardar configuración
+            {t("billing.settings.save")}
           </Button>
         </div>
       </form>
@@ -187,10 +213,11 @@ function SettingsForm() {
 }
 
 function ExchangeRatesSection({ baseCurrency }: { baseCurrency: string }) {
+  const { t } = useI18n();
   const [lookup, setLookup] = useState(COMMON_CURRENCIES.find((c) => c !== baseCurrency) ?? "USD");
   const { form, submit, submitting } = useExchangeRateForm(baseCurrency, {
     onSaved: (saved) => {
-      notify.success("Tasa registrada", { description: `1 ${saved.base} = ${saved.rate} ${saved.target}` });
+      notify.success(t("billing.settings.exchangeSaved"), { description: `1 ${saved.base} = ${saved.rate} ${saved.target}` });
       setLookup(saved.target);
     },
   });
@@ -201,9 +228,9 @@ function ExchangeRatesSection({ baseCurrency }: { baseCurrency: string }) {
     <section aria-labelledby="exchange-rates" className="bento space-y-5 p-5">
       <div>
         <h2 id="exchange-rates" className="text-base font-semibold text-ink">
-          Tipos de cambio
+          {t("billing.settings.exchangeRates")}
         </h2>
-        <p className="text-sm text-subtle">Unidades de cada moneda por 1 {baseCurrency}. La moneda base vale 1.</p>
+        <p className="text-sm text-subtle">{t("billing.settings.exchangeRatesDescription").replace("{currency}", baseCurrency)}</p>
       </div>
 
       <Form {...form}>
@@ -217,14 +244,14 @@ function ExchangeRatesSection({ baseCurrency }: { baseCurrency: string }) {
             name="target"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Moneda</FormLabel>
+                <FormLabel>{t("billing.settings.currency")}</FormLabel>
                 <FormControl>
                   <SearchSelect
                     value={field.value}
                     onChange={field.onChange}
                     onBlur={field.onBlur}
                     options={currencyOptions(field.value).filter((o) => o.value !== baseCurrency)}
-                    aria-label="Moneda de la tasa"
+                    aria-label={t("billing.settings.currency")}
                   />
                 </FormControl>
                 <FormMessage />
@@ -236,7 +263,7 @@ function ExchangeRatesSection({ baseCurrency }: { baseCurrency: string }) {
             name="rate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tasa</FormLabel>
+                <FormLabel>{t("billing.settings.rate")}</FormLabel>
                 <FormControl>
                   <NumberInput {...field} decimals={8} min={0} placeholder="0.0000" />
                 </FormControl>
@@ -249,7 +276,7 @@ function ExchangeRatesSection({ baseCurrency }: { baseCurrency: string }) {
             name="asOf"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Fecha</FormLabel>
+                <FormLabel>{t("billing.date")}</FormLabel>
                 <FormControl>
                   <Input type="date" {...field} max={localTodayInput()} />
                 </FormControl>
@@ -259,7 +286,7 @@ function ExchangeRatesSection({ baseCurrency }: { baseCurrency: string }) {
           />
           <Button type="submit" className="sm:mt-[1.6rem]" disabled={submitting}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Registrar
+            {t("billing.settings.register")}
           </Button>
           {rootError && (
             <Alert variant="destructive" className="sm:col-span-4" role="alert">
@@ -270,22 +297,22 @@ function ExchangeRatesSection({ baseCurrency }: { baseCurrency: string }) {
       </Form>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-hairline pt-4 text-sm">
-        <span className="text-subtle">Consultar la vigente:</span>
+        <span className="text-subtle">{t("billing.settings.lookupCurrent")}</span>
         <div className="w-32">
           <SearchSelect
             value={lookup}
             onChange={setLookup}
             options={currencyOptions(lookup).filter((o) => o.value !== baseCurrency)}
-            aria-label="Moneda a consultar"
+            aria-label={t("billing.settings.currency")}
           />
         </div>
         <span className="text-ink">
           {current.isFetching
-            ? "Consultando…"
+            ? t("billing.settings.checking")
             : current.data
-              ? `1 ${current.data.base} = ${current.data.rate} ${current.data.target} (desde el ${formatBillingDate(current.data.asOf)})`
+              ? `1 ${current.data.base} = ${current.data.rate} ${current.data.target} (${formatBillingDate(current.data.asOf)})`
               : current.data === null
-                ? "No hay tasa registrada."
+                ? t("billing.settings.noRate")
                 : null}
         </span>
       </div>
@@ -296,13 +323,14 @@ function ExchangeRatesSection({ baseCurrency }: { baseCurrency: string }) {
 /** J. Configuración de Finanzas (solo Administrador). */
 export function FinanceSettingsPage() {
   const permissions = useBillingPermissions();
+  const { t } = useI18n();
   const { data: settings } = useFinanceSettings({ enabled: permissions.isAdmin });
   if (!permissions.isAdmin) {
-    return <FinanceNoPermission description="La configuración de Finanzas es solo para el Administrador." />;
+    return <FinanceNoPermission description={t("billing.settings.noPermission")} />;
   }
   return (
     <div className="space-y-6">
-      <Header level={1} title="Configuración de Finanzas" description="Moneda, cargos automáticos, caja y descuentos." />
+      <Header level={1} title={t("billing.settings.title")} description={t("billing.settings.description")} />
       <SettingsForm />
       {settings && <ExchangeRatesSection baseCurrency={settings.baseCurrency} />}
     </div>

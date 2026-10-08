@@ -9,6 +9,7 @@ import { Alert, AlertDescription, Button, Checkbox } from "@/components/ui";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
 import { CHARGE_STATUS_LABELS, type ChargeResponse, type ChargeStatus } from "@/lib/entity/billing";
 import { useBillingPermissions, useChargeList, useDismissCharge } from "@/lib/hooks/billing";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { billingErrorMessage } from "@/lib/services/billing";
 import { roundMoney } from "@/lib/utils/billing-currency";
 import { notify } from "@/lib/utils/notify";
@@ -34,7 +35,7 @@ function groupByPatient(charges: ChargeResponse[]): PatientGroup[] {
   for (const charge of charges) {
     const group = groups.get(charge.patientId) ?? {
       patientId: charge.patientId,
-      patientName: charge.patientName ?? "Paciente",
+      patientName: charge.patientName ?? "",
       charges: [],
     };
     group.charges.push(charge);
@@ -52,6 +53,7 @@ export function chargeOrigin(charge: ChargeResponse): string {
 export function ChargesPage() {
   const router = useRouter();
   const permissions = useBillingPermissions();
+  const { t } = useI18n();
   const [status, setStatus] = useState<string>("PENDING");
   const [patient, setPatient] = useState<PatientFilterValue | null>(null);
   const [page, setPage] = useState(0);
@@ -70,7 +72,7 @@ export function ChargesPage() {
 
   const bill = (group: PatientGroup) => {
     const ids = group.charges.filter((c) => c.status === "PENDING" && !excluded.includes(c.id)).map((c) => c.id);
-    const name = encodeURIComponent(group.patientName);
+    const name = encodeURIComponent(group.patientName || t("billing.fallback.patient"));
     router.push(`/billing/invoices/new?patientId=${group.patientId}&patientName=${name}&chargeIds=${ids.join(",")}`);
   };
 
@@ -78,13 +80,13 @@ export function ChargesPage() {
     <div className="space-y-6">
       <Header
         level={1}
-        title="Cargos pendientes"
-        description="Servicios realizados que aún no se cobran. Se crean al completar citas o a mano."
+        title={t("billing.charges.title")}
+        description={t("billing.charges.description")}
         action={
           permissions.canCreate ? (
             <Button onClick={() => setCharging(true)}>
               <ClipboardPlus className="mr-2 h-4 w-4" />
-              Cargo manual
+              {t("billing.charges.manual")}
             </Button>
           ) : undefined
         }
@@ -115,13 +117,13 @@ export function ChargesPage() {
       )}
 
       {isPending ? (
-        <TableSkeleton columns={5} label="Cargando cargos…" />
+        <TableSkeleton columns={5} label={t("billing.charges.loading")} />
       ) : groups.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
           variant="card"
-          title={status === "PENDING" ? "No hay cargos pendientes" : "Sin cargos"}
-          description={status === "PENDING" ? "Todo lo realizado ya está cobrado o descartado." : "Ningún cargo coincide con los filtros."}
+          title={status === "PENDING" ? t("billing.charges.emptyPendingTitle") : t("billing.charges.emptyTitle")}
+          description={status === "PENDING" ? t("billing.charges.emptyPendingDescription") : t("billing.charges.emptyDescription")}
         />
       ) : (
         <div className="space-y-4">
@@ -129,11 +131,12 @@ export function ChargesPage() {
             const billable = group.charges.filter((c) => c.status === "PENDING" && !excluded.includes(c.id));
             const total = roundMoney(billable.reduce((sum, c) => sum + c.total, 0));
             const currency = group.charges[0]?.currency ?? "";
+            const patientName = group.patientName || t("billing.fallback.patient");
             return (
-              <section key={group.patientId} className="bento overflow-hidden p-0" aria-label={`Cargos de ${group.patientName}`}>
+              <section key={group.patientId} className="bento overflow-hidden p-0" aria-label={`${t("billing.charges.title")} ${patientName}`}>
                 <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-3">
                   <Link href={`/patients/${group.patientId}?tab=cuenta`} className="font-semibold text-ink hover:text-brand">
-                    {group.patientName}
+                    {patientName}
                   </Link>
                   {permissions.canCreate && billable.length > 0 && (
                     <Button size="sm" onClick={() => bill(group)}>

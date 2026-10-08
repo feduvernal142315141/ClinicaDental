@@ -5,6 +5,7 @@ import {
   useFinanceModule,
   type BillingPermissions,
 } from "@/lib/hooks/billing";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { FinanceModuleUnavailable, FinanceNoPermission } from "./FinanceModuleUnavailable";
 import { PageSkeleton } from "../shared/BillingSkeletons";
 
@@ -25,8 +26,9 @@ interface FinanceGateProps {
 export function FinanceGate({ children, allow, deniedDescription }: FinanceGateProps) {
   const { enabled, loading } = useFinanceModule();
   const permissions = useBillingPermissions();
+  const { t } = useI18n();
 
-  if (loading) return <PageSkeleton />;
+  if (loading) return <PageSkeleton label={t("billing.loading.finance")} />;
   if (!enabled) return <FinanceModuleUnavailable />;
   if (!permissions.canView || (allow && !allow(permissions))) {
     return <FinanceNoPermission description={deniedDescription} />;

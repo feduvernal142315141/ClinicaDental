@@ -70,7 +70,7 @@ export function ScheduleEditor({ disabled = false }: ScheduleEditorProps) {
   const overviewDays = CLINIC_SCHEDULE_DAYS.map(({ key }) => ({
     short: dayShort(key),
     label: dayLabel(key),
-    active: !!schedule?.[key]?.enabled,
+    active: schedule?.[key]?.enabled,
     disabled,
     onToggle: disabled
       ? undefined

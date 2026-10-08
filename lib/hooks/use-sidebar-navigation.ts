@@ -11,7 +11,6 @@ import {
   Shield,
   Briefcase,
   Tag,
-  IdCard,
   MessageSquare,
   Megaphone,
   Filter,
@@ -51,7 +50,6 @@ export interface MenuGroups {
  * | /billing/*                 | módulo FINANCE + `billing` (y `billing_reports`)   |
  * | /settings/general          | `general_option`  (ClinicGeneralSettingsController) |
  * | /settings/doctors          | `doctor`          (DoctorController)                |
- * | /settings/user-types       | `doctor`          (UserTypeController)              |
  * | /settings/roles            | `role`            (RoleController)                  |
  * | /settings/services         | `service`         (ServiceController)               |
  * | /settings/labels           | `appointments`    (LabelController)                 |
@@ -105,7 +103,6 @@ export function useSidebarNavigation() {
       [
         { path: "/settings/general", label: t("navigation.generalSettings"), icon: Sliders, module: "general_option" },
         { path: "/settings/doctors", label: t("navigation.users"), icon: UserCog, module: "doctor" },
-        { path: "/settings/user-types", label: t("navigation.userTypes"), icon: IdCard, module: "doctor" },
         { path: "/settings/roles", label: t("navigation.roles"), icon: Shield, module: "role" },
         { path: "/settings/services", label: t("navigation.services"), icon: Briefcase, module: "service" },
         { path: "/settings/labels", label: t("navigation.labels"), icon: Tag, module: "appointments" },
@@ -131,7 +128,7 @@ export function useSidebarNavigation() {
     if (billingSections.length > 0) {
       main.push({
         path: "/billing",
-        label: "Finanzas",
+        label: t("billing.navigation.finance"),
         icon: Wallet,
         children: billingSections.map(({ path, label, icon }) => ({ path, label, icon })),
       });

@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
 import { ESTIMATE_STATUS_LABELS, type EstimateStatus } from "@/lib/entity/billing";
 import { useBillingPermissions, useEstimateList } from "@/lib/hooks/billing";
 import { useDebouncedValue } from "@/lib/hooks/billing/use-debounced-value";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { billingErrorMessage } from "@/lib/services/billing";
 import { EstimateStatusBadge } from "../shared/BillingBadges";
 import { BillingPager } from "../shared/BillingPager";
@@ -25,6 +26,7 @@ const PAGE_SIZE = 20;
 export function EstimateList() {
   const router = useRouter();
   const permissions = useBillingPermissions();
+  const { t } = useI18n();
   const [page, setPage] = useState(0);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState(ALL_STATUSES);
@@ -49,20 +51,20 @@ export function EstimateList() {
     <div className="space-y-6">
       <Header
         level={1}
-        title="Presupuestos"
-        description="Propuestas de tratamiento para el paciente. No generan deuda hasta convertirlas en recibo."
+        title={t("billing.estimates.title")}
+        description={t("billing.estimates.description")}
         action={
           permissions.canCreate ? (
             <LinkButton href="/billing/estimates/new">
               <Plus className="mr-2 h-4 w-4" />
-              Nuevo presupuesto
+              {t("billing.actions.newEstimate")}
             </LinkButton>
           ) : undefined
         }
       />
 
       <ListFilters
-        search={{ value: q, onChange: resetPage(setQ), placeholder: "Código o paciente" }}
+        search={{ value: q, onChange: resetPage(setQ), placeholder: t("billing.estimates.searchPlaceholder") }}
         status={{
           value: status,
           onChange: resetPage(setStatus),
@@ -78,24 +80,24 @@ export function EstimateList() {
       )}
 
       {isPending ? (
-        <TableSkeleton columns={5} label="Cargando presupuestos…" />
+        <TableSkeleton columns={5} label={t("billing.estimates.loading")} />
       ) : data && data.entities.length === 0 ? (
         <EmptyState
           icon={FileText}
           variant="card"
-          title="Sin presupuestos"
-          description={q || patient || status !== ALL_STATUSES ? "Ningún presupuesto coincide con los filtros." : "Aún no se ha creado ningún presupuesto."}
+          title={t("billing.estimates.emptyTitle")}
+          description={q || patient || status !== ALL_STATUSES ? t("billing.estimates.emptyFiltered") : t("billing.estimates.emptyDescription")}
         />
       ) : data ? (
         <div className="bento overflow-x-auto p-0" aria-busy={isFetching}>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Paciente</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Válido hasta</TableHead>
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead>{t("billing.table.code")}</TableHead>
+                <TableHead>{t("billing.table.patient")}</TableHead>
+                <TableHead>{t("billing.table.status")}</TableHead>
+                <TableHead>{t("billing.table.validUntil")}</TableHead>
+                <TableHead className="text-right">{t("billing.table.total")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

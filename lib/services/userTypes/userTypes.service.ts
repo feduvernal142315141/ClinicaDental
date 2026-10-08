@@ -1,15 +1,12 @@
 /**
  * UserTypes Service
  *
- * Catálogo GESTIONABLE de tipos de usuario (per-clínica). Espejo de
- * `lib/services/labels/labels.service.ts`.
+ * Catálogo de solo lectura de tipos de usuario global.
  */
-import { serviceGet, servicePost, servicePut, servicePatch } from "@/lib/services/baseService";
+import { serviceGet } from "@/lib/services/baseService";
 import { handleServiceError } from "@/lib/utils/error.utils";
 import type {
   UserType,
-  CreateUserTypeDto,
-  UpdateUserTypeDto,
   GetUserTypesPageParams,
   PaginatedUserTypesResponse,
 } from "@/lib/entity/userType";
@@ -95,58 +92,7 @@ async function getUserTypesPage(
   );
 }
 
-async function getUserTypeById(id: string): Promise<UserType> {
-  const response = await serviceGet<UserType>(`${endpoint}/${id}`);
-  if (response?.status === 200) {
-    const raw =
-      (response.data as unknown as { data?: UserType })?.data ??
-      (response.data as unknown as UserType);
-    return normalizeArchived(raw);
-  }
-  handleServiceError(response, "Error al obtener el tipo de usuario");
-  throw new Error("Error al obtener el tipo de usuario");
-}
-
-async function createUserType(data: CreateUserTypeDto): Promise<string> {
-  const response = await servicePost<CreateUserTypeDto, string>(endpoint, data);
-  if (response?.status === 201 || response?.status === 200) {
-    return (
-      (response.data as unknown as { data?: string })?.data ?? (response.data as unknown as string)
-    );
-  }
-  handleServiceError(response, "Error al crear el tipo de usuario");
-  throw new Error("Error al crear el tipo de usuario");
-}
-
-async function updateUserType(id: string, data: UpdateUserTypeDto): Promise<boolean> {
-  const response = await servicePut<UpdateUserTypeDto, boolean>(`${endpoint}/${id}`, data);
-  if (response?.status === 200) {
-    return (
-      (response.data as unknown as { data?: boolean })?.data ?? (response.data as unknown as boolean)
-    );
-  }
-  handleServiceError(response, "Error al actualizar el tipo de usuario");
-  throw new Error("Error al actualizar el tipo de usuario");
-}
-
-async function archiveUserType(id: string): Promise<void> {
-  const response = await servicePatch(`${endpoint}/${id}/archive`);
-  if (response?.status === 200 || response?.status === 204) return;
-  handleServiceError(response, "Error al archivar el tipo de usuario");
-}
-
-async function unarchiveUserType(id: string): Promise<void> {
-  const response = await servicePatch(`${endpoint}/${id}/unarchive`);
-  if (response?.status === 200 || response?.status === 204) return;
-  handleServiceError(response, "Error al restaurar el tipo de usuario");
-}
-
 export const userTypesService = {
   getUserTypes,
   getUserTypesPage,
-  getUserTypeById,
-  createUserType,
-  updateUserType,
-  archiveUserType,
-  unarchiveUserType,
 };

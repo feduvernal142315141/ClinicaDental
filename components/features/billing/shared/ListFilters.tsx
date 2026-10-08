@@ -3,6 +3,7 @@
 import { Search, X } from "lucide-react";
 import { Button, Input, Label } from "@/components/ui";
 import { Select as SearchSelect } from "@/components/ui/controls/select";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { PatientPicker } from "./PatientPicker";
 
 export interface PatientFilterValue {
@@ -25,12 +26,13 @@ export const ALL_STATUSES = "__all__";
 
 /** Barra de filtros común de las listas de Finanzas. */
 export function ListFilters({ search, status, patient, range }: ListFiltersProps) {
+  const { t } = useI18n();
   return (
     <div className="bento grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4" role="search">
       {search && (
         <div className="space-y-1.5">
           <Label htmlFor="billing-search" className="text-xs text-subtle">
-            Buscar
+            {t("billing.filters.search")}
           </Label>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
@@ -46,18 +48,18 @@ export function ListFilters({ search, status, patient, range }: ListFiltersProps
       )}
       {status && (
         <div className="space-y-1.5">
-          <Label className="text-xs text-subtle">Estado</Label>
+          <Label className="text-xs text-subtle">{t("billing.filters.status")}</Label>
           <SearchSelect
             value={status.value}
             onChange={status.onChange}
-            options={[{ value: ALL_STATUSES, label: "Todos" }, ...status.options]}
-            aria-label="Estado"
+            options={[{ value: ALL_STATUSES, label: t("billing.filters.all") }, ...status.options]}
+            aria-label={t("billing.filters.status")}
           />
         </div>
       )}
       {patient && (
         <div className="space-y-1.5">
-          <Label className="text-xs text-subtle">Paciente</Label>
+          <Label className="text-xs text-subtle">{t("billing.filters.patient")}</Label>
           <PatientPicker
             value={patient.value?.id ?? ""}
             selectedName={patient.value?.name}
@@ -67,11 +69,11 @@ export function ListFilters({ search, status, patient, range }: ListFiltersProps
       )}
       {range && (
         <div className="space-y-1.5">
-          <Label className="text-xs text-subtle">Rango de fechas</Label>
+          <Label className="text-xs text-subtle">{t("billing.filters.dateRange")}</Label>
           <div className="flex items-center gap-2">
             <Input
               type="date"
-              aria-label="Desde"
+              aria-label={t("billing.filters.from")}
               value={range.from}
               max={range.to || undefined}
               onChange={(event) => range.onChange({ from: event.target.value, to: range.to })}
@@ -79,7 +81,7 @@ export function ListFilters({ search, status, patient, range }: ListFiltersProps
             <span className="text-subtle">–</span>
             <Input
               type="date"
-              aria-label="Hasta"
+              aria-label={t("billing.filters.to")}
               value={range.to}
               min={range.from || undefined}
               onChange={(event) => range.onChange({ from: range.from, to: event.target.value })}
@@ -90,7 +92,7 @@ export function ListFilters({ search, status, patient, range }: ListFiltersProps
                 variant="ghost"
                 size="icon"
                 onClick={() => range.onChange({ from: "", to: "" })}
-                aria-label="Quitar rango"
+                aria-label={t("billing.filters.clearRange")}
               >
                 <X className="h-4 w-4" />
               </Button>
