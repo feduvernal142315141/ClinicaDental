@@ -18,6 +18,11 @@ import { GrowthCampaignActions } from "./GrowthCampaignActions";
 import { CAMPAIGN_TYPE_LABELS } from "@/lib/entity/growth";
 import type { GrowthCampaignType } from "@/lib/entity/growth";
 import { Progress } from "@/components/ui/atomic/data-display/progress";
+import Link from "next/link";
+import { SEGMENT_RECIPIENTS_HIDDEN_MESSAGE, segmentAudience } from "@/lib/entity/growth";
+import { useLeadAccess, useLeadModule } from "@/lib/hooks/leads";
+import { AudienceBadge } from "../shared/AudienceBadge";
+import { GrowthCampaignRecipients } from "./GrowthCampaignRecipients";
 
 interface GrowthCampaignDetailProps {
   campaignId: string;
@@ -74,6 +79,8 @@ export function GrowthCampaignDetail({ campaignId }: GrowthCampaignDetailProps) 
   const { campaign, loading, error, refresh } = useGrowthCampaignDetail(campaignId);
   const { data: analytics } = useGrowthCampaignAnalytics(campaignId);
   const { data: conversionsData } = useGrowthConversions(campaignId);
+  const { enabled: leadModuleEnabled } = useLeadModule();
+  const { visible: canOpenLeads } = useLeadAccess();
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-64">
@@ -91,6 +98,12 @@ export function GrowthCampaignDetail({ campaignId }: GrowthCampaignDetailProps) 
 
   if (!campaign) return null;
 
+  const isLeadCampaign = segmentAudience(campaign.audience) === "LEAD";
+  const conversions = conversionsData?.entities ?? [];
+  const conversionsTotal = conversionsData?.pagination?.total ?? 0;
+  // Without permission over prospects the backend sends the total but not who converted.
+  const conversionsHidden = isLeadCampaign && conversions.length === 0 && conversionsTotal > 0;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -104,11 +117,12 @@ export function GrowthCampaignDetail({ campaignId }: GrowthCampaignDetailProps) 
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight">{campaign.name}</h1>
               <GrowthCampaignStatusBadge
                 status={campaign.growthStatus}
               />
+              {(isLeadCampaign || leadModuleEnabled) && <AudienceBadge audience={campaign.audience} />}
             </div>
             <p className="text-sm text-subtle mt-0.5">
               {CAMPAIGN_TYPE_LABELS[campaign.campaignType as GrowthCampaignType] ?? campaign.campaignType} · Creada {formatDate(campaign.createdAt)}
@@ -191,6 +205,14 @@ export function GrowthCampaignDetail({ campaignId }: GrowthCampaignDetailProps) 
           <div className="space-y-4 py-2">
             {analytics ? (
               <>
+                {isLeadCampaign && campaign.convertedLeads != null && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-subtle">Prospectos convertidos</span>
+                    <span className="font-semibold tabular-nums text-ink">
+                      {campaign.convertedLeads.toLocaleString("es")}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-subtle">Citas generadas</span>
                   <span className="font-semibold tabular-nums text-ink">
@@ -264,6 +286,20 @@ export function GrowthCampaignDetail({ campaignId }: GrowthCampaignDetailProps) 
       )}
 
       {/* Conversions breakdown */}
+      {isLeadCampaign && <GrowthCampaignRecipients campaignId={campaignId} />}
+
+      {conversionsHidden && (
+        <DataCard title="Conversiones" description="Detalle de cada conversión atribuida">
+          <div className="space-y-2 py-2">
+            <p className="text-sm text-ink">
+              <strong className="tabular-nums">{conversionsTotal.toLocaleString("es")}</strong>{" "}
+              {conversionsTotal === 1 ? "conversión atribuida" : "conversiones atribuidas"}
+            </p>
+            <p className="rounded-lg bg-hover px-3 py-2 text-sm text-subtle">{SEGMENT_RECIPIENTS_HIDDEN_MESSAGE}</p>
+          </div>
+        </DataCard>
+      )}
+
       {conversionsData && conversionsData.entities.length > 0 && (
         <DataCard
           title="Conversiones"
@@ -283,6 +319,14 @@ export function GrowthCampaignDetail({ campaignId }: GrowthCampaignDetailProps) 
                     {ATTRIBUTION_METHOD_LABELS[conv.attributionMethod] ?? conv.attributionMethod}
                     {conv.serviceName && ` · ${conv.serviceName}`}
                   </p>
+                  {conv.leadId && canOpenLeads && (
+                    <Link
+                      href={`/leads/${conv.leadId}`}
+                      className="text-xs font-medium text-brand underline-offset-2 hover:underline"
+                    >
+                      Ver prospecto
+                    </Link>
+                  )}
                 </div>
                 <p className="text-sm font-semibold tabular-nums text-ink">
                   {formatCurrency(conv.attributedValue, conv.currency ?? null)}

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Card,
   CardContent,
@@ -33,7 +35,17 @@ import { useGrowthCampaignActions } from "@/lib/hooks/growth";
 import { clinicTemplateService } from "@/lib/services/template/clinic-template.service";
 import type { ClinicTemplate } from "@/lib/entity/settings";
 import { notify } from "@/lib/utils/notify";
-import { CAMPAIGN_TYPE_LABELS } from "@/lib/entity/growth";
+import {
+  CAMPAIGN_LEAD_TEMPLATE_UNSUPPORTED_MESSAGE,
+  CAMPAIGN_TYPE_LABELS,
+  SEGMENT_AUDIENCE_LABELS,
+  SEGMENT_LEAD_ELIGIBILITY_HELP,
+  audienceCountLabel,
+  isTemplateSupportedForLeads,
+  segmentAudience,
+} from "@/lib/entity/growth";
+import { AudienceBadge } from "../shared/AudienceBadge";
+import { SegmentPreview } from "../shared/SegmentPreview";
 import type { GrowthCampaignType } from "@/lib/entity/growth";
 import { DateTimePicker } from "@/components/ui/controls/date-time-picker";
 
@@ -58,7 +70,7 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
 
   // Segments
   const { segments, loading: segmentsLoading } = useGrowthSegments();
-  const { evaluation, evaluating, evaluate } = useSegmentEvaluation();
+  const { evaluation, evaluating, evaluate, reset: resetEvaluation } = useSegmentEvaluation();
 
   // Templates
   const [templates, setTemplates] = useState<ClinicTemplate[]>([]);
@@ -88,16 +100,13 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
       .finally(() => setTemplatesLoading(false));
   }, []);
 
+  // A segment of prospects says so in the list; patient segments read as always.
+  const hasLeadSegments = segments.some((s) => segmentAudience(s.audience) === "LEAD");
   const segmentOptions: SelectOption[] = segments.map((s) => ({
     value: s.id,
-    label: s.name,
+    label:
+      segmentAudience(s.audience) === "LEAD" ? `${s.name} · ${SEGMENT_AUDIENCE_LABELS.LEAD}` : s.name,
     description: s.description,
-  }));
-
-  const templateOptions: SelectOption[] = templates.map((t) => ({
-    value: t.id,
-    label: t.name,
-    description: t.body ? t.body.substring(0, 60) + "…" : undefined,
   }));
 
   const campaignTypeOptions: SelectOption[] = (
@@ -108,6 +117,27 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
 
   const selectedSegment = segments.find((s) => s.id === values.segmentId);
   const selectedTemplate = templates.find((t) => t.id === values.templateId);
+  const audience = segmentAudience(selectedSegment?.audience);
+  const isLeadAudience = audience === "LEAD";
+  // The backend rejects it when scheduling or sending: say it when the template is chosen.
+  const templateUnsupported = isLeadAudience && !!selectedTemplate && !isTemplateSupportedForLeads(selectedTemplate.body);
+
+  const templateOptions: SelectOption[] = templates.map((t) => {
+    const preview = t.body ? t.body.substring(0, 60) + "…" : undefined;
+    return {
+      value: t.id,
+      label: t.name,
+      description:
+        isLeadAudience && !isTemplateSupportedForLeads(t.body)
+          ? "No disponible para prospectos: usa más de dos variables"
+          : preview,
+    };
+  });
+
+  // The count belongs to one segment: forget it when another one is chosen.
+  useEffect(() => {
+    resetEvaluation();
+  }, [values.segmentId, resetEvaluation]);
 
   const canAdvance = useCallback((): boolean => {
     switch (step) {
@@ -116,11 +146,11 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
       case 1:
         return !!values.segmentId;
       case 2:
-        return !!values.templateId;
+        return !!values.templateId && !templateUnsupported;
       default:
         return true;
     }
-  }, [step, values]);
+  }, [step, values, templateUnsupported]);
 
   // For step 5 submit that creates and navigates
   const handleCreate = useCallback(async () => {
@@ -254,7 +284,9 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
               <CardHeader>
                 <CardTitle>Audiencia</CardTitle>
                 <CardDescription>
-                  Selecciona el segmento de pacientes para esta campaña.
+                  {hasLeadSegments
+                    ? "Selecciona el segmento de pacientes o de prospectos para esta campaña."
+                    : "Selecciona el segmento de pacientes para esta campaña."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -282,8 +314,20 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
                     )}
                   />
                 )}
+                {values.segmentId && isLeadAudience && (
+                  <div className="space-y-2 rounded-xl border border-hairline bg-hover/50 p-3">
+                    <p className="flex flex-wrap items-center gap-2 text-sm text-ink">
+                      Esta campaña se enviará a <AudienceBadge audience={audience} />
+                    </p>
+                    <p className="text-xs text-subtle">{SEGMENT_LEAD_ELIGIBILITY_HELP}</p>
+                    <p className="text-xs text-subtle">
+                      La lista de destinatarios se fija al programar y cada prospecto se vuelve a comprobar justo
+                      antes de enviar: quien ya no cumpla queda como omitido.
+                    </p>
+                  </div>
+                )}
                 {values.segmentId && (
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <Button
                       type="button"
                       variant="outline"
@@ -293,7 +337,7 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
                     >
                       {evaluating ? "Calculando…" : "Calcular audiencia"}
                     </Button>
-                    {evaluation && (
+                    {evaluation && !isLeadAudience && (
                       <span className="text-sm text-ink">
                         <strong>{evaluation.count.toLocaleString("es")}</strong>{" "}
                         pacientes cumplen este segmento
@@ -301,6 +345,7 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
                     )}
                   </div>
                 )}
+                {evaluation && isLeadAudience && <SegmentPreview evaluation={evaluation} audience={audience} />}
               </CardContent>
             </Card>
           )}
@@ -344,6 +389,17 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
                     )}
                   />
                 )}
+                {templateUnsupported && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{CAMPAIGN_LEAD_TEMPLATE_UNSUPPORTED_MESSAGE}</AlertDescription>
+                  </Alert>
+                )}
+                {isLeadAudience && !templateUnsupported && (
+                  <p className="text-xs text-subtle">
+                    En una campaña a prospectos, {"{{1}}"} es el nombre del prospecto y {"{{2}}"} el de la clínica.
+                    Un prospecto sin nombre no recibe una plantilla que salude por nombre.
+                  </p>
+                )}
                 {selectedTemplate?.body && (
                   <div className="rounded-xl border border-hairline bg-hover/50 p-4">
                     <p className="text-xs text-subtle mb-1">Vista previa</p>
@@ -379,10 +435,13 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
                     label="Segmento"
                     value={selectedSegment?.name ?? "—"}
                   />
+                  {isLeadAudience && (
+                    <SummaryRow label="Audiencia" value={SEGMENT_AUDIENCE_LABELS[audience]} />
+                  )}
                   {evaluation && (
                     <SummaryRow
                       label="Audiencia estimada"
-                      value={`${evaluation.count.toLocaleString("es")} pacientes`}
+                      value={audienceCountLabel(audience, evaluation.count)}
                     />
                   )}
                   <SummaryRow
