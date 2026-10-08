@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlarmClock, LayoutGrid, List, UserPlus, UserSearch } from "lucide-react";
+import { AlarmClock, LayoutGrid, List, Settings, UserPlus, UserSearch } from "lucide-react";
 import { Alert, AlertDescription, Button } from "@/components/ui";
 import type { Lead } from "@/lib/entity/leads";
 import { countActiveLeadFilters, useLeadFilters, useLeadPermissions, useLeadPipeline } from "@/lib/hooks/leads";
@@ -91,6 +91,10 @@ export function LeadsPage() {
               Lista
             </Button>
           </div>
+          <Button variant="outline" onClick={() => router.push("/leads/settings")}>
+            <Settings className="h-4 w-4" />
+            Configuración
+          </Button>
           {permissions.canCreate && (
             <Button onClick={() => setCreating(true)}>
               <UserPlus className="h-4 w-4" />
