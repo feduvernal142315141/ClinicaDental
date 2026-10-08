@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -22,6 +23,7 @@ import { describeLeadActivity, leadActorLabel, type Lead } from "@/lib/entity/le
 import { LEAD_NOTE_MAX, leadNoteSchema, type LeadNoteValues } from "@/lib/entity/leads/schemas";
 import { useAddLeadNote, useLeadActivity, type LeadPermissions } from "@/lib/hooks/leads";
 import { isLeadModuleDisabledError, leadErrorMessage } from "@/lib/services/leads";
+import { usePermission } from "@/lib/hooks/use-permission";
 import { formatLeadDateTime } from "../shared/lead-format";
 
 const PAGE_SIZE = 10;
@@ -87,6 +89,9 @@ export function LeadTimeline({ lead, permissions }: { lead: Lead; permissions: L
   const [page, setPage] = useState(0);
   const { data, isPending, isError, error } = useLeadActivity(lead.id, page, PAGE_SIZE);
   const events = data?.entities ?? [];
+  // El enlace a la campaña solo sirve a quien puede abrir Campañas.
+  const { permissionsObj, isAdmin } = usePermission();
+  const canOpenCampaigns = isAdmin || (permissionsObj.campaign ?? 0) > 0;
 
   return (
     <section className="bento space-y-4 p-5" aria-labelledby="lead-timeline-title">
@@ -107,12 +112,20 @@ export function LeadTimeline({ lead, permissions }: { lead: Lead; permissions: L
       ) : (
         <ol className="space-y-0">
           {events.map((event) => {
-            const { title, detail } = describeLeadActivity(event, formatLeadDateTime);
+            const { title, detail, campaignId } = describeLeadActivity(event, formatLeadDateTime);
             return (
               <li key={event.id} className="relative border-l border-hairline pb-4 pl-4 last:pb-0">
                 <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full bg-brand" aria-hidden />
                 <p className="text-sm font-medium text-ink">{title}</p>
                 {detail && <p className="whitespace-pre-wrap break-words text-sm text-ink/90">{detail}</p>}
+                {campaignId && canOpenCampaigns && (
+                  <Link
+                    href={`/growth/campaigns/${campaignId}`}
+                    className="text-sm font-medium text-brand underline-offset-2 hover:underline"
+                  >
+                    Ver campaña
+                  </Link>
+                )}
                 <p className="text-xs text-subtle">
                   {leadActorLabel(event)} · {formatLeadDateTime(event.occurredAt)}
                 </p>

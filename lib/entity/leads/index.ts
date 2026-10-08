@@ -60,7 +60,8 @@ export type LeadActivityType =
   | "FOLLOW_UP_SCHEDULED"
   | "FOLLOW_UP_COMPLETED"
   | "PATIENT_MATCH_RESOLVED"
-  | "CONVERTED";
+  | "CONVERTED"
+  | "CAMPAIGN_SENT";
 
 // ─── Etiquetas ──────────────────────────────────────────────────────
 
@@ -472,12 +473,15 @@ const ACTIVITY_TITLES: Record<LeadActivityType, string> = {
   FOLLOW_UP_COMPLETED: "Seguimiento cerrado",
   PATIENT_MATCH_RESOLVED: "Coincidencia con paciente resuelta",
   CONVERTED: "Convertido en paciente",
+  CAMPAIGN_SENT: "Campaña enviada",
 };
 
 export interface LeadActivityDescription {
   title: string;
   /** Detalle opcional; ausente cuando el `payload` no trae lo esperado. */
   detail?: string;
+  /** Campaña del evento `CAMPAIGN_SENT`, para enlazarla. */
+  campaignId?: string;
 }
 
 function text(payload: Record<string, unknown>, key: string): string | undefined {
@@ -553,6 +557,15 @@ export function describeLeadActivity(
         const method = text(payload, "method");
         const label = method ? LEAD_CONVERSION_METHOD_LABELS[method as LeadConversionMethod] : undefined;
         return label ? { title, detail: `Conversión: ${label.toLowerCase()}` } : { title };
+      }
+      case "CAMPAIGN_SENT": {
+        const name = text(payload, "campaignName");
+        const template = text(payload, "templateName");
+        return {
+          title: name ? `Se le envió la campaña «${name}»` : "Se le envió una campaña",
+          detail: template ? `Plantilla: ${template}` : undefined,
+          campaignId: text(payload, "campaignId"),
+        };
       }
       default:
         return { title };
