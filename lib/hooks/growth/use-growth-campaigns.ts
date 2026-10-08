@@ -14,8 +14,12 @@ import {
   pauseGrowthCampaign,
   resumeGrowthCampaign,
   cancelGrowthCampaign,
+  getGrowthCampaignMessages,
 } from "@/lib/services/growth/growth-campaigns.service";
 import { notify } from "@/lib/utils/notify";
+import { useQuery } from "@tanstack/react-query";
+import { growthErrorMessage } from "@/lib/services/growth/growth-errors";
+import { notifyGrowthError } from "./growth-notify";
 
 interface UseGrowthCampaignsResult {
   campaigns: GrowthCampaign[];
@@ -123,9 +127,7 @@ export function useGrowthCampaignActions(onSuccess?: () => void) {
         notify.success(successMsg);
         onSuccess?.();
       } catch (err: unknown) {
-        notify.error(
-          err instanceof Error ? err.message : "Error al ejecutar la acción",
-        );
+        notifyGrowthError(err, "Error al ejecutar la acción");
       } finally {
         setActing(false);
       }
@@ -145,5 +147,30 @@ export function useGrowthCampaignActions(onSuccess?: () => void) {
       exec(() => resumeGrowthCampaign(id), "Campaña reanudada"),
     cancel: (id: string) =>
       exec(() => cancelGrowthCampaign(id), "Campaña cancelada"),
+  };
+}
+
+// ── Campaign recipients ─────────────────────────────────────────────────────
+
+export const CAMPAIGN_RECIPIENTS_PAGE_SIZE = 20;
+
+/**
+ * Recipients of a campaign, one page at a time. Without permission over the audience the
+ * backend answers with an empty page and the real total: the screen shows only the number.
+ */
+export function useGrowthCampaignMessages(campaignId: string | undefined, page: number, enabled = true) {
+  const query = useQuery({
+    queryKey: ["growth", "campaign-messages", campaignId, page] as const,
+    queryFn: () =>
+      getGrowthCampaignMessages(campaignId as string, { page, pageSize: CAMPAIGN_RECIPIENTS_PAGE_SIZE }),
+    enabled: enabled && !!campaignId,
+    retry: false,
+    placeholderData: (previous) => previous,
+  });
+
+  return {
+    data: query.data ?? null,
+    loading: query.isPending && query.fetchStatus !== "idle",
+    error: query.isError ? growthErrorMessage(query.error, "Error al cargar los destinatarios") : null,
   };
 }

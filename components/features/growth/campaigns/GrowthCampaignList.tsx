@@ -20,6 +20,9 @@ import { useI18n } from "@/lib/contexts/i18n-context";
 import type { ClinicLanguage } from "@/lib/entity/settings";
 import { useGrowthCampaigns } from "@/lib/hooks/growth";
 import { GrowthCampaignStatusBadge } from "./GrowthCampaignStatusBadge";
+import { AudienceBadge } from "../shared/AudienceBadge";
+import { segmentAudience } from "@/lib/entity/growth";
+import { useLeadModule } from "@/lib/hooks/leads";
 import { GrowthCampaignActions } from "./GrowthCampaignActions";
 import type { GrowthCampaign } from "@/lib/entity/growth";
 import { CAMPAIGN_TYPE_LABELS } from "@/lib/entity/growth";
@@ -44,6 +47,12 @@ export function GrowthCampaignList() {
   const { language, t } = useI18n();
   const { campaigns, pagination, loading, error, query, setQuery, refresh } =
     useGrowthCampaigns();
+
+  // Audiences only show up when the clinic has prospects (or the campaign is for them):
+  // without the module the list looks exactly as before.
+  const { enabled: leadModuleEnabled } = useLeadModule();
+  const showsAudience = (audience: string | undefined) =>
+    leadModuleEnabled || segmentAudience(audience) === "LEAD";
 
   const handleRowClick = useCallback(
     (id: string) => {
@@ -128,8 +137,9 @@ export function GrowthCampaignList() {
                       <TableCell>
                         <div>
                           <p className="font-medium text-ink">{c.name}</p>
-                          <p className="text-xs text-subtle">
+                          <p className="flex flex-wrap items-center gap-2 text-xs text-subtle">
                             {CAMPAIGN_TYPE_LABELS[c.campaignType as GrowthCampaignType] ?? c.campaignType}
+                            {showsAudience(c.audience) && <AudienceBadge audience={c.audience} />}
                           </p>
                         </div>
                       </TableCell>
@@ -180,6 +190,7 @@ export function GrowthCampaignList() {
               <MobileCampaignCard
                 key={c.id}
                 campaign={c}
+                showAudience={showsAudience(c.audience)}
                 language={language}
                 labels={{
                   sent: t("growth.metric.sent"),
@@ -241,12 +252,14 @@ export function GrowthCampaignList() {
 
 function MobileCampaignCard({
   campaign: c,
+  showAudience,
   language,
   labels,
   onClick,
   onActionComplete,
 }: {
   campaign: GrowthCampaign;
+  showAudience: boolean;
   language: ClinicLanguage;
   labels: {
     sent: string;
@@ -264,8 +277,9 @@ function MobileCampaignCard({
       <div className="flex items-start justify-between">
         <div>
           <p className="font-medium text-ink">{c.name}</p>
-          <p className="text-xs text-subtle">
+          <p className="flex flex-wrap items-center gap-2 text-xs text-subtle">
             {CAMPAIGN_TYPE_LABELS[c.campaignType as GrowthCampaignType] ?? c.campaignType}
+            {showAudience && <AudienceBadge audience={c.audience} />}
           </p>
         </div>
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>

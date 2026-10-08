@@ -15,6 +15,7 @@ import {
   getGrowthCampaignById,
 } from "@/lib/services/growth/growth-campaigns.service";
 import { notify } from "@/lib/utils/notify";
+import { notifyGrowthError } from "./growth-notify";
 import type { CreateGrowthCampaignRequest, GrowthCampaignType } from "@/lib/entity/growth";
 
 export type { GrowthCampaignFormValues };
@@ -93,9 +94,7 @@ export function useGrowthCampaignForm({
         router.push(basePath);
         router.refresh();
       } catch (err: unknown) {
-        notify.error(
-          err instanceof Error ? err.message : "Error al guardar la campaña",
-        );
+        notifyGrowthError(err, "Error al guardar la campaña");
       }
     },
     [isEdit, campaignId, router, basePath],

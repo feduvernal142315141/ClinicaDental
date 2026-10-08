@@ -5,12 +5,22 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import { useQuery } from "@tanstack/react-query";
 import type {
   PatientSegment,
   PatientSegmentListResponse,
+  SegmentAudience,
   SegmentEvaluationResult,
 } from "@/lib/entity/growth";
-import { parseFilterDefinition, serializeFilterDefinition } from "@/lib/entity/growth";
+import {
+  buildSegmentConditions,
+  parseFilterDefinition,
+  segmentAudience,
+  serializeFilterDefinition,
+} from "@/lib/entity/growth";
+import { useLeadModule } from "@/lib/hooks/leads";
+import { growthErrorMessage, isGrowthApiError } from "@/lib/services/growth/growth-errors";
+import { notifyGrowthError } from "./growth-notify";
 import {
   getPatientSegments,
   getPatientSegmentById,
@@ -18,6 +28,7 @@ import {
   updatePatientSegment,
   deletePatientSegment,
   evaluatePatientSegment,
+  getSegmentFields,
 } from "@/lib/services/growth/growth-segments.service";
 import {
   growthSegmentFormSchema,
@@ -69,15 +80,26 @@ export function useGrowthSegments(): UseGrowthSegmentsResult {
         notify.success("Segmento eliminado");
         fetchData();
       } catch (err: unknown) {
-        notify.error(
-          err instanceof Error ? err.message : "Error al eliminar el segmento",
-        );
+        notifyGrowthError(err, "Error al eliminar el segmento");
       }
     },
     [fetchData],
   );
 
   return { segments, loading, error, refresh: fetchData, remove };
+}
+
+// ── Field catalog ───────────────────────────────────────────────────────────
+
+/** Fields a segment of that audience can filter by (`GET /patient-segments/fields`). */
+export function useSegmentFieldCatalog(audience: SegmentAudience, enabled = true) {
+  return useQuery({
+    queryKey: ["growth", "segment-fields", audience] as const,
+    queryFn: async () => (await getSegmentFields(audience)).fields ?? [],
+    staleTime: 5 * 60_000,
+    retry: false,
+    enabled,
+  });
 }
 
 // ── Form hook ───────────────────────────────────────────────────────────────
@@ -87,24 +109,32 @@ interface UseGrowthSegmentFormParams {
   basePath?: string;
 }
 
+const EMPTY_CONDITION = { field: "", operator: "", value: "" };
+
 export function useGrowthSegmentForm({
   segmentId,
   basePath = "/growth/segments",
 }: UseGrowthSegmentFormParams) {
   const router = useRouter();
   const isEdit = !!segmentId;
+  const { enabled: leadModuleEnabled } = useLeadModule();
+  /** Backend error that belongs next to the conditions (field of another audience, bad filter). */
+  const [conditionsError, setConditionsError] = useState<string | null>(null);
 
   const form = useForm<GrowthSegmentFormValues>({
     resolver: zodResolver(growthSegmentFormSchema),
     mode: "onBlur",
     defaultValues: {
+      audience: "PATIENT",
       name: "",
       description: "",
-      conditions: [{ field: "", operator: "", value: "" }],
+      conditions: [EMPTY_CONDITION],
     },
   });
 
-  const { reset } = form;
+  const { reset, setValue, setError, watch } = form;
+  const audience = watch("audience");
+  const catalog = useSegmentFieldCatalog(audience);
 
   useEffect(() => {
     if (!isEdit || !segmentId) return;
@@ -113,27 +143,62 @@ export function useGrowthSegmentForm({
       .then((segment) => {
         const parsed = parseFilterDefinition(segment.filterDefinition);
         reset({
+          audience: segmentAudience(segment.audience),
           name: segment.name,
           description: segment.description ?? "",
           conditions: parsed.conditions.length > 0
             ? parsed.conditions
-            : [{ field: "", operator: "", value: "" }],
+            : [EMPTY_CONDITION],
         });
       })
       .catch((err) => {
-        notify.error(err?.message || "No se pudo cargar el segmento");
+        notifyGrowthError(err, "No se pudo cargar el segmento");
       });
   }, [isEdit, segmentId, reset]);
 
+  // The module was turned off with the form open: the prospects audience is no longer offered.
+  useEffect(() => {
+    if (isEdit || leadModuleEnabled || audience !== "LEAD") return;
+    setValue("audience", "PATIENT");
+    setValue("conditions", [EMPTY_CONDITION]);
+  }, [isEdit, leadModuleEnabled, audience, setValue]);
+
+  /** Only on creation: each audience has its own fields, so the conditions start over. */
+  const changeAudience = useCallback(
+    (next: SegmentAudience) => {
+      if (isEdit || next === audience) return;
+      setValue("audience", next);
+      setValue("conditions", [EMPTY_CONDITION]);
+      form.clearErrors("conditions");
+      setConditionsError(null);
+    },
+    [isEdit, audience, setValue, form],
+  );
+
   const handleSubmit = useCallback(
     async (values: GrowthSegmentFormValues) => {
+      setConditionsError(null);
+      if (!catalog.data) {
+        notify.error("Todavía no se cargan los campos del segmento. Inténtalo de nuevo.");
+        return;
+      }
+
+      const built = buildSegmentConditions(values.conditions, catalog.data);
+      if (built.errors.length > 0) {
+        built.errors.forEach(({ index, error }) =>
+          setError(`conditions.${index}.${error.target}`, { type: "validate", message: error.message }),
+        );
+        return;
+      }
+
       const filterDefinition = serializeFilterDefinition({
         logic: "AND",
-        conditions: values.conditions,
+        conditions: built.conditions,
       });
 
       try {
         if (isEdit && segmentId) {
+          // The audience is immutable: it is not sent on update.
           await updatePatientSegment(segmentId, {
             name: values.name,
             description: values.description,
@@ -145,25 +210,41 @@ export function useGrowthSegmentForm({
             name: values.name,
             description: values.description,
             filterDefinition,
+            audience: values.audience,
           });
           notify.success("Segmento creado");
         }
         router.push(basePath);
         router.refresh();
       } catch (err: unknown) {
-        notify.error(
-          err instanceof Error ? err.message : "Error al guardar el segmento",
-        );
+        // A rejected filter (400) is about the conditions: say it there, not only in a toast.
+        if (isGrowthApiError(err) && err.status === 400) {
+          setConditionsError(err.message);
+        }
+        notifyGrowthError(err, "Error al guardar el segmento");
       }
     },
-    [isEdit, segmentId, router, basePath],
+    [isEdit, segmentId, router, basePath, catalog.data, setError],
   );
 
   const handleCancel = useCallback(() => {
     router.push(basePath);
   }, [router, basePath]);
 
-  return { form, isEdit, handleSubmit, handleCancel };
+  return {
+    form,
+    isEdit,
+    audience,
+    /** The prospects audience exists only with LEAD_CRM, and only when creating. */
+    canChooseAudience: !isEdit && leadModuleEnabled,
+    changeAudience,
+    fields: catalog.data,
+    fieldsLoading: catalog.isPending,
+    fieldsError: catalog.isError ? growthErrorMessage(catalog.error, "Error al cargar los campos del segmento") : null,
+    conditionsError,
+    handleSubmit,
+    handleCancel,
+  };
 }
 
 // ── Evaluate hook ───────────────────────────────────────────────────────────
@@ -172,6 +253,8 @@ interface UseSegmentEvaluationResult {
   evaluation: SegmentEvaluationResult | null;
   evaluating: boolean;
   evaluate: (id: string) => Promise<void>;
+  /** Forget the last result (the selected segment changed). */
+  reset: () => void;
 }
 
 export function useSegmentEvaluation(): UseSegmentEvaluationResult {
@@ -185,13 +268,14 @@ export function useSegmentEvaluation(): UseSegmentEvaluationResult {
       const result = await evaluatePatientSegment(id);
       setEvaluation(result);
     } catch (err: unknown) {
-      notify.error(
-        err instanceof Error ? err.message : "Error al evaluar el segmento",
-      );
+      setEvaluation(null);
+      notifyGrowthError(err, "Error al evaluar el segmento");
     } finally {
       setEvaluating(false);
     }
   }, []);
 
-  return { evaluation, evaluating, evaluate };
+  const resetEvaluation = useCallback(() => setEvaluation(null), []);
+
+  return { evaluation, evaluating, evaluate, reset: resetEvaluation };
 }

@@ -1,5 +1,6 @@
 import { serviceGet } from "@/lib/services/baseService";
 import { handleServiceError } from "@/lib/utils/error.utils";
+import { growthRequest } from "./growth-http";
 import type {
   GrowthDashboardResponse,
   GrowthCampaignDetailAnalytics,
@@ -53,16 +54,8 @@ export async function getGrowthCampaignDetailAnalytics(
   );
 }
 
-export async function getGrowthCampaignConversions(
+export function getGrowthCampaignConversions(
   campaignId: string,
 ): Promise<GrowthCampaignConversionsResponse> {
-  const response = await serviceGet<GrowthCampaignConversionsResponse>(
-    ENDPOINTS.CONVERSIONS(campaignId),
-  );
-
-  if (response?.status >= 200 && response?.status < 300 && response?.data) {
-    return response.data as unknown as GrowthCampaignConversionsResponse;
-  }
-
-  handleServiceError(response, "Error al cargar conversiones de la campaña");
+  return growthRequest("GET", ENDPOINTS.CONVERSIONS(campaignId), "Error al cargar conversiones de la campaña");
 }

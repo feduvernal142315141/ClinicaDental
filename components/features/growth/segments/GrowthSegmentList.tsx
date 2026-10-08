@@ -21,25 +21,21 @@ import { Alert, AlertDescription } from "@/components/ui";
 import { Plus, Filter, Pencil, Trash2, Users } from "lucide-react";
 import { useI18n } from "@/lib/contexts/i18n-context";
 import { useGrowthSegments, useSegmentEvaluation } from "@/lib/hooks/growth";
+import { useLeadModule, useLeadServiceOptions, useLeadUserOptions } from "@/lib/hooks/leads";
 import {
-  SEGMENT_FIELD_OPTIONS,
-  SEGMENT_OPERATOR_LABELS,
-} from "@/lib/entity/growth/segments";
-import { parseFilterDefinition } from "@/lib/entity/growth";
-import type { SegmentCondition, SegmentConditionOperator } from "@/lib/entity/growth";
+  SEGMENT_AUDIENCES,
+  SEGMENT_AUDIENCE_LABELS,
+  audienceCountLabel,
+  formatSegmentCondition,
+  parseFilterDefinition,
+  segmentAudience,
+  type SegmentAudience,
+} from "@/lib/entity/growth";
+import { cn } from "@/lib/utils/utils";
+import { AudienceBadge } from "../shared/AudienceBadge";
+import { SegmentPreview } from "../shared/SegmentPreview";
 
-function formatCondition(c: SegmentCondition): string {
-  const fieldMeta = SEGMENT_FIELD_OPTIONS.find((f) => f.value === c.field);
-  const fieldLabel = fieldMeta?.label ?? c.field;
-  const opLabel = SEGMENT_OPERATOR_LABELS[c.operator as SegmentConditionOperator] ?? c.operator;
-
-  if (c.operator === "IS_NULL" || c.operator === "IS_NOT_NULL") {
-    return `${fieldLabel} ${opLabel}`;
-  }
-  const displayValue = Array.isArray(c.value) ? c.value.join(", ") : String(c.value);
-  return `${fieldLabel} ${opLabel} ${displayValue}`;
-}
-
+type AudienceFilter = SegmentAudience | "ALL";
 
 export function GrowthSegmentList() {
   const router = useRouter();
@@ -47,6 +43,29 @@ export function GrowthSegmentList() {
   const { segments, loading, error, remove } = useGrowthSegments();
   const { evaluation, evaluating, evaluate } = useSegmentEvaluation();
   const [evaluatedSegmentId, setEvaluatedSegmentId] = useState<string | null>(null);
+  const [audienceFilter, setAudienceFilter] = useState<AudienceFilter>("ALL");
+  const { enabled: leadModuleEnabled } = useLeadModule();
+
+  // Audiences only show up when the clinic has prospects (or already has a segment of them):
+  // without the module the list looks exactly as before.
+  const showAudience =
+    leadModuleEnabled || segments.some((segment) => segmentAudience(segment.audience) === "LEAD");
+  const visibleSegments =
+    !showAudience || audienceFilter === "ALL"
+      ? segments
+      : segments.filter((segment) => segmentAudience(segment.audience) === audienceFilter);
+
+  // Names for conditions that hold ids (services, users).
+  const { data: services } = useLeadServiceOptions(showAudience);
+  const { data: users } = useLeadUserOptions(showAudience);
+  const resolveName = useCallback(
+    (field: string, value: string) => {
+      if (field === "serviceId" || field === "interestServiceId") return services?.find((s) => s.id === value)?.name;
+      if (field === "doctorId" || field === "assignedToUserId") return users?.find((u) => u.id === value)?.name;
+      return undefined;
+    },
+    [services, users],
+  );
 
   const handleEvaluate = useCallback(
     async (id: string) => {
@@ -104,10 +123,38 @@ export function GrowthSegmentList() {
         />
       )}
 
-      {!loading && segments.length > 0 && (
+      {!loading && segments.length > 0 && showAudience && (
+        <div role="group" aria-label="Filtrar por audiencia" className="flex flex-wrap gap-2">
+          {(["ALL", ...SEGMENT_AUDIENCES] as AudienceFilter[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={audienceFilter === option}
+              onClick={() => setAudienceFilter(option)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+                audienceFilter === option
+                  ? "border-brand bg-brand/10 font-medium text-brand"
+                  : "border-hairline bg-surface text-subtle hover:text-ink",
+              )}
+            >
+              {option === "ALL" ? "Todos" : SEGMENT_AUDIENCE_LABELS[option]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!loading && segments.length > 0 && visibleSegments.length === 0 && (
+        <p className="rounded-xl border border-dashed border-hairline p-6 text-center text-sm text-subtle">
+          No hay segmentos de {audienceFilter === "LEAD" ? "prospectos" : "pacientes"} todavía.
+        </p>
+      )}
+
+      {!loading && visibleSegments.length > 0 && (
         <div className="space-y-3">
-          {segments.map((segment) => {
+          {visibleSegments.map((segment) => {
             const conditions = parseFilterDefinition(segment.filterDefinition).conditions;
+            const audience = segmentAudience(segment.audience);
             return (
               <div
                 key={segment.id}
@@ -116,7 +163,10 @@ export function GrowthSegmentList() {
               >
                 <div className="flex items-start justify-between">
                   <div className="space-y-1 flex-1 min-w-0">
-                    <h3 className="font-medium text-ink">{segment.name}</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-medium text-ink">{segment.name}</h3>
+                      {showAudience && <AudienceBadge audience={audience} />}
+                    </div>
                     {segment.description && (
                       <p className="text-sm text-subtle">{segment.description}</p>
                     )}
@@ -126,7 +176,7 @@ export function GrowthSegmentList() {
                           key={i}
                           className="inline-flex items-center rounded-md bg-hover px-2 py-0.5 text-xs text-subtle ring-1 ring-hairline"
                         >
-                          {formatCondition(c)}
+                          {formatSegmentCondition(c, resolveName)}
                         </span>
                       ))}
                       {conditions.length > 1 && (
@@ -138,10 +188,12 @@ export function GrowthSegmentList() {
                     {segment.cachedCount != null && (
                       <p className="text-xs text-subtle mt-1 flex items-center gap-1">
                         <Users className="h-3 w-3" />
-                        ~{t("growth.segments.patientCount").replace(
-                          "{count}",
-                          segment.cachedCount.toLocaleString(language),
-                        )}
+                        ~{audience === "LEAD"
+                          ? audienceCountLabel("LEAD", segment.cachedCount)
+                          : t("growth.segments.patientCount").replace(
+                              "{count}",
+                              segment.cachedCount.toLocaleString(language),
+                            )}
                       </p>
                     )}
                   </div>
@@ -198,13 +250,10 @@ export function GrowthSegmentList() {
                     </AlertDialog>
                   </div>
                 </div>
-                {evaluatedSegmentId === segment.id && evaluation && (
-                  <p className="text-sm text-ink mt-2 font-medium">
-                    {t("growth.segments.matchesCount").replace(
-                      "{count}",
-                      evaluation.count.toLocaleString(language),
-                    )}
-                  </p>
+                {evaluatedSegmentId === segment.id && evaluation && !evaluating && (
+                  <div onClick={(e) => e.stopPropagation()} className="mt-3 cursor-default border-t border-hairline pt-3">
+                    <SegmentPreview evaluation={evaluation} audience={audience} />
+                  </div>
                 )}
               </div>
             );
