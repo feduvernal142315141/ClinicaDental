@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import {
+  SERVICE_ASSISTANT_DESCRIPTION_MAX,
+  hasAssistantControlCharacters,
+} from "@/lib/entity/services";
 import { es } from "@/lib/i18n/locales/es";
 import type { TranslationKey } from "@/lib/i18n/translations";
 
@@ -102,6 +106,19 @@ export function createServiceFormSchema(t: ServiceFormTranslator) {
       symbolImage: z.string().optional(),
       /** URL existente del símbolo (prefill en edición, modo ASSET) */
       symbolUrl: z.string().optional(),
+      // Perfil del asistente: NO viaja en POST/PUT /services, se guarda aparte
+      // con PUT /services/{id}/assistant-profile (ver use-service-form).
+      assistantVisible: z.boolean(),
+      assistantDescription: z
+        .string()
+        .refine(
+          (v) => v.trim().length <= SERVICE_ASSISTANT_DESCRIPTION_MAX,
+          t("services.validation.assistantDescriptionMax"),
+        )
+        .refine(
+          (v) => !hasAssistantControlCharacters(v),
+          t("services.validation.assistantDescriptionSingleLine"),
+        ),
     })
     .superRefine((val, ctx) => {
       if (!val.odontogramEnabled) return;

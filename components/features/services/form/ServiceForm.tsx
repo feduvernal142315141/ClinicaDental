@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { Info, Stethoscope, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef } from "react";
+import { Bot, Info, Stethoscope, Sparkles } from "lucide-react";
 
 import {
   Form,
@@ -14,13 +14,19 @@ import {
   Input,
   Switch,
 } from "@/components/ui/atomic/forms";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/atomic/feedback/alert";
+import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Select } from "@/components/ui/controls/select";
 import { AvatarField } from "@/components/ui/controls/avatar-field";
 import { useServiceForm } from "@/lib/hooks/services/use-service-form";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings";
 import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
 import { getClinicCurrencySymbol } from "@/lib/utils/clinic-regional-format";
-import type { ServiceType } from "@/lib/entity/services";
+import {
+  SERVICE_ASSISTANT_DESCRIPTION_MAX,
+  toSingleLine,
+  type ServiceType,
+} from "@/lib/entity/services";
 import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface ServiceFormProps {
@@ -98,10 +104,11 @@ export function ServiceForm({
   basePath = "/settings/services",
 }: ServiceFormProps) {
   const { t } = useI18n();
-  const { form, isEdit, loading, handleSubmit, handleCancel } = useServiceForm({
-    serviceId,
-    basePath,
-  });
+  const { form, isEdit, loading, handleSubmit, handleCancel, assistant } =
+    useServiceForm({
+      serviceId,
+      basePath,
+    });
   const { settings, loading: loadingSettings } = useClinicGeneralSettings();
   const currencySymbol = getClinicCurrencySymbol(
     settings?.currency ?? DEFAULT_CLINIC_GENERAL_SETTINGS.currency,
@@ -116,6 +123,24 @@ export function ServiceForm({
 
   const odontogramEnabled = form.watch("odontogramEnabled");
   const symbolMode = form.watch("odontogramSymbolMode");
+  const assistantDescription = form.watch("assistantDescription") ?? "";
+  // Con el servicio ya creado y solo el perfil del asistente pendiente, el resto
+  // del formulario se bloquea: un cambio ahí no se guardaría.
+  const serviceFieldsDisabled = loading || assistant.onlyProfilePending;
+  // El aviso de "se guardó el servicio pero no lo del asistente" queda al final
+  // del formulario, bajo la barra de acciones: se lleva a la vista al aparecer.
+  const assistantFailureRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (assistant.failure) {
+      assistantFailureRef.current?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    }
+  }, [assistant.failure]);
+  const assistantBlockMessage =
+    assistant.block === "type"
+      ? t("services.assistant.typeNotAllowed")
+      : assistant.block === "inactive"
+        ? t("services.assistant.inactiveNotAllowed")
+        : null;
   const symbolText = form.watch("symbolText");
   const symbolImageValue = form.watch("symbolImage") || form.watch("symbolUrl") || "";
   const typeOptions = useMemo(
@@ -182,7 +207,7 @@ export function ServiceForm({
                     <Input
                       placeholder={t("services.form.codePlaceholder")}
                       autoComplete="off"
-                      disabled={loading}
+                      disabled={serviceFieldsDisabled}
                       {...field}
                     />
                   </FormControl>
@@ -202,7 +227,7 @@ export function ServiceForm({
                   <FormControl>
                     <Input
                       placeholder={t("services.form.namePlaceholder")}
-                      disabled={loading}
+                      disabled={serviceFieldsDisabled}
                       {...field}
                     />
                   </FormControl>
@@ -226,7 +251,7 @@ export function ServiceForm({
                       onBlur={field.onBlur}
                       options={typeOptions}
                       placeholder={t("services.form.typePlaceholder")}
-                      disabled={loading}
+                      disabled={serviceFieldsDisabled}
                     />
                   </FormControl>
                   <FormMessage />
@@ -256,7 +281,7 @@ export function ServiceForm({
                         style={{
                           paddingLeft: `calc(1.25rem + ${currencySymbol.length}ch)`,
                         }}
-                        disabled={loading}
+                        disabled={serviceFieldsDisabled}
                         value={field.value ?? ""}
                         onChange={(e) =>
                           field.onChange(
@@ -291,7 +316,7 @@ export function ServiceForm({
                         step={5}
                         placeholder={t("services.form.durationPlaceholder")}
                         className="pr-12"
-                        disabled={loading}
+                        disabled={serviceFieldsDisabled}
                         value={field.value ?? ""}
                         onChange={(e) =>
                           field.onChange(
@@ -328,7 +353,7 @@ export function ServiceForm({
                       options={categoryOptions}
                       placeholder={t("services.form.categoryPlaceholder")}
                       searchable
-                      disabled={loading}
+                      disabled={serviceFieldsDisabled}
                     />
                   </FormControl>
                   <FormMessage />
@@ -362,7 +387,7 @@ export function ServiceForm({
                 <Switch
                   checked={!!field.value}
                   onCheckedChange={field.onChange}
-                  disabled={loading}
+                  disabled={serviceFieldsDisabled}
                 />
               </label>
             )}
@@ -383,7 +408,7 @@ export function ServiceForm({
                         onBlur={field.onBlur}
                         options={symbolModeOptions}
                         placeholder={t("services.form.symbolModePlaceholder")}
-                        disabled={loading}
+                        disabled={serviceFieldsDisabled}
                       />
                     </FormControl>
                     <FormMessage />
@@ -416,7 +441,7 @@ export function ServiceForm({
                             <Input
                               placeholder={t("services.form.symbolTextPlaceholder")}
                               maxLength={5}
-                              disabled={loading}
+                              disabled={serviceFieldsDisabled}
                               {...field}
                               value={field.value ?? ""}
                             />
@@ -472,7 +497,7 @@ export function ServiceForm({
                               label={t("services.form.uploadSymbol")}
                               changeLabel={t("services.form.changeSymbol")}
                               alt={t("services.form.symbolAlt")}
-                              disabled={loading}
+                              disabled={serviceFieldsDisabled}
                               className="items-start"
                             />
                             <p className="text-xs text-subtle">
@@ -492,6 +517,116 @@ export function ServiceForm({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+        </section>
+
+        {/* Asistente virtual: se guarda con su propio endpoint, después del servicio. */}
+        <section className="bento p-4 lg:p-6">
+          <SectionHeader
+            icon={<Bot className="h-5 w-5" />}
+            title={t("services.form.assistantTitle")}
+            subtitle={t("services.form.assistantSubtitle")}
+          />
+
+          {!assistant.canEdit && (
+            <p className="mb-3 text-xs text-subtle">
+              {t("services.assistant.noPermission")}
+            </p>
+          )}
+
+          <FormField
+            control={form.control}
+            name="assistantVisible"
+            render={({ field }) => (
+              <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-hairline bg-hover/40 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-ink">
+                    {t("services.table.assistantVisible")}
+                  </p>
+                  <p className="text-xs text-subtle">
+                    {assistantBlockMessage ??
+                      t("services.table.assistantVisibleHelp")}
+                  </p>
+                </div>
+                <Switch
+                  checked={!!field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={
+                    loading || !assistant.canEdit || assistant.block !== null
+                  }
+                  aria-label={t("services.table.assistantVisible")}
+                />
+              </label>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="assistantDescription"
+            render={({ field }) => (
+              <FormItem className="mt-4">
+                <FormLabel>{t("services.form.assistantDescription")}</FormLabel>
+                <FormControl>
+                  {/* Input de una línea (no textarea): el asistente lo dice en un mensaje de chat. */}
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => field.onChange(toSingleLine(e.target.value))}
+                    maxLength={SERVICE_ASSISTANT_DESCRIPTION_MAX}
+                    placeholder={t("services.form.assistantDescriptionPlaceholder")}
+                    disabled={loading || !assistant.canEdit}
+                  />
+                </FormControl>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-xs text-subtle">
+                    {t("services.form.assistantDescriptionHelp")}
+                  </p>
+                  <span className="shrink-0 text-xs tabular-nums text-subtle">
+                    {assistantDescription.length}/{SERVICE_ASSISTANT_DESCRIPTION_MAX}
+                  </span>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {assistant.failure && (
+            <div ref={assistantFailureRef} className="mt-4 scroll-mb-28">
+              <Alert variant="destructive">
+                <AlertTitle>{t("services.form.assistantSaveFailed")}</AlertTitle>
+                <AlertDescription className="space-y-3">
+                  {assistant.onlyProfilePending && (
+                    <span className="block font-medium">
+                      {t("services.form.assistantOnlyPending")}
+                    </span>
+                  )}
+                  {assistant.failure.message && (
+                    <span className="block">{assistant.failure.message}</span>
+                  )}
+                  <span className="flex flex-wrap gap-2">
+                    {assistant.canEdit && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void assistant.retry()}
+                        disabled={assistant.saving}
+                      >
+                        {t("services.form.assistantRetry")}
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleCancel}
+                    >
+                      {t("services.form.assistantBackToList")}
+                    </Button>
+                  </span>
+                </AlertDescription>
+              </Alert>
             </div>
           )}
         </section>

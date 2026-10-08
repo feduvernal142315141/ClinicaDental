@@ -98,6 +98,7 @@ export function useGeneralSettingsForm() {
       requireConfirmation: false,
       sendReminders: false,
       reminderTime: 1440,
+      assistantSharesPrices: true,
     },
   });
 
@@ -122,6 +123,8 @@ export function useGeneralSettingsForm() {
       requireConfirmation: settings.requireConfirmation ?? false,
       sendReminders: settings.sendReminders ?? false,
       reminderTime: settings.reminderTime ?? 1440,
+      // El backend lo devuelve en `true` si la clínica nunca lo cambió.
+      assistantSharesPrices: settings.assistantSharesPrices ?? true,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
@@ -145,6 +148,7 @@ export function useGeneralSettingsForm() {
         requireConfirmation: values.requireConfirmation,
         sendReminders: values.sendReminders,
         reminderTime: values.sendReminders ? values.reminderTime ?? null : null,
+        assistantSharesPrices: values.assistantSharesPrices,
       };
 
       const saved = await saveSettings(payload);

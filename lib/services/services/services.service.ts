@@ -14,6 +14,7 @@ import type {
   ServicesQueryParams,
   PaginatedServicesResponse,
   SetOdontogramVisibilityRequest,
+  SetServiceAssistantProfileRequest,
 } from "@/lib/entity/services";
 
 /**
@@ -182,6 +183,48 @@ async function setOdontogramVisibility(
 }
 
 /**
+ * Guarda lo que el asistente de WhatsApp dice de un servicio.
+ * PUT /api/v1/services/:id/assistant-profile  body: { assistantVisible, assistantDescription }
+ *
+ * Reemplaza los dos valores juntos y no toca nada más del servicio. Devuelve el
+ * `assistantVisible` que quedó guardado. El error lleva `status` (400 tipo no
+ * permitido, 404, 422 validación, 403 sin permiso) y el `message` del backend.
+ */
+async function setAssistantProfile(
+  id: string,
+  profile: SetServiceAssistantProfileRequest,
+): Promise<boolean> {
+  const response = await servicePut<SetServiceAssistantProfileRequest, boolean>(
+    `${endpoint}/${id}/assistant-profile`,
+    {
+      assistantVisible: profile.assistantVisible,
+      assistantDescription: profile.assistantDescription,
+    },
+  );
+
+  if (response?.status >= 200 && response?.status < 300) {
+    return typeof response.data === "boolean"
+      ? response.data
+      : profile.assistantVisible;
+  }
+
+  handleServiceError(
+    response,
+    "Error al guardar la configuración del asistente",
+  );
+}
+
+/**
+ * `true` si la clínica tiene al menos un servicio visible para el asistente.
+ * Pide un solo resultado: solo interesa el total.
+ */
+async function hasAssistantVisibleServices(): Promise<boolean> {
+  const { filters } = servicesQuery().assistantVisible(true).build();
+  const response = await getServices({ page: 0, pageSize: 1, filters });
+  return (response.pagination?.total ?? response.entities?.length ?? 0) > 0;
+}
+
+/**
  * Get active services enabled for odontogram (for selectors).
  * Uses backend filter format: field__OP__value
  */
@@ -234,6 +277,8 @@ export const servicesService = {
   updateService,
   toggleServiceStatus,
   setOdontogramVisibility,
+  setAssistantProfile,
+  hasAssistantVisibleServices,
   getActiveOdontogramServices,
   getGeneralServices,
 };

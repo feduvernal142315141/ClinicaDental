@@ -7,6 +7,7 @@ import {
   ChevronsUpDown,
   ArrowUp,
   ArrowDown,
+  Info,
 } from "lucide-react";
 import {
   Table,
@@ -23,6 +24,8 @@ import { cn } from "@/lib/utils/utils";
 export interface DataTableColumn<T> {
   key: string;
   title: string;
+  /** Ayuda breve del encabezado: icono con el texto como descripción. */
+  help?: string;
   dataIndex?: string | string[];
   width?: number | string;
   fixed?: "left" | "right";
@@ -161,6 +164,12 @@ export function DataTable<T extends object>({
                       )}
                     >
                       {col.title}
+                      {col.help && (
+                        <span title={col.help} className="inline-flex">
+                          <Info className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                          <span className="sr-only">{col.help}</span>
+                        </span>
+                      )}
                       {col.sorter &&
                         (active ? (
                           sort?.order === "asc" ? (

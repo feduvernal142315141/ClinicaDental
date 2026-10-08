@@ -73,6 +73,8 @@ export interface ClinicGeneralSettings {
   requireConfirmation?: boolean | null;
   sendReminders?: boolean | null;
   reminderTime?: number | null;
+  /** Si el asistente de WhatsApp informa precios por chat. Omitido en el PUT, el backend conserva el valor. */
+  assistantSharesPrices?: boolean | null;
   /** URL absoluta del logo de la clínica (subido a Cloudinary). */
   logoUrl?: string | null;
   toothNotation: ToothNotation;
@@ -123,6 +125,7 @@ export const DEFAULT_CLINIC_GENERAL_SETTINGS: ClinicGeneralSettings = {
   requireConfirmation: false,
   sendReminders: false,
   reminderTime: 1440,
+  assistantSharesPrices: true,
   logoUrl: null,
   toothNotation: "fdi",
 };

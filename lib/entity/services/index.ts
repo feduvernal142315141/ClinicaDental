@@ -51,6 +51,10 @@ export interface Service {
   symbolText?: string;
   /** Duration in minutes */
   duration?: number;
+  /** Si el asistente de WhatsApp menciona este servicio (ver `./assistant`). */
+  assistantVisible?: boolean;
+  /** Texto propio de la clínica para el asistente; `null` si no hay. */
+  assistantDescription?: string | null;
   active: boolean;
   createAt?: string;
   updatedAt?: string;
@@ -74,6 +78,10 @@ export interface ServiceListItem {
   symbolText?: string;
   /** Duration in minutes */
   duration?: number;
+  /** Si el asistente de WhatsApp menciona este servicio (ver `./assistant`). */
+  assistantVisible?: boolean;
+  /** Texto propio de la clínica para el asistente; `null` si no hay. */
+  assistantDescription?: string | null;
   active: boolean;
   createAt?: string;
 }
@@ -209,3 +217,5 @@ export const SCHEDULABLE_SERVICE_TYPES: ServiceType[] = ["TREATMENT", "PROCEDURE
 export function isSchedulableType(type: ServiceType): boolean {
   return SCHEDULABLE_SERVICE_TYPES.includes(type);
 }
+
+export * from "./assistant";
