@@ -88,6 +88,7 @@ export const generalSettingsFormSchema = z
     allowOnlineReservations: z.boolean(),
     requireConfirmation: z.boolean(),
     sendReminders: z.boolean(),
+    assistantSharesPrices: z.boolean(),
     // Sólo requerido cuando sendReminders=true (validado en superRefine); por
     // eso aquí es opcional y con invalid_type_error suave.
     reminderTime: z

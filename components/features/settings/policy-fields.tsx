@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/atomic/forms";
 import type { GeneralSettingsFormValues } from "@/lib/hooks/settings";
 import { Req } from "@/components/features/settings/clinic-info-fields";
+import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface PolicyFieldsProps {
   disabled?: boolean;
@@ -32,6 +33,7 @@ function toNumberOrUndefined(raw: string): number | undefined {
  */
 export function PolicyFields({ disabled = false }: PolicyFieldsProps) {
   const form = useFormContext<GeneralSettingsFormValues>();
+  const { t } = useI18n();
   const sendReminders = form.watch("sendReminders");
 
   return (
@@ -180,6 +182,30 @@ export function PolicyFields({ disabled = false }: PolicyFieldsProps) {
                 <FormLabel>Enviar recordatorios</FormLabel>
                 <p className="text-xs text-subtle">
                   Activa recordatorios automáticos futuros.
+                </p>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={!!field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={disabled}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="assistantSharesPrices"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between gap-3 rounded-xl border border-hairline bg-elevated px-4 py-3">
+              <div className="space-y-0.5">
+                <FormLabel>
+                  {t("settings.general.assistantSharesPrices")}
+                </FormLabel>
+                <p className="text-xs text-subtle">
+                  {t("settings.general.assistantSharesPricesHelp")}
                 </p>
               </div>
               <FormControl>
