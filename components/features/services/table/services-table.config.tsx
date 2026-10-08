@@ -7,10 +7,14 @@ import {
 } from "@/components/ui/primitives/shadcn/dropdown-menu";
 import { DataTableColumn } from "@/components/ui/data-display/data-table";
 import { Switch } from "@/components/ui/atomic/forms";
-import type {
-  ServiceCategory,
-  ServiceListItem,
-  ServiceType,
+import {
+  assistantMissingInfo,
+  assistantToggleBlock,
+  type AssistantMissingInfo,
+  type AssistantToggleBlock,
+  type ServiceCategory,
+  type ServiceListItem,
+  type ServiceType,
 } from "@/lib/entity/services";
 import { cn } from "@/lib/utils/utils";
 import { formatClinicCurrencyExact } from "@/lib/utils/clinic-regional-format";
@@ -21,10 +25,16 @@ interface GetServicesColumnsParams {
   onToggleStatus: (id: string, currentlyActive: boolean) => void;
   /** Marca/desmarca "visible en odontograma" (optimista, ver useServices). */
   onToggleOdontogram: (id: string, next: boolean) => void;
+  /** Marca/desmarca "visible para el asistente" (optimista, ver useServices). */
+  onToggleAssistant: (id: string, next: boolean) => void;
   canEdit: boolean;
+  /** `false` deja la columna del asistente en solo lectura (sin permiso de editar). */
+  canEditAssistant: boolean;
   canBlock: boolean;
   /** Ids con un PATCH de visibilidad en vuelo (switch bloqueado). */
   pendingOdontogramIds: ReadonlySet<string>;
+  /** Ids con el perfil del asistente guardándose (switch bloqueado). */
+  pendingAssistantIds: ReadonlySet<string>;
   /** Moneda configurada de la clínica (ISO-4217, ej. "BOB"). */
   currency: string;
   labels: {
@@ -50,6 +60,14 @@ interface GetServicesColumnsParams {
     general: string;
     removeFromOdontogram: string;
     showInOdontogram: string;
+    assistantVisible: string;
+    assistantVisibleHelp: string;
+    assistantOn: string;
+    assistantOff: string;
+    showToAssistant: string;
+    hideFromAssistant: string;
+    assistantBlocked: Record<AssistantToggleBlock, string>;
+    assistantMissing: Record<AssistantMissingInfo, string>;
   };
 }
 
@@ -64,9 +82,12 @@ export function getServicesColumns({
   onEdit,
   onToggleStatus,
   onToggleOdontogram,
+  onToggleAssistant,
   canEdit,
+  canEditAssistant,
   canBlock,
   pendingOdontogramIds,
+  pendingAssistantIds,
   currency,
   labels,
 }: GetServicesColumnsParams): DataTableColumn<ServiceListItem>[] {
@@ -191,6 +212,71 @@ export function getServicesColumns({
             <span className="text-xs font-medium text-subtle">
               {enabled ? labels.odontogram : labels.general}
             </span>
+          </div>
+        );
+      },
+    },
+    {
+      // Lo que el asistente de WhatsApp puede mencionar. Se guarda por su propio
+      // endpoint (`/assistant-profile`), nunca con el PUT del catálogo.
+      key: "assistantVisible",
+      title: labels.assistantVisible,
+      help: labels.assistantVisibleHelp,
+      dataIndex: "assistantVisible",
+      align: "center",
+      width: 210,
+      render: (value, record) => {
+        const visible = value === true;
+        const blocked = assistantToggleBlock(record);
+        const missing = assistantMissingInfo(record);
+        const badge = (
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1",
+              visible
+                ? "bg-emerald-500/15 text-emerald-700 ring-emerald-400/25 dark:text-emerald-300"
+                : "bg-hover text-subtle ring-hairline",
+            )}
+          >
+            {visible ? labels.assistantOn : labels.assistantOff}
+          </span>
+        );
+
+        return (
+          <div
+            className="flex flex-col items-center gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {canEditAssistant ? (
+              <div className="flex items-center justify-center gap-2">
+                <Switch
+                  checked={visible}
+                  disabled={blocked !== null || pendingAssistantIds.has(record.id)}
+                  onCheckedChange={(checked) =>
+                    onToggleAssistant(record.id, checked === true)
+                  }
+                  aria-label={(visible
+                    ? labels.hideFromAssistant
+                    : labels.showToAssistant
+                  ).replace("{name}", record.name)}
+                />
+                <span className="text-xs font-medium text-subtle">
+                  {visible ? labels.assistantOn : labels.assistantOff}
+                </span>
+              </div>
+            ) : (
+              badge
+            )}
+            {blocked && (
+              <span className="max-w-[190px] whitespace-normal text-center text-[11px] leading-tight text-subtle">
+                {labels.assistantBlocked[blocked]}
+              </span>
+            )}
+            {!blocked && missing && (
+              <span className="max-w-[190px] whitespace-normal text-center text-[11px] leading-tight text-amber-700 dark:text-amber-300">
+                {labels.assistantMissing[missing]}
+              </span>
+            )}
           </div>
         );
       },

@@ -6,6 +6,7 @@ import { DataTable } from "@/components/ui/data-display/data-table";
 import { useDebouncedValue } from "@/lib/hooks/useDebounce";
 import { TableSearch } from "@/components/ui/data-display/table-search";
 import { Checkbox } from "@/components/ui/atomic/forms/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/atomic/feedback/alert";
 // Exportados por el barrel `@/components/ui`; se importan por su ruta canónica
 // para no arrastrar el barrel entero al bundle de cliente (igual que el resto
 // de imports de este archivo).
@@ -48,6 +49,8 @@ export function ServicesList({
     fetchServices,
     toggleServiceStatus,
     setOdontogramVisibility,
+    setAssistantVisibility,
+    hasAssistantVisibleServices,
   } = useServices();
 
   const [search, setSearch] = useState("");
@@ -56,6 +59,16 @@ export function ServicesList({
   const [pendingOdontogramIds, setPendingOdontogramIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [pendingAssistantIds, setPendingAssistantIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  // El backend respondió 403 al guardar: la columna pasa a solo lectura.
+  const [assistantForbidden, setAssistantForbidden] = useState(false);
+  // `null`: aún no se sabe si la clínica tiene algún servicio visible para el
+  // asistente (o no se pudo consultar). El aviso de primera vez solo sale con `false`.
+  const [hasAssistantServices, setHasAssistantServices] = useState<
+    boolean | null
+  >(null);
 
   // El controller de servicios SOLO declara filters/orders/page/pageSize: los
   // parámetros planos (q/active/odontogramEnabled/sort) los descartaba Spring en
@@ -120,6 +133,43 @@ export function ServicesList({
   const canEdit = isAdmin || can("service", PermissionAction.EDIT);
   const canBlock = isAdmin || can("service", PermissionAction.BLOCK);
 
+  // La tabla está paginada: saber si hay ALGÚN servicio visible exige preguntarlo
+  // aparte (un solo resultado), no mirar la página que se ve.
+  const refreshAssistantNotice = useCallback(() => {
+    hasAssistantVisibleServices().then(setHasAssistantServices);
+  }, [hasAssistantVisibleServices]);
+
+  useEffect(() => {
+    refreshAssistantNotice();
+  }, [refreshAssistantNotice]);
+
+  const handleToggleAssistant = useCallback(
+    (id: string, next: boolean) => {
+      setPendingAssistantIds((prev) => new Set(prev).add(id));
+      setAssistantVisibility(id, next)
+        .then((result) => {
+          if (result.ok) {
+            // Al activar el primero el aviso desaparece ya; al apagar puede volver.
+            if (next) setHasAssistantServices(true);
+            else refreshAssistantNotice();
+            return;
+          }
+          if (result.status === 403) setAssistantForbidden(true);
+          // El servicio ya no existe en esta clínica: la lista está desfasada.
+          if (result.status === 404) return reload(paginationRef.current.page);
+        })
+        .catch(() => {})
+        .finally(() =>
+          setPendingAssistantIds((prev) => {
+            const nextSet = new Set(prev);
+            nextSet.delete(id);
+            return nextSet;
+          }),
+        );
+    },
+    [setAssistantVisibility, refreshAssistantNotice, reload],
+  );
+
   const handleToggleOdontogram = useCallback(
     (id: string, next: boolean) => {
       setPendingOdontogramIds((prev) => new Set(prev).add(id));
@@ -156,9 +206,12 @@ export function ServicesList({
             .catch(() => {});
         },
         onToggleOdontogram: handleToggleOdontogram,
+        onToggleAssistant: handleToggleAssistant,
         canEdit,
+        canEditAssistant: canEdit && !assistantForbidden,
         canBlock,
         pendingOdontogramIds,
+        pendingAssistantIds,
         currency,
         labels: {
           code: t("services.table.code"),
@@ -200,16 +253,34 @@ export function ServicesList({
           general: t("services.placement.general"),
           removeFromOdontogram: t("services.odontogram.removeAria"),
           showInOdontogram: t("services.odontogram.showAria"),
+          assistantVisible: t("services.table.assistantVisible"),
+          assistantVisibleHelp: t("services.table.assistantVisibleHelp"),
+          assistantOn: t("services.assistant.visible"),
+          assistantOff: t("services.assistant.hidden"),
+          showToAssistant: t("services.assistant.showAria"),
+          hideFromAssistant: t("services.assistant.hideAria"),
+          assistantBlocked: {
+            type: t("services.assistant.typeNotAllowed"),
+            inactive: t("services.assistant.inactiveNotAllowed"),
+          },
+          assistantMissing: {
+            duration: t("services.assistant.missingDuration"),
+            price: t("services.assistant.missingPrice"),
+            both: t("services.assistant.missingBoth"),
+          },
         },
       }),
     [
       handleEditService,
       toggleServiceStatus,
       handleToggleOdontogram,
+      handleToggleAssistant,
       reload,
       canEdit,
+      assistantForbidden,
       canBlock,
       pendingOdontogramIds,
+      pendingAssistantIds,
       currency,
       t,
     ],
@@ -286,6 +357,21 @@ export function ServicesList({
           </label>
         </div>
       </div>
+
+      {hasAssistantServices === false && (
+        <Alert variant="info" live={false}>
+          <AlertDescription>
+            {t("services.assistant.firstTimeNotice")}
+          </AlertDescription>
+        </Alert>
+      )}
+      {assistantForbidden && (
+        <Alert variant="warning">
+          <AlertDescription>
+            {t("services.assistant.noPermission")}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <DataTable
         columns={columns}

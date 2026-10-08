@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 import { servicesService } from "@/lib/services/services";
 import { useI18n } from "@/lib/contexts/i18n-context";
@@ -9,11 +9,25 @@ import type {
   ServicesQueryParams,
   PaginatedServicesResponse,
 } from "@/lib/entity/services";
+import { buildAssistantProfile } from "@/lib/entity/services";
 import { notify } from "@/lib/utils/notify";
 
 /** Extrae un mensaje seguro de un error de tipo unknown. */
 function errMsg(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+/** Status HTTP que `handleServiceError` adjunta al error, si lo hay. */
+function errStatus(error: unknown): number | undefined {
+  const status = (error as { status?: unknown } | null)?.status;
+  return typeof status === "number" ? status : undefined;
+}
+
+/** Resultado de conmutar "visible para el asistente" desde la tabla. */
+export interface AssistantVisibilityResult {
+  ok: boolean;
+  /** Status HTTP del fallo: 404 pide recargar la lista, 403 deja los controles en solo lectura. */
+  status?: number;
 }
 
 /**
@@ -30,6 +44,9 @@ export function useServices() {
     pageSize: 10,
     total: 0,
   });
+  // Lectura síncrona de la fila vigente desde callbacks asíncronos (el switch).
+  const servicesRef = useRef<ServiceListItem[]>(services);
+  servicesRef.current = services;
 
   /**
    * Fetch paginated services list
@@ -226,6 +243,64 @@ export function useServices() {
     [t],
   );
 
+  /**
+   * Marca/desmarca un servicio como "visible para el asistente".
+   *
+   * Mismo patrón optimista que `setOdontogramVisibility`. El endpoint reemplaza
+   * visibilidad y descripción JUNTAS, así que se reenvía la descripción que ya
+   * tiene la fila para no borrarla. No relanza: devuelve `{ ok, status }`.
+   */
+  const setAssistantVisibility = useCallback(
+    async (id: string, next: boolean): Promise<AssistantVisibilityResult> => {
+      const row = servicesRef.current.find((s) => s.id === id);
+      const applyLocally = (value: boolean) =>
+        setServices((prev) =>
+          prev.map((s) => (s.id === id ? { ...s, assistantVisible: value } : s)),
+        );
+
+      applyLocally(next);
+
+      try {
+        const saved = await servicesService.setAssistantProfile(
+          id,
+          buildAssistantProfile(next, row?.assistantDescription),
+        );
+        // La fila queda con lo que el backend dice que guardó.
+        if (saved !== next) applyLocally(saved);
+        notify.success(
+          saved
+            ? t("services.notify.assistantVisibleSuccess")
+            : t("services.notify.assistantHiddenSuccess"),
+          {
+            description: saved
+              ? t("services.notify.assistantVisibleDescription")
+              : t("services.notify.assistantHiddenDescription"),
+          },
+        );
+        return { ok: true };
+      } catch (error: unknown) {
+        applyLocally(!next);
+        notify.error(errMsg(error, t("services.notify.assistantError")), {
+          description: t("services.notify.assistantErrorDescription"),
+        });
+        return { ok: false, status: errStatus(error) };
+      }
+    },
+    [t],
+  );
+
+  /**
+   * `true` si la clínica ya tiene algún servicio visible para el asistente,
+   * `null` si no se pudo saber (el aviso de primera vez no se muestra a ciegas).
+   */
+  const hasAssistantVisibleServices = useCallback(async () => {
+    try {
+      return await servicesService.hasAssistantVisibleServices();
+    } catch {
+      return null;
+    }
+  }, []);
+
   return {
     loading,
     services,
@@ -236,5 +311,7 @@ export function useServices() {
     updateService,
     toggleServiceStatus,
     setOdontogramVisibility,
+    setAssistantVisibility,
+    hasAssistantVisibleServices,
   };
 }
