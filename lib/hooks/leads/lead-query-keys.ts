@@ -15,6 +15,7 @@ export const leadKeys = {
   activity: (id: string, page: number) => ["leads", "activity", id, page] as const,
   byConversation: (conversationId: string) => ["leads", "by-conversation", conversationId] as const,
   matches: (phone: string, email: string) => ["leads", "matches", phone, email] as const,
+  publicBookingSettings: () => ["leads", "public-booking-settings"] as const,
 };
 
 /** Catálogos de otros módulos (servicios, usuarios): sobreviven aunque se descarte `["leads"]`. */
@@ -22,6 +23,8 @@ export const leadCatalogKeys = {
   services: ["lead-catalog", "services"] as const,
   users: ["lead-catalog", "users"] as const,
   providers: ["lead-catalog", "providers"] as const,
+  bookingDoctors: ["lead-catalog", "booking-doctors"] as const,
+  bookingServices: ["lead-catalog", "booking-services"] as const,
   availability: (doctorId: string, date: string, duration: number) =>
     ["lead-catalog", "availability", doctorId, date, duration] as const,
 };
