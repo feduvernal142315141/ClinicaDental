@@ -866,6 +866,7 @@ export const en = {
   "services.form.assistantDescriptionPlaceholder": "E.g. Cosmetic procedure that lightens the shade of the teeth",
   "services.form.assistantDescriptionHelp": "The assistant will say this text before the duration and the price. Do not include prices here.",
   "services.form.assistantSaveFailed": "The service was saved, but the assistant settings could not be saved",
+  "services.form.assistantOnlyPending": "Only the assistant settings are left to save. The rest of the service is already saved and cannot be changed here.",
   "services.form.assistantRetry": "Retry",
   "services.form.assistantBackToList": "Back to the list",
   "services.validation.assistantDescriptionMax": "Maximum 300 characters",

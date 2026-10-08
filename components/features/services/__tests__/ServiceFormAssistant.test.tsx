@@ -119,6 +119,13 @@ describe("sección «Asistente virtual» del formulario de servicio", () => {
     expect(await screen.findByText(t("services.form.assistantSaveFailed"))).toBeInTheDocument();
     expect(screen.getByText("Ocurrió un error en el servidor.")).toBeInTheDocument();
     expect(router.push).not.toHaveBeenCalled();
+    // Solo queda pendiente el perfil: el resto del formulario se bloquea para que nadie crea que se guarda.
+    expect(screen.getByText(t("services.form.assistantOnlyPending"))).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nombre/)).toBeDisabled();
+    expect(screen.getByLabelText(/Código/)).toBeDisabled();
+    expect(costInput()).toBeDisabled();
+    expect(visibleSwitch()).toBeEnabled();
+    expect(descriptionInput()).toBeEnabled();
 
     fireEvent.click(screen.getByRole("button", { name: t("services.form.assistantRetry") }));
     await waitFor(() => expect(api.setAssistantProfile).toHaveBeenCalledTimes(2));
@@ -137,6 +144,9 @@ describe("sección «Asistente virtual» del formulario de servicio", () => {
     // Junto al campo, una sola vez (el aviso general no lo repite).
     expect(await screen.findByText(message, undefined, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.getByText(t("services.form.assistantSaveFailed"))).toBeInTheDocument();
+    // Al editar se repite el guardado completo: los demás campos siguen editables.
+    expect(screen.queryByText(t("services.form.assistantOnlyPending"))).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("Blanqueamiento")).toBeEnabled();
     expect(router.push).not.toHaveBeenCalled();
   });
 

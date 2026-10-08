@@ -866,6 +866,7 @@ export const fr = {
   "services.form.assistantDescriptionPlaceholder": "Ex. : Soin esthétique qui éclaircit la teinte des dents",
   "services.form.assistantDescriptionHelp": "L'assistant dira ce texte avant la durée et le prix. N'indiquez pas de prix ici.",
   "services.form.assistantSaveFailed": "Le service a été enregistré, mais la configuration de l'assistant n'a pas pu l'être",
+  "services.form.assistantOnlyPending": "Il ne reste qu'à enregistrer la configuration de l'assistant. Les autres données du service sont déjà enregistrées et ne peuvent pas être modifiées ici.",
   "services.form.assistantRetry": "Réessayer",
   "services.form.assistantBackToList": "Retour à la liste",
   "services.validation.assistantDescriptionMax": "300 caractères maximum",

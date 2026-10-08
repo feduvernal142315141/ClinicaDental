@@ -124,6 +124,9 @@ export function ServiceForm({
   const odontogramEnabled = form.watch("odontogramEnabled");
   const symbolMode = form.watch("odontogramSymbolMode");
   const assistantDescription = form.watch("assistantDescription") ?? "";
+  // Con el servicio ya creado y solo el perfil del asistente pendiente, el resto
+  // del formulario se bloquea: un cambio ahí no se guardaría.
+  const serviceFieldsDisabled = loading || assistant.onlyProfilePending;
   // El aviso de "se guardó el servicio pero no lo del asistente" queda al final
   // del formulario, bajo la barra de acciones: se lleva a la vista al aparecer.
   const assistantFailureRef = useRef<HTMLDivElement>(null);
@@ -204,7 +207,7 @@ export function ServiceForm({
                     <Input
                       placeholder={t("services.form.codePlaceholder")}
                       autoComplete="off"
-                      disabled={loading}
+                      disabled={serviceFieldsDisabled}
                       {...field}
                     />
                   </FormControl>
@@ -224,7 +227,7 @@ export function ServiceForm({
                   <FormControl>
                     <Input
                       placeholder={t("services.form.namePlaceholder")}
-                      disabled={loading}
+                      disabled={serviceFieldsDisabled}
                       {...field}
                     />
                   </FormControl>
@@ -248,7 +251,7 @@ export function ServiceForm({
                       onBlur={field.onBlur}
                       options={typeOptions}
                       placeholder={t("services.form.typePlaceholder")}
-                      disabled={loading}
+                      disabled={serviceFieldsDisabled}
                     />
                   </FormControl>
                   <FormMessage />
@@ -278,7 +281,7 @@ export function ServiceForm({
                         style={{
                           paddingLeft: `calc(1.25rem + ${currencySymbol.length}ch)`,
                         }}
-                        disabled={loading}
+                        disabled={serviceFieldsDisabled}
                         value={field.value ?? ""}
                         onChange={(e) =>
                           field.onChange(
@@ -313,7 +316,7 @@ export function ServiceForm({
                         step={5}
                         placeholder={t("services.form.durationPlaceholder")}
                         className="pr-12"
-                        disabled={loading}
+                        disabled={serviceFieldsDisabled}
                         value={field.value ?? ""}
                         onChange={(e) =>
                           field.onChange(
@@ -350,7 +353,7 @@ export function ServiceForm({
                       options={categoryOptions}
                       placeholder={t("services.form.categoryPlaceholder")}
                       searchable
-                      disabled={loading}
+                      disabled={serviceFieldsDisabled}
                     />
                   </FormControl>
                   <FormMessage />
@@ -384,7 +387,7 @@ export function ServiceForm({
                 <Switch
                   checked={!!field.value}
                   onCheckedChange={field.onChange}
-                  disabled={loading}
+                  disabled={serviceFieldsDisabled}
                 />
               </label>
             )}
@@ -405,7 +408,7 @@ export function ServiceForm({
                         onBlur={field.onBlur}
                         options={symbolModeOptions}
                         placeholder={t("services.form.symbolModePlaceholder")}
-                        disabled={loading}
+                        disabled={serviceFieldsDisabled}
                       />
                     </FormControl>
                     <FormMessage />
@@ -438,7 +441,7 @@ export function ServiceForm({
                             <Input
                               placeholder={t("services.form.symbolTextPlaceholder")}
                               maxLength={5}
-                              disabled={loading}
+                              disabled={serviceFieldsDisabled}
                               {...field}
                               value={field.value ?? ""}
                             />
@@ -494,7 +497,7 @@ export function ServiceForm({
                               label={t("services.form.uploadSymbol")}
                               changeLabel={t("services.form.changeSymbol")}
                               alt={t("services.form.symbolAlt")}
-                              disabled={loading}
+                              disabled={serviceFieldsDisabled}
                               className="items-start"
                             />
                             <p className="text-xs text-subtle">
@@ -593,6 +596,11 @@ export function ServiceForm({
               <Alert variant="destructive">
                 <AlertTitle>{t("services.form.assistantSaveFailed")}</AlertTitle>
                 <AlertDescription className="space-y-3">
+                  {assistant.onlyProfilePending && (
+                    <span className="block font-medium">
+                      {t("services.form.assistantOnlyPending")}
+                    </span>
+                  )}
                   {assistant.failure.message && (
                     <span className="block">{assistant.failure.message}</span>
                   )}

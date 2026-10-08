@@ -329,6 +329,8 @@ export function useServiceForm({
       forbidden: assistantForbidden,
       block: assistantBlock,
       failure: assistantFailure,
+      /** Al crear, el servicio ya existe y solo falta guardar el perfil: el resto del formulario se bloquea. */
+      onlyProfilePending: !!assistantFailure && !isEdit,
       saving: savingAssistant,
       retry: retryAssistant,
     },

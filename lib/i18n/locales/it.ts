@@ -866,6 +866,7 @@ export const it = {
   "services.form.assistantDescriptionPlaceholder": "Es.: Trattamento estetico che schiarisce il tono dei denti",
   "services.form.assistantDescriptionHelp": "L'assistente dirà questo testo prima della durata e del prezzo. Non inserire prezzi qui.",
   "services.form.assistantSaveFailed": "Il servizio è stato salvato, ma non è stato possibile salvare la configurazione dell'assistente",
+  "services.form.assistantOnlyPending": "Resta solo da salvare la configurazione dell'assistente. Gli altri dati del servizio sono già salvati e non si possono modificare qui.",
   "services.form.assistantRetry": "Riprova",
   "services.form.assistantBackToList": "Torna all'elenco",
   "services.validation.assistantDescriptionMax": "Massimo 300 caratteri",
