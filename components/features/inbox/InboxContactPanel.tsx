@@ -13,6 +13,7 @@ import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner"
 import type { InboxConversationDetail } from "@/lib/entity/inbox";
 import { useI18n } from "@/lib/contexts/i18n-context";
 import type { TranslationKey } from "@/lib/i18n/translations";
+import { LeadConversationPanel } from "@/components/features/leads/inbox/LeadConversationPanel";
 
 const STATUS_KEYS: Record<InboxConversationDetail["status"], TranslationKey> = {
   OPEN: "inbox.status.OPEN",
@@ -176,6 +177,9 @@ export function InboxContactPanel({
           </div>
         </div>
       )}
+
+      {/* Prospecto (módulo "Adquisición de pacientes"; no pinta nada si está apagado) */}
+      <LeadConversationPanel conversationId={detail.id} hasPatient={isRegistered} />
 
       {/* Actions */}
       <div className="px-4 py-4 space-y-2">

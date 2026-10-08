@@ -22,6 +22,7 @@ import { PointerEventsGuard } from "@/components/layout/pointer-events-guard";
 import { FeedbackFAB } from "@/components/features/feedback/FeedbackFAB";
 import { QueryProvider } from "@/components/layout/query-provider";
 import { FinanceModuleBridge } from "@/components/features/billing/module/FinanceModuleBridge";
+import { LeadModuleBridge } from "@/components/features/leads/module/LeadModuleBridge";
 
 interface RootClientProps {
   children: React.ReactNode;
@@ -56,6 +57,7 @@ export function RootClient({ children }: RootClientProps) {
                         <QueryProvider>
                         <AlertProvider>
                           <FinanceModuleBridge />
+                          <LeadModuleBridge />
                           <GlobalErrorListeners />
                           <PointerEventsGuard />
                           <InterceptorsInitializer />

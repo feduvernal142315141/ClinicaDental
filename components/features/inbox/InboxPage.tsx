@@ -69,6 +69,15 @@ export function InboxPage() {
   const msgs = useInboxMessages(selectedId ?? undefined);
   const summary = useInboxSummary();
 
+  // Enlace directo `/inbox?conversation=<id>` (p. ej. desde la ficha de un prospecto).
+  useEffect(() => {
+    const conversationId = new URLSearchParams(window.location.search).get("conversation");
+    if (conversationId) {
+      setSelectedId(conversationId);
+      setMobileView("chat");
+    }
+  }, []);
+
   // Auto-select first conversation on initial load (desktop only)
   useEffect(() => {
     if (!isMobile && selectedId === null && convList.conversations.length > 0 && !convList.loading) {
