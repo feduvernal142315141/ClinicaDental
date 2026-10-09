@@ -69,9 +69,9 @@ export const documentationService = {
   async documents(offset = 0, limit = 25, patientId?: string): Promise<PatientDocument[]> {
     return (await apiInstance.get<DocumentWire[]>(`${base}/documents`, { params: { offset, limit, patientId } })).data.map(normalizeDocument);
   },
-  async prepare(template: DocumentationTemplate, patientId: string, doctorId?: string, documentDate?: string): Promise<PatientDocument> {
+  async prepare(template: DocumentationTemplate, patientId: string, doctorId?: string, documentDate?: string, observations?: Record<string,string>): Promise<PatientDocument> {
     return normalizeDocument((await apiInstance.post<DocumentWire>(`${base}/documents`, {
-      templateId: template.id, templateVersion: template.version, patientId, ...(doctorId ? { doctorId } : {}), ...(documentDate ? { documentDate } : {}),
+      templateId: template.id, templateVersion: template.version, patientId, ...(doctorId ? { doctorId } : {}), ...(documentDate ? { documentDate } : {}), ...(observations ? { observations } : {}),
     })).data);
   },
   async document(id: string): Promise<PatientDocument> {

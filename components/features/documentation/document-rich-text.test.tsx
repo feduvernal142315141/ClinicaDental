@@ -12,6 +12,26 @@ function Editor() {
   return <DocumentRichText label="Texto" value={draft.text} textStyles={draft.textStyles} onChange={(text,textStyles) => setDraft({text,textStyles})} textareaClassName="h-64" />;
 }
 describe("document text formatting", () => {
+  it("configures an observation title before inserting at the selected text without moving scroll", async () => {
+    render(<Editor />); const field=screen.getByRole("textbox",{name:"Texto"}); selectRichText(field,0,6);
+    const viewport=field.parentElement!.parentElement!; viewport.scrollTop=80;
+    fireEvent.click(screen.getByLabelText("documentation.variable"));
+    fireEvent.click(await screen.findByRole("option",{name:/documentation\.observations/}));
+    expect(screen.getByRole("button",{name:"documentation.addObservation"})).toBeDisabled();
+    expect(richDocumentToText(richEditor(field).getJSON()).text).toBe("Nombre del paciente");
+    fireEvent.change(screen.getByLabelText("documentation.observationTitle"),{target:{value:"Riesgos personalizados"}});
+    fireEvent.click(screen.getByRole("button",{name:"documentation.addObservation"}));
+    expect(richDocumentToText(richEditor(field).getJSON()).text).toBe("{{observaciones:Riesgos personalizados}} del paciente");
+    expect(viewport.scrollTop).toBe(80);
+  });
+  it("leaves the selected text untouched when observation configuration is cancelled", async () => {
+    render(<Editor />); const field=screen.getByRole("textbox",{name:"Texto"}); selectRichText(field,0,6);
+    fireEvent.click(screen.getByLabelText("documentation.variable"));
+    fireEvent.click(await screen.findByRole("option",{name:/documentation\.observations/}));
+    fireEvent.change(screen.getByLabelText("documentation.observationTitle"),{target:{value:"Riesgos"}});
+    fireEvent.click(screen.getByRole("button",{name:"documentation.cancel"}));
+    expect(richDocumentToText(richEditor(field).getJSON()).text).toBe("Nombre del paciente");
+  });
   it("formats selected words, preserves selection when choosing a font and supports undo", () => {
     render(<Editor />);
     const field=screen.getByRole("textbox",{name:"Texto"}); selectRichText(field,0,6);

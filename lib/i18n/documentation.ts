@@ -1,4 +1,10 @@
 export const documentationEs = {
+  "documentation.observations": "Observaciones",
+  "documentation.configureObservation": "Configurar observación",
+  "documentation.observationConfigHint": "Indica un título para identificar este campo al preparar el documento. Un mismo título reutiliza el mismo valor.",
+  "documentation.observationTitle": "Título de la observación",
+  "documentation.addObservation": "Añadir observación",
+
   "documentation.actions": "Acciones",
   "documentation.configureDate": "Configurar fecha del documento",
   "documentation.dateConfigHint": "Elige el origen de la fecha y cómo se mostrará en el documento.",
@@ -149,6 +155,12 @@ export const documentationEs = {
 } as const;
 
 export const documentationEn = {
+  "documentation.observations": "Observations",
+  "documentation.configureObservation": "Configure observation",
+  "documentation.observationConfigHint": "Enter a title to identify this field when preparing the document. The same title reuses the same value.",
+  "documentation.observationTitle": "Observation title",
+  "documentation.addObservation": "Add observation",
+
   "documentation.actions": "Actions",
   "documentation.configureDate": "Configure document date",
   "documentation.dateConfigHint": "Choose the date source and how it will appear in the document.",
@@ -299,6 +311,12 @@ export const documentationEn = {
 } as const;
 
 export const documentationFr = {
+  "documentation.observations": "Observations",
+  "documentation.configureObservation": "Configurer une observation",
+  "documentation.observationConfigHint": "Indiquez un titre pour identifier ce champ lors de la préparation du document. Un même titre réutilise la même valeur.",
+  "documentation.observationTitle": "Titre de l’observation",
+  "documentation.addObservation": "Ajouter une observation",
+
   "documentation.actions": "Actions",
   "documentation.configureDate": "Configurer la date du document",
   "documentation.dateConfigHint": "Choisissez la source de la date et son affichage dans le document.",
@@ -449,6 +467,12 @@ export const documentationFr = {
 } as const;
 
 export const documentationIt = {
+  "documentation.observations": "Osservazioni",
+  "documentation.configureObservation": "Configura osservazione",
+  "documentation.observationConfigHint": "Inserisci un titolo per identificare questo campo durante la preparazione del documento. Lo stesso titolo riutilizza lo stesso valore.",
+  "documentation.observationTitle": "Titolo dell’osservazione",
+  "documentation.addObservation": "Aggiungi osservazione",
+
   "documentation.actions": "Azioni",
   "documentation.configureDate": "Configura la data del documento",
   "documentation.dateConfigHint": "Scegli la fonte della data e come verrà mostrata nel documento.",
@@ -599,6 +623,12 @@ export const documentationIt = {
 } as const;
 
 export const documentationPt = {
+  "documentation.observations": "Observações",
+  "documentation.configureObservation": "Configurar observação",
+  "documentation.observationConfigHint": "Indique um título para identificar este campo ao preparar o documento. O mesmo título reutiliza o mesmo valor.",
+  "documentation.observationTitle": "Título da observação",
+  "documentation.addObservation": "Adicionar observação",
+
   "documentation.actions": "Ações",
   "documentation.configureDate": "Configurar data do documento",
   "documentation.dateConfigHint": "Escolha a origem da data e como ela será exibida no documento.",

@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { DOCUMENT_VARIABLES, needsDoctorVariables, needsSelectedDocumentDate, validDocumentVariables } from "./variables";
+import { DOCUMENT_VARIABLES, documentObservationTitles, needsDoctorVariables, needsSelectedDocumentDate, validDocumentVariables } from "./variables";
 import { templateSchema } from "@/lib/validation/documentation";
 describe("document variables", () => {
+  it("requires a title for observations and lists distinct fields in document order", () => {
+    expect(validDocumentVariables("{{observaciones:Riesgos personalizados}} {{ observaciones:Indicaciones }}")).toBe(true);
+    for (const text of ["{{observaciones}}", "{{observaciones:}}", "{{observaciones: Riesgos}}", `{{observaciones:${"x".repeat(101)}}}`, "{{observaciones:Una\nOtra}}"])
+      expect(validDocumentVariables(text)).toBe(false);
+    expect(documentObservationTitles([{type:"TEXT",text:"{{observaciones:Riesgos}} {{observaciones:Indicaciones}} {{observaciones:Riesgos}}"}])).toEqual(["Riesgos","Indicaciones"]);
+  });
   it("supports both date sources and the legacy token without accepting unknown properties", () => {
     for (const token of ["fecha_actual", "fecha_documento", "fecha_documento:actual", "fecha_documento:seleccionada"]) expect(validDocumentVariables(`{{${token}}}`)).toBe(true);
     expect(validDocumentVariables("{{fecha_documento:desconocida}}")).toBe(false);
@@ -9,8 +15,8 @@ describe("document variables", () => {
     expect(needsSelectedDocumentDate([{ type: "TEXT", text: "{{fecha_actual}} {{fecha_documento:actual}}" }])).toBe(false);
   });
   it("allows the ten data fields, treatment and current date, with optional surrounding whitespace", () => {
-    expect(DOCUMENT_VARIABLES).toHaveLength(12);
-    for (const variable of DOCUMENT_VARIABLES) expect(validDocumentVariables(`{{ ${variable.key} }}`)).toBe(true);
+    expect(DOCUMENT_VARIABLES).toHaveLength(13);
+    for (const variable of DOCUMENT_VARIABLES.filter(item => item.key !== "observaciones")) expect(validDocumentVariables(`{{ ${variable.key} }}`)).toBe(true);
     expect(needsDoctorVariables([{ type: "TEXT", text: "{{ paciente.nombre }}" }])).toBe(false);
     expect(needsDoctorVariables([{ type: "TEXT", text: "{{ doctor.especialidad }}" }])).toBe(true);
   });

@@ -6,10 +6,10 @@ import { Extension, Mark } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
 import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, Undo2, Redo2 } from "lucide-react";
-import { Button, Modal } from "@/components/ui";
+import { Button, Input, Modal } from "@/components/ui";
 import { Select } from "@/components/ui/controls/select";
 import type { DocumentTextStyle } from "@/lib/entity/documentation";
-import { DOCUMENT_DATE_FORMATS, DOCUMENT_VARIABLES } from "@/lib/entity/documentation/variables";
+import { DOCUMENT_DATE_FORMATS, DOCUMENT_VARIABLES, observationTitle } from "@/lib/entity/documentation/variables";
 import { useI18n } from "@/lib/contexts/i18n-context";
 import { DOCUMENT_FAMILIES, documentFontFamily, richDocumentToText, textToRichDocument } from "./document-rich-format";
 
@@ -47,6 +47,9 @@ export function DocumentRichText({ value, textStyles, alignment, onChange, label
   const change = useRef(onChange); change.current = onChange;
   const preserveScroll = useRef(false);
   const viewport = useRef<HTMLDivElement>(null);
+  const [observationOpen, setObservationOpen] = useState(false);
+  const [observationLabel, setObservationLabel] = useState("");
+  const pendingObservation = useRef<{ from: number; to: number; scrollTop: number } | null>(null);
   const [dateOpen, setDateOpen] = useState(false);
   const pendingDate = useRef<{ from: number; to: number; scrollTop: number } | null>(null);
   const [dateFormat,setDateFormat] = useState<string>("DMY_SLASH");
@@ -92,6 +95,10 @@ export function DocumentRichText({ value, textStyles, alignment, onChange, label
   };
   const chooseVariable = (key: string) => {
     if (!editor || disabled) return;
+    if (key === "observaciones") {
+      pendingObservation.current={from:editor.state.selection.from,to:editor.state.selection.to,scrollTop:viewport.current?.scrollTop ?? 0};
+      setObservationLabel(""); setObservationOpen(true); return;
+    }
     if (key !== "fecha_documento") { insertVariable(key); return; }
     pendingDate.current={from:editor.state.selection.from,to:editor.state.selection.to,scrollTop:viewport.current?.scrollTop ?? 0};
     setDateSource("actual");setDateFormat("DMY_SLASH");setDateOpen(true);
@@ -103,6 +110,15 @@ export function DocumentRichText({ value, textStyles, alignment, onChange, label
     run(() => { editor.commands.setTextSelection({from:selection.from,to:selection.to});editor.commands.insertContent({type:"text",text:`{{fecha_documento:${dateSource}:${dateFormat}}}`}); });
     if(viewport.current) viewport.current.scrollTop=selection.scrollTop;
     closeDate();
+  };
+  const closeObservation = () => { setObservationOpen(false); restoreFocus(); };
+  const applyObservation = () => {
+    const selection = pendingObservation.current;
+    const key = `observaciones:${observationLabel.trim()}`;
+    if (!editor || !selection || disabled || !observationTitle(key)) return;
+    run(() => { editor.commands.setTextSelection({from:selection.from,to:selection.to}); editor.commands.insertContent({type:"text",text:`{{${key}}}`}); });
+    if (viewport.current) viewport.current.scrollTop=selection.scrollTop;
+    closeObservation();
   };
   const attributes = editor?.getAttributes("documentStyle");
   const controls = <div className="flex flex-wrap items-center gap-1 border-b border-hairline bg-elevated p-2 text-ink" role="toolbar" aria-label={t("documentation.textFormat")}>
@@ -117,6 +133,10 @@ export function DocumentRichText({ value, textStyles, alignment, onChange, label
       options={DOCUMENT_VARIABLES.map(item => ({ value:item.key,label:t(`documentation.${item.label}`),description:t(`documentation.${item.group}`),searchText:`${t(`documentation.${item.label}`)} ${t(`documentation.${item.group}`)}` }))} />
   </div>;
   return <div className="flex min-h-0 flex-1 flex-col">{toolbarTarget ? createPortal(controls,toolbarTarget) : controls}<div ref={viewport} className={`overflow-auto ${textareaClassName}`} style={{ fontFamily: documentFontFamily(), fontSize: "11pt" }}><EditorContent editor={editor} /></div>
+    <Modal open={observationOpen} onOpenChange={open => { if (!open) closeObservation(); }} title={t("documentation.configureObservation")} description={t("documentation.observationConfigHint")} className="sm:max-w-md"
+      footer={<><Button type="button" variant="outline" onClick={closeObservation}>{t("documentation.cancel")}</Button><Button type="button" disabled={disabled || !observationTitle(`observaciones:${observationLabel.trim()}`)} onClick={applyObservation}>{t("documentation.addObservation")}</Button></>}>
+      <label className="block space-y-1 px-6 pb-6"><span>{t("documentation.observationTitle")}</span><Input autoFocus maxLength={100} value={observationLabel} disabled={disabled} onChange={event => setObservationLabel(event.target.value)} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); applyObservation(); } }} /></label>
+    </Modal>
     <Modal open={dateOpen} onOpenChange={open => {if(!open) closeDate();}} title={t("documentation.configureDate")} description={t("documentation.dateConfigHint")} className="overflow-visible sm:max-w-md"
       footer={<><Button type="button" variant="outline" onClick={closeDate}>{t("documentation.cancel")}</Button><Button type="button" disabled={disabled} onClick={applyDate}>{t("documentation.addDate")}</Button></>}>
       <div className="space-y-4 px-6 pb-6">

@@ -187,3 +187,20 @@ Los selectores de preparación reutilizan `patientsService.getPatients` y `docto
 ### Edición con formato
 
 El texto se edita con TipTap dentro del visor. La barra fija permite aplicar negrita, cursiva, subrayado, fuente (Roboto, Arial, Times New Roman, Courier New), tamaño (6–72 pt), alineación del párrafo (izquierda, centro, derecha, justificado) y deshacer/rehacer. Los estilos se guardan como `textStyles`: rangos UTF-16 `[start,end)` sobre el texto plano; no se envía HTML. El visor y el PDF usan los mismos archivos de fuentes y reglas de flujo. La inserción de variables conserva formato, selección y scroll; la eliminación de páginas ajusta también los rangos de estilo. Ninguna acción del formato envía peticiones. Guardar persiste una versión y Vista previa PDF genera explícitamente el PDF con el borrador. Requiere desplegar primero el backend con soporte para `textStyles`; documentos anteriores conservan su PDF inmutable.
+
+
+## Observaciones configurables en documentos (2026-10-09)
+
+El selector «Observaciones» abre un modal que exige un título (1–100 caracteres, sin
+llaves ni controles/saltos de línea). Inserta `{{observaciones:Riesgos personalizados}}`
+en la selección conservando formato y scroll. Cada título distinto genera un campo
+multilínea al preparar el documento; títulos repetidos comparten valor.
+
+`POST /documentation/documents` admite el campo opcional `observations`, un objeto
+de título a texto: `{"observations":{"Riesgos personalizados":"Texto completado"}}`.
+Se exige un valor no vacío por título referenciado; se rechazan títulos ajenos,
+valores de más de 5000 caracteres, delimitadores de variables en los valores,
+más de 100 títulos o más de 50000 caracteres totales. Las plantillas sin observaciones
+conservan el payload anterior. El texto se sustituye literalmente, heredando estilo,
+y se congela en el PDF preparado. Cambiar plantilla no altera documentos existentes.
+Sin cambios de esquema, repositorios ni permisos. Desplegar backend antes del frontoffice.

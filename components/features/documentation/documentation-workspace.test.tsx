@@ -27,6 +27,20 @@ async function selectPatient() {
   fireEvent.change(await screen.findByLabelText("documentation.patient"), { target: { value: "patient-a" } });
 }
 describe("preparing documents with variables", () => {
+  it("collects titled observations only at preparation and reuses repeated titles", async () => {
+    const observed={...template,blocks:[{type:"TEXT" as const,text:"{{observaciones:Riesgos}} {{observaciones:Indicaciones}} {{observaciones:Riesgos}}"},{type:"SIGNATURE" as const}]};
+    vi.mocked(service.templates).mockResolvedValue([observed]);
+    render(<DocumentationWorkspace />); await selectPatient();
+    expect(screen.getAllByLabelText("Riesgos")).toHaveLength(1);
+    const prepare=screen.getAllByRole("button",{name:"documentation.prepare"})[0];
+    expect(prepare).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Riesgos"),{target:{value:"Riesgo ficticio"}});
+    expect(prepare).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Indicaciones"),{target:{value:"Primera línea\nSegunda línea"}});
+    expect(service.prepare).not.toHaveBeenCalled();
+    fireEvent.click(prepare);
+    await waitFor(()=>expect(service.prepare).toHaveBeenCalledWith(observed,"patient-a",undefined,undefined,{Riesgos:"Riesgo ficticio",Indicaciones:"Primera línea\nSegunda línea"}));
+  });
   it("requires a selected document date and sends it only at preparation", async () => {
     const dated={ ...template, blocks: [{ type: "TEXT" as const, text: "{{fecha_documento:seleccionada}}" }, { type: "SIGNATURE" as const }] };
     vi.mocked(service.templates).mockResolvedValue([dated]);

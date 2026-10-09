@@ -11,7 +11,7 @@ import { documentationService as service } from "@/lib/services/documentation/do
 import { DocumentSigning } from "./document-signing";
 import { PdfPreview } from "./pdf-preview";
 
-import { needsDoctorVariables, needsSelectedDocumentDate } from "@/lib/entity/documentation/variables";
+import { documentObservationTitles, needsDoctorVariables, needsSelectedDocumentDate } from "@/lib/entity/documentation/variables";
 
 type PatientOption = { id: string; name: string };
 const PAGE_SIZE = 25;
@@ -36,6 +36,7 @@ export function DocumentationWorkspace() {
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [searched, setSearched] = useState(false);
   const [patientId, setPatientId] = useState("");
+  const [observations, setObservations] = useState<Record<string,string>>(() => Object.create(null));
   const [documentDate, setDocumentDate] = useState("");
   const [doctorQuery, setDoctorQuery] = useState("");
   const [doctors, setDoctors] = useState<DocumentationDoctorOption[]>([]);
@@ -43,6 +44,11 @@ export function DocumentationWorkspace() {
   const [doctorsSearched, setDoctorsSearched] = useState(false);
   const requiresDoctor = prepareTemplate ? needsDoctorVariables(prepareTemplate.blocks) : false;
   const requiresDate = prepareTemplate ? needsSelectedDocumentDate(prepareTemplate.blocks) : false;
+  const observationTitles = prepareTemplate ? documentObservationTitles(prepareTemplate.blocks) : [];
+  const validObservations = observationTitles.length <= 100 && observationTitles.every(title => {
+    const value = observations[title] ?? "";
+    return value.trim().length > 0 && value.length <= 5000 && !value.includes("{{") && !value.includes("}}");
+  }) && Object.values(observations).reduce((total,value) => total + value.length,0) <= 50000;
   const validDate = /^\d{4}-\d{2}-\d{2}$/.test(documentDate);
   const [signing, setSigning] = useState<{ document: PatientDocument; pdf: Blob } | null>(null);
   const [preview, setPreview] = useState<Blob | null>(null);
@@ -110,8 +116,11 @@ export function DocumentationWorkspace() {
         </select></label>}
       </div>}
       {requiresDate && <label className="block max-w-xs space-y-1"><span>{t("documentation.documentDate")}</span><Input type="date" required aria-label={t("documentation.documentDate")} value={documentDate} disabled={busy} onChange={event => setDocumentDate(event.target.value)} /></label>}
-      <div className="flex gap-2"><Button type="button" disabled={busy || !patientId || (requiresDoctor && !doctorId) || (requiresDate && !validDate)} onClick={() => void run(async () => {
-        const document = requiresDate
+      {observationTitles.map(title => <label key={title} className="block space-y-1"><span>{title}</span><textarea required maxLength={5000} rows={3} disabled={busy} value={observations[title] ?? ""} onChange={event => setObservations(previous => Object.assign(Object.create(null),previous,{[title]:event.target.value}))} className="block w-full rounded-xl border border-hairline bg-elevated p-3 text-ink" /></label>)}
+      <div className="flex gap-2"><Button type="button" disabled={busy || !validObservations || !patientId || (requiresDoctor && !doctorId) || (requiresDate && !validDate)} onClick={() => void run(async () => {
+        const document = observationTitles.length > 0
+          ? await service.prepare(prepareTemplate, patientId, requiresDoctor ? doctorId : undefined, requiresDate ? documentDate : undefined, observations)
+          : requiresDate
           ? await service.prepare(prepareTemplate, patientId, requiresDoctor ? doctorId : undefined, documentDate)
           : await service.prepare(prepareTemplate, patientId, requiresDoctor ? doctorId : undefined);
         // Retain the created record even if fetching its preview fails.
@@ -125,7 +134,7 @@ export function DocumentationWorkspace() {
         { key: "version", title: t("documentation.version"), dataIndex: "version", width: 100 },
         { key: "actions", title: t("documentation.actions"), align: "center", width: 100, render: (_, template) => <div className="flex items-center justify-center gap-1">
           <button type="button" disabled={busy} title={t("documentation.edit")} aria-label={t("documentation.edit")} className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-ink disabled:opacity-40" onClick={() => router.push(`/documentation/templates/${encodeURIComponent(template.id)}/edit`)}><Pencil className="h-4 w-4" /></button>
-          <button type="button" disabled={busy} title={t("documentation.prepare")} aria-label={t("documentation.prepare")} className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-brand disabled:opacity-40" onClick={() => { setPrepareTemplate(template); setDocumentDate(""); setQuery(""); setPatients([]); setPatientId(""); setSearched(false); setDoctorQuery(""); setDoctors([]); setDoctorId(""); setDoctorsSearched(false); }}><FileSignature className="h-4 w-4" /></button>
+          <button type="button" disabled={busy} title={t("documentation.prepare")} aria-label={t("documentation.prepare")} className="grid h-8 w-8 place-items-center rounded-lg text-subtle transition-colors hover:bg-hover hover:text-brand disabled:opacity-40" onClick={() => { setPrepareTemplate(template); setObservations(Object.create(null)); setDocumentDate(""); setQuery(""); setPatients([]); setPatientId(""); setSearched(false); setDoctorQuery(""); setDoctors([]); setDoctorId(""); setDoctorsSearched(false); }}><FileSignature className="h-4 w-4" /></button>
         </div> },
       ] satisfies DataTableColumn<DocumentationTemplate>[]}
       data={templates}

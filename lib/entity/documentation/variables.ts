@@ -12,6 +12,7 @@ export const DOCUMENT_VARIABLES = [
   { key: "doctor.licencia", group: "doctor", label: "doctorLicense" },
   { key: "doctor.especialidad", group: "doctor", label: "doctorSpecialty" },
   { key: "tratamiento", group: "otherVariables", label: "treatment" },
+  { key: "observaciones", group: "otherVariables", label: "observations" },
   { key: "fecha_documento", group: "otherVariables", label: "currentDate" },
 ] as const;
 export const DOCUMENT_DATE_FORMATS = [
@@ -25,10 +26,26 @@ export function isConfiguredDocumentDate(key: string): boolean {
   const [name, source, format, extra] = key.split(":");
   return extra === undefined && name === "fecha_documento" && ["actual", "seleccionada"].includes(source) && DOCUMENT_DATE_FORMATS.some(item => item.value === format);
 }
+export function observationTitle(key: string): string | null {
+  if (!key.startsWith("observaciones:")) return null;
+  const title = key.slice("observaciones:".length);
+  return !title || title !== title.trim() || title.length > 100 || [...title].some(char => { const code = char.charCodeAt(0); return code < 32 || (code >= 127 && code <= 159) || char === '{' || char === '}'; }) ? null : title;
+}
+export function documentObservationTitles(blocks: DocumentBlock[]): string[] {
+  const titles = new Set<string>();
+  for (const block of blocks) {
+    if (block.type !== "TEXT") continue;
+    for (const token of (block.text ?? "").matchAll(/\{\{([^{}]*)}}/g)) {
+      const title = observationTitle(token[1].trim());
+      if (title) titles.add(title);
+    }
+  }
+  return [...titles];
+}
 export function validDocumentVariables(text: string): boolean {
   const tokens = [...text.matchAll(/\{\{([^{}]*)}}/g)];
   const remainder = text.replace(/\{\{([^{}]*)}}/g, "");
-  return !remainder.includes("{{") && !remainder.includes("}}") && tokens.every(token => (DOCUMENT_VARIABLES.some(variable => variable.key === token[1].trim()) || ["fecha_actual", "fecha_documento:actual", "fecha_documento:seleccionada"].includes(token[1].trim()) || isConfiguredDocumentDate(token[1].trim())));
+  return !remainder.includes("{{") && !remainder.includes("}}") && tokens.every(token => (DOCUMENT_VARIABLES.some(variable => variable.key !== "observaciones" && variable.key === token[1].trim()) || ["fecha_actual", "fecha_documento:actual", "fecha_documento:seleccionada"].includes(token[1].trim()) || isConfiguredDocumentDate(token[1].trim()) || observationTitle(token[1].trim()) !== null));
 }
 export function needsDoctorVariables(blocks: DocumentBlock[]): boolean {
   return blocks.some(block => block.type === "TEXT" && [...(block.text ?? "").matchAll(/\{\{([^{}]*)}}/g)].some(token => DOCUMENT_VARIABLES.some(variable => variable.group === "doctor" && variable.key === token[1].trim())));

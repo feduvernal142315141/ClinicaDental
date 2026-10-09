@@ -146,3 +146,9 @@ describe("page break transport", () => {
     expect(apiInstance.put).toHaveBeenCalledWith("/documentation/templates/template-a", expect.objectContaining({ blocks: expect.arrayContaining([expect.objectContaining({ type: "PAGE_BREAK", page: 3 })]) }));
   });
 });
+
+it("sends observation values together with the selected document date", async () => {
+  vi.mocked(apiInstance.post).mockResolvedValueOnce({data:wireDocument});
+  await service.prepare(wireTemplate as unknown as DocumentationTemplate,"patient-a",undefined,"2026-10-09",{Riesgos:"Dato ficticio"});
+  expect(apiInstance.post).toHaveBeenCalledWith("/documentation/documents",{templateId:"template-a",templateVersion:3,patientId:"patient-a",documentDate:"2026-10-09",observations:{Riesgos:"Dato ficticio"}});
+});
