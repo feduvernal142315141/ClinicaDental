@@ -70,7 +70,7 @@ export function SignableDocument({ document, disabled, signatures = {}, patientA
   return <div className="space-y-3">
     <p className="text-sm text-subtle">{t("documentation.clickSignatureHint")}</p>
     {failed ? <div role="alert" className="space-y-2"><p>{t("documentation.error")}</p><Button variant="outline" onClick={() => setRetry(value => value + 1)}>{t("consultationDocuments.retry")}</Button></div> : !pages.length ? <p role="status">{t("consultationDocuments.loading")}</p> : <>
-      {pendingFieldKey && <div className={`fixed top-1/3 z-40 flex flex-col items-start gap-2 ${patientView ? "left-[clamp(1rem,12vw,14rem)]" : "left-3 sm:left-6"}`}>
+      {pendingFieldKey && <div className={`relative mx-auto mb-3 flex w-fit flex-col items-start gap-2 sm:fixed sm:top-1/3 sm:z-40 ${patientView ? "sm:left-[clamp(1rem,12vw,14rem)]" : "sm:left-6"}`}>
         <span className="rounded-md bg-elevated/95 px-3 py-1.5 text-xs text-subtle shadow-lg backdrop-blur">{t("documentation.pendingSignature")}</span>
         <Button className="gap-2 shadow-xl" disabled={disabled} onClick={jumpToSignature}>
           <PenLine className="h-4 w-4" aria-hidden="true" />{t("documentation.goToSignature")}

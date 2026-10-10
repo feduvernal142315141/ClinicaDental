@@ -79,12 +79,13 @@ describe("document signature fields", () => {
     expect(await screen.findByRole("button", { name: /documentation.patientSignature/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /documentation.specialistSignature/ })).not.toBeInTheDocument();
   });
-  it("moves the floating shortcut inward only for the patient view", async () => {
+  it("keeps the mobile shortcut in document flow and moves the desktop shortcut for the patient view", async () => {
     const { rerender } = render(<SignableDocument document={document} disabled={false} patientView onSign={vi.fn()} />);
     const patientShortcut = (await screen.findByRole("button", { name: "documentation.goToSignature" })).parentElement;
-    expect(patientShortcut).toHaveClass("left-[clamp(1rem,12vw,14rem)]");
+    expect(patientShortcut).toHaveClass("relative", "sm:fixed", "sm:left-[clamp(1rem,12vw,14rem)]");
+    expect(patientShortcut).not.toHaveClass("fixed");
     rerender(<SignableDocument document={document} disabled={false} onSign={vi.fn()} />);
-    expect(screen.getByRole("button", { name: "documentation.goToSignature" }).parentElement).toHaveClass("left-3", "sm:left-6");
+    expect(screen.getByRole("button", { name: "documentation.goToSignature" }).parentElement).toHaveClass("relative", "sm:fixed", "sm:left-6");
   });
   it("does not expose signature controls for a different document hash", async () => {
     vi.mocked(documentationService.signingPage).mockResolvedValue({ page: 0, pageCount: 1, width: 600, height: 800, imageDataUrl: "data:image/png;base64,test", documentHash: "other", fields: [] });
