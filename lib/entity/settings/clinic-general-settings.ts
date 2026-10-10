@@ -75,6 +75,8 @@ export interface ClinicGeneralSettings {
   reminderTime?: number | null;
   /** Si el asistente de WhatsApp informa precios por chat. Omitido en el PUT, el backend conserva el valor. */
   assistantSharesPrices?: boolean | null;
+  /** Nombre con el que se presenta el asistente de WhatsApp. Ausente o null = «Dalia». */
+  assistantName?: string | null;
   /** URL absoluta del logo de la clínica (subido a Cloudinary). */
   logoUrl?: string | null;
   toothNotation: ToothNotation;
@@ -84,6 +86,33 @@ export type UpdateClinicGeneralSettingsRequest = Omit<
   ClinicGeneralSettings,
   "id" | "subscriptionPlan"
 >;
+
+export const DEFAULT_ASSISTANT_NAME = "Dalia";
+export const ASSISTANT_NAME_MIN_LENGTH = 2;
+export const ASSISTANT_NAME_MAX_LENGTH = 30;
+
+/** Solo letras (con acentos y ñ) y un espacio simple entre palabras. */
+const ASSISTANT_NAME_PATTERN = /^\p{L}+( \p{L}+)*$/u;
+
+/** Recorta los extremos y colapsa los espacios repetidos, igual que el backend. */
+export function normalizeAssistantName(value: string): string {
+  return value.trim().replace(/ {2,}/g, " ");
+}
+
+export function isValidAssistantName(value: string): boolean {
+  const name = normalizeAssistantName(value);
+  return (
+    name.length >= ASSISTANT_NAME_MIN_LENGTH &&
+    name.length <= ASSISTANT_NAME_MAX_LENGTH &&
+    ASSISTANT_NAME_PATTERN.test(name)
+  );
+}
+
+/** Nombre a mostrar: un backend sin el campo (o vacío) equivale a «Dalia». */
+export function resolveAssistantName(value?: string | null): string {
+  const name = typeof value === "string" ? normalizeAssistantName(value) : "";
+  return name || DEFAULT_ASSISTANT_NAME;
+}
 
 export const CLINIC_SCHEDULE_DAYS: Array<{
   key: ClinicScheduleDayKey;
@@ -126,6 +155,7 @@ export const DEFAULT_CLINIC_GENERAL_SETTINGS: ClinicGeneralSettings = {
   sendReminders: false,
   reminderTime: 1440,
   assistantSharesPrices: true,
+  assistantName: DEFAULT_ASSISTANT_NAME,
   logoUrl: null,
   toothNotation: "fdi",
 };

@@ -8,6 +8,7 @@ import { AlertProvider } from "@/lib/contexts/alert-context";
 import { I18nProvider } from "@/lib/contexts/i18n-context";
 import { ClinicBrandingProvider } from "@/lib/contexts/clinic-branding-context";
 import { ToothNotationProvider } from "@/lib/contexts/tooth-notation-context";
+import { AssistantNameProvider } from "@/lib/contexts/assistant-name-context";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { ThemeProvider } from "@/components/theme-provider";
 import { GlobalAlertDialog } from "@/components/global-alert-dialog";
@@ -57,6 +58,8 @@ export function RootClient({ children }: RootClientProps) {
                         logout (un proveedor debe ser ancestro de quien lo usa).
                         Su fetch sí exige sesión: sin token no pide nada. */}
                     <ToothNotationProvider>
+                      {/* Nombre de la asistente: mismo criterio que la nomenclatura. */}
+                      <AssistantNameProvider>
                       <AuthProvider>
                         <QueryProvider>
                         <AlertProvider>
@@ -73,6 +76,7 @@ export function RootClient({ children }: RootClientProps) {
                         </AlertProvider>
                         </QueryProvider>
                       </AuthProvider>
+                      </AssistantNameProvider>
                     </ToothNotationProvider>
                   </ClinicBrandingProvider>
                 </I18nProvider>
