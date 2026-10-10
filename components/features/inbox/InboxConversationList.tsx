@@ -12,6 +12,7 @@ import { InboxConversationRow } from "./InboxConversationRow";
 import type { InboxConversation, InboxFilterPreset } from "@/lib/entity/inbox";
 import { INBOX_FILTER_PRESETS } from "@/lib/entity/inbox";
 import { useI18n } from "@/lib/contexts/i18n-context";
+import { useAssistantText } from "@/lib/contexts/assistant-name-context";
 import type { TranslationKey } from "@/lib/i18n/translations";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -82,6 +83,7 @@ export function InboxConversationList({
   className,
 }: InboxConversationListProps) {
   const { t } = useI18n();
+  const { withAssistant } = useAssistantText();
   const [localSearch, setLocalSearch] = React.useState(query);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -152,7 +154,7 @@ export function InboxConversationList({
                 : "bg-hover text-subtle hover:text-ink",
             )}
           >
-            {t(FILTER_LABEL_KEYS[preset.value])}
+            {withAssistant(t(FILTER_LABEL_KEYS[preset.value]))}
           </button>
         ))}
       </div>
@@ -166,8 +168,8 @@ export function InboxConversationList({
         ) : conversations.length === 0 ? (
           <EmptyState
             icon={Inbox}
-            title={t(EMPTY_TITLE_KEYS[activeFilter])}
-            description={t(EMPTY_DESCRIPTION_KEYS[activeFilter])}
+            title={withAssistant(t(EMPTY_TITLE_KEYS[activeFilter]))}
+            description={withAssistant(t(EMPTY_DESCRIPTION_KEYS[activeFilter]))}
             className="py-16"
           />
         ) : (

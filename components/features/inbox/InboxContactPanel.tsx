@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/primitives/shadcn/button";
 import { LoadingSpinner } from "@/components/ui/atomic/feedback/loading-spinner";
 import type { InboxConversationDetail } from "@/lib/entity/inbox";
 import { useI18n } from "@/lib/contexts/i18n-context";
+import { useAssistantText } from "@/lib/contexts/assistant-name-context";
 import type { TranslationKey } from "@/lib/i18n/translations";
 import { LeadConversationPanel } from "@/components/features/leads/inbox/LeadConversationPanel";
 
@@ -66,6 +67,7 @@ export function InboxContactPanel({
   className,
 }: InboxContactPanelProps) {
   const { language, t } = useI18n();
+  const { withAssistant } = useAssistantText();
   if (!detail) {
     return (
       <div className={cn("flex items-center justify-center py-12", className)}>
@@ -141,7 +143,7 @@ export function InboxContactPanel({
               tone={handlingMode === "HUMAN" ? "info" : "neutral"}
               className="text-[10px] px-1.5 py-0"
             >
-              {t(HANDLING_KEYS[handlingMode])}
+              {withAssistant(t(HANDLING_KEYS[handlingMode]))}
             </StatusBadge>
           </div>
           {assignedTo && (

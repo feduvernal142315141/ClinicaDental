@@ -5,6 +5,7 @@ import { AlertTriangle, Hand } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { useI18n } from "@/lib/contexts/i18n-context";
+import { useAssistantText } from "@/lib/contexts/assistant-name-context";
 
 export interface InboxNeedsHumanBannerProps {
   onTakeover: () => void;
@@ -16,6 +17,7 @@ export function InboxNeedsHumanBanner({
   className,
 }: InboxNeedsHumanBannerProps) {
   const { t } = useI18n();
+  const { withAssistant } = useAssistantText();
   return (
     <div
       className={cn(
@@ -29,7 +31,7 @@ export function InboxNeedsHumanBanner({
           {t("inbox.status.needsHuman")}
         </span>
         <span className="text-xs text-amber-600 dark:text-amber-400">
-          {t("inbox.banner.needsHumanDescription")}
+          {withAssistant(t("inbox.banner.needsHumanDescription"))}
         </span>
       </div>
       <Button type="button" size="sm" onClick={onTakeover}>
