@@ -2,6 +2,7 @@ export const PATIENT_TABS = {
   EVOLUTION: "evolucion",
   ODONTOGRAM: "odontograma",
   TREATMENT_PLAN: "plan-tratamiento",
+  DOCUMENTATION: "documentacion",
   FILES: "imagenes",
   /** Cuenta del paciente (Finanzas). La página la oculta si el módulo FINANCE está apagado. */
   ACCOUNT: "cuenta",
@@ -19,6 +20,8 @@ const TAB_ALIASES: Record<string, PatientTab> = {
   "plan-tratamiento": PATIENT_TABS.TREATMENT_PLAN,
   "plan-de-tratamiento": PATIENT_TABS.TREATMENT_PLAN,
   "treatment-plan": PATIENT_TABS.TREATMENT_PLAN,
+  documentacion: PATIENT_TABS.DOCUMENTATION,
+  documentation: PATIENT_TABS.DOCUMENTATION,
   imagenes: PATIENT_TABS.FILES,
   archivos: PATIENT_TABS.FILES,
   files: PATIENT_TABS.FILES,

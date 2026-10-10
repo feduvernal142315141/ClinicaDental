@@ -93,6 +93,8 @@ export function createServiceFormSchema(t: ServiceFormTranslator) {
       // Sin `description`: el backend no tiene ese campo (ni en Service, ni en
       // Create/UpdateServiceCommand, ni en los response models). Se tecleaba,
       // se enviaba y se perdía.
+      documentationTemplateId: z.union([z.string().uuid(), z.literal("")]).optional(),
+      documentSignatureRequired: z.boolean().optional(),
       odontogramEnabled: z.boolean(),
       odontogramSymbolMode: z.enum(SYMBOL_MODE_VALUES, {
         required_error: t("services.validation.symbolModeRequired"),
@@ -121,6 +123,9 @@ export function createServiceFormSchema(t: ServiceFormTranslator) {
         ),
     })
     .superRefine((val, ctx) => {
+      if (val.documentSignatureRequired && !val.documentationTemplateId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["documentationTemplateId"], message: t("services.documentation.requiredTemplate") });
+      }
       if (!val.odontogramEnabled) return;
       if (val.odontogramSymbolMode === "TEXT" && !val.symbolText?.trim()) {
         ctx.addIssue({

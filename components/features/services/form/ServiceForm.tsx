@@ -18,6 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/atomic/feed
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Select } from "@/components/ui/controls/select";
 import { AvatarField } from "@/components/ui/controls/avatar-field";
+import { ServiceDocumentationFields } from "./ServiceDocumentationFields";
 import { useServiceForm } from "@/lib/hooks/services/use-service-form";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings";
 import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
@@ -362,6 +363,8 @@ export function ServiceForm({
             />
           </div>
         </section>
+
+        <ServiceDocumentationFields form={form} disabled={serviceFieldsDisabled} />
 
         {/* Odontograma */}
         <section className="bento p-4 lg:p-6">

@@ -53,6 +53,26 @@ export interface PatientDocument {
   documentHash: string;
   signatureRoles?: SignerRole[];
 }
+export interface VisitDocumentGroup {
+  templateId: string;
+  document: PatientDocument;
+  signatureRequired: boolean;
+  treatments: { eventId: string; serviceId: string; serviceName: string; toothNumber: number; surfaces: string[] }[];
+}
+export interface VisitDocuments {
+  visitId: string;
+  patientId: string;
+  selectionHash: string;
+  eventIds: string[];
+  groups: VisitDocumentGroup[];
+}
+export interface VisitDocumentSelection {
+  templateIds?: string[];
+  draftOnly?: boolean;
+  eventIds: string[];
+  expectedSelectionHash: string;
+  observations?: Record<string, Record<string, string>>;
+}
 export interface SignatureInput {
   method: "DRAWN" | "CHECKBOX";
   accepted: true;
@@ -86,4 +106,19 @@ export interface TemplateLayout {
   placements: DocumentPlacement[];
 }
 
+export interface SignatureRequestStatus {
+  status: "NONE" | "SENT" | "LINK_READY" | "EXPIRED" | "SIGNED";
+  expiresAt?: string;
+  phoneMasked?: string;
+}
+export interface PublicSigningContext {
+  id: string; title: string; patientName: string; documentHash: string; expiresAt: string; signatureRoles: ["PATIENT"];
+}
+export type PatientSignatureInput = Omit<SignatureInput, "specialistSignatureBase64">;
+
 export interface DocumentationDoctorOption { id: string; name: string }
+
+export interface DocumentSigningPage {
+  page: number; pageCount: number; width: number; height: number; imageDataUrl: string; documentHash: string;
+  fields: { x: number; top: number; width: number; height: number; signerRole: SignerRole }[];
+}

@@ -152,3 +152,39 @@ it("sends observation values together with the selected document date", async ()
   await service.prepare(wireTemplate as unknown as DocumentationTemplate,"patient-a",undefined,"2026-10-09",{Riesgos:"Dato ficticio"});
   expect(apiInstance.post).toHaveBeenCalledWith("/documentation/documents",{templateId:"template-a",templateVersion:3,patientId:"patient-a",documentDate:"2026-10-09",observations:{Riesgos:"Dato ficticio"}});
 });
+
+
+describe("consultation document contract", () => {
+  const bundle = { visitId: "visit-a", patientId: "patient-a", selectionHash: "selection-v1", eventIds: ["event-a", "event-no-document"], groups: [{ templateId: "template-a", document: wireDocument, signatureRequired: true, treatments: [{ eventId: "event-a", serviceId: "service-a", serviceName: "Test", toothNumber: 18, surfaces: [] }] }] };
+  it("loads by consultation ID and preserves selection without document assignments", async () => {
+    vi.mocked(apiInstance.get).mockResolvedValue({ data: bundle });
+    const result = await service.visitDocuments("visit-a");
+    expect(apiInstance.get).toHaveBeenCalledWith("/documentation/visits/visit-a");
+    expect(result.eventIds).toEqual(bundle.eventIds);
+    expect(result.groups[0].document.signedAt).toBeUndefined();
+  });
+  it("sends event IDs, observations and the concurrency token without clinical labels", async () => {
+    vi.mocked(apiInstance.post).mockResolvedValue({ data: bundle });
+    const input = { eventIds: bundle.eventIds, expectedSelectionHash: "selection-v1", observations: { "template-a": { Notes: "Synthetic note" } } };
+    await service.prepareVisitDocuments("visit-a", input);
+    expect(apiInstance.post).toHaveBeenCalledWith("/documentation/visits/visit-a/selection", input);
+  });
+  it.each([401,403,409,500])("propagates HTTP %s instead of treating a failed preparation as success", async status => {
+    const error = { response: { status } };
+    vi.mocked(apiInstance.post).mockRejectedValue(error);
+    await expect(service.prepareVisitDocuments("visit-a", { eventIds: [], expectedSelectionHash: "stale" })).rejects.toBe(error);
+  });
+});
+
+
+it("restarts one visit document with encoded IDs and the optimistic selection hash", async () => {
+  const result = { visitId: "visit/a", patientId: "patient-a", selectionHash: "next", eventIds: ["a"], groups: [] };
+  vi.mocked(apiInstance.post).mockResolvedValue({ data: result });
+  expect(await service.restartVisitDocument("visit/a", "document/a", "current")).toEqual(result);
+  expect(apiInstance.post).toHaveBeenCalledWith("/documentation/visits/visit%2Fa/documents/document%2Fa/restart", { expectedSelectionHash: "current" });
+});
+it.each([403, 409, 500])("propagates restart HTTP %s without manufacturing a successful empty selection", async status => {
+  const error = { response: { status } };
+  vi.mocked(apiInstance.post).mockRejectedValue(error);
+  await expect(service.restartVisitDocument("visit-a", "document-a", "current")).rejects.toBe(error);
+});

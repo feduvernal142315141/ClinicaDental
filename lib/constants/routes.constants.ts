@@ -9,6 +9,7 @@
  * These routes will render without the app shell (sidebar/header)
  */
 export const PUBLIC_ROUTES = [
+  "/firmar-documento",
   "/login",
   "/forgot-password",
   "/reset-password",

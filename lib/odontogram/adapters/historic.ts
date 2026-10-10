@@ -10,11 +10,13 @@ import { type OdontogramAdapter } from "@/lib/odontogram/store";
  */
 export function createHistoricOdontogramAdapter(
   stateJson: string,
+  context?: { visitId?: string; patientId: string; clinicId?: string },
 ): OdontogramAdapter {
   return {
     load: async () => {
       try {
-        return JSON.parse(stateJson);
+        const snapshot = JSON.parse(stateJson);
+        return context ? { ...snapshot, metadata: { ...snapshot.metadata, ...context } } : snapshot;
       } catch {
         return null;
       }

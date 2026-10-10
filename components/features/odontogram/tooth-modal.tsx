@@ -1643,6 +1643,17 @@ export function ToothModal({
           patientRisk={cariesRisk.level}
           patientRiskReasons={cariesRisk.reasons}
           onNavigateToTab={handleNavigateToTab}
+          onBeforeStage={selectedPlans => {
+            if (!handleSave()) return null;
+            // New local plans acquire their clinical event IDs when the modal is saved.
+            const savedPlans = getToothEvents(tooth.number).filter(event => event.type === "plan");
+            const ids = selectedPlans.map(plan => savedPlans.find(event =>
+              event.id === plan.id || (event.procedureId === plan.procedureId &&
+                event.surfaces.length === plan.surfaces.length &&
+                event.surfaces.every(surface => plan.surfaces.includes(surface)))
+            )?.id);
+            return ids.every((id): id is string => !!id) ? ids : null;
+          }}
           onSave={handlePerformedSave}
           onPlansChange={handlePlansChange}
         />

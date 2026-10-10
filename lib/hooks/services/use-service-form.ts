@@ -79,6 +79,8 @@ export function useServiceForm({
       type: "TREATMENT",
       cost: undefined,
       duration: undefined,
+      documentationTemplateId: "",
+      documentSignatureRequired: false,
       category: undefined,
       odontogramEnabled: false,
       odontogramSymbolMode: "NONE",
@@ -112,6 +114,8 @@ export function useServiceForm({
           type: service.type,
           cost: service.cost,
           duration: service.duration ?? undefined,
+          documentationTemplateId: service.documentationTemplateId ?? "",
+          documentSignatureRequired: service.documentSignatureRequired ?? false,
           category: service.category,
           odontogramEnabled: service.odontogramEnabled,
           // MANUAL (legacy) ya no se ofrece en la UI → se normaliza a NONE para
@@ -239,6 +243,8 @@ export function useServiceForm({
         category: values.category,
         cost: values.cost,
         duration: values.duration,
+        documentationTemplateId: values.documentationTemplateId || null,
+        documentSignatureRequired: !!values.documentationTemplateId && !!values.documentSignatureRequired,
         odontogramEnabled: values.odontogramEnabled,
         odontogramSymbolMode: mode,
         // Solo enviamos imagen nueva; si no, el backend conserva la existente.

@@ -204,3 +204,144 @@ más de 100 títulos o más de 50000 caracteres totales. Las plantillas sin obse
 conservan el payload anterior. El texto se sustituye literalmente, heredando estilo,
 y se congela en el PDF preparado. Cambiar plantilla no altera documentos existentes.
 Sin cambios de esquema, repositorios ni permisos. Desplegar backend antes del frontoffice.
+
+## Documentación asociada a servicios (2026-10-09)
+
+POST/PUT `/services` aceptan `documentationTemplateId` (UUID o null) y
+`documentSignatureRequired` (boolean). GET de detalle/listado devuelve ambos.
+Sin documento, la firma debe ser false. PUT con ambos campos ausentes/null conserva
+la configuración para clientes anteriores; para quitarla enviar null + false.
+La plantilla debe estar activa, publicada, sin borrado lógico y pertenecer a la
+clínica del usuario. Se conserva el permiso existente de crear/editar servicios;
+la lista de plantillas mantiene el permiso de lectura de Documentación.
+
+El formulario carga todas las páginas del catálogo, conserva la selección en
+fallos de red y permite reintentar. Los documentos preparados/firmados no cambian.
+Esta entrega configura el requisito por servicio; no introduce bloqueos de agenda,
+tratamientos ni generación automática de documentos.
+
+Despliegue: aplicar V62 mediante Flyway al arrancar backend antes de publicar el
+frontoffice. Aditiva: servicios existentes quedan sin plantilla y firma=false.
+FK compuesta impide asignaciones entre clínicas; CHECK exige plantilla si la firma
+es obligatoria. Puede tomar locks breves al alterar services. Rollback de aplicación:
+restaurar binarios anteriores conservando columnas y datos; no eliminar columnas.
+V62 confirmada libre por el usuario; historial local V61, fetch remoto bloqueado por
+autenticación durante esta tarea. No se aplicó la migración a la base principal.
+
+
+## Documentos del odontograma por consulta
+
+El panel «Documentos de esta consulta» reúne los planes seleccionados desde
+«Realizado» de varios dientes. «Añadir a esta consulta» no ejecuta tratamientos.
+Al confirmar la selección final se persiste primero el odontograma y se envían
+los IDs de eventos a `/documentation/visits/{visitId}/selection`, junto con
+`expectedSelectionHash` y las observaciones por plantilla. El servidor resuelve
+servicios y agrupa por plantilla. El GET de esa misma consulta devuelve
+`eventIds` (también servicios sin documento), `selectionHash` y `groups`.
+
+Cada grupo indica documento, firma obligatoria y tratamientos/piezas cubiertos.
+La firma reutiliza el módulo documental. El registro de realizados construye
+un snapshot aislado, lo guarda y solo entonces actualiza la vista. Autosave y
+operaciones explícitas se serializan. El backend vuelve a validar firmas y
+cobertura; cancelar la revisión no ejecuta procedimientos.
+
+Cambiar un grupo elimina el documento anterior, su PDF y firmas sin versiones
+históricas; los grupos no modificados se conservan. Cada consulta tiene sus
+propios documentos; la vista histórica carga por UUID de consulta y es de solo
+lectura. Desplegar primero el backend con el contrato y la migración V63.
+La tabla de planes generales del paciente es un flujo separado: los servicios
+con firma obligatoria necesitan vinculación a eventos del odontograma.
+
+
+### Documentación de la consulta: pestaña dedicada
+
+La historia clínica incluye la pestaña `Documentación` (`?tab=documentacion`).
+Comparte la instancia del odontograma con la pestaña `Odontograma`, conservando
+los tratamientos seleccionados al cambiar entre vistas. En documentación se
+listan los grupos. Seleccionar un documento abre un modal con un campo de observaciones
+por paso, navegación anterior/siguiente y revisión final antes de generar. Los documentos
+ya generados se revisan y firman desde ese mismo modal. Los datos pendientes se conservan en memoria al cambiar
+de documento; se envían al generar los documentos cuando todos están completos.
+La selección de tratamientos queda en un desplegable y las acciones principales
+en un pie visible dentro del área desplazable. Las consultas históricas son de
+solo lectura. La agrupación y los contratos del backend no cambian.
+
+### Firma desde el documento
+
+El visor muestra las páginas del PDF almacenado en scroll continuo. Comprueba
+el hash antes de mostrar cada página y escala sus campos de firma junto con
+la imagen. La sesión clínica muestra únicamente el control SPECIALIST; la
+vista pública, únicamente PATIENT. Las firmas dibujadas o la aceptación por
+casilla aparecen sobre el documento. El flujo remoto siguiente reemplaza la
+captura de la firma del paciente dentro del odontograma.
+
+### Firma remota del paciente por WhatsApp
+
+El personal ya no captura ni confirma la firma del paciente. `DocumentSigning`
+solo muestra campos interactivos SPECIALIST y requiere esa firma cuando la
+plantilla la incluye antes de `POST /documentation/documents/{id}/signature-request`.
+La respuesta contiene estado, vencimiento y teléfono enmascarado; nunca el enlace
+ni el token. Se recibe el estado mediante SSE en `/signature-events`
+mientras está SENT o LINK_READY; reconecta tras errores de red y también permite actualización manual.
+Al recibir SIGNED se recupera el documento mediante el endpoint autenticado.
+
+El paciente abre `/firmar-documento#token=...`, ruta pública independiente del
+shell, sesión, interceptores, listeners globales y analítica. El fragmento se
+retira inmediatamente y el token se conserva temporalmente en sessionStorage
+para permitir recargas dentro de su vigencia. No se guarda en localStorage ni cookies.
+El proxy same-origin `/api/document-signing/{action}` admite exclusivamente
+context/page (GET) y preview/sign (POST), reenvía el token mediante
+X-Document-Token a `/public/document-signing`, y nunca transmite cookies ni
+Authorization del profesional. API_URL sigue siendo configuración de servidor.
+Respuestas sin caché, errores genéricos y cuerpo de firma limitado a 1.5MB.
+
+La vista reutiliza el visor continuo con cargador público inyectado y filtra
+roles PATIENT; no presenta el control de firma del especialista. Aceptación
+explícita y previsualización exitosa preceden la confirmación. Modificar el
+método, la firma o la aceptación invalida esa revisión. El servidor decide
+vigencia, uso único, documento exacto y consumo atómico. El temporizador local
+retira documento y modal al vencer expiresAt; la validación de seguridad sigue
+siendo responsabilidad del backend. No se enviaron mensajes reales en pruebas.
+
+Despliegue coordinado con el backend que incorpora V64 y los endpoints públicos.
+Configurar la URL HTTPS pública y la plantilla aprobada de WhatsApp en backend
+antes de usar el envío. Las antiguas operaciones de firma desde staff quedan
+bloqueadas por el backend. Las pruebas con mocks no validan entrega de WhatsApp
+ni navegación real desde teléfono.
+
+La firma pública conserva temporalmente el token en sessionStorage de la pestaña y del origen de la clínica para permitir recargas. El fragmento se elimina de la URL. La caducidad se toma del backend y no se renueva al recargar; el token se elimina al firmar, vencer o recibir un rechazo de autenticación. No se almacenan el PDF, los datos clínicos ni la firma dibujada. Si el navegador bloquea sessionStorage, la firma sigue disponible en memoria, pero requiere reabrir el enlace después de recargar.
+
+Al confirmar la firma del especialista se solicita el enlace automáticamente. La vista de espera muestra la caducidad del servidor y recibe eventos SSE hasta SIGNED o EXPIRED. Al firmar el paciente, se recupera el documento firmado y se actualiza el grupo de la consulta. Al vencer se permite solicitar otro enlace; en simulación el enlace sigue disponible en el log del backend.
+
+### Espera de firma remota por SSE
+
+El frontoffice abre `GET /documentation/documents/{id}/signature-events` con el
+adaptador fetch de Axios, conservando los interceptores Bearer y refresh. Cada
+evento `status` contiene `SignatureRequestStatus`; el primer evento también
+reconcilia el estado después de reconectar. La conexión se cancela al desmontar
+y termina en NONE, SIGNED o EXPIRED. Las desconexiones se recuperan con backoff,
+sin consultar periódicamente el endpoint de estado.
+
+Al cargar una consulta editable se consultan una vez las solicitudes de los
+documentos pendientes. Si hay un enlace vigente, se reabre el modal de espera
+aunque la pestaña activa sea el odontograma. Al completar uno, se reconcilia
+la consulta y se recupera la siguiente solicitud pendiente si existe. No se
+reenvían enlaces ni se persisten estados clínicos en storage durante la recarga.
+
+
+### Tabla de documentos de la consulta
+
+La pestaña Documentación usa la tabla compartida del frontoffice: una fila por
+plantilla, servicios sin duplicar, cantidad de piezas distintas y acciones según
+estado. Generar abre el asistente de esa fila y envía `templateIds: [id]` junto a
+la selección completa y las observaciones de esa plantilla. Las demás filas
+permanecen pendientes; revisar y firmar abre directamente el visor.
+
+Reiniciar exige confirmación y llama a
+`POST /documentation/visits/{visitId}/documents/{documentId}/restart` con
+`expectedSelectionHash`. La respuesta mantiene la selección y omite el documento
+eliminado; el cliente reconstruye su borrador, limpia sus campos anteriores y
+abre el asistente. El backend elimina PDF, firmas y enlaces anteriores, y rechaza
+conflictos de selección, consultas cerradas y tratamientos ya realizados.
+El histórico solo permite visualizar documentos. El bloqueo de espera y SSE
+mantienen su flujo existente.

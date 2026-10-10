@@ -1,5 +1,5 @@
 import apiInstance from "@/lib/services/apiConfig";
-import type { DocumentBlock, DocumentationDoctorOption, DocumentationTemplate, ImportedDocument, PatientDocument, SignatureInput, TemplateInput, TemplateLayout } from "@/lib/entity/documentation";
+import type { SignatureRequestStatus, DocumentSigningPage, VisitDocuments, VisitDocumentSelection, DocumentBlock, DocumentationDoctorOption, DocumentationTemplate, ImportedDocument, PatientDocument, SignatureInput, TemplateInput, TemplateLayout } from "@/lib/entity/documentation";
 
 import { patientsService } from "@/lib/services/patients/patients.service";
 import { doctorsService } from "@/lib/services/doctors/doctors.service";
@@ -29,6 +29,18 @@ const normalizeDocument = (value: DocumentWire): PatientDocument => ({
 
 // Plain JSON responses. Axios rejects HTTP failures, including conflicts.
 export const documentationService = {
+  async visitDocuments(visitId: string): Promise<VisitDocuments> {
+    const { data } = await apiInstance.get<VisitDocuments>(`${base}/visits/${idPath(visitId)}`);
+    return { ...data, groups: data.groups.map(group => ({ ...group, document: normalizeDocument(group.document) })) };
+  },
+  async prepareVisitDocuments(visitId: string, input: VisitDocumentSelection): Promise<VisitDocuments> {
+    const { data } = await apiInstance.post<VisitDocuments>(`${base}/visits/${idPath(visitId)}/selection`, input);
+    return { ...data, groups: data.groups.map(group => ({ ...group, document: normalizeDocument(group.document) })) };
+  },
+  async restartVisitDocument(visitId: string, documentId: string, expectedSelectionHash: string): Promise<VisitDocuments> {
+    const { data } = await apiInstance.post<VisitDocuments>(`${base}/visits/${idPath(visitId)}/documents/${idPath(documentId)}/restart`, { expectedSelectionHash });
+    return { ...data, groups: data.groups.map(group => ({ ...group, document: normalizeDocument(group.document) })) };
+  },
   async patients(search: string): Promise<{ id: string; name: string }[]> {
     const result = await patientsService.getPatients({
       page: 0, pageSize: 10, filters: [`name__CONTAINS_IGNORE_CASE__${search.trim()}`, "active__EQ__true"],
@@ -76,6 +88,15 @@ export const documentationService = {
   },
   async document(id: string): Promise<PatientDocument> {
     return normalizeDocument((await apiInstance.get<DocumentWire>(`${base}/documents/${idPath(id)}`)).data);
+  },
+  async requestSignature(id: string, input: { documentHash: string; specialistSignatureBase64?: string }): Promise<SignatureRequestStatus> {
+    return (await apiInstance.post<SignatureRequestStatus>(`${base}/documents/${idPath(id)}/signature-request`, input)).data;
+  },
+  async signatureRequestStatus(id: string): Promise<SignatureRequestStatus> {
+    return (await apiInstance.get<SignatureRequestStatus>(`${base}/documents/${idPath(id)}/signature-request`)).data;
+  },
+  async signingPage(id: string, page = 0): Promise<DocumentSigningPage> {
+    return (await apiInstance.get<DocumentSigningPage>(`${base}/documents/${idPath(id)}/signing-page`, { params: { page } })).data;
   },
   async pdf(id: string): Promise<Blob> {
     return (await apiInstance.get(`${base}/documents/${idPath(id)}/pdf`, pdfConfig)).data;

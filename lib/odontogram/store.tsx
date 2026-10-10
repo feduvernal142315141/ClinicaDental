@@ -165,6 +165,7 @@ export interface OdontogramAdapter {
   loadCatalogs?: () => Promise<unknown>;
 }
 export interface OdontogramModuleProps {
+  documentationView?: boolean;
   patientId: string;
   clinicId?: string;
   adapter: OdontogramAdapter;
@@ -619,7 +620,7 @@ const buildSnapshot = (state: OdontogramState): OdontogramSnapshot => ({
     updatedAt: nowIso(),
   },
 });
-const createOdontogramStore = ({
+export const createOdontogramStore = ({
   patientId,
   clinicId,
   readOnly = false,

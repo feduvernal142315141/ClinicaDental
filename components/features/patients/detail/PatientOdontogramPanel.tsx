@@ -38,6 +38,7 @@ import type { DentitionType } from "@/lib/odontogram/domain/odontogram/constants
 import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface PatientOdontogramPanelProps {
+  documentationView?: boolean;
   patient: {
     id: string;
     clinicId?: string;
@@ -83,6 +84,7 @@ function readOnlyReasonFor(
 }
 export function PatientOdontogramPanel({
   patient,
+  documentationView = false,
   defaultDentition,
   onDentitionChange,
   activeAppointmentId,
@@ -160,8 +162,8 @@ export function PatientOdontogramPanel({
   // el paciente. Con "" el adapter no puede parsear y devuelve null, y el módulo
   // monta un odontograma vacío (nunca el del presente).
   const historicAdapter = useMemo(
-    () => createHistoricOdontogramAdapter(historicSnapshot?.state ?? ""),
-    [historicSnapshot],
+    () => createHistoricOdontogramAdapter(historicSnapshot?.state ?? "", { visitId: historicAppointmentId, patientId: patient.id, clinicId }),
+    [historicSnapshot, historicAppointmentId, patient.id, clinicId],
   );
   const isHistoricMode = !!historicAppointmentId;
   const eligibleVisits = useMemo(
@@ -290,6 +292,7 @@ export function PatientOdontogramPanel({
         </div>
       )}
       <OdontogramModule
+        documentationView={documentationView}
         patientId={patient.id}
         clinicId={clinicId}
         adapter={adapter}

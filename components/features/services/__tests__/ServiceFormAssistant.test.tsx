@@ -10,6 +10,8 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/services/services", () => ({ servicesService: api }));
 
+vi.mock("@/lib/services/documentation/documentation.service", () => ({ documentationService: { templates: vi.fn().mockResolvedValue([]) } }));
+
 const session = vi.hoisted(() => ({ isAdmin: true, actions: [] as number[] }));
 vi.mock("@/lib/hooks/use-permission", () => ({
   usePermission: () => ({
@@ -56,6 +58,15 @@ describe("sección «Asistente virtual» del formulario de servicio", () => {
     session.actions = [];
     api.updateService.mockResolvedValue(true);
     api.setAssistantProfile.mockImplementation(async (_id: string, profile: { assistantVisible: boolean }) => profile.assistantVisible);
+  });
+
+  it("envía la configuración documental cargada al guardar el servicio", async () => {
+    const templateId = "00000000-0000-4000-8000-000000000001";
+    await renderEdit(makeService({ documentationTemplateId: templateId, documentSignatureRequired: true }));
+    fireEvent.change(screen.getByDisplayValue("Blanqueamiento"), { target: { value: "Blanqueamiento actualizado" } });
+    fireEvent.click(save());
+    await waitFor(() => expect(api.updateService).toHaveBeenCalledTimes(1));
+    expect(api.updateService.mock.calls[0][1]).toMatchObject({ documentationTemplateId: templateId, documentSignatureRequired: true });
   });
 
   it("guarda en dos pasos: primero el servicio sin campos del asistente, luego el perfil", async () => {

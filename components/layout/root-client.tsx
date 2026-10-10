@@ -1,4 +1,5 @@
 "use client";
+import { usePathname } from "next/navigation";
 import { Suspense } from "react";
 import { Theme } from "@radix-ui/themes";
 import { Analytics } from "@vercel/analytics/next";
@@ -29,6 +30,9 @@ interface RootClientProps {
 }
 
 export function RootClient({ children }: RootClientProps) {
+  const pathname = usePathname();
+  // Token-based signing is isolated from staff sessions, global error listeners and analytics.
+  if (pathname === "/firmar-documento") return <I18nProvider>{children}</I18nProvider>;
   return (
     // AntdRegistry + AntdCompatProvider se conservan hasta retirar antd por
     // completo (componentes/modales antd aún en uso en varias pantallas).

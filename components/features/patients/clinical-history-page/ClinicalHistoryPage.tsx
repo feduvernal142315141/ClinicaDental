@@ -15,6 +15,7 @@ import {
   ClipboardList,
   ListChecks,
   Images,
+  FileText,
   Loader2,
   Play,
   Plus,
@@ -457,6 +458,10 @@ export function ClinicalHistoryPage({
                 {t("clinical.tabs.treatmentPlan")}
               </TabsTrigger>
             )}
+            <TabsTrigger value={PATIENT_TABS.DOCUMENTATION} className={PATIENT_TAB_TRIGGER_CLASS}>
+              <FileText className="h-4 w-4" />
+              {t("consultationDocuments.tab")}
+            </TabsTrigger>
             <TabsTrigger
               value={PATIENT_TABS.FILES}
               className={PATIENT_TAB_TRIGGER_CLASS}
@@ -562,17 +567,19 @@ export function ClinicalHistoryPage({
           </div>
         </TabsContent>
         <TabsContent
-          value={PATIENT_TABS.ODONTOGRAM}
-          className="flex-1 min-h-0 mt-5 overflow-hidden flex flex-col"
+          forceMount
+          value={activeTab === PATIENT_TABS.DOCUMENTATION ? PATIENT_TABS.DOCUMENTATION : PATIENT_TABS.ODONTOGRAM}
+          className={cn("flex-1 min-h-0 mt-5 overflow-hidden flex flex-col", activeTab !== PATIENT_TABS.ODONTOGRAM && activeTab !== PATIENT_TABS.DOCUMENTATION && "hidden")}
         >
           <div
             className={cn(
               "flex-1 min-h-0 flex flex-col",
-              showSideEvolution &&
+              activeTab !== PATIENT_TABS.DOCUMENTATION && showSideEvolution &&
                 "2xl:grid 2xl:grid-cols-[1fr_420px] 2xl:gap-4",
             )}
           >
             <PatientOdontogramPanel
+              documentationView={activeTab === PATIENT_TABS.DOCUMENTATION}
               patient={patient}
               defaultDentition={defaultDentition}
               onDentitionChange={handleDentitionChange}
@@ -586,7 +593,7 @@ export function ClinicalHistoryPage({
               onFinalizeClose={closeFinalizeModal}
               onFinalizeSuccess={handleFinalizeSuccess}
             />
-            {showConsultationPanel && effectiveActiveAppointmentId && (
+            {activeTab !== PATIENT_TABS.DOCUMENTATION && showConsultationPanel && effectiveActiveAppointmentId && (
               <aside
                 className={cn("min-h-0", showSideEvolution && "overflow-auto")}
                 aria-label="Registro de la consulta en curso"

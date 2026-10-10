@@ -51,6 +51,8 @@ export interface Service {
   symbolText?: string;
   /** Duration in minutes */
   duration?: number;
+  documentationTemplateId?: string | null;
+  documentSignatureRequired?: boolean;
   /** Si el asistente de WhatsApp menciona este servicio (ver `./assistant`). */
   assistantVisible?: boolean;
   /** Texto propio de la clínica para el asistente; `null` si no hay. */
@@ -78,6 +80,8 @@ export interface ServiceListItem {
   symbolText?: string;
   /** Duration in minutes */
   duration?: number;
+  documentationTemplateId?: string | null;
+  documentSignatureRequired?: boolean;
   /** Si el asistente de WhatsApp menciona este servicio (ver `./assistant`). */
   assistantVisible?: boolean;
   /** Texto propio de la clínica para el asistente; `null` si no hay. */
@@ -102,6 +106,8 @@ export interface CreateServiceRequest {
   symbolText?: string;
   /** Default duration in minutes (drives appointment block sizing) */
   duration?: number;
+  documentationTemplateId?: string | null;
+  documentSignatureRequired?: boolean;
 }
 
 /**

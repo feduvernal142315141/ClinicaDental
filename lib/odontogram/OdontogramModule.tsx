@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ConsultationDocuments } from "@/components/features/odontogram/consultation-documents";
 import {
   createEmptySnapshot,
+  type OdontogramSnapshot,
   OdontogramStoreProvider,
   type OdontogramModuleProps,
   useOdontogramStore,
@@ -17,6 +20,7 @@ function OdontogramModuleRuntime({
   adapter,
   dictationAdapter,
   showHeader = true,
+  documentationView = false,
   initialTab,
   onChange,
   onError,
@@ -29,6 +33,7 @@ function OdontogramModuleRuntime({
   OdontogramModuleProps,
   "readOnly" | "currency" | "notation" | "defaultDentition"
 >) {
+  const { t } = useI18n();
   const storeApi = useOdontogramStoreApi();
   const visitId = useOdontogramStore((state) => state.metadata.visitId);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +44,36 @@ function OdontogramModuleRuntime({
   // real del paciente (el GET pudo fallar transitoriamente).
   const loadFailedRef = useRef(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const explicitSaveRef = useRef(false);
+  const enqueueSave = useCallback((snapshot: OdontogramSnapshot) => {
+    const queued = saveQueueRef.current.catch(() => undefined).then(async () => {
+      onSaveStart?.();
+      await adapter.save(patientId, snapshot, clinicId);
+      setLoadError(null);
+      onSaveSuccess?.();
+    });
+    saveQueueRef.current = queued;
+    return queued;
+  }, [adapter, patientId, clinicId, onSaveStart, onSaveSuccess]);
+  const persist = useCallback(async (transform?: (snapshot: OdontogramSnapshot) => OdontogramSnapshot) => {
+    if (loadFailedRef.current || hydratingRef.current || storeApi.getState().readOnly) throw new Error("Odontogram is not editable");
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    explicitSaveRef.current = true;
+    storeApi.getState().setReadOnly(true);
+    try {
+      const current = storeApi.getState().getSnapshot();
+      const next = transform ? transform(current) : current;
+      await enqueueSave(next);
+      if (transform) {
+        storeApi.getState().replaceSnapshot(next);
+        onChange?.(next);
+      }
+    } finally {
+      storeApi.getState().setReadOnly(false);
+      explicitSaveRef.current = false;
+    }
+  }, [enqueueSave, storeApi, onChange]);
 
   useEffect(() => {
     let active = true;
@@ -87,7 +122,7 @@ function OdontogramModuleRuntime({
       // No autosave durante la hidratación, en solo-lectura (histórico / visita
       // finalizada / sin permiso) NI tras un fallo de carga: evita PUTs no deseados,
       // con visita stale, o que sobrescriban lo persistido con un estado vacío.
-      if (hydratingRef.current || state.readOnly || loadFailedRef.current) return;
+      if (hydratingRef.current || explicitSaveRef.current || state.readOnly || loadFailedRef.current) return;
 
       if (
         state.schemaVersion === prev.schemaVersion &&
@@ -107,10 +142,7 @@ function OdontogramModuleRuntime({
       }
 
       saveTimeoutRef.current = setTimeout(() => {
-        onSaveStart?.();
-        void adapter
-          .save(patientId, snapshot, clinicId)
-          .then(() => onSaveSuccess?.())
+        void enqueueSave(snapshot)
           .catch((error) => {
             setLoadError("No se pudo sincronizar el odontograma.");
             onError?.(error);
@@ -125,6 +157,7 @@ function OdontogramModuleRuntime({
       }
     };
   }, [
+    enqueueSave,
     adapter,
     clinicId,
     onChange,
@@ -151,11 +184,9 @@ function OdontogramModuleRuntime({
         </div>
       ) : null}
 
-      <OdontogramModuleView
-        initialTab={initialTab}
-        showHeader={showHeader}
-        dictationAdapter={dictationAdapter}
-      />
+      {visitId && !loadFailedRef.current ? <ConsultationDocuments key={visitId} visitId={visitId} persist={persist} documentationView={documentationView}>
+        <OdontogramModuleView initialTab={initialTab} showHeader={showHeader} dictationAdapter={dictationAdapter} />
+      </ConsultationDocuments> : documentationView ? <p className="p-6 text-sm text-subtle">{t("consultationDocuments.noVisit")}</p> : <OdontogramModuleView initialTab={initialTab} showHeader={showHeader} dictationAdapter={dictationAdapter} />}
 
       {visitId && patientId && clinicId ? (
         <FinalizarCitaModal
@@ -182,6 +213,7 @@ export function OdontogramModule({
   notation,
   defaultDentition,
   showHeader = true,
+  documentationView = false,
   initialTab = "odontogram",
   onChange,
   onError,
@@ -206,6 +238,7 @@ export function OdontogramModule({
         clinicId={clinicId}
         adapter={adapter}
         dictationAdapter={dictationAdapter}
+        documentationView={documentationView}
         showHeader={showHeader}
         initialTab={initialTab}
         onChange={onChange}

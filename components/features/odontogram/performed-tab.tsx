@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useConsultationDocuments } from "./consultation-documents-context";
+import { useI18n } from "@/lib/contexts/i18n-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -43,6 +45,7 @@ interface PerformedTabProps {
   onNavigateToTab?: (tab: string) => void;
   onSave?: (performed: PerformedProcedure[]) => void;
   onPlansChange?: (plans: ProcedurePlan[]) => void;
+  onBeforeStage?: (plans: ProcedurePlan[]) => string[] | null;
 }
 
 interface TimelineItem {
@@ -284,7 +287,10 @@ export function PerformedTab({
   onNavigateToTab,
   onSave,
   onPlansChange,
+  onBeforeStage,
 }: PerformedTabProps) {
+  const consultation = useConsultationDocuments();
+  const { t } = useI18n();
   const notation = useOdontogramStore((state) => state.notation);
   const [selectedPlanIds, setSelectedPlanIds] = useState<Set<string>>(
     new Set(),
@@ -457,8 +463,15 @@ export function PerformedTab({
     });
   };
 
-  const handleRegisterPerformed = () => {
-    if (readOnly || selectedPlans.length === 0) return;
+  const handleRegisterPerformed = async () => {
+    if (readOnly || consultation?.busy || selectedPlans.length === 0) return;
+    if (consultation) {
+      const eventIds = onBeforeStage ? onBeforeStage(selectedPlans) : selectedPlans.map(plan => plan.id);
+      if (!eventIds) return;
+      const saved = await consultation.stage(eventIds);
+      if (saved) setSelectedPlanIds(new Set());
+      return;
+    }
 
     const existingByPlanId = new Map(
       performedForTooth
@@ -728,11 +741,11 @@ export function PerformedTab({
 
               <Button
                 className="w-full"
-                disabled={readOnly || selectedPlans.length === 0}
+                disabled={readOnly || consultation?.busy || selectedPlans.length === 0}
                 onClick={handleRegisterPerformed}
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" />
-                Registrar realizados
+                {consultation ? t("consultationDocuments.add") : "Registrar realizados"}
               </Button>
 
               {readOnly && (
