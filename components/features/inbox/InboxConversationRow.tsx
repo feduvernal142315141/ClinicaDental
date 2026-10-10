@@ -12,6 +12,7 @@ import type {
   HandlingMode,
 } from "@/lib/entity/inbox";
 import { useI18n } from "@/lib/contexts/i18n-context";
+import { useAssistantText } from "@/lib/contexts/assistant-name-context";
 import type { TranslationKey } from "@/lib/i18n/translations";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -68,6 +69,7 @@ function getStatusConfig(
   status: ConversationStatus,
   handlingMode: HandlingMode,
   t: (key: TranslationKey) => string,
+  assistantName: string,
 ): { label: string; className: string } {
   if (status === "NEEDS_HUMAN") {
     return {
@@ -81,7 +83,7 @@ function getStatusConfig(
   if (handlingMode === "HUMAN") {
     return { label: t("inbox.handling.human"), className: "text-brand" };
   }
-  return { label: "Dalia", className: "text-emerald-600 dark:text-emerald-400" };
+  return { label: assistantName, className: "text-emerald-600 dark:text-emerald-400" };
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -100,6 +102,7 @@ export function InboxConversationRow({
   className,
 }: InboxConversationRowProps) {
   const { language, t } = useI18n();
+  const { assistantName } = useAssistantText();
   const {
     id,
     patientName,
@@ -117,7 +120,7 @@ export function InboxConversationRow({
     : contactPhone
       ? contactPhone.slice(-2)
       : "?";
-  const statusCfg = getStatusConfig(status, handlingMode, t);
+  const statusCfg = getStatusConfig(status, handlingMode, t, assistantName);
   const dotColor = getStatusDot(status, handlingMode);
   const hasUnread = unreadCount > 0;
   const ariaLabel = hasUnread

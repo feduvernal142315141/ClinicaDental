@@ -11,6 +11,8 @@ import {
   linkConversationPatient,
 } from "@/lib/services/inbox/inbox.service";
 import { notify } from "@/lib/utils/notify";
+import { useI18n } from "@/lib/contexts/i18n-context";
+import { useAssistantText } from "@/lib/contexts/assistant-name-context";
 
 // ── Error helpers ──────────────────────────────────────────────────────────
 
@@ -68,13 +70,15 @@ export function useTakeover(onSuccess?: () => void) {
 
 export function useRelease(onSuccess?: () => void) {
   const [loading, setLoading] = useState(false);
+  const { t } = useI18n();
+  const { withAssistant } = useAssistantText();
 
   const execute = useCallback(
     async (conversationId: string) => {
       setLoading(true);
       try {
         await releaseConversation(conversationId);
-        notify.success("Conversación devuelta a Dalia");
+        notify.success(withAssistant(t("inbox.notify.releasedToAssistant")));
         onSuccess?.();
       } catch (err: unknown) {
         notify.error(
@@ -86,7 +90,7 @@ export function useRelease(onSuccess?: () => void) {
         setLoading(false);
       }
     },
-    [onSuccess],
+    [onSuccess, t, withAssistant],
   );
 
   return { execute, loading };

@@ -22,6 +22,7 @@ import { createAuthSession } from "@/lib/services/auth/session.service";
 import { clearAuthTokens, saveLoggedUser } from "@/lib/auth/token-storage";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
 import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
+import { useAssistantName } from "@/lib/contexts/assistant-name-context";
 import { useVisitNoteDrafts } from "@/lib/store/useVisitNoteDrafts";
 import { clinicGeneralSettingsService } from "@/lib/services/settings/clinic-general-settings.service";
 import { clearPatientAttachmentsCache } from "@/lib/hooks/patientAttachments/usePatientAttachments";
@@ -37,6 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refetch: refetchToothNotation,
     clearNotation: clearToothNotation,
   } = useToothNotation();
+  const { refetch: refetchAssistantName, clearAssistantName } =
+    useAssistantName();
   const [user, setUser] = useState<AppUser | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -187,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       void refetchClinicBranding();
       void refetchToothNotation();
+      void refetchAssistantName();
 
       if (shouldRedirect) {
         router.push("/dashboard");
@@ -219,6 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       useVisitNoteDrafts.getState().clearAll();
       clearClinicBranding();
       clearToothNotation();
+      clearAssistantName();
       clinicGeneralSettingsService.clearCache();
       clearPatientAttachmentsCache();
       router.push("/login");

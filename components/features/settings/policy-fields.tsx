@@ -12,6 +12,10 @@ import {
   Switch,
 } from "@/components/ui/atomic/forms";
 import type { GeneralSettingsFormValues } from "@/lib/hooks/settings";
+import {
+  ASSISTANT_NAME_MAX_LENGTH,
+  normalizeAssistantName,
+} from "@/lib/entity/settings";
 import { Req } from "@/components/features/settings/clinic-info-fields";
 import { useI18n } from "@/lib/contexts/i18n-context";
 
@@ -35,6 +39,12 @@ export function PolicyFields({ disabled = false }: PolicyFieldsProps) {
   const form = useFormContext<GeneralSettingsFormValues>();
   const { t } = useI18n();
   const sendReminders = form.watch("sendReminders");
+  const assistantName = normalizeAssistantName(form.watch("assistantName") ?? "");
+  const clinicName = (form.watch("name") ?? "").trim();
+  // "Soy **{name}**, la asistente virtual de **{clinic}**." → trozos con los valores en negrita.
+  const previewParts = t("settings.general.assistantNamePreview").split(
+    /(\{name\}|\{clinic\})/,
+  );
 
   return (
     <div className="space-y-6">
@@ -215,6 +225,43 @@ export function PolicyFields({ disabled = false }: PolicyFieldsProps) {
                   disabled={disabled}
                 />
               </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="assistantName"
+          render={({ field }) => (
+            <FormItem className="rounded-xl border border-hairline bg-elevated px-4 py-3">
+              <FormLabel>
+                {t("settings.general.assistantName")} <Req />
+              </FormLabel>
+              <FormControl>
+                <Input
+                  maxLength={ASSISTANT_NAME_MAX_LENGTH}
+                  autoComplete="off"
+                  disabled={disabled}
+                  {...field}
+                />
+              </FormControl>
+              <p className="text-xs text-subtle">
+                {t("settings.general.assistantNameHelp")}
+              </p>
+              <FormMessage />
+              {assistantName && (
+                <p className="text-sm text-ink" aria-live="polite">
+                  {previewParts.map((part, index) =>
+                    part === "{name}" ? (
+                      <strong key={index}>{assistantName}</strong>
+                    ) : part === "{clinic}" ? (
+                      <strong key={index}>{clinicName}</strong>
+                    ) : (
+                      part
+                    ),
+                  )}
+                </p>
+              )}
             </FormItem>
           )}
         />
