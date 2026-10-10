@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Clock, Check, CheckCheck, AlertCircle } from "lucide-react";
 import { useI18n } from "@/lib/contexts/i18n-context";
+import { useAssistantText } from "@/lib/contexts/assistant-name-context";
 import type { ClinicLanguage } from "@/lib/entity/settings";
 import { cn } from "@/lib/utils/utils";
 import type { InboxMessage, MessageDeliveryStatus } from "@/lib/entity/inbox";
@@ -32,10 +33,14 @@ function DeliveryIcon({ status }: { status: MessageDeliveryStatus }) {
   }
 }
 
-function getSenderLabel(senderType: InboxMessage["senderType"], youLabel: string): string {
+function getSenderLabel(
+  senderType: InboxMessage["senderType"],
+  youLabel: string,
+  assistantName: string,
+): string {
   switch (senderType) {
     case "DALIA":
-      return "Dalia";
+      return assistantName;
     case "STAFF":
       return youLabel;
     default:
@@ -69,6 +74,7 @@ export function InboxMessageBubble({
   className,
 }: InboxMessageBubbleProps) {
   const { language, t } = useI18n();
+  const { assistantName } = useAssistantText();
   const { senderType, direction, content, createdAt, status } = message;
 
   // ── SYSTEM messages — event pill ───────────────────────────────────
@@ -91,7 +97,7 @@ export function InboxMessageBubble({
   // ── Chat bubbles ───────────────────────────────────────────────────
   const isOutbound = direction === "OUTBOUND";
   const isDalia = senderType === "DALIA";
-  const label = getSenderLabel(senderType, t("inbox.sender.you"));
+  const label = getSenderLabel(senderType, t("inbox.sender.you"), assistantName);
 
   // The invisible spacer reserves room for the timestamp so text wraps
   // around it naturally (WhatsApp-style inline timestamp).

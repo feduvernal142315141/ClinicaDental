@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/primitives/shadcn/dropdown-menu";
 import type { InboxConversationDetail } from "@/lib/entity/inbox";
 import { useI18n } from "@/lib/contexts/i18n-context";
+import { useAssistantText } from "@/lib/contexts/assistant-name-context";
 import type { TranslationKey } from "@/lib/i18n/translations";
 
 const STATUS_KEYS: Record<InboxConversationDetail["status"], TranslationKey> = {
@@ -98,6 +99,7 @@ export function InboxChatHeader({
   className,
 }: InboxChatHeaderProps) {
   const { t } = useI18n();
+  const { withAssistant } = useAssistantText();
   if (!detail) return null;
 
   const {
@@ -167,7 +169,7 @@ export function InboxChatHeader({
             tone={getHandlingTone(handlingMode)}
             className="text-[10px] px-1.5 py-0"
           >
-            {t(HANDLING_KEYS[handlingMode])}
+            {withAssistant(t(HANDLING_KEYS[handlingMode]))}
           </StatusBadge>
         </div>
       </div>
@@ -207,7 +209,7 @@ export function InboxChatHeader({
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onRelease}>
                 <Bot className="size-4" />
-                {t("inbox.action.releaseToDalia")}
+                {withAssistant(t("inbox.action.releaseToDalia"))}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onResolve}>
