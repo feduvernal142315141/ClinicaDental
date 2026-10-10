@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui";
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Input } from "@/components/ui";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/primitives/shadcn/tooltip";
 import { Eye, FilePlus2, ListChecks, RotateCcw, Signature, X } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-display/data-table";
 import { useI18n } from "@/lib/contexts/i18n-context";
 import { useDocumentationAction } from "@/lib/hooks/use-documentation";
 import type { DocumentationTemplate, PatientDocument, VisitDocumentGroup, VisitDocuments } from "@/lib/entity/documentation";
-import { documentObservationTitles } from "@/lib/entity/documentation/variables";
+import { documentObservationTitles, documentSelectedDateTitle, needsSelectedDocumentDate } from "@/lib/entity/documentation/variables";
 import { documentationService as service } from "@/lib/services/documentation/documentation.service";
 import { servicesService } from "@/lib/services/services/services.service";
 import { useOdontogramStore, type OdontogramSnapshot } from "@/lib/odontogram/store";
@@ -40,6 +40,7 @@ export function ConsultationDocuments({ children, visitId, persist, documentatio
   const [treatmentsTarget, setTreatmentsTarget] = useState<string | null>(null);
   const [restartTarget, setRestartTarget] = useState<VisitDocumentGroup | null>(null);
   const [observations, setObservations] = useState<Record<string, Record<string, string>>>({});
+  const [documentDates, setDocumentDates] = useState<Record<string, string>>({});
   const [signing, setSigning] = useState<{ document: PatientDocument; pdf: Blob } | null>(null);
   const [waiting, setWaiting] = useState(false);
   const [preview, setPreview] = useState<Blob | null>(null);
@@ -145,17 +146,22 @@ export function ConsultationDocuments({ children, visitId, persist, documentatio
     void run(async () => { await inspectSelection(); });
   }, [signing, documentationView, loaded, readOnly, busy, needsReconciliation, inspectionKey, inspectSelection, run]);
   const draft = templates?.find(template => template.id === activeTemplateId);
+  const requiresDate = draft ? needsSelectedDocumentDate(draft.blocks) : false;
+  const dateLabel = draft ? (documentSelectedDateTitle(draft.blocks) ?? t("documentation.documentDate")) : t("documentation.documentDate");
   const fieldTitles = draft ? documentObservationTitles(draft.blocks) : [];
-  const currentField = fieldTitles[fieldStep];
-  const currentFieldValid = !currentField || !!observations[draft!.id]?.[currentField]?.trim();
+  const fieldCount = fieldTitles.length + (requiresDate ? 1 : 0);
+  const dateStep = requiresDate && fieldStep === 0;
+  const observationIndex = fieldStep - (requiresDate ? 1 : 0);
+  const currentField = fieldTitles[observationIndex];
+  const currentFieldValid = dateStep ? /^\d{4}-\d{2}-\d{2}$/.test(documentDates[draft!.id] ?? "") : !currentField || !!observations[draft!.id]?.[currentField]?.trim();
   const activeGroup = bundle?.groups.find(group => group.templateId === activeTemplateId);
-  const draftComplete = (template: DocumentationTemplate) => documentObservationTitles(template.blocks).every(title => !!observations[template.id]?.[title]?.trim());
+  const draftComplete = (template: DocumentationTemplate) => (!needsSelectedDocumentDate(template.blocks) || /^\d{4}-\d{2}-\d{2}$/.test(documentDates[template.id] ?? "")) && documentObservationTitles(template.blocks).every(title => !!observations[template.id]?.[title]?.trim());
   const validObservations = !!draft && fieldTitles.every(title => { const value = observations[draft.id]?.[title]?.trim(); return !!value && value.length <= 5000; });
   const generate = async () => {
     if (!draft) return;
     await persist();
     const applicableObservations = Object.fromEntries(Object.entries(observations).filter(([id]) => id === draft.id));
-    const next = await service.prepareVisitDocuments(visitId, { eventIds: selected, expectedSelectionHash: bundle!.selectionHash, templateIds: [draft.id], observations: applicableObservations });
+    const next = await service.prepareVisitDocuments(visitId, { eventIds: selected, expectedSelectionHash: bundle!.selectionHash, templateIds: [draft.id], observations: applicableObservations, ...(requiresDate ? { documentDates: { [draft.id]: documentDates[draft.id] } } : {}) });
     setBundle(next); setSelected(next.eventIds); setTemplates(null);
     const generatedGroup = next.groups.find(group => group.templateId === draft.id && group.document.status !== "SIGNED");
     if (generatedGroup) {
@@ -170,6 +176,7 @@ export function ConsultationDocuments({ children, visitId, persist, documentatio
     setBundle(next); setSelected(next.eventIds); setTemplates(null); setSigning(null); setPreview(null);
     setRestartTarget(null); setActiveTemplateId(null);
     setObservations(previous => { const updated = { ...previous }; delete updated[templateId]; return updated; });
+    setDocumentDates(previous => { const updated = { ...previous }; delete updated[templateId]; return updated; });
     const drafts = await inspectSelection(next);
     inspectedKey.current = JSON.stringify([next.selectionHash, selectedEvents.map(event => [event.id, event.serviceId, event.procedureId, event.toothNumber, event.surfaces])]);
     if (drafts.some(template => template.id === templateId)) { setFieldStep(0); setActiveTemplateId(templateId); }
@@ -227,15 +234,15 @@ export function ConsultationDocuments({ children, visitId, persist, documentatio
               {error && <p role="alert" className="text-destructive">{error}</p>}
               {draft && <>
                 <div className="shrink-0 space-y-2">
-                  <p className="text-sm text-subtle" aria-live="polite">{t("consultationDocuments.step")} {Math.min(fieldStep + 1, fieldTitles.length + 1)} / {fieldTitles.length + 1} · {currentField ?? t("consultationDocuments.reviewData")}</p>
-                  <div role="progressbar" aria-label={t("consultationDocuments.step")} aria-valuemin={1} aria-valuemax={fieldTitles.length + 1} aria-valuenow={Math.min(fieldStep + 1, fieldTitles.length + 1)} className="h-1.5 overflow-hidden rounded-full bg-canvas"><div className="h-full bg-brand transition-all" style={{ width: `${(fieldStep + 1) / (fieldTitles.length + 1) * 100}%` }} /></div>
+                  <p className="text-sm text-subtle" aria-live="polite">{t("consultationDocuments.step")} {Math.min(fieldStep + 1, fieldCount + 1)} / {fieldCount + 1} · {dateStep ? dateLabel : currentField ?? t("consultationDocuments.reviewData")}</p>
+                  <div role="progressbar" aria-label={t("consultationDocuments.step")} aria-valuemin={1} aria-valuemax={fieldCount + 1} aria-valuenow={Math.min(fieldStep + 1, fieldCount + 1)} className="h-1.5 overflow-hidden rounded-full bg-canvas"><div className="h-full bg-brand transition-all" style={{ width: `${(fieldStep + 1) / (fieldCount + 1) * 100}%` }} /></div>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto py-2">
-                  {currentField ? <label key={`${draft.id}:${currentField}`} className="block space-y-3"><span className="text-lg font-medium">{currentField}</span><textarea autoFocus className="min-h-40 w-full rounded-lg border border-hairline bg-canvas p-3" maxLength={5000} required disabled={busy} value={observations[draft.id]?.[currentField] ?? ""} onChange={event => setObservations(previous => ({ ...previous, [draft.id]: { ...previous[draft.id], [currentField]: event.target.value } }))} /></label> : <div className="space-y-4"><h3 className="font-semibold">{t("consultationDocuments.reviewData")}</h3>{fieldTitles.map((title,index) => <div key={title} className="rounded-lg border border-hairline p-3"><div className="flex items-center justify-between gap-2"><h4 className="font-medium">{title}</h4><Button variant="ghost" disabled={busy} onClick={() => setFieldStep(index)}>{t("consultationDocuments.editField")}</Button></div><p className="whitespace-pre-wrap break-words text-sm text-subtle">{observations[draft.id]?.[title]}</p></div>)}{!validObservations && <p className="text-sm text-subtle">{t("consultationDocuments.rowDetailsHint")}</p>}</div>}
+                  {dateStep ? <label className="block max-w-xs space-y-3"><span className="text-lg font-medium">{dateLabel}</span><Input autoFocus type="date" required aria-label={dateLabel} disabled={busy} value={documentDates[draft.id] ?? ""} onChange={event => setDocumentDates(previous => ({ ...previous, [draft.id]: event.target.value }))} /></label> : currentField ? <label key={`${draft.id}:${currentField}`} className="block space-y-3"><span className="text-lg font-medium">{currentField}</span><textarea autoFocus className="min-h-40 w-full rounded-lg border border-hairline bg-canvas p-3" maxLength={5000} required disabled={busy} value={observations[draft.id]?.[currentField] ?? ""} onChange={event => setObservations(previous => ({ ...previous, [draft.id]: { ...previous[draft.id], [currentField]: event.target.value } }))} /></label> : <div className="space-y-4"><h3 className="font-semibold">{t("consultationDocuments.reviewData")}</h3>{requiresDate && <div className="rounded-lg border border-hairline p-3"><div className="flex items-center justify-between gap-2"><h4 className="font-medium">{dateLabel}</h4><Button variant="ghost" disabled={busy} onClick={() => setFieldStep(0)}>{t("consultationDocuments.editField")}</Button></div><p className="text-sm text-subtle">{documentDates[draft.id]}</p></div>}{fieldTitles.map((title,index) => <div key={title} className="rounded-lg border border-hairline p-3"><div className="flex items-center justify-between gap-2"><h4 className="font-medium">{title}</h4><Button variant="ghost" disabled={busy} onClick={() => setFieldStep(index + (requiresDate ? 1 : 0))}>{t("consultationDocuments.editField")}</Button></div><p className="whitespace-pre-wrap break-words text-sm text-subtle">{observations[draft.id]?.[title]}</p></div>)}{!validObservations && <p className="text-sm text-subtle">{t("consultationDocuments.rowDetailsHint")}</p>}</div>}
                 </div>
                 <div className="flex shrink-0 flex-wrap justify-between gap-2 border-t border-hairline pt-4">
                   <Button variant="outline" disabled={busy || fieldStep === 0} onClick={() => setFieldStep(step => step - 1)}>{t("consultationDocuments.previous")}</Button>
-                  {currentField ? <Button disabled={busy || !currentFieldValid} onClick={() => setFieldStep(step => step + 1)}>{t("consultationDocuments.next")}</Button> : <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={() => setActiveTemplateId(null)}>{t("consultationDocuments.saveDetails")}</Button>{validObservations && <Button disabled={busy || invalidSelection} onClick={() => void run(generate)}>{t("consultationDocuments.generate")}</Button>}</div>}
+                  {fieldStep < fieldCount ? <Button disabled={busy || !currentFieldValid} onClick={() => setFieldStep(step => step + 1)}>{t("consultationDocuments.next")}</Button> : <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={() => setActiveTemplateId(null)}>{t("consultationDocuments.saveDetails")}</Button>{validObservations && (!requiresDate || /^\d{4}-\d{2}-\d{2}$/.test(documentDates[draft.id] ?? "")) && <Button disabled={busy || invalidSelection} onClick={() => void run(generate)}>{t("consultationDocuments.generate")}</Button>}</div>}
                 </div>
               </>}
               <div className="min-h-0 overflow-y-auto overscroll-contain space-y-4">

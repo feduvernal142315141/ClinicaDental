@@ -9,7 +9,7 @@ import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJusti
 import { Button, Input, Modal } from "@/components/ui";
 import { Select } from "@/components/ui/controls/select";
 import type { DocumentTextStyle } from "@/lib/entity/documentation";
-import { DOCUMENT_DATE_FORMATS, DOCUMENT_VARIABLES, observationTitle } from "@/lib/entity/documentation/variables";
+import { DOCUMENT_DATE_FORMATS, DOCUMENT_VARIABLES, documentDateTitle, observationTitle } from "@/lib/entity/documentation/variables";
 import { useI18n } from "@/lib/contexts/i18n-context";
 import { DOCUMENT_FAMILIES, documentFontFamily, richDocumentToText, textToRichDocument } from "./document-rich-format";
 
@@ -54,6 +54,7 @@ export function DocumentRichText({ value, textStyles, alignment, onChange, label
   const pendingDate = useRef<{ from: number; to: number; scrollTop: number } | null>(null);
   const [dateFormat,setDateFormat] = useState<string>("DMY_SLASH");
   const [dateSource, setDateSource] = useState("actual");
+  const [dateTitle, setDateTitle] = useState("");
   const editor = useEditor({
     immediatelyRender: false, shouldRerenderOnTransaction: true,
     extensions: [StarterKit.configure({ heading: false, bulletList: false, orderedList: false, listItem: false, blockquote: false, code: false, codeBlock: false, horizontalRule: false, strike: false, link: false }), DocumentStyle, ParagraphAlignment, TextLimits],
@@ -101,13 +102,15 @@ export function DocumentRichText({ value, textStyles, alignment, onChange, label
     }
     if (key !== "fecha_documento") { insertVariable(key); return; }
     pendingDate.current={from:editor.state.selection.from,to:editor.state.selection.to,scrollTop:viewport.current?.scrollTop ?? 0};
-    setDateSource("actual");setDateFormat("DMY_SLASH");setDateOpen(true);
+    setDateSource("actual");setDateFormat("DMY_SLASH");setDateTitle("");setDateOpen(true);
   };
   const closeDate = () => { setDateOpen(false);restoreFocus(); };
   const applyDate = () => {
     const selection=pendingDate.current;
-    if (!editor || !selection || disabled) return;
-    run(() => { editor.commands.setTextSelection({from:selection.from,to:selection.to});editor.commands.insertContent({type:"text",text:`{{fecha_documento:${dateSource}:${dateFormat}}}`}); });
+    const title = dateTitle.trim();
+    const key = dateSource === "seleccionada" && title ? `fecha_documento:${dateSource}:${dateFormat}:${title}` : `fecha_documento:${dateSource}:${dateFormat}`;
+    if (!editor || !selection || disabled || (dateSource === "seleccionada" && !documentDateTitle(key))) return;
+    run(() => { editor.commands.setTextSelection({from:selection.from,to:selection.to});editor.commands.insertContent({type:"text",text:`{{${key}}}`}); });
     if(viewport.current) viewport.current.scrollTop=selection.scrollTop;
     closeDate();
   };
@@ -138,11 +141,12 @@ export function DocumentRichText({ value, textStyles, alignment, onChange, label
       <label className="block space-y-1 px-6 pb-6"><span>{t("documentation.observationTitle")}</span><Input autoFocus maxLength={100} value={observationLabel} disabled={disabled} onChange={event => setObservationLabel(event.target.value)} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); applyObservation(); } }} /></label>
     </Modal>
     <Modal open={dateOpen} onOpenChange={open => {if(!open) closeDate();}} title={t("documentation.configureDate")} description={t("documentation.dateConfigHint")} className="overflow-visible sm:max-w-md"
-      footer={<><Button type="button" variant="outline" onClick={closeDate}>{t("documentation.cancel")}</Button><Button type="button" disabled={disabled} onClick={applyDate}>{t("documentation.addDate")}</Button></>}>
+      footer={<><Button type="button" variant="outline" onClick={closeDate}>{t("documentation.cancel")}</Button><Button type="button" disabled={disabled || (dateSource === "seleccionada" && !documentDateTitle(`fecha_documento:${dateSource}:${dateFormat}:${dateTitle.trim()}`))} onClick={applyDate}>{t("documentation.addDate")}</Button></>}>
       <div className="space-y-4 px-6 pb-6">
         <div className="space-y-1"><span className="text-sm font-medium">{t("documentation.dateSource")}</span><Select aria-label={t("documentation.dateSource")} disabled={disabled} value={dateSource} onChange={setDateSource}
           options={[{value:"actual",label:t("documentation.dateAtGeneration")},{value:"seleccionada",label:t("documentation.dateSelectedAtGeneration")}]} /></div>
         <div className="space-y-1"><span className="text-sm font-medium">{t("documentation.dateFormat")}</span><Select aria-label={t("documentation.dateFormat")} disabled={disabled} value={dateFormat} onChange={setDateFormat} options={DOCUMENT_DATE_FORMATS.map(item => ({value:item.value,label:item.example}))} /></div>
+        {dateSource === "seleccionada" && <label className="block space-y-1"><span className="text-sm font-medium">{t("documentation.dateTitle")}</span><Input autoFocus maxLength={100} value={dateTitle} disabled={disabled} onChange={event => setDateTitle(event.target.value)} /></label>}
       </div>
     </Modal>
   </div>;

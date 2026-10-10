@@ -22,9 +22,28 @@ export const DOCUMENT_DATE_FORMATS = [
   { value: "YMD_DASH", example: "2026-12-31" },
   { value: "DMY_DOT", example: "31.12.2026" },
 ] as const;
+const validDateTitle = (title: string): boolean => !title || (title === title.trim() && title.length <= 100 && ![...title].some(char => { const code = char.charCodeAt(0); return code < 32 || (code >= 127 && code <= 159) || char === '{' || char === '}'; }));
 export function isConfiguredDocumentDate(key: string): boolean {
-  const [name, source, format, extra] = key.split(":");
-  return extra === undefined && name === "fecha_documento" && ["actual", "seleccionada"].includes(source) && DOCUMENT_DATE_FORMATS.some(item => item.value === format);
+  const [name, source, format, ...titleParts] = key.split(":");
+  const title = titleParts.length ? titleParts.join(":") : "";
+  return name === "fecha_documento" && ["actual", "seleccionada"].includes(source) && DOCUMENT_DATE_FORMATS.some(item => item.value === format) && (titleParts.length === 0 || (source === "seleccionada" && !!title && validDateTitle(title)));
+}
+export function documentDateTitle(key: string): string | null {
+  if (!isConfiguredDocumentDate(key)) return null;
+  const parts = key.split(":");
+  if (parts[1] !== "seleccionada" || parts.length < 4) return null;
+  const title = parts.slice(3).join(":");
+  return validDateTitle(title) && title ? title : null;
+}
+export function documentSelectedDateTitle(blocks: DocumentBlock[]): string | null {
+  for (const block of blocks) {
+    if (block.type !== "TEXT") continue;
+    for (const token of (block.text ?? "").matchAll(/\{\{([^{}]*)}}/g)) {
+      const title = documentDateTitle(token[1].trim());
+      if (title) return title;
+    }
+  }
+  return null;
 }
 export function observationTitle(key: string): string | null {
   if (!key.startsWith("observaciones:")) return null;

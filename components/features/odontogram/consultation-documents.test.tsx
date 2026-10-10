@@ -21,7 +21,7 @@ const state = vi.hoisted(() => ({ readOnly: false, clinicalEvents: [
 vi.mock("@/lib/odontogram/store", () => ({ useOdontogramStore: (selector: (s: typeof state) => unknown) => selector(state) }));
 vi.mock("@/lib/contexts/i18n-context", () => { const t = (key: string) => key; return { useI18n: () => ({ t }) }; });
 vi.mock("@/lib/utils/notify", () => ({ notify: { error: vi.fn() } }));
-vi.mock("@/components/ui", async () => ({ ...(await import("@/components/ui/primitives/shadcn/dialog")), Button: ({ children, variant, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string }) => <button data-variant={variant} {...props}>{children}</button> }));
+vi.mock("@/components/ui", async () => ({ ...(await import("@/components/ui/primitives/shadcn/dialog")), Button: ({ children, variant, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string }) => <button data-variant={variant} {...props}>{children}</button>, Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} /> }));
 vi.mock("@/components/features/documentation/pdf-preview", () => ({ PdfPreview: () => null }));
 vi.mock("@/components/features/documentation/document-signing", () => ({ DocumentSigning: () => <div>Signing</div> }));
 vi.mock("@/lib/services/documentation/documentation.service", () => ({ documentationService: { restartVisitDocument: vi.fn(), signatureRequestStatus: vi.fn(), visitDocuments: vi.fn(), prepareVisitDocuments: vi.fn(), template: vi.fn(), pdf: vi.fn() } }));
@@ -135,6 +135,20 @@ describe("consultation document workflow", () => {
     expect(screen.getByText("Treatment details")).toBeInTheDocument();
     expect(screen.getByText("Instructions details")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "consultationDocuments.generate" })).toBeEnabled();
+  });
+
+  it("shows and sends the selected date before observations", async () => {
+    vi.mocked(service.visitDocuments).mockResolvedValue({ ...bundle(), eventIds: ["a"], groups: [] });
+    vi.mocked(service.template).mockResolvedValue({ id: "template-a", name: "Consent", version: 1, blocks: [{ type: "TEXT", text: "{{fecha_documento:seleccionada:DMY_SLASH:Fecha de cirugía}}" }], createdAt: "2026-10-09" });
+    render(<ConsultationDocuments visitId="visit-a" persist={vi.fn()}><Stage /></ConsultationDocuments>);
+    fireEvent.click(await screen.findByRole("button", { name: /Consent/ }));
+    expect(screen.getByText("Fecha de cirugía")).toBeInTheDocument();
+    const date = screen.getByLabelText("Fecha de cirugía");
+    fireEvent.change(date, { target: { value: "2026-10-11" } });
+    fireEvent.click(screen.getByRole("button", { name: "consultationDocuments.next" }));
+    expect(screen.getByRole("button", { name: "consultationDocuments.generate" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "consultationDocuments.generate" }));
+    await waitFor(() => expect(service.prepareVisitDocuments).toHaveBeenCalledWith("visit-a", expect.objectContaining({ documentDates: { "template-a": "2026-10-11" } })));
   });
 
   it("automatically removes a deleted tooth treatment and refreshes its remaining document group", async () => {

@@ -72,6 +72,7 @@ export interface VisitDocumentSelection {
   eventIds: string[];
   expectedSelectionHash: string;
   observations?: Record<string, Record<string, string>>;
+  documentDates?: Record<string, string>;
 }
 export interface SignatureInput {
   method: "DRAWN" | "CHECKBOX";

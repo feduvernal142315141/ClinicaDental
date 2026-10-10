@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DOCUMENT_VARIABLES, documentObservationTitles, needsDoctorVariables, needsSelectedDocumentDate, validDocumentVariables } from "./variables";
+import { DOCUMENT_VARIABLES, documentObservationTitles, documentSelectedDateTitle, needsDoctorVariables, needsSelectedDocumentDate, validDocumentVariables } from "./variables";
 import { templateSchema } from "@/lib/validation/documentation";
 describe("document variables", () => {
   it("requires a title for observations and lists distinct fields in document order", () => {
@@ -13,6 +13,10 @@ describe("document variables", () => {
     expect(validDocumentVariables("{{fecha_documento:desconocida}}")).toBe(false);
     expect(needsSelectedDocumentDate([{ type: "TEXT", text: "{{ fecha_documento:seleccionada }}" }])).toBe(true);
     expect(needsSelectedDocumentDate([{ type: "TEXT", text: "{{fecha_actual}} {{fecha_documento:actual}}" }])).toBe(false);
+    const titled = [{ type: "TEXT" as const, text: "{{fecha_documento:seleccionada:DMY_SLASH:Fecha de cirugía}}" }];
+    expect(validDocumentVariables(titled[0].text)).toBe(true);
+    expect(documentSelectedDateTitle(titled)).toBe("Fecha de cirugía");
+    expect(validDocumentVariables("{{fecha_documento:actual:DMY_SLASH:Título inválido}}" )).toBe(false);
   });
   it("allows the ten data fields, treatment and current date, with optional surrounding whitespace", () => {
     expect(DOCUMENT_VARIABLES).toHaveLength(13);

@@ -70,8 +70,9 @@ describe("document text formatting", () => {
     expect(richDocumentToText(richEditor(field).getJSON()).text).toBe("Nombre del paciente");
     fireEvent.click(screen.getByLabelText("documentation.dateFormat"));
     fireEvent.click(await screen.findByRole("option",{name:"2026-12-31"}));
+    fireEvent.change(screen.getByLabelText("documentation.dateTitle"), {target:{value:"Fecha de cirugía"}});
     fireEvent.click(screen.getByText("documentation.addDate"));
-    expect(richDocumentToText(richEditor(field).getJSON()).text).toBe("{{fecha_documento:seleccionada:YMD_DASH}} del paciente");
+    expect(richDocumentToText(richEditor(field).getJSON()).text).toBe("{{fecha_documento:seleccionada:YMD_DASH:Fecha de cirugía}} del paciente");
   });
   it("uses the doctor's searchable corporate combobox and filters variables", async () => {
     render(<Editor />);const field=screen.getByRole("textbox",{name:"Texto"});selectRichText(field,0,6);

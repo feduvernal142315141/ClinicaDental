@@ -182,7 +182,7 @@ Durante la edición de texto, el selector y el botón de variables aparecen en l
 
 Los selectores de preparación reutilizan `patientsService.getPatients` y `doctorsService.getDoctors`: GET `/patients` y `/doctor`, con `page=0`, `pageSize=10`, `filters=name__CONTAINS_IGNORE_CASE__texto` y `filters=active__EQ__true`. Consumen `entities` del resultado paginado y mantienen únicamente `id` y `name` en las opciones. El frontoffice ya no utiliza las búsquedas específicas `/documentation/patients` y `/documentation/doctors`.
 
-«Fecha del documento» permite configurar el origen al insertar: `{{fecha_documento:actual}}` usa la fecha de preparación en la zona de la clínica; `{{fecha_documento:seleccionada}}` pide una fecha al preparar (`documentDate`, ISO `yyyy-MM-dd`). Ambas se imprimen en `dd/MM/yyyy`; `{{fecha_documento}}` y el alias antiguo `{{fecha_actual}}` mantienen la fecha de generación. El backend exige una fecha seleccionada cuando corresponde y rechaza fechas enviadas a plantillas automáticas. Los valores quedan congelados en el PDF preparado, sin afectar documentos existentes.
+«Fecha del documento» permite configurar el origen al insertar: `{{fecha_documento:actual}}` usa la fecha de preparación en la zona de la clínica; `{{fecha_documento:seleccionada}}` pide una fecha al preparar (`documentDate`, ISO `yyyy-MM-dd`). Para identificar el propósito de esa fecha en el stepper puede añadirse un título: `{{fecha_documento:seleccionada:DMY_SLASH:Fecha de cirugía}}`. Ambas se imprimen en `dd/MM/yyyy`; `{{fecha_documento}}` y el alias antiguo `{{fecha_actual}}` mantienen la fecha de generación. El backend exige una fecha seleccionada cuando corresponde y rechaza fechas enviadas a plantillas automáticas. Los valores quedan congelados en el PDF preparado, sin afectar documentos existentes.
 
 ### Edición con formato
 
@@ -235,7 +235,7 @@ El panel «Documentos de esta consulta» reúne los planes seleccionados desde
 «Realizado» de varios dientes. «Añadir a esta consulta» no ejecuta tratamientos.
 Al confirmar la selección final se persiste primero el odontograma y se envían
 los IDs de eventos a `/documentation/visits/{visitId}/selection`, junto con
-`expectedSelectionHash` y las observaciones por plantilla. El servidor resuelve
+`expectedSelectionHash`, la fecha seleccionada por plantilla cuando corresponde y las observaciones por plantilla. El servidor resuelve
 servicios y agrupa por plantilla. El GET de esa misma consulta devuelve
 `eventIds` (también servicios sin documento), `selectionHash` y `groups`.
 
@@ -258,8 +258,9 @@ con firma obligatoria necesitan vinculación a eventos del odontograma.
 La historia clínica incluye la pestaña `Documentación` (`?tab=documentacion`).
 Comparte la instancia del odontograma con la pestaña `Odontograma`, conservando
 los tratamientos seleccionados al cambiar entre vistas. En documentación se
-listan los grupos. Seleccionar un documento abre un modal con un campo de observaciones
-por paso, navegación anterior/siguiente y revisión final antes de generar. Los documentos
+listan los grupos. Seleccionar un documento abre un modal con la fecha del documento cuando
+la plantilla usa `{{fecha_documento:seleccionada}}` y un campo de observaciones por paso,
+navegación anterior/siguiente y revisión final antes de generar. Los documentos
 ya generados se revisan y firman desde ese mismo modal. Los datos pendientes se conservan en memoria al cambiar
 de documento; se envían al generar los documentos cuando todos están completos.
 La selección de tratamientos queda en un desplegable y las acciones principales
@@ -334,7 +335,7 @@ reenvían enlaces ni se persisten estados clínicos en storage durante la recarg
 La pestaña Documentación usa la tabla compartida del frontoffice: una fila por
 plantilla, servicios sin duplicar, cantidad de piezas distintas y acciones según
 estado. Generar abre el asistente de esa fila y envía `templateIds: [id]` junto a
-la selección completa y las observaciones de esa plantilla. Las demás filas
+la selección completa, la fecha seleccionada si aplica y las observaciones de esa plantilla. Las demás filas
 permanecen pendientes; revisar y firmar abre directamente el visor.
 
 Reiniciar exige confirmación y llama a

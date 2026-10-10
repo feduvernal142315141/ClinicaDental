@@ -9,6 +9,8 @@ export const documentationEs = {
   "documentation.configureDate": "Configurar fecha del documento",
   "documentation.dateConfigHint": "Elige el origen de la fecha y cómo se mostrará en el documento.",
   "documentation.dateFormat": "Formato de fecha",
+  "documentation.dateTitle": "Título de la fecha",
+  "documentation.dateTitle": "Título de la fecha",
   "documentation.addDate": "Añadir fecha",
 
   "documentation.textFormat": "Formato de texto",
@@ -165,6 +167,8 @@ export const documentationEn = {
   "documentation.configureDate": "Configure document date",
   "documentation.dateConfigHint": "Choose the date source and how it will appear in the document.",
   "documentation.dateFormat": "Date format",
+  "documentation.dateTitle": "Date title",
+  "documentation.dateTitle": "Date title",
   "documentation.addDate": "Add date",
 
   "documentation.textFormat": "Text formatting",
@@ -321,6 +325,7 @@ export const documentationFr = {
   "documentation.configureDate": "Configurer la date du document",
   "documentation.dateConfigHint": "Choisissez la source de la date et son affichage dans le document.",
   "documentation.dateFormat": "Format de date",
+  "documentation.dateTitle": "Titre de la date",
   "documentation.addDate": "Ajouter la date",
 
   "documentation.textFormat": "Mise en forme",
@@ -477,6 +482,7 @@ export const documentationIt = {
   "documentation.configureDate": "Configura la data del documento",
   "documentation.dateConfigHint": "Scegli la fonte della data e come verrà mostrata nel documento.",
   "documentation.dateFormat": "Formato della data",
+  "documentation.dateTitle": "Titolo della data",
   "documentation.addDate": "Aggiungi data",
 
   "documentation.textFormat": "Formato del testo",
@@ -633,6 +639,7 @@ export const documentationPt = {
   "documentation.configureDate": "Configurar data do documento",
   "documentation.dateConfigHint": "Escolha a origem da data e como ela será exibida no documento.",
   "documentation.dateFormat": "Formato de data",
+  "documentation.dateTitle": "Título da data",
   "documentation.addDate": "Adicionar data",
 
   "documentation.textFormat": "Formatação de texto",
