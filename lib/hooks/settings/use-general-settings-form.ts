@@ -7,12 +7,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings/use-clinic-general-settings";
 import { useClinicBranding } from "@/lib/contexts/clinic-branding-context";
 import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
+import { useAssistantName } from "@/lib/contexts/assistant-name-context";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import {
   CLINIC_SCHEDULE_DAYS,
   DEFAULT_CLINIC_GENERAL_SETTINGS,
+  DEFAULT_ASSISTANT_NAME,
   DEFAULT_CLINIC_SCHEDULE,
+  normalizeAssistantName,
+  resolveAssistantName,
   type ClinicSchedule,
   type UpdateClinicGeneralSettingsRequest,
 } from "@/lib/entity/settings";
@@ -74,6 +78,7 @@ export function useGeneralSettingsForm() {
     useClinicGeneralSettings();
   const { updateBranding } = useClinicBranding();
   const { setNotation } = useToothNotation();
+  const { setAssistantName } = useAssistantName();
   const { can, isAdmin } = usePermission();
 
   const canEdit = isAdmin || can("general_option", PermissionAction.EDIT);
@@ -99,6 +104,7 @@ export function useGeneralSettingsForm() {
       sendReminders: false,
       reminderTime: 1440,
       assistantSharesPrices: true,
+      assistantName: DEFAULT_ASSISTANT_NAME,
     },
   });
 
@@ -125,6 +131,8 @@ export function useGeneralSettingsForm() {
       reminderTime: settings.reminderTime ?? 1440,
       // El backend lo devuelve en `true` si la clínica nunca lo cambió.
       assistantSharesPrices: settings.assistantSharesPrices ?? true,
+      // Un backend que aún no envía el campo equivale a «Dalia».
+      assistantName: resolveAssistantName(settings.assistantName),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
@@ -149,6 +157,7 @@ export function useGeneralSettingsForm() {
         sendReminders: values.sendReminders,
         reminderTime: values.sendReminders ? values.reminderTime ?? null : null,
         assistantSharesPrices: values.assistantSharesPrices,
+        assistantName: normalizeAssistantName(values.assistantName),
       };
 
       const saved = await saveSettings(payload);
@@ -158,9 +167,10 @@ export function useGeneralSettingsForm() {
       if (saved) {
         updateBranding({ name: payload.name, logoUrl: payload.logoUrl });
         setNotation(payload.toothNotation);
+        setAssistantName(resolveAssistantName(payload.assistantName));
       }
     },
-    [saveSettings, setNotation, updateBranding],
+    [saveSettings, setAssistantName, setNotation, updateBranding],
   );
 
   return {

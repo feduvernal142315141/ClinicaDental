@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 import { requiredText } from "@/lib/validation/fields";
-import { CLINIC_LANGUAGES, CLINIC_SCHEDULE_DAYS } from "@/lib/entity/settings";
+import {
+  CLINIC_LANGUAGES,
+  CLINIC_SCHEDULE_DAYS,
+  isValidAssistantName,
+} from "@/lib/entity/settings";
 import { TOOTH_NOTATIONS } from "@/lib/odontogram/notation";
 
 /**
@@ -89,6 +93,12 @@ export const generalSettingsFormSchema = z
     requireConfirmation: z.boolean(),
     sendReminders: z.boolean(),
     assistantSharesPrices: z.boolean(),
+    assistantName: z
+      .string()
+      .refine(
+        isValidAssistantName,
+        "El nombre de la asistente debe tener entre 2 y 30 caracteres y solo letras y espacios.",
+      ),
     // Sólo requerido cuando sendReminders=true (validado en superRefine); por
     // eso aquí es opcional y con invalid_type_error suave.
     reminderTime: z
