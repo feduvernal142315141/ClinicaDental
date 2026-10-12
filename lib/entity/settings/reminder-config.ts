@@ -87,3 +87,48 @@ export interface MetaTemplateRepublishResult {
   skipped: MetaTemplateRepublishItem[];
   failed: MetaTemplateRepublishItem[];
 }
+
+// ── Eliminar plantillas ────────────────────────────────────────────────────
+
+/** Máximo de plantillas que el backend acepta eliminar en una petición. */
+export const TEMPLATE_DELETE_MAX = 100;
+
+/** Motivo por el que una plantilla no se eliminó. */
+export type TemplateDeleteReason =
+  | "IN_USE_BY_REMINDER"
+  | "IN_USE_BY_CAMPAIGN"
+  | "META_DELETE_FAILED";
+
+export interface TemplateDeleteItem {
+  id: string;
+  name: string;
+  /** El backend puede añadir motivos: se tolera cualquier texto. */
+  reason: TemplateDeleteReason | (string & {});
+}
+
+/**
+ * DELETE /clinic-template/{id} y POST /clinic-template/delete. No es todo o
+ * nada, tampoco al eliminar una sola: puede responder 200 con `deleted = 0` y
+ * la plantilla en `blocked` o `failed`. `deletedIds` dice cuáles salieron.
+ */
+export interface TemplateDeleteResult {
+  deleted: number;
+  deletedIds: string[];
+  /** En uso por un recordatorio o una campaña: no se eliminan. */
+  blocked: TemplateDeleteItem[];
+  /** Meta no confirmó el borrado: se puede reintentar. */
+  failed: TemplateDeleteItem[];
+}
+
+/**
+ * Plantillas que ya no sirven para enviar y solo ocupan la lista: las que Meta
+ * rechazó y las que no están en la cuenta actual de WhatsApp.
+ */
+export function isTemplateBeyondUse(
+  template: Pick<ClinicTemplate, "metaTemplateStatus">,
+): boolean {
+  return (
+    template.metaTemplateStatus === "REJECTED" ||
+    template.metaTemplateStatus === "NOT_IN_ACCOUNT"
+  );
+}

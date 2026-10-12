@@ -47,11 +47,20 @@ import type {
   UpdateReminderConfigRequest,
 } from "@/lib/entity/settings";
 
-import { useRepublishMetaTemplates, useSyncMetaTemplates } from "@/lib/hooks/use-sync-meta-templates";
+import {
+  useDeleteMetaTemplates,
+  useRepublishMetaTemplates,
+  useSyncMetaTemplates,
+} from "@/lib/hooks/use-sync-meta-templates";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useI18n } from "@/lib/contexts/i18n-context";
-import { WhatsAppTemplatesPanel, RemindersPanel, TemplateRepublishResult } from "./whatsapp-templates";
+import {
+  WhatsAppTemplatesPanel,
+  RemindersPanel,
+  TemplateDeleteResult,
+  TemplateRepublishResult,
+} from "./whatsapp-templates";
 
 export function NotificationsSettings() {
   const { t } = useI18n();
@@ -79,6 +88,13 @@ export function NotificationsSettings() {
   const canSyncTemplates =
     isAdmin ||
     (can("template", PermissionAction.CREATE) && can("template", PermissionAction.EDIT));
+  const canDeleteTemplates = isAdmin || can("template", PermissionAction.DELETE);
+  const {
+    deleteTemplates,
+    isDeleting,
+    result: deleteResult,
+    clearResult: clearDeleteResult,
+  } = useDeleteMetaTemplates(setClinicTemplates);
   const [savingReminder, setSavingReminder] = useState(false);
 
   // Estado para crear template Meta
@@ -499,10 +515,13 @@ export function NotificationsSettings() {
             onRepublish={republishMetaTemplates}
             isRepublishing={isRepublishing}
             canSync={canSyncTemplates}
+            onDelete={canDeleteTemplates ? deleteTemplates : undefined}
+            isDeleting={isDeleting}
             onCreate={handleCreateTemplateFromPanel}
             savingTemplate={savingTemplate}
           />
           <TemplateRepublishResult result={republishResult} onClose={clearRepublishResult} />
+          <TemplateDeleteResult result={deleteResult} onClose={clearDeleteResult} />
         </TabsContent>
 
         {/* TAB: Email */}

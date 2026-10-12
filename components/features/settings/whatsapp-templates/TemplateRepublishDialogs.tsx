@@ -74,7 +74,7 @@ export function TemplateRepublishConfirm({ open, onConfirm, onCancel }: Template
 
 // ── Resultado ─────────────────────────────────────────────────────────────
 
-function Count({ value, label }: { value: number; label: string }) {
+export function Count({ value, label }: { value: number; label: string }) {
   return (
     <div className="rounded-xl bg-canvas px-3 py-2">
       <dd className="text-lg font-semibold text-ink">{value}</dd>
@@ -83,7 +83,16 @@ function Count({ value, label }: { value: number; label: string }) {
   );
 }
 
-function ItemList({ title, items }: { title: string; items: MetaTemplateRepublishItem[] }) {
+/** Plantillas que quedaron fuera de una acción, cada una con su motivo ya traducido. */
+export function ItemList({
+  title,
+  items,
+  reasonText = republishReasonText,
+}: {
+  title: string;
+  items: MetaTemplateRepublishItem[];
+  reasonText?: typeof republishReasonText;
+}) {
   const { t } = useI18n();
   if (items.length === 0) return null;
   return (
@@ -95,7 +104,7 @@ function ItemList({ title, items }: { title: string; items: MetaTemplateRepublis
             <p className="break-words text-sm font-medium text-ink">
               {item.name || t("settings.notifications.republish.result.unnamed")}
             </p>
-            <p className="text-xs text-subtle">{republishReasonText(item.reason, t)}</p>
+            <p className="text-xs text-subtle">{reasonText(item.reason, t)}</p>
           </li>
         ))}
       </ul>

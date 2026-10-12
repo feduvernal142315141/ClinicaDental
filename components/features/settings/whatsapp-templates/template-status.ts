@@ -1,5 +1,5 @@
 import type { TranslationKey } from "@/lib/i18n/translations";
-import type { RepublishReason } from "@/lib/entity/settings";
+import type { RepublishReason, TemplateDeleteReason } from "@/lib/entity/settings";
 
 type Translate = (key: TranslationKey) => string;
 
@@ -44,4 +44,16 @@ const REASON_KEYS: Record<RepublishReason, TranslationKey> = {
 export function republishReasonText(reason: string, t: Translate): string {
   const key = REASON_KEYS[reason as RepublishReason];
   return t(key ?? "settings.notifications.republish.reason.unknown");
+}
+
+const DELETE_REASON_KEYS: Record<TemplateDeleteReason, TranslationKey> = {
+  IN_USE_BY_REMINDER: "settings.notifications.delete.reason.inUseByReminder",
+  IN_USE_BY_CAMPAIGN: "settings.notifications.delete.reason.inUseByCampaign",
+  META_DELETE_FAILED: "settings.notifications.delete.reason.metaDeleteFailed",
+};
+
+/** Por qué no se eliminó una plantilla, en lenguaje claro y con qué hacer. */
+export function deleteReasonText(reason: string, t: Translate): string {
+  const key = DELETE_REASON_KEYS[reason as TemplateDeleteReason];
+  return t(key ?? "settings.notifications.delete.reason.unknown");
 }

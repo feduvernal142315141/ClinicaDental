@@ -1,4 +1,5 @@
 import {
+  serviceDelete,
   serviceGet,
   servicePost,
 } from "@/lib/services/baseService";
@@ -8,6 +9,7 @@ import type {
   MetaTemplateRepublishItem,
   MetaTemplateRepublishResult,
   MetaTemplateSyncResult,
+  TemplateDeleteResult,
 } from "@/lib/entity/settings";
 
 const endpoint = "/clinic-template";
@@ -77,6 +79,7 @@ async function syncMetaTemplates(): Promise<MetaTemplateSyncResult> {
   return handleServiceError(response, "No se pudieron sincronizar las plantillas de Meta");
 }
 
+/** Lista `{ id, name, reason }` de una respuesta (republicar y eliminar la comparten). */
 function toRepublishItems(value: unknown): MetaTemplateRepublishItem[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -108,9 +111,48 @@ async function republishMetaTemplates(): Promise<MetaTemplateRepublishResult> {
   return handleServiceError(response, "No se pudieron republicar las plantillas en Meta");
 }
 
+function toDeleteResult(raw: unknown): TemplateDeleteResult | null {
+  const data = unwrapResponse<Partial<TemplateDeleteResult> | null>(raw);
+  if (!data || !Array.isArray(data.deletedIds)) return null;
+  const deletedIds = data.deletedIds.filter((id): id is string => typeof id === "string");
+  return {
+    deleted: deletedIds.length,
+    deletedIds,
+    blocked: toRepublishItems(data.blocked),
+    failed: toRepublishItems(data.failed),
+  };
+}
+
+/**
+ * Elimina una plantilla de la clínica (y de Meta, si está en la cuenta actual).
+ * Un 200 no garantiza que saliera: hay que mirar `deletedIds`.
+ */
+async function deleteClinicTemplate(id: string): Promise<TemplateDeleteResult> {
+  const response = await serviceDelete<undefined, TemplateDeleteResult>(`${endpoint}/${id}`);
+  if (response?.status === 200) {
+    const result = toDeleteResult(response.data);
+    if (result) return result;
+  }
+  return handleServiceError(response, "No se pudo eliminar la plantilla");
+}
+
+/** Elimina varias plantillas (de 1 a 100). No es todo o nada. */
+async function deleteClinicTemplates(ids: string[]): Promise<TemplateDeleteResult> {
+  const response = await servicePost<{ ids: string[] }, TemplateDeleteResult>(
+    `${endpoint}/delete`, { ids }
+  );
+  if (response?.status === 200) {
+    const result = toDeleteResult(response.data);
+    if (result) return result;
+  }
+  return handleServiceError(response, "No se pudieron eliminar las plantillas");
+}
+
 export const clinicTemplateService = {
   syncMetaTemplates,
   republishMetaTemplates,
+  deleteClinicTemplate,
+  deleteClinicTemplates,
   getClinicTemplates,
   getClinicTemplateById,
   createClinicTemplate,

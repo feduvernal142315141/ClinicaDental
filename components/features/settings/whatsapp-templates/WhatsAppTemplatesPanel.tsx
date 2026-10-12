@@ -11,6 +11,9 @@ import {
   X,
   UploadCloud,
   AlertTriangle,
+  CheckSquare,
+  MoreVertical,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { Button } from "@/components/ui/primitives/shadcn/button";
@@ -25,12 +28,24 @@ import {
 } from "@/components/ui/atomic/forms/select";
 import TextArea from "@/components/ui/atomic/forms/textarea";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
+import { Checkbox } from "@/components/ui/atomic/forms/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/primitives/shadcn/dropdown-menu";
 import { TemplatePhonePreview } from "./TemplatePhonePreview";
 import { TemplateRepublishConfirm } from "./TemplateRepublishDialogs";
+import { TemplateDeleteConfirm } from "./TemplateDeleteDialogs";
 import { getTemplateStatusConfig } from "./template-status";
 import { useI18n } from "@/lib/contexts/i18n-context";
 import type { TranslationKey } from "@/lib/i18n/translations";
-import type { ClinicTemplate } from "@/lib/entity/settings";
+import {
+  TEMPLATE_DELETE_MAX,
+  isTemplateBeyondUse,
+  type ClinicTemplate,
+} from "@/lib/entity/settings";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -51,6 +66,13 @@ export interface WhatsAppTemplatesPanelProps {
   isRepublishing?: boolean;
   /** Puede sincronizar/republicar (permiso `template` crear + editar). */
   canSync?: boolean;
+  /**
+   * Eliminar plantillas, DESPUÉS de que el usuario confirma. Devuelve los ids
+   * que salieron de verdad: las bloqueadas o fallidas siguen seleccionadas para
+   * reintentar. Solo se pasa a quien tiene el permiso `template` eliminar.
+   */
+  onDelete?: (ids: string[]) => Promise<string[]>;
+  isDeleting?: boolean;
   /** Create new template */
   onCreate: (data: {
     name: string;
@@ -101,6 +123,8 @@ export function WhatsAppTemplatesPanel({
   onRepublish,
   isRepublishing = false,
   canSync = true,
+  onDelete,
+  isDeleting = false,
   onCreate,
   savingTemplate,
 }: WhatsAppTemplatesPanelProps) {
@@ -112,6 +136,66 @@ export function WhatsAppTemplatesPanel({
   const [panelView, setPanelView] = React.useState<PanelView>("detail");
   const [confirmingRepublish, setConfirmingRepublish] = React.useState(false);
   const canRepublish = canSync && !!onRepublish;
+
+  // ── Eliminar: selección múltiple y lo que espera confirmación ─────
+  const [selecting, setSelecting] = React.useState(false);
+  const [checkedIds, setCheckedIds] = React.useState<ReadonlySet<string>>(() => new Set());
+  const [pendingDelete, setPendingDelete] = React.useState<ClinicTemplate[]>([]);
+  const limitReached = checkedIds.size >= TEMPLATE_DELETE_MAX;
+
+  // La lista cambió (se recargó tras una acción): fuera de la selección y del
+  // detalle lo que ya no existe.
+  React.useEffect(() => {
+    const alive = new Set(templates.map((template) => template.id));
+    setCheckedIds((prev) => {
+      const next = new Set([...prev].filter((id) => alive.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+    setSelectedId((prev) => (prev !== null && !alive.has(prev) ? null : prev));
+  }, [templates]);
+
+  const stopSelecting = React.useCallback(() => {
+    setSelecting(false);
+    setCheckedIds(new Set());
+  }, []);
+
+  const toggleChecked = React.useCallback((id: string) => {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < TEMPLATE_DELETE_MAX) next.add(id);
+      return next;
+    });
+  }, []);
+
+  const beyondUseIds = React.useMemo(
+    () => templates.filter(isTemplateBeyondUse).map((template) => template.id),
+    [templates],
+  );
+
+  /** Marca las rechazadas y las que no están en la cuenta. Solo selecciona. */
+  const selectBeyondUse = React.useCallback(() => {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of beyondUseIds) {
+        if (next.size >= TEMPLATE_DELETE_MAX) break;
+        next.add(id);
+      }
+      return next;
+    });
+  }, [beyondUseIds]);
+
+  const confirmDelete = React.useCallback(async () => {
+    const ids = pendingDelete.map((template) => template.id);
+    setPendingDelete([]);
+    if (!onDelete || ids.length === 0) return;
+    const deletedIds = await onDelete(ids);
+    if (deletedIds.length === 0) return;
+    const gone = new Set(deletedIds);
+    setCheckedIds((prev) => new Set([...prev].filter((id) => !gone.has(id))));
+    // Sin nada pendiente de reintentar, se sale del modo selección.
+    if ([...checkedIds].every((id) => gone.has(id))) setSelecting(false);
+  }, [pendingDelete, onDelete, checkedIds]);
 
   // Auto-select first template on initial load
   React.useEffect(() => {
@@ -240,9 +324,54 @@ export function WhatsAppTemplatesPanel({
       {/* ── LEFT: Template list ─────────────────────────────────── */}
       <div className="flex w-[360px] shrink-0 flex-col border-r border-hairline">
         {/* Header */}
+        {onDelete && selecting ? (
+          <div role="toolbar" aria-label={t("settings.notifications.delete.select.toolbar")} className="space-y-1.5 border-b border-hairline px-4 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-ink" aria-live="polite">
+                {t("settings.notifications.delete.select.count").replace("{count}", String(checkedIds.size))}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={checkedIds.size === 0 || isDeleting}
+                  onClick={() => setPendingDelete(templates.filter((template) => checkedIds.has(template.id)))}
+                >
+                  {isDeleting && <Loader2 className="size-3.5 mr-1 animate-spin" />}
+                  {t("settings.notifications.delete.action")}
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={stopSelecting} disabled={isDeleting}>
+                  {t("settings.notifications.whatsapp.cancel")}
+                </Button>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-auto px-0 py-0.5 text-xs text-brand hover:bg-transparent hover:text-brand-strong"
+              disabled={beyondUseIds.length === 0 || isDeleting}
+              title={t("settings.notifications.delete.select.beyondUseHint")}
+              onClick={selectBeyondUse}
+            >
+              {t("settings.notifications.delete.select.beyondUse").replace("{count}", String(beyondUseIds.length))}
+            </Button>
+            {limitReached && (
+              <p role="status" className="text-[11px] text-subtle">
+                {t("settings.notifications.delete.select.limit").replace("{max}", String(TEMPLATE_DELETE_MAX))}
+              </p>
+            )}
+          </div>
+        ) : (
         <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
           <h3 className="text-sm font-semibold text-ink">{t("navigation.templates")}</h3>
           <div className="flex items-center gap-1.5">
+            {onDelete && templates.length > 0 && (
+              <Button type="button" variant="ghost" size="icon" onClick={() => setSelecting(true)} title={t("settings.notifications.delete.select.start")} aria-label={t("settings.notifications.delete.select.start")}>
+                <CheckSquare className="size-4" />
+              </Button>
+            )}
             {canSync && (
               <Button type="button" variant="ghost" size="icon" onClick={onSync} disabled={isSyncing || isRepublishing} title={t("settings.notifications.whatsapp.syncMeta")} aria-label={t("settings.notifications.whatsapp.syncMeta")}>
                 {isSyncing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
@@ -258,6 +387,7 @@ export function WhatsAppTemplatesPanel({
             </Button>
           </div>
         </div>
+        )}
 
         {/* Plantillas que la cuenta actual de WhatsApp no tiene */}
         {counts.NOT_IN_ACCOUNT > 0 && (
@@ -327,15 +457,43 @@ export function WhatsAppTemplatesPanel({
               {filtered.map((template) => {
                 const status = getStatusConfig(template.metaTemplateStatus, t);
                 const isActive = template.id === selectedId && panelView === "detail";
+                const isChecked = checkedIds.has(template.id);
+                const cannotAdd = selecting && limitReached && !isChecked;
                 return (
-                  <button
+                  <div
                     key={template.id}
-                    type="button"
-                    onClick={() => { setSelectedId(template.id); setPanelView("detail"); }}
                     className={cn(
-                      "flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors",
+                      "group relative flex w-full items-center transition-colors",
                       "hover:bg-hover",
-                      isActive && "bg-brand/[0.06] dark:bg-brand/10",
+                      (selecting ? isChecked : isActive) && "bg-brand/[0.06] dark:bg-brand/10",
+                    )}
+                  >
+                  {selecting && (
+                    <Checkbox
+                      checked={isChecked}
+                      disabled={cannotAdd}
+                      onCheckedChange={() => toggleChecked(template.id)}
+                      aria-label={t("settings.notifications.delete.select.rowAria").replace("{name}", template.name)}
+                      className="ml-4"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selecting) {
+                        if (!cannotAdd) toggleChecked(template.id);
+                        return;
+                      }
+                      setSelectedId(template.id);
+                      setPanelView("detail");
+                    }}
+                    // En modo selección la casilla es el control; la fila es un atajo de puntero.
+                    tabIndex={selecting ? -1 : undefined}
+                    aria-disabled={cannotAdd || undefined}
+                    className={cn(
+                      "flex min-w-0 flex-1 flex-col gap-1 px-4 py-3 text-left",
+                      selecting && "pl-3",
+                      cannotAdd && "cursor-not-allowed opacity-60",
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -359,6 +517,31 @@ export function WhatsAppTemplatesPanel({
                       )}
                     </div>
                   </button>
+                  {!selecting && onDelete && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={t("settings.notifications.delete.rowMenu").replace("{name}", template.name)}
+                          className={cn(
+                            "absolute bottom-2 right-2 flex size-7 items-center justify-center rounded-full",
+                            "border border-hairline bg-surface text-subtle shadow-sm hover:text-ink",
+                            "opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30",
+                          )}
+                        >
+                          <MoreVertical className="size-4" aria-hidden />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem variant="destructive" disabled={isDeleting} onClick={() => setPendingDelete([template])}>
+                          <Trash2 className="size-4" />
+                          {t("settings.notifications.delete.action")}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  </div>
                 );
               })}
             </div>
@@ -567,6 +750,11 @@ export function WhatsAppTemplatesPanel({
           setConfirmingRepublish(false);
           onRepublish?.();
         }}
+      />
+      <TemplateDeleteConfirm
+        templates={pendingDelete}
+        onCancel={() => setPendingDelete([])}
+        onConfirm={() => void confirmDelete()}
       />
     </div>
   );
