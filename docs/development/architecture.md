@@ -89,6 +89,26 @@ El estado clínico se serializa como snapshot versionado. La carga fallida
 bloquea autosave para evitar sobrescribir datos reales con un snapshot vacío.
 No mover HTTP ni contexto de auth dentro de la UI del módulo.
 
+### Puente odontograma → plan de tratamiento
+
+Un evento `plan` cuyo `procedureId` es un servicio del catálogo es una línea del
+plan del paciente (`syncKey = odo:<eventId>`). Mismas reglas que la tablet
+(`AppMobileClinic`, «Puente odontograma → plan» en su `BACKEND_CONTRACT.md`).
+
+- `lib/odontogram/application/plan-bridge.ts`: entradas, diferencia y orden de
+  escritura; sin HTTP (entra por `PlanBridgeGateway`).
+- `lib/odontogram/application/plan-bridge-controller.ts`: cuándo corre.
+- `lib/hooks/odontogram/useOdontogramPlanBridge.ts`: lo conecta a los services;
+  lo monta `PatientOdontogramPanel`.
+
+El puente quita líneas, así que solo corre con un odontograma fiable. El módulo
+lo expresa con `onInSync(snapshot)` (recién cargado, o recién aceptado por el
+servidor y sin ediciones posteriores) y `onOutOfSync()` (cargando, editado sin
+guardar, carga o guardado fallidos). Además, antes de escribir relee el
+odontograma guardado y no toca el plan si ya no planifica lo mismo: el backend
+solo rechaza con 409 las versiones menores que la guardada, así que un guardado
+aceptado no prueba que este cliente siga al día. Nunca corre en solo lectura.
+
 ## Flujo HTTP y errores
 
 `apiConfig.ts` agrega Bearer token, actividad, carga global, refresh compartido

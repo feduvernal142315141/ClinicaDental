@@ -70,6 +70,11 @@ export interface UseTreatmentPlanItemsResult {
   error: string | null;
   reload: () => Promise<void>;
   /**
+   * Relee líneas y totales SIN mandar la tabla al esqueleto. Para cuando el
+   * plan se escribió desde fuera de esta pantalla (el puente del odontograma).
+   */
+  refresh: () => Promise<void>;
+  /**
    * @param targetPlanId plan al que colgar las líneas cuando NO es el que este
    *   hook está leyendo. Existe por el get-or-create: el plan puede acabar de
    *   crearse en el mismo gesto que añade la primera línea, y en ese instante
@@ -267,6 +272,7 @@ export function useTreatmentPlanItems(
   }, [load]);
 
   const reload = useCallback((): Promise<void> => load(), [load]);
+  const refresh = useCallback((): Promise<void> => load(true), [load]);
 
   /**
    * Ejecuta una mutación, avisa del error con el mensaje real del backend y
@@ -416,6 +422,7 @@ export function useTreatmentPlanItems(
     pendingItemIds,
     error,
     reload,
+    refresh,
     addItems,
     updateItem,
     registerSession,

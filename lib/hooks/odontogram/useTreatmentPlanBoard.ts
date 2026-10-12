@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import {
   usePatientTreatmentPlan,
   type UsePatientTreatmentPlanResult,
@@ -13,6 +13,7 @@ import {
   useTreatmentPlanFilters,
   type UseTreatmentPlanFiltersResult,
 } from "./useTreatmentPlanFilters";
+import { subscribeTreatmentPlanChanged } from "./treatment-plan-changes";
 import { notifyApiError } from "@/lib/utils/notify-error";
 import {
   countsTowardsPlanTotal,
@@ -215,11 +216,23 @@ export function useTreatmentPlanBoard(
     pendingItemIds,
     error: itemsError,
     reload,
+    refresh,
     addItems: addItemsToPlan,
     updateItem,
     registerSession,
     removeItem,
   } = useTreatmentPlanItems(planId);
+
+  // El puente del odontograma escribe en este mismo plan sin pasar por aquí.
+  // Con plan resuelto se releen sus líneas; sin él, puede que acabe de crearlo.
+  useEffect(
+    () =>
+      subscribeTreatmentPlanChanged(patientId, () => {
+        if (planId) void refresh();
+        else retryPlan();
+      }),
+    [patientId, planId, refresh, retryPlan],
+  );
 
   /** TODAS las líneas del plan, parseadas y en el orden del servidor. */
   const rows = useMemo(() => {
