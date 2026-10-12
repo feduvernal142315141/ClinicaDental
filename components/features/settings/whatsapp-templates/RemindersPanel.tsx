@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/atomic/forms/select";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
 import { useI18n } from "@/lib/contexts/i18n-context";
+import { templateUnusableReason } from "@/lib/entity/settings";
+import { getTemplateStatusConfig } from "./template-status";
 import type {
   ReminderConfigResponse,
   ClinicTemplate,
@@ -66,19 +68,6 @@ function formatMinutes(minutes: number, t: ReturnType<typeof useI18n>["t"]): str
   return `${h}h ${m}min`;
 }
 
-function getStatusConfig(status: string | undefined, t: ReturnType<typeof useI18n>["t"]): { label: string; className: string } | null {
-  switch (status) {
-    case "APPROVED":
-      return { label: t("settings.notifications.templates.status.approved"), className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
-    case "PENDING":
-      return { label: t("settings.notifications.templates.status.pending"), className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
-    case "REJECTED":
-      return { label: t("settings.notifications.templates.status.rejected"), className: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" };
-    default:
-      return null;
-  }
-}
-
 // ── Component ─────────────────────────────────────────────────────────────
 
 export function RemindersPanel({
@@ -103,6 +92,11 @@ export function RemindersPanel({
 
   const approvedTemplates = templates.filter(
     (t) => t.metaTemplateStatus === "APPROVED" && t.provider === "META",
+  );
+  // Se muestran, deshabilitadas y con el motivo: una plantilla que «desaparece»
+  // del selector sin explicación parece un error.
+  const unusableTemplates = templates.filter(
+    (t) => t.provider === "META" && templateUnusableReason(t) !== null,
   );
 
   const getTemplateName = (id: string) =>
@@ -189,7 +183,7 @@ export function RemindersPanel({
       ) : (
         <div className="divide-y divide-hairline">
           {reminders.map((r) => {
-            const tplStatus = getStatusConfig(getTemplateStatus(r.templateId), t);
+            const tplStatus = getTemplateStatusConfig(getTemplateStatus(r.templateId), t);
             const isEditing = editingId === r.id && showForm;
             return (
               <div
@@ -337,6 +331,16 @@ export function RemindersPanel({
                       {t("settings.notifications.reminders.noApprovedTemplates")}
                     </div>
                   )}
+                  {unusableTemplates.map((template) => (
+                    <SelectItem key={template.id} value={template.id} disabled>
+                      {template.name} —{" "}
+                      {t(
+                        templateUnusableReason(template) === "NOT_IN_ACCOUNT"
+                          ? "settings.notifications.templates.unusable.notInAccount"
+                          : "settings.notifications.templates.unusable.pending",
+                      )}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -359,7 +363,7 @@ export function RemindersPanel({
               <Button
                 size="sm"
                 onClick={handleSubmit}
-                disabled={saving || !effectiveMinutes || !formTemplateId}
+                disabled={saving || !effectiveMinutes || !formTemplateId || !approvedTemplates.some((t) => t.id === formTemplateId)}
               >
                 {saving && <Loader2 className="size-4 mr-1.5 animate-spin" />}
                 {editingId ? t("settings.actions.saveChanges") : t("settings.notifications.reminders.addReminder")}

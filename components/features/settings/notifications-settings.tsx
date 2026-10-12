@@ -47,9 +47,11 @@ import type {
   UpdateReminderConfigRequest,
 } from "@/lib/entity/settings";
 
-import { useSyncMetaTemplates } from "@/lib/hooks/use-sync-meta-templates";
+import { useRepublishMetaTemplates, useSyncMetaTemplates } from "@/lib/hooks/use-sync-meta-templates";
+import { usePermission } from "@/lib/hooks/use-permission";
+import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useI18n } from "@/lib/contexts/i18n-context";
-import { WhatsAppTemplatesPanel, RemindersPanel } from "./whatsapp-templates";
+import { WhatsAppTemplatesPanel, RemindersPanel, TemplateRepublishResult } from "./whatsapp-templates";
 
 export function NotificationsSettings() {
   const { t } = useI18n();
@@ -66,6 +68,17 @@ export function NotificationsSettings() {
   const [loading, setLoading] = useState(true);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const { sync: syncMetaTemplates, isSyncing } = useSyncMetaTemplates(setClinicTemplates);
+  const {
+    republish: republishMetaTemplates,
+    isRepublishing,
+    result: republishResult,
+    clearResult: clearRepublishResult,
+  } = useRepublishMetaTemplates(setClinicTemplates);
+  // Lo que exige el backend para sincronizar y republicar: `template` crear + editar.
+  const { can, isAdmin } = usePermission();
+  const canSyncTemplates =
+    isAdmin ||
+    (can("template", PermissionAction.CREATE) && can("template", PermissionAction.EDIT));
   const [savingReminder, setSavingReminder] = useState(false);
 
   // Estado para crear template Meta
@@ -345,7 +358,7 @@ export function NotificationsSettings() {
 
   const getTemplateStatus = (
     templateId: string
-  ): "PENDING" | "APPROVED" | "REJECTED" | undefined => {
+  ): ClinicTemplate["metaTemplateStatus"] => {
     const template = clinicTemplates.find((t) => t.id === templateId);
     return template?.metaTemplateStatus;
   };
@@ -426,7 +439,7 @@ export function NotificationsSettings() {
   };
 
   const getStatusBadgeColor = (
-    status?: "PENDING" | "APPROVED" | "REJECTED"
+    status?: ClinicTemplate["metaTemplateStatus"]
   ) => {
     switch (status) {
       case "APPROVED":
@@ -483,9 +496,13 @@ export function NotificationsSettings() {
             loading={loading}
             onSync={syncMetaTemplates}
             isSyncing={isSyncing}
+            onRepublish={republishMetaTemplates}
+            isRepublishing={isRepublishing}
+            canSync={canSyncTemplates}
             onCreate={handleCreateTemplateFromPanel}
             savingTemplate={savingTemplate}
           />
+          <TemplateRepublishResult result={republishResult} onClose={clearRepublishResult} />
         </TabsContent>
 
         {/* TAB: Email */}

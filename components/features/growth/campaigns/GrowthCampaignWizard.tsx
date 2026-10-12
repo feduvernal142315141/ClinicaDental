@@ -33,7 +33,7 @@ import {
 import { useGrowthSegments, useSegmentEvaluation } from "@/lib/hooks/growth";
 import { useGrowthCampaignActions } from "@/lib/hooks/growth";
 import { clinicTemplateService } from "@/lib/services/template/clinic-template.service";
-import type { ClinicTemplate } from "@/lib/entity/settings";
+import { templateUnusableReason, type ClinicTemplate } from "@/lib/entity/settings";
 import { notify } from "@/lib/utils/notify";
 import {
   CAMPAIGN_LEAD_TEMPLATE_UNSUPPORTED_MESSAGE,
@@ -84,13 +84,15 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
     clinicTemplateService
       .getClinicTemplates()
       .then((all) => {
-        // Only MARKETING templates with APPROVED meta status.
+        // Only MARKETING templates. APPROVED ones can be chosen; the ones still
+        // pending or missing from the current WhatsApp account are listed
+        // disabled, with the reason, instead of silently disappearing.
         // category is the authoritative field (from Meta sync); type is fallback.
         const marketing = all.filter(
           (t) =>
             (t.category?.toUpperCase() === "MARKETING" ||
               t.type?.toUpperCase() === "MARKETING") &&
-            t.metaTemplateStatus === "APPROVED",
+            (t.metaTemplateStatus === "APPROVED" || templateUnusableReason(t) !== null),
         );
         setTemplates(marketing);
       })
@@ -124,6 +126,18 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
 
   const templateOptions: SelectOption[] = templates.map((t) => {
     const preview = t.body ? t.body.substring(0, 60) + "…" : undefined;
+    const unusable = templateUnusableReason(t);
+    if (unusable) {
+      return {
+        value: t.id,
+        label: t.name,
+        disabled: true,
+        description:
+          unusable === "NOT_IN_ACCOUNT"
+            ? "No disponible en esta cuenta de WhatsApp: republícala desde Plantillas"
+            : "Pendiente de aprobación de Meta: aún no se puede enviar",
+      };
+    }
     return {
       value: t.id,
       label: t.name,
@@ -133,6 +147,7 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
           : preview,
     };
   });
+  const hasUsableTemplate = templateOptions.some((option) => !option.disabled);
 
   // The count belongs to one segment: forget it when another one is chosen.
   useEffect(() => {
@@ -146,11 +161,16 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
       case 1:
         return !!values.segmentId;
       case 2:
-        return !!values.templateId && !templateUnsupported;
+        return (
+          !!values.templateId &&
+          !templateUnsupported &&
+          !!selectedTemplate &&
+          templateUnusableReason(selectedTemplate) === null
+        );
       default:
         return true;
     }
-  }, [step, values, templateUnsupported]);
+  }, [step, values, templateUnsupported, selectedTemplate]);
 
   // For step 5 submit that creates and navigates
   const handleCreate = useCallback(async () => {
@@ -368,6 +388,14 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
                     una desde la sección de Configuración.
                   </p>
                 ) : (
+                  <>
+                  {!hasUsableTemplate && (
+                    <p className="text-sm text-subtle">
+                      Ninguna plantilla de Marketing se puede enviar todavía:
+                      están pendientes de aprobación de Meta o no están en la
+                      cuenta actual de WhatsApp.
+                    </p>
+                  )}
                   <FormField
                     control={form.control}
                     name="templateId"
@@ -388,6 +416,7 @@ export function GrowthCampaignWizard({ campaignId }: GrowthCampaignWizardProps) 
                       </FormItem>
                     )}
                   />
+                  </>
                 )}
                 {templateUnsupported && (
                   <Alert variant="destructive">

@@ -3,7 +3,12 @@ import {
   servicePost,
 } from "@/lib/services/baseService";
 import { handleServiceError } from "@/lib/utils/error.utils";
-import type { ClinicTemplate, MetaTemplateSyncResult } from "@/lib/entity/settings";
+import type {
+  ClinicTemplate,
+  MetaTemplateRepublishItem,
+  MetaTemplateRepublishResult,
+  MetaTemplateSyncResult,
+} from "@/lib/entity/settings";
 
 const endpoint = "/clinic-template";
 
@@ -72,8 +77,40 @@ async function syncMetaTemplates(): Promise<MetaTemplateSyncResult> {
   return handleServiceError(response, "No se pudieron sincronizar las plantillas de Meta");
 }
 
+function toRepublishItems(value: unknown): MetaTemplateRepublishItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
+    .map((item) => ({
+      id: String(item.id ?? ""),
+      name: String(item.name ?? ""),
+      reason: String(item.reason ?? ""),
+    }));
+}
+
+/**
+ * Vuelve a crear en la cuenta ACTUAL de Meta las plantillas que la clínica
+ * escribió en el panel. No es sincronizar: sincronizar solo trae lo que hay.
+ */
+async function republishMetaTemplates(): Promise<MetaTemplateRepublishResult> {
+  const response = await servicePost<Record<string, never>, MetaTemplateRepublishResult>(
+    `${endpoint}/republish-meta`, {}
+  );
+  if (response?.status === 200) {
+    const data = unwrapResponse<Partial<MetaTemplateRepublishResult> | null>(response.data);
+    return {
+      republished: Number(data?.republished) || 0,
+      alreadyInAccount: Number(data?.alreadyInAccount) || 0,
+      skipped: toRepublishItems(data?.skipped),
+      failed: toRepublishItems(data?.failed),
+    };
+  }
+  return handleServiceError(response, "No se pudieron republicar las plantillas en Meta");
+}
+
 export const clinicTemplateService = {
   syncMetaTemplates,
+  republishMetaTemplates,
   getClinicTemplates,
   getClinicTemplateById,
   createClinicTemplate,

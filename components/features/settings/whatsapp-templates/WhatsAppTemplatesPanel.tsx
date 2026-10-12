@@ -9,6 +9,8 @@ import {
   MessageSquare,
   ArrowLeft,
   X,
+  UploadCloud,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { Button } from "@/components/ui/primitives/shadcn/button";
@@ -24,13 +26,15 @@ import {
 import TextArea from "@/components/ui/atomic/forms/textarea";
 import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
 import { TemplatePhonePreview } from "./TemplatePhonePreview";
+import { TemplateRepublishConfirm } from "./TemplateRepublishDialogs";
+import { getTemplateStatusConfig } from "./template-status";
 import { useI18n } from "@/lib/contexts/i18n-context";
 import type { TranslationKey } from "@/lib/i18n/translations";
 import type { ClinicTemplate } from "@/lib/entity/settings";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
-type StatusFilter = "all" | "APPROVED" | "PENDING" | "REJECTED";
+type StatusFilter = "all" | "APPROVED" | "PENDING" | "REJECTED" | "NOT_IN_ACCOUNT";
 type PanelView = "detail" | "create";
 
 export interface WhatsAppTemplatesPanelProps {
@@ -39,6 +43,14 @@ export interface WhatsAppTemplatesPanelProps {
   /** Sync Meta templates */
   onSync: () => void;
   isSyncing: boolean;
+  /**
+   * Republicar en la cuenta actual de Meta las plantillas escritas en el panel.
+   * Se llama DESPUÉS de que el usuario confirma.
+   */
+  onRepublish?: () => void;
+  isRepublishing?: boolean;
+  /** Puede sincronizar/republicar (permiso `template` crear + editar). */
+  canSync?: boolean;
   /** Create new template */
   onCreate: (data: {
     name: string;
@@ -51,25 +63,23 @@ export interface WhatsAppTemplatesPanelProps {
 
 // ── Status helpers ────────────────────────────────────────────────────────
 
-const STATUS_FILTERS: StatusFilter[] = ["all", "APPROVED", "PENDING", "REJECTED"];
+const STATUS_FILTERS: StatusFilter[] = ["all", "APPROVED", "PENDING", "REJECTED", "NOT_IN_ACCOUNT"];
 const STATUS_FILTER_LABEL_KEYS: Record<StatusFilter, TranslationKey> = {
   all: "settings.notifications.templates.filter.all",
   APPROVED: "settings.notifications.templates.filter.APPROVED",
   PENDING: "settings.notifications.templates.filter.PENDING",
   REJECTED: "settings.notifications.templates.filter.REJECTED",
+  NOT_IN_ACCOUNT: "settings.notifications.templates.filter.NOT_IN_ACCOUNT",
 };
 
-function getStatusConfig(status: string | undefined, t: ReturnType<typeof useI18n>["t"]): { label: string; className: string } {
-  switch (status) {
-    case "APPROVED":
-      return { label: t("settings.notifications.templates.status.approved"), className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
-    case "PENDING":
-      return { label: t("settings.notifications.templates.status.pending"), className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
-    case "REJECTED":
-      return { label: t("settings.notifications.templates.status.rejected"), className: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" };
-    default:
-      return { label: t("settings.notifications.templates.status.none"), className: "bg-hover text-subtle" };
-  }
+function getStatusConfig(status: string | undefined, t: ReturnType<typeof useI18n>["t"]) {
+  return (
+    getTemplateStatusConfig(status, t) ?? {
+      label: t("settings.notifications.templates.status.none"),
+      className: "bg-hover text-subtle",
+      hint: undefined,
+    }
+  );
 }
 
 function getCategoryLabel(cat: string | undefined, t: ReturnType<typeof useI18n>["t"]): string {
@@ -88,6 +98,9 @@ export function WhatsAppTemplatesPanel({
   loading,
   onSync,
   isSyncing,
+  onRepublish,
+  isRepublishing = false,
+  canSync = true,
   onCreate,
   savingTemplate,
 }: WhatsAppTemplatesPanelProps) {
@@ -97,6 +110,8 @@ export function WhatsAppTemplatesPanel({
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("all");
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [panelView, setPanelView] = React.useState<PanelView>("detail");
+  const [confirmingRepublish, setConfirmingRepublish] = React.useState(false);
+  const canRepublish = canSync && !!onRepublish;
 
   // Auto-select first template on initial load
   React.useEffect(() => {
@@ -130,11 +145,12 @@ export function WhatsAppTemplatesPanel({
   const selectedTemplate = templates.find((t) => t.id === selectedId) ?? null;
 
   const counts = React.useMemo(() => {
-    const c = { all: templates.length, APPROVED: 0, PENDING: 0, REJECTED: 0 };
+    const c = { all: templates.length, APPROVED: 0, PENDING: 0, REJECTED: 0, NOT_IN_ACCOUNT: 0 };
     for (const t of templates) {
       if (t.metaTemplateStatus === "APPROVED") c.APPROVED++;
       else if (t.metaTemplateStatus === "PENDING") c.PENDING++;
       else if (t.metaTemplateStatus === "REJECTED") c.REJECTED++;
+      else if (t.metaTemplateStatus === "NOT_IN_ACCOUNT") c.NOT_IN_ACCOUNT++;
     }
     return c;
   }, [templates]);
@@ -227,14 +243,40 @@ export function WhatsAppTemplatesPanel({
         <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
           <h3 className="text-sm font-semibold text-ink">{t("navigation.templates")}</h3>
           <div className="flex items-center gap-1.5">
-            <Button type="button" variant="ghost" size="icon" onClick={onSync} disabled={isSyncing} title={t("settings.notifications.whatsapp.syncMeta")} aria-label={t("settings.notifications.whatsapp.syncMeta")}>
-              {isSyncing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-            </Button>
+            {canSync && (
+              <Button type="button" variant="ghost" size="icon" onClick={onSync} disabled={isSyncing || isRepublishing} title={t("settings.notifications.whatsapp.syncMeta")} aria-label={t("settings.notifications.whatsapp.syncMeta")}>
+                {isSyncing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+              </Button>
+            )}
+            {canRepublish && (
+              <Button type="button" variant="ghost" size="icon" onClick={() => setConfirmingRepublish(true)} disabled={isSyncing || isRepublishing} title={t("settings.notifications.republish.action")} aria-label={t("settings.notifications.republish.action")}>
+                {isRepublishing ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
+              </Button>
+            )}
             <Button type="button" variant="ghost" size="icon" onClick={openCreate} title={t("settings.notifications.whatsapp.newTemplate")} aria-label={t("settings.notifications.whatsapp.newTemplate")}>
               <Plus className="size-4" />
             </Button>
           </div>
         </div>
+
+        {/* Plantillas que la cuenta actual de WhatsApp no tiene */}
+        {counts.NOT_IN_ACCOUNT > 0 && (
+          <div role="status" className="flex gap-2 border-b border-orange-300/60 bg-orange-50 px-4 py-2.5 text-orange-900 dark:border-orange-500/30 dark:bg-orange-950/40 dark:text-orange-200">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <div className="space-y-1.5">
+              <p className="text-xs leading-snug">
+                {t(counts.NOT_IN_ACCOUNT === 1 ? "settings.notifications.templates.unavailableBanner.one" : "settings.notifications.templates.unavailableBanner.many").replace("{count}", String(counts.NOT_IN_ACCOUNT))}{" "}
+                {t(canRepublish ? "settings.notifications.templates.unavailableBanner.suggest" : "settings.notifications.templates.unavailableBanner.askAdmin")}
+              </p>
+              {canRepublish && (
+                <Button type="button" size="sm" variant="outline" onClick={() => setConfirmingRepublish(true)} disabled={isSyncing || isRepublishing}>
+                  {isRepublishing && <Loader2 className="size-3.5 mr-1 animate-spin" />}
+                  {t("settings.notifications.republish.action")}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Search */}
         <div className="border-b border-hairline px-3 py-2">
@@ -300,7 +342,7 @@ export function WhatsAppTemplatesPanel({
                       <span className="truncate text-[13px] font-medium text-ink">
                         {template.name}
                       </span>
-                      <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold", status.className)}>
+                      <span title={status.hint} className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold", status.className)}>
                         {status.label}
                       </span>
                     </div>
@@ -452,7 +494,7 @@ export function WhatsAppTemplatesPanel({
               <div className="flex items-center gap-2">
                 {(() => {
                   const s = getStatusConfig(selectedTemplate.metaTemplateStatus, t);
-                  return <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-semibold", s.className)}>{s.label}</span>;
+                  return <span title={s.hint} className={cn("rounded-full px-2.5 py-1 text-[11px] font-semibold", s.className)}>{s.label}</span>;
                 })()}
                 <Button type="button" variant="ghost" size="icon" onClick={() => setSelectedId(null)} aria-label={t("app.search.clear")}>
                   <X className="size-4" />
@@ -465,6 +507,12 @@ export function WhatsAppTemplatesPanel({
               {/* Body text */}
               <div className="flex-1 overflow-y-auto p-5">
                 <div className="max-w-lg">
+                  {selectedTemplate.metaTemplateStatus === "NOT_IN_ACCOUNT" && (
+                    <div role="note" className="mb-4 flex gap-2 rounded-xl border border-dashed border-orange-400 bg-orange-50 p-3 text-xs leading-snug text-orange-900 dark:border-orange-500/60 dark:bg-orange-950/40 dark:text-orange-200">
+                      <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+                      <p>{t("settings.notifications.templates.status.notInAccountHint")}</p>
+                    </div>
+                  )}
                   <p className="mb-2 text-xs font-medium uppercase tracking-wider text-subtle">{t("settings.notifications.whatsapp.content")}</p>
                   <div className="rounded-xl bg-canvas p-4">
                     <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
@@ -512,6 +560,14 @@ export function WhatsAppTemplatesPanel({
           </div>
         )}
       </div>
+      <TemplateRepublishConfirm
+        open={confirmingRepublish}
+        onCancel={() => setConfirmingRepublish(false)}
+        onConfirm={() => {
+          setConfirmingRepublish(false);
+          onRepublish?.();
+        }}
+      />
     </div>
   );
 }
