@@ -10,6 +10,7 @@ export {
   useSendMessage,
   useMarkRead,
   useLinkPatient,
+  useDeleteConversations,
 } from "./use-inbox-actions";
 export { useInboxPolling } from "./use-inbox-polling";
 export { useInboxSSE } from "./use-inbox-sse";

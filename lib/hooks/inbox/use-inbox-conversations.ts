@@ -18,6 +18,8 @@ interface UseInboxConversationsResult {
   setQuery: (q: InboxConversationQueryParams) => void;
   loadNextPage: () => void;
   refresh: () => void;
+  /** Quita conversaciones de la lista sin esperar al servidor (ya eliminadas). */
+  removeConversations: (ids: readonly string[]) => void;
 }
 
 export function useInboxConversations(
@@ -104,6 +106,24 @@ export function useInboxConversations(
     }
   }, [query]);
 
+  const removeConversations = useCallback((ids: readonly string[]) => {
+    if (ids.length === 0) return;
+    const gone = new Set(ids);
+    // Una lectura en vuelo aún traería las eliminadas: se descarta.
+    refreshGenRef.current += 1;
+    setLoading(false);
+    setConversations((prev) => {
+      const next = prev.filter((conversation) => !gone.has(conversation.id));
+      const removed = prev.length - next.length;
+      if (removed > 0) {
+        setPagination((current) =>
+          current ? { ...current, total: Math.max(0, current.total - removed) } : current,
+        );
+      }
+      return removed > 0 ? next : prev;
+    });
+  }, []);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -118,5 +138,6 @@ export function useInboxConversations(
     setQuery,
     loadNextPage,
     refresh,
+    removeConversations,
   };
 }

@@ -102,6 +102,21 @@ export interface LinkPatientRequest {
   patientId: string;
 }
 
+// ── Delete conversations ────────────────────────────────────────────────────
+
+/** Máximo de conversaciones que el backend acepta eliminar en una petición. */
+export const INBOX_DELETE_MAX = 100;
+
+/**
+ * Respuesta de eliminar una o varias conversaciones. `deletedIds` son las que
+ * salieron DE VERDAD: un id de otra clínica o ya eliminado se omite sin error,
+ * así que puede ser más corta que la lista enviada.
+ */
+export interface DeleteConversationsResult {
+  deleted: number;
+  deletedIds: string[];
+}
+
 // ── Filter presets ──────────────────────────────────────────────────────────
 
 export type InboxFilterPreset =
@@ -155,6 +170,7 @@ export type InboxRealtimeEventType =
   | "message_new"
   | "message_status"
   | "conversation_update"
+  | "conversation_deleted"
   | "summary_update";
 
 export interface MessageNewEventData {

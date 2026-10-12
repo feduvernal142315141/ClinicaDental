@@ -1,4 +1,4 @@
-import { serviceGet, serviceGetSilent, servicePost, servicePostSilent, servicePut } from "@/lib/services/baseService";
+import { serviceDelete, serviceGet, serviceGetSilent, servicePost, servicePostSilent, servicePut } from "@/lib/services/baseService";
 import { handleServiceError } from "@/lib/utils/error.utils";
 import type {
   InboxConversationPage,
@@ -7,6 +7,7 @@ import type {
   InboxSummary,
   InboxConversationQueryParams,
   InboxMessageQueryParams,
+  DeleteConversationsResult,
 } from "@/lib/entity/inbox";
 
 const BASE = "/whatsapp/inbox";
@@ -123,6 +124,42 @@ export async function reopenConversation(id: string): Promise<void> {
   handleServiceError(response, "Error al reabrir la conversación");
 }
 
+// ── Delete ──────────────────────────────────────────────────────────────────
+
+function toDeleteResult(data: unknown): DeleteConversationsResult | null {
+  const body = data as Partial<DeleteConversationsResult> | null | undefined;
+  if (!body || !Array.isArray(body.deletedIds)) return null;
+  const deletedIds = body.deletedIds.filter((id): id is string => typeof id === "string");
+  return { deleted: deletedIds.length, deletedIds };
+}
+
+/** Saca una conversación de la bandeja de toda la clínica. 404 si ya no existía. */
+export async function deleteConversation(id: string): Promise<DeleteConversationsResult> {
+  const response = await serviceDelete<undefined, DeleteConversationsResult>(
+    `${BASE}/conversations/${id}`,
+  );
+  if (response?.status >= 200 && response?.status < 300) {
+    const result = toDeleteResult(response.data);
+    if (result) return result;
+  }
+  handleServiceError(response, "Error al eliminar la conversación");
+}
+
+/**
+ * Saca varias conversaciones de la bandeja (de 1 a 100). 404 si ninguna existía;
+ * las que no existan se omiten: `deletedIds` dice cuáles salieron.
+ */
+export async function deleteConversations(ids: string[]): Promise<DeleteConversationsResult> {
+  const response = await servicePost<{ ids: string[] }, DeleteConversationsResult>(
+    `${BASE}/conversations/delete`, { ids },
+  );
+  if (response?.status >= 200 && response?.status < 300) {
+    const result = toDeleteResult(response.data);
+    if (result) return result;
+  }
+  handleServiceError(response, "Error al eliminar las conversaciones");
+}
+
 export async function sendInboxMessage(
   conversationId: string,
   text: string,
@@ -198,13 +235,16 @@ export async function getInboxSummarySilent(): Promise<InboxSummary> {
 // ── SSE Ticket ─────────────────────────────────────────────────────────────
 
 export async function createInboxSseTicket(): Promise<string> {
-  const response = await servicePostSilent<Record<string, never>, { ticket: string }>(
+  const response = await servicePostSilent<Record<string, never>, { ticketId: string }>(
     `${BASE}/events/ticket`, {},
   );
   if (response?.status >= 200 && response?.status < 300 && response?.data) {
-    // Backend may wrap in { data: { ticket } } or return { ticket } directly
-    const body = response.data as unknown as { data?: { ticket?: string }; ticket?: string };
-    const ticket = body?.data?.ticket ?? body?.ticket;
+    // El backend responde { ticketId }. Se aceptan también { ticket } y el
+    // envoltorio { data: {...} } de versiones anteriores del contrato.
+    type TicketBody = { ticketId?: string; ticket?: string };
+    const body = response.data as unknown as TicketBody & { data?: TicketBody };
+    const ticket =
+      body?.ticketId ?? body?.ticket ?? body?.data?.ticketId ?? body?.data?.ticket;
     if (typeof ticket === "string" && ticket.length > 0) {
       return ticket;
     }

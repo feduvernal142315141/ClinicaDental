@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Bot,
   PanelRight,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { Button } from "@/components/ui/primitives/shadcn/button";
@@ -84,6 +85,8 @@ export interface InboxChatHeaderProps {
   canEdit?: boolean;
   canCreate?: boolean;
   canBlock?: boolean;
+  /** Con él (y solo para quien tiene permiso) el menú ofrece eliminar. */
+  onDelete?: () => void;
   className?: string;
 }
 
@@ -96,6 +99,7 @@ export function InboxChatHeader({
   onReopen,
   onBack,
   onShowDetails,
+  onDelete,
   className,
 }: InboxChatHeaderProps) {
   const { t } = useI18n();
@@ -118,6 +122,7 @@ export function InboxChatHeader({
       : "?";
   const isMine = !!currentUserId && assignedTo === currentUserId;
   const isHuman = handlingMode === "HUMAN";
+  const canManage = isHuman && isMine && status === "OPEN";
 
   return (
     <div
@@ -198,28 +203,6 @@ export function InboxChatHeader({
           </Button>
         )}
 
-        {/* HUMAN + mine: dropdown with release & resolve */}
-        {isHuman && isMine && status === "OPEN" && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="icon" aria-label={t("inbox.action.more")}>
-                <MoreVertical className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onRelease}>
-                <Bot className="size-4" />
-                {withAssistant(t("inbox.action.releaseToDalia"))}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onResolve}>
-                <CheckCircle2 className="size-4" />
-                {t("inbox.action.resolve")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-
         {/* HUMAN + not mine */}
         {isHuman && !isMine && status === "OPEN" && (
           <span className="text-xs text-subtle">
@@ -233,6 +216,39 @@ export function InboxChatHeader({
             <RotateCcw className="size-4 mr-1" />
             {t("inbox.action.reopen")}
           </Button>
+        )}
+
+        {/* Menu: release & resolve (HUMAN + mine), delete (with permission) */}
+        {(canManage || onDelete) && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="icon" aria-label={t("inbox.action.more")}>
+                <MoreVertical className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {canManage && (
+                <>
+                  <DropdownMenuItem onClick={onRelease}>
+                    <Bot className="size-4" />
+                    {withAssistant(t("inbox.action.releaseToDalia"))}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onResolve}>
+                    <CheckCircle2 className="size-4" />
+                    {t("inbox.action.resolve")}
+                  </DropdownMenuItem>
+                </>
+              )}
+              {canManage && onDelete && <DropdownMenuSeparator />}
+              {onDelete && (
+                <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                  <Trash2 className="size-4" />
+                  {t("inbox.action.delete")}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     </div>

@@ -1,7 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { MoreVertical, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import { Checkbox } from "@/components/ui/atomic/forms/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/primitives/shadcn/dropdown-menu";
 import {
   Avatar,
   AvatarFallback,
@@ -92,6 +100,14 @@ export interface InboxConversationRowProps {
   conversation: InboxConversation;
   isSelected: boolean;
   onClick: (id: string) => void;
+  /** Modo selección: la fila marca/desmarca en vez de abrir el chat. */
+  selectionMode?: boolean;
+  checked?: boolean;
+  /** Se alcanzó el máximo: las filas sin marcar no se pueden añadir. */
+  selectionDisabled?: boolean;
+  onToggleSelect?: (id: string) => void;
+  /** Con él, la fila ofrece su menú con «Eliminar conversación». */
+  onDelete?: (conversation: InboxConversation) => void;
   className?: string;
 }
 
@@ -99,6 +115,11 @@ export function InboxConversationRow({
   conversation,
   isSelected,
   onClick,
+  selectionMode = false,
+  checked = false,
+  selectionDisabled = false,
+  onToggleSelect,
+  onDelete,
   className,
 }: InboxConversationRowProps) {
   const { language, t } = useI18n();
@@ -134,16 +155,17 @@ export function InboxConversationRow({
         .replace("{name}", displayName)
         .replace("{unread}", "");
 
+  const cannotAdd = selectionMode && selectionDisabled && !checked;
+  const toggle = () => {
+    if (!cannotAdd) onToggleSelect?.(id);
+  };
+
   return (
-    <button
-      type="button"
-      onClick={() => onClick(id)}
-      aria-label={ariaLabel.trim()}
-      aria-selected={isSelected}
+    <div
       className={cn(
-        "group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
+        "group relative flex w-full items-center transition-colors",
         "hover:bg-hover",
-        isSelected
+        (selectionMode ? checked : isSelected)
           ? "bg-brand/[0.06] dark:bg-brand/10"
           : hasUnread
             ? "bg-brand/[0.03] dark:bg-brand/[0.06]"
@@ -151,76 +173,124 @@ export function InboxConversationRow({
         className,
       )}
     >
-      {/* Avatar with status dot */}
-      <div className="relative shrink-0">
-        <Avatar className="size-11">
-          <AvatarFallback
-            className={cn(
-              "text-xs font-semibold",
-              hasUnread
-                ? "bg-brand/20 text-brand dark:bg-brand/25"
-                : "bg-hover-strong text-subtle",
-            )}
-          >
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-        {dotColor && (
-          <span
-            className={cn(
-              "absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-surface",
-              dotColor,
-            )}
-          />
+      {selectionMode && (
+        <Checkbox
+          checked={checked}
+          disabled={cannotAdd}
+          onCheckedChange={toggle}
+          aria-label={t("inbox.select.rowAria").replace("{name}", displayName)}
+          className="ml-4"
+        />
+      )}
+      <button
+        type="button"
+        onClick={selectionMode ? toggle : () => onClick(id)}
+        aria-label={ariaLabel.trim()}
+        aria-selected={isSelected}
+        aria-disabled={cannotAdd || undefined}
+        // En modo selección la casilla es el control; la fila es un atajo de puntero.
+        tabIndex={selectionMode ? -1 : undefined}
+        className={cn(
+          "flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left",
+          selectionMode && "pl-3",
+          cannotAdd && "cursor-not-allowed opacity-60",
         )}
-      </div>
-
-      {/* Content */}
-      <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        {/* Top row: name + time */}
-        <div className="flex items-baseline justify-between gap-2">
-          <span
-            className={cn(
-              "truncate text-[13.5px]",
-              hasUnread ? "font-bold text-ink" : "font-medium text-ink",
-            )}
-          >
-            {displayName}
-          </span>
-          <span
-            className={cn(
-              "shrink-0 text-[11px]",
-              hasUnread ? "font-bold text-brand" : "text-subtle",
-            )}
-          >
-            {relativeTime(lastMessageAt, language, t)}
-          </span>
+      >
+        {/* Avatar with status dot */}
+        <div className="relative shrink-0">
+          <Avatar className="size-11">
+            <AvatarFallback
+              className={cn(
+                "text-xs font-semibold",
+                hasUnread
+                  ? "bg-brand/20 text-brand dark:bg-brand/25"
+                  : "bg-hover-strong text-subtle",
+              )}
+            >
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          {dotColor && (
+            <span
+              className={cn(
+                "absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-surface",
+                dotColor,
+              )}
+            />
+          )}
         </div>
 
-        {/* Bottom row: preview + badge + status */}
-        <div className="flex items-center justify-between gap-2">
-          <span
-            className={cn(
-              "truncate text-[12.5px]",
-              hasUnread ? "font-medium text-ink/80" : "text-subtle",
-            )}
-          >
-            {lastMessagePreview || "\u00A0"}
-          </span>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {!hasUnread && (
-              <span className={cn("text-[10px] font-medium", statusCfg.className)}>
-                {statusCfg.label}
-              </span>
-            )}
-            {hasUnread && (
-              <span className="flex min-w-[20px] items-center justify-center rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
+        {/* Content */}
+        <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          {/* Top row: name + time */}
+          <div className="flex items-baseline justify-between gap-2">
+            <span
+              className={cn(
+                "truncate text-[13.5px]",
+                hasUnread ? "font-bold text-ink" : "font-medium text-ink",
+              )}
+            >
+              {displayName}
+            </span>
+            <span
+              className={cn(
+                "shrink-0 text-[11px]",
+                hasUnread ? "font-bold text-brand" : "text-subtle",
+              )}
+            >
+              {relativeTime(lastMessageAt, language, t)}
+            </span>
+          </div>
+
+          {/* Bottom row: preview + badge + status */}
+          <div className="flex items-center justify-between gap-2">
+            <span
+              className={cn(
+                "truncate text-[12.5px]",
+                hasUnread ? "font-medium text-ink/80" : "text-subtle",
+              )}
+            >
+              {lastMessagePreview || "\u00A0"}
+            </span>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {!hasUnread && (
+                <span className={cn("text-[10px] font-medium", statusCfg.className)}>
+                  {statusCfg.label}
+                </span>
+              )}
+              {hasUnread && (
+                <span className="flex min-w-[20px] items-center justify-center rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </button>
+      </button>
+      {!selectionMode && onDelete && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={t("inbox.action.rowMenu").replace("{name}", displayName)}
+              className={cn(
+                "absolute right-2 top-1/2 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full",
+                "border border-hairline bg-surface text-subtle shadow-sm hover:text-ink md:flex",
+                "opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30",
+              )}
+            >
+              <MoreVertical className="size-4" aria-hidden />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem variant="destructive" onClick={() => onDelete(conversation)}>
+              <Trash2 className="size-4" />
+              {t("inbox.action.delete")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
   );
 }

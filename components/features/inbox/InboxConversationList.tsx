@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/atomic/feedback/empty-state";
 import { Button } from "@/components/ui/primitives/shadcn/button";
 import { InboxConversationRow } from "./InboxConversationRow";
 import type { InboxConversation, InboxFilterPreset } from "@/lib/entity/inbox";
-import { INBOX_FILTER_PRESETS } from "@/lib/entity/inbox";
+import { INBOX_DELETE_MAX, INBOX_FILTER_PRESETS } from "@/lib/entity/inbox";
 import { useI18n } from "@/lib/contexts/i18n-context";
 import { useAssistantText } from "@/lib/contexts/assistant-name-context";
 import type { TranslationKey } from "@/lib/i18n/translations";
@@ -30,6 +30,19 @@ export interface InboxConversationListProps {
   totalUnread?: number;
   pagination?: { page: number; pageSize: number; total: number };
   onLoadMore?: () => void;
+  /**
+   * Eliminar conversaciones. Solo se pasa a quien tiene permiso: sin él no hay
+   * botón «Seleccionar» ni menú por fila.
+   */
+  deletion?: {
+    selecting: boolean;
+    selectedIds: ReadonlySet<string>;
+    onStartSelecting: () => void;
+    onCancelSelecting: () => void;
+    onToggle: (id: string) => void;
+    onDeleteSelected: () => void;
+    onDeleteOne: (conversation: InboxConversation) => void;
+  };
   className?: string;
 }
 
@@ -80,6 +93,7 @@ export function InboxConversationList({
   totalUnread = 0,
   pagination,
   onLoadMore,
+  deletion,
   className,
 }: InboxConversationListProps) {
   const { t } = useI18n();
@@ -113,19 +127,61 @@ export function InboxConversationList({
   const hasMore =
     pagination && (pagination.page + 1) * pagination.pageSize < pagination.total;
 
+  const selecting = deletion?.selecting ?? false;
+  const selectedCount = deletion?.selectedIds.size ?? 0;
+  const limitReached = selectedCount >= INBOX_DELETE_MAX;
+
   return (
     <div className={cn("flex h-full flex-col bg-surface", className)}>
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
-        <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold text-ink">{t("inbox.title")}</h2>
-          {totalUnread > 0 && (
-            <span className="flex size-5 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">
-              {totalUnread > 99 ? "99+" : totalUnread}
+      {deletion && selecting ? (
+        <div
+          role="toolbar"
+          aria-label={t("inbox.select.toolbar")}
+          className="border-b border-hairline px-4 py-2"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold text-ink" aria-live="polite">
+              {t("inbox.select.count").replace("{count}", String(selectedCount))}
             </span>
+            <div className="flex items-center gap-1.5">
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                disabled={selectedCount === 0}
+                onClick={deletion.onDeleteSelected}
+              >
+                {t("inbox.select.delete")}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={deletion.onCancelSelecting}>
+                {t("inbox.select.cancel")}
+              </Button>
+            </div>
+          </div>
+          {limitReached && (
+            <p role="status" className="mt-1.5 text-[11px] text-subtle">
+              {t("inbox.select.limit").replace("{max}", String(INBOX_DELETE_MAX))}
+            </p>
           )}
         </div>
-      </div>
+      ) : (
+        <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-ink">{t("inbox.title")}</h2>
+            {totalUnread > 0 && (
+              <span className="flex size-5 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">
+                {totalUnread > 99 ? "99+" : totalUnread}
+              </span>
+            )}
+          </div>
+          {deletion && conversations.length > 0 && (
+            <Button type="button" variant="ghost" size="sm" onClick={deletion.onStartSelecting}>
+              {t("inbox.select.start")}
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Search */}
       <div className="border-b border-hairline px-4 py-2">
@@ -180,6 +236,11 @@ export function InboxConversationList({
                 conversation={conv}
                 isSelected={conv.id === selectedId}
                 onClick={onSelect}
+                selectionMode={selecting}
+                checked={deletion?.selectedIds.has(conv.id) ?? false}
+                selectionDisabled={limitReached}
+                onToggleSelect={deletion?.onToggle}
+                onDelete={deletion?.onDeleteOne}
               />
             ))}
 

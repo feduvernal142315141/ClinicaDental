@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
@@ -12,10 +12,12 @@ import {
   SheetTitle,
 } from "@/components/ui";
 import type {
+  InboxConversation,
   InboxFilterPreset,
   InboxMessage,
 } from "@/lib/entity/inbox";
-import { INBOX_FILTER_PRESETS } from "@/lib/entity/inbox";
+import { INBOX_DELETE_MAX, INBOX_FILTER_PRESETS } from "@/lib/entity/inbox";
+import { notify } from "@/lib/utils/notify";
 
 import { InboxConversationList } from "./InboxConversationList";
 import { InboxTimeline } from "./InboxTimeline";
@@ -25,6 +27,7 @@ import { InboxContactPanel } from "./InboxContactPanel";
 import { InboxPatientSearch } from "./InboxPatientSearch";
 import { InboxNeedsHumanBanner } from "./InboxNeedsHumanBanner";
 import { InboxWindowClosedBanner } from "./InboxWindowClosedBanner";
+import { InboxDeleteDialog } from "./InboxDeleteDialog";
 import { useI18n } from "@/lib/contexts/i18n-context";
 
 import {
@@ -39,6 +42,7 @@ import {
   useSendMessage,
   useMarkRead,
   useLinkPatient,
+  useDeleteConversations,
   useInboxRealtime,
 } from "@/lib/hooks/inbox";
 
@@ -54,6 +58,7 @@ export function InboxPage() {
   const canEdit = isAdmin || can("whatsapp_inbox", PermissionAction.EDIT);
   const canCreate = isAdmin || can("whatsapp_inbox", PermissionAction.CREATE);
   const canBlock = isAdmin || can("whatsapp_inbox", PermissionAction.BLOCK);
+  const canDelete = isAdmin || can("whatsapp_inbox", PermissionAction.DELETE);
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -62,6 +67,10 @@ export function InboxPage() {
   const [activeFilter, setActiveFilter] = useState<InboxFilterPreset>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [showPatientSearch, setShowPatientSearch] = useState(false);
+  // Eliminar: selección múltiple y lo que espera confirmación.
+  const [selecting, setSelecting] = useState(false);
+  const [checkedIds, setCheckedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [pendingDelete, setPendingDelete] = useState<InboxConversation[]>([]);
 
   // ── Data hooks ────────────────────────────────────────────────────────────
   const convList = useInboxConversations();
@@ -102,6 +111,116 @@ export function InboxPage() {
   const markRead = useMarkRead();
   const linkPatient = useLinkPatient(afterMutation);
 
+  // ── Delete ────────────────────────────────────────────────────────────────
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
+  // Lo que ESTE usuario mandó eliminar: su propio evento de tiempo real (o el
+  // 404 del chat que tenía abierto) no es «otra persona la eliminó».
+  const ownDeletesRef = useRef<Set<string>>(new Set());
+
+  /** La conversación ya no existe: fuera de la lista, de la selección y del chat. */
+  const dropConversations = useCallback(
+    (ids: readonly string[]) => {
+      if (ids.length === 0) return false;
+      convList.removeConversations(ids);
+      setCheckedIds((prev) => {
+        if (!ids.some((id) => prev.has(id))) return prev;
+        const next = new Set(prev);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      });
+      setPendingDelete((prev) =>
+        prev.some((c) => ids.includes(c.id)) ? prev.filter((c) => !ids.includes(c.id)) : prev,
+      );
+      const openId = selectedIdRef.current;
+      const closedOpenChat = !!openId && ids.includes(openId);
+      if (closedOpenChat) {
+        setSelectedId(null);
+        setShowContactPanel(false);
+        setMobileView("list");
+      }
+      return closedOpenChat;
+    },
+    [convList],
+  );
+
+  const deleteAction = useDeleteConversations({
+    onDeleted: (deletedIds) => {
+      dropConversations(deletedIds);
+      setSelecting(false);
+      setCheckedIds(new Set());
+      convList.refresh();
+      summary.refresh();
+    },
+    // 404: ya no existían. La lista está vieja; se relee entera.
+    onMissing: (requestedIds) => {
+      dropConversations(requestedIds);
+      convList.refresh();
+      summary.refresh();
+    },
+  });
+
+  const handleConfirmDelete = useCallback(() => {
+    const ids = pendingDelete.map((c) => c.id);
+    setPendingDelete([]);
+    ids.forEach((id) => ownDeletesRef.current.add(id));
+    void deleteAction.execute(ids);
+  }, [pendingDelete, deleteAction]);
+
+  const handleConversationDeleted = useCallback(
+    (conversationId: string) => {
+      const closedOpenChat = dropConversations([conversationId]);
+      if (closedOpenChat && !ownDeletesRef.current.has(conversationId)) {
+        notify.info(t("inbox.notify.deletedByOther"));
+      }
+    },
+    [dropConversations, t],
+  );
+
+  // Sin tiempo real (polling) no llega el evento: el chat abierto se entera
+  // porque su detalle responde 404.
+  useEffect(() => {
+    if (!selectedId || convDetail.missingId !== selectedId) return;
+    const closedOpenChat = dropConversations([selectedId]);
+    if (closedOpenChat && !ownDeletesRef.current.has(selectedId)) {
+      notify.info(t("inbox.notify.conversationGone"));
+    }
+    convList.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reacciona solo al 404 del chat abierto
+  }, [convDetail.missingId, selectedId]);
+
+  const handleToggleChecked = useCallback((id: string) => {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < INBOX_DELETE_MAX) next.add(id);
+      return next;
+    });
+  }, []);
+
+  const stopSelecting = useCallback(() => {
+    setSelecting(false);
+    setCheckedIds(new Set());
+  }, []);
+
+  const deletion = useMemo(
+    () =>
+      canDelete
+        ? {
+            selecting,
+            selectedIds: checkedIds,
+            onStartSelecting: () => setSelecting(true),
+            onCancelSelecting: stopSelecting,
+            onToggle: handleToggleChecked,
+            // Solo lo que sigue en la lista: lo que ya no se ve no se elimina a ciegas.
+            onDeleteSelected: () =>
+              setPendingDelete(convList.conversations.filter((c) => checkedIds.has(c.id))),
+            onDeleteOne: (conversation: InboxConversation) => setPendingDelete([conversation]),
+          }
+        : undefined,
+    [canDelete, selecting, checkedIds, stopSelecting, handleToggleChecked, convList.conversations],
+  );
+
   // ── Real-time: SSE (preferred) → adaptive polling (fallback) ────────────
   useInboxRealtime({
     conversationListRefresh: convList.refresh,
@@ -109,6 +228,7 @@ export function InboxPage() {
     messagesRefresh: selectedId ? msgs.refresh : undefined,
     summaryRefresh: summary.refresh,
     activeConversationId: selectedId ?? undefined,
+    onConversationDeleted: handleConversationDeleted,
   });
 
   // ── Auto-mark read ────────────────────────────────────────────────────────
@@ -142,20 +262,22 @@ export function InboxPage() {
     (preset: InboxFilterPreset) => {
       setActiveFilter(preset);
       setSelectedId(null);
+      stopSelecting();
       const def = INBOX_FILTER_PRESETS.find((p) => p.value === preset);
       convList.setQuery({ ...def?.params, pageSize: 20, search: searchTerm || undefined });
     },
-    [convList, searchTerm],
+    [convList, searchTerm, stopSelecting],
   );
 
   const handleSearchChange = useCallback(
     (term: string) => {
       setSearchTerm(term);
       setSelectedId(null);
+      stopSelecting();
       const def = INBOX_FILTER_PRESETS.find((p) => p.value === activeFilter);
       convList.setQuery({ ...def?.params, search: term || undefined, pageSize: 20 });
     },
-    [convList, activeFilter],
+    [convList, activeFilter, stopSelecting],
   );
 
   const handleSend = useCallback(
@@ -245,6 +367,16 @@ export function InboxPage() {
       totalUnread={summary.summary?.totalUnread ?? 0}
       pagination={pagination}
       onLoadMore={handleLoadMore}
+      deletion={deletion}
+    />
+  );
+
+  const deleteDialog = (
+    <InboxDeleteDialog
+      conversations={pendingDelete}
+      currentUserId={currentUserId}
+      onConfirm={handleConfirmDelete}
+      onCancel={() => setPendingDelete([])}
     />
   );
 
@@ -262,6 +394,7 @@ export function InboxPage() {
         canEdit={canEdit}
         canCreate={canCreate}
         canBlock={canBlock}
+        onDelete={canDelete ? () => setPendingDelete([d]) : undefined}
       />
       {d.status === "NEEDS_HUMAN" && <InboxNeedsHumanBanner onTakeover={handleTakeover} />}
       {!d.windowOpen && d.status !== "RESOLVED" && <InboxWindowClosedBanner />}
@@ -317,6 +450,7 @@ export function InboxPage() {
           }}
           onClose={() => setShowPatientSearch(false)}
         />
+        {deleteDialog}
       </div>
     );
   }
@@ -341,6 +475,7 @@ export function InboxPage() {
         }}
         onClose={() => setShowPatientSearch(false)}
       />
+      {deleteDialog}
     </div>
   );
 }

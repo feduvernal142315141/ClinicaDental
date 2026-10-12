@@ -179,7 +179,8 @@ export function useInboxSSE({
       console.debug("[inbox-sse] ticket acquired:", ticket.length > 0);
     }
 
-    const sseUrl = new URL(`${apiUrl}/whatsapp/inbox/events`);
+    // Sin barra final: `https://api/` + `/whatsapp` daría `//whatsapp` y un 404.
+    const sseUrl = new URL(`${apiUrl.replace(/\/+$/, "")}/whatsapp/inbox/events`);
     sseUrl.searchParams.set("ticket", ticket);
     const source = new EventSource(sseUrl.toString());
     sourceRef.current = source;
@@ -211,7 +212,7 @@ export function useInboxSSE({
     const handleEvent = (type: InboxRealtimeEventType) => (e: MessageEvent) => {
       try {
         const data = JSON.parse(e.data);
-        onEventRef.current({ type, ...data });
+        onEventRef.current({ ...data, type });
       } catch {
         // Invalid JSON — fire event with type only, don't break stream
         onEventRef.current({ type });
@@ -221,10 +222,21 @@ export function useInboxSSE({
       }
     };
 
-    source.addEventListener("message_new", handleEvent("message_new"));
-    source.addEventListener("message_status", handleEvent("message_status"));
-    source.addEventListener("conversation_update", handleEvent("conversation_update"));
-    source.addEventListener("summary_update", handleEvent("summary_update"));
+    // Nombres que emite el backend (`InboxRealtimeAfterCommitListener`) → tipo
+    // interno. `*_update` son los nombres del contrato anterior: se siguen
+    // escuchando para no depender del orden de despliegue.
+    const eventNames: Record<string, InboxRealtimeEventType> = {
+      message_new: "message_new",
+      message_status: "message_status",
+      conversation_changed: "conversation_update",
+      conversation_update: "conversation_update",
+      conversation_deleted: "conversation_deleted",
+      summary_changed: "summary_update",
+      summary_update: "summary_update",
+    };
+    for (const [name, type] of Object.entries(eventNames)) {
+      source.addEventListener(name, handleEvent(type));
+    }
     // Backend optional confirmation event
     source.addEventListener("connected", () => {
       if (process.env.NODE_ENV === "development") {

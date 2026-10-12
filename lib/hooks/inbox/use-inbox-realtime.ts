@@ -22,6 +22,8 @@ export interface UseInboxRealtimeOptions {
   summaryRefresh: () => void;
   /** The currently selected conversation id (to target refreshes). */
   activeConversationId?: string;
+  /** Someone removed this conversation from the inbox (possibly this user). */
+  onConversationDeleted?: (conversationId: string) => void;
 }
 
 interface InvalidationFlags {
@@ -60,6 +62,7 @@ export function useInboxRealtime({
   messagesRefresh,
   summaryRefresh,
   activeConversationId,
+  onConversationDeleted,
 }: UseInboxRealtimeOptions): void {
   // ── Refs for latest values (no stale closures) ─────────────────────
   const activeIdRef = useRef(activeConversationId);
@@ -70,12 +73,14 @@ export function useInboxRealtime({
     activeConversationRefresh,
     messagesRefresh,
     summaryRefresh,
+    onConversationDeleted,
   });
   cbRefs.current = {
     conversationListRefresh,
     activeConversationRefresh,
     messagesRefresh,
     summaryRefresh,
+    onConversationDeleted,
   };
 
   // ── Coalescing queue ──────────────────────────────────────────────
@@ -115,6 +120,8 @@ export function useInboxRealtime({
   //                INACTIVE: (nothing)
   // conversation_update ACTIVE: conversationList + conversationDetail
   //                   INACTIVE: conversationList
+  // conversation_deleted: host callback (drops the row, closes the chat) + summary.
+  //                 No list/detail refetch: the row is gone and its detail is a 404.
   // summary_update:   summary
   //
   const handleSSEEvent = useCallback(
@@ -140,6 +147,13 @@ export function useInboxRealtime({
             conversationList: true,
             ...(isActive ? { conversationDetail: true } : {}),
           });
+          break;
+
+        case "conversation_deleted":
+          if (event.conversationId) {
+            cbRefs.current.onConversationDeleted?.(event.conversationId);
+          }
+          invalidate({ summary: true });
           break;
 
         case "summary_update":
