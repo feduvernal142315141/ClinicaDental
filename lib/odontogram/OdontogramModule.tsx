@@ -26,6 +26,8 @@ function OdontogramModuleRuntime({
   onError,
   onSaveStart,
   onSaveSuccess,
+  onInSync,
+  onOutOfSync,
   finalizeOpen,
   onFinalizeClose,
   onFinalizeSuccess,
@@ -46,12 +48,30 @@ function OdontogramModuleRuntime({
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const explicitSaveRef = useRef(false);
+  // Señales de «al día con el servidor». Van en refs: cambiar su identidad no
+  // puede relanzar la carga ni cancelar un guardado armado.
+  const syncSignalsRef = useRef({ onInSync, onOutOfSync });
+  useEffect(() => {
+    syncSignalsRef.current = { onInSync, onOutOfSync };
+  });
+  // Sube con cada edición: un guardado solo deja el odontograma «al día» si
+  // nadie lo tocó desde que se tomó su snapshot.
+  const changeSeqRef = useRef(0);
   const enqueueSave = useCallback((snapshot: OdontogramSnapshot) => {
+    const seq = changeSeqRef.current;
     const queued = saveQueueRef.current.catch(() => undefined).then(async () => {
       onSaveStart?.();
-      await adapter.save(patientId, snapshot, clinicId);
+      try {
+        await adapter.save(patientId, snapshot, clinicId);
+      } catch (error) {
+        syncSignalsRef.current.onOutOfSync?.();
+        throw error;
+      }
       setLoadError(null);
       onSaveSuccess?.();
+      if (seq === changeSeqRef.current) {
+        syncSignalsRef.current.onInSync?.(snapshot);
+      }
     });
     saveQueueRef.current = queued;
     return queued;
@@ -81,6 +101,7 @@ function OdontogramModuleRuntime({
     hydratingRef.current = true;
     loadFailedRef.current = false;
     setIsLoading(true);
+    syncSignalsRef.current.onOutOfSync?.();
 
     void (async () => {
       try {
@@ -93,6 +114,8 @@ function OdontogramModuleRuntime({
         storeApi.getState().replaceSnapshot(snapshot);
         loadFailedRef.current = false;
         setLoadError(null);
+        changeSeqRef.current += 1;
+        syncSignalsRef.current.onInSync?.(storeApi.getState().getSnapshot());
       } catch (error) {
         if (!active) return;
 
@@ -133,6 +156,9 @@ function OdontogramModuleRuntime({
         state.metadata === prev.metadata
       )
         return;
+
+      changeSeqRef.current += 1;
+      syncSignalsRef.current.onOutOfSync?.();
 
       const snapshot = state.getSnapshot();
       onChange?.(snapshot);
@@ -219,6 +245,8 @@ export function OdontogramModule({
   onError,
   onSaveStart,
   onSaveSuccess,
+  onInSync,
+  onOutOfSync,
   finalizeOpen,
   onFinalizeClose,
   onFinalizeSuccess,
@@ -245,6 +273,8 @@ export function OdontogramModule({
         onError={onError}
         onSaveStart={onSaveStart}
         onSaveSuccess={onSaveSuccess}
+        onInSync={onInSync}
+        onOutOfSync={onOutOfSync}
         finalizeOpen={finalizeOpen}
         onFinalizeClose={onFinalizeClose}
         onFinalizeSuccess={onFinalizeSuccess}

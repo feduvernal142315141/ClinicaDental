@@ -187,6 +187,16 @@ export interface OdontogramModuleProps {
   onError?: (error: unknown) => void;
   onSaveStart?: () => void;
   onSaveSuccess?: () => void;
+  /**
+   * El odontograma local coincide con lo que el servidor tiene guardado: recién
+   * cargado, o recién aceptado en un guardado y sin ediciones posteriores.
+   */
+  onInSync?: (snapshot: OdontogramSnapshot) => void;
+  /**
+   * Dejó de coincidir: está cargando, tiene cambios sin guardar, o la carga o
+   * el guardado fallaron. Lo que dependa de un odontograma fiable debe parar.
+   */
+  onOutOfSync?: () => void;
   finalizeOpen?: boolean;
   onFinalizeClose?: () => void;
   onFinalizeSuccess?: (result: { followUpId?: string }) => void;
