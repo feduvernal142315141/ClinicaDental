@@ -73,7 +73,7 @@ function byCreatedAtDesc(
 }
 
 /** SOLO LECTURA: el plan activo del paciente, o `null` si no tiene ninguno. */
-async function findActivePlan(
+export async function findActivePlan(
   patientId: string,
 ): Promise<TreatmentPlanResponse | null> {
   const page = await treatmentPlanService.getTreatmentPlansByPatient(
@@ -120,6 +120,24 @@ async function createActivePlan(
     updatedAt: new Date().toISOString(),
     active: true,
   };
+}
+
+/**
+ * ESCRITURA: el plan activo del paciente, creándolo si no tiene ninguno. Todas
+ * las vías que crean el borrador (la pantalla del plan, el puente del
+ * odontograma) pasan por aquí para compartir {@link inFlightByPatient}.
+ */
+export function ensureActivePlan(
+  patientId: string,
+): Promise<TreatmentPlanResponse> {
+  const pending = inFlightByPatient.get(patientId);
+  if (pending) return pending;
+
+  const promise = createActivePlan(patientId).finally(() => {
+    inFlightByPatient.delete(patientId);
+  });
+  inFlightByPatient.set(patientId, promise);
+  return promise;
 }
 
 /**
@@ -237,15 +255,7 @@ export function usePatientTreatmentPlan(
     const known = planRef.current;
     if (known && known.patientId === patientId) return known.id;
 
-    const pending =
-      inFlightByPatient.get(patientId) ??
-      (() => {
-        const promise = createActivePlan(patientId).finally(() => {
-          inFlightByPatient.delete(patientId);
-        });
-        inFlightByPatient.set(patientId, promise);
-        return promise;
-      })();
+    const pending = ensureActivePlan(patientId);
 
     // Se reserva el turno ANTES de esperar: si había una lectura en vuelo, su
     // resultado ya no puede pisar al plan que acabamos de resolver.

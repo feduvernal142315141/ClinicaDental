@@ -13,6 +13,7 @@ import { usePermission } from "@/lib/hooks/use-permission";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useAuth } from "@/lib/contexts/auth-context";
 import { useOdontogramByVisit } from "@/lib/hooks/odontogram/useOdontogramByVisit";
+import { useOdontogramPlanBridge } from "@/lib/hooks/odontogram/useOdontogramPlanBridge";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings";
 import { useToothNotation } from "@/lib/contexts/tooth-notation-context";
 import { useOdontogramDictationAvailability } from "@/lib/hooks/speech/use-odontogram-dictation-availability";
@@ -238,6 +239,18 @@ export function PatientOdontogramPanel({
     : !canEditClinical
       ? "no-permission"
       : readOnlyReasonFor(visitEditability);
+  // Lo planificado en una pieza es una línea del plan del paciente. Nunca en
+  // solo lectura (un odontograma histórico no es lo planificado hoy), y solo
+  // con los permisos que el puente necesita para crear, actualizar y quitar
+  // líneas: sin ellos cada intento acabaría en la alerta global de 403.
+  const canSyncTreatmentPlan =
+    isAdmin ||
+    (can("odontogram", PermissionAction.CREATE) &&
+      can("odontogram", PermissionAction.EDIT) &&
+      can("odontogram", PermissionAction.DELETE));
+  const planBridge = useOdontogramPlanBridge(patient.id, {
+    enabled: !readOnly && canSyncTreatmentPlan,
+  });
   const isOutOfConsultationEditing =
     !readOnly && !isHistoricMode && !activeAppointmentId;
 
@@ -312,6 +325,8 @@ export function PatientOdontogramPanel({
         onChange={isHistoricMode ? undefined : handleSnapshotChange}
         onSaveStart={handleSaveStart}
         onSaveSuccess={handleSaveSuccess}
+        onInSync={planBridge.onInSync}
+        onOutOfSync={planBridge.onOutOfSync}
         onError={handleError}
         finalizeOpen={finalizeOpen}
         onFinalizeClose={onFinalizeClose}
