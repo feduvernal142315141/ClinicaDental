@@ -158,7 +158,7 @@ export function ConsultationDocuments({ children, visitId, persist, documentatio
   const draftComplete = (template: DocumentationTemplate) => (!needsSelectedDocumentDate(template.blocks) || /^\d{4}-\d{2}-\d{2}$/.test(documentDates[template.id] ?? "")) && documentObservationTitles(template.blocks).every(title => !!observations[template.id]?.[title]?.trim());
   const validObservations = !!draft && fieldTitles.every(title => { const value = observations[draft.id]?.[title]?.trim(); return !!value && value.length <= 5000; });
   const generate = async () => {
-    if (!draft) return;
+    if (!draft || readOnly || !bundle || signing) return;
     await persist();
     const applicableObservations = Object.fromEntries(Object.entries(observations).filter(([id]) => id === draft.id));
     const next = await service.prepareVisitDocuments(visitId, { eventIds: selected, expectedSelectionHash: bundle!.selectionHash, templateIds: [draft.id], observations: applicableObservations, ...(requiresDate ? { documentDates: { [draft.id]: documentDates[draft.id] } } : {}) });

@@ -1,6 +1,7 @@
 "use client";
 
-import { AlertTriangle, FileText, Loader2, Paperclip, Stethoscope } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, Eye, FileCheck2, FileText, Loader2, Paperclip, Stethoscope } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -18,6 +19,9 @@ import {
 import type { Appointment } from "@/lib/entity/appointment/appointments";
 import { cn } from "@/lib/utils/utils";
 import { SECTION_LABEL_CLASS } from "./section-label";
+import { PdfPreview } from "@/components/features/documentation/pdf-preview";
+import { documentationService } from "@/lib/services/documentation/documentation.service";
+import { notifyApiError } from "@/lib/utils/notify-error";
 
 interface VisitHistoryDrawerProps {
   open: boolean;
@@ -79,6 +83,8 @@ export function VisitHistoryDrawer({
     formattedVisitDate,
     odontogramSnapshots,
     hasOdontogram,
+    consultationDocuments,
+    consultationDocumentsError,
     handleViewOdontogram,
   } = useVisitHistoryDrawer({
     open,
@@ -87,6 +93,19 @@ export function VisitHistoryDrawer({
     onClose,
     onViewOdontogram,
   });
+  const [documentPreview, setDocumentPreview] = useState<Blob | null>(null);
+  const [previewingDocumentId, setPreviewingDocumentId] = useState<string | null>(null);
+
+  const openDocumentPreview = async (documentId: string) => {
+    setPreviewingDocumentId(documentId);
+    try {
+      setDocumentPreview(await documentationService.pdf(documentId));
+    } catch (error) {
+      notifyApiError("No se pudo abrir el consentimiento", error);
+    } finally {
+      setPreviewingDocumentId(null);
+    }
+  };
   return (
     <Sheet
       open={open}
@@ -265,6 +284,59 @@ export function VisitHistoryDrawer({
                 )}
               </section>
               <section>
+                <SectionTitle>
+                  <span className="flex items-center gap-2">
+                    <FileCheck2 className="h-3 w-3" />
+                    Consentimientos de la consulta
+                  </span>
+                </SectionTitle>
+                {consultationDocumentsError ? (
+                  <div className="flex flex-col items-center gap-1 py-6 text-center">
+                    <AlertTriangle className="h-5 w-5 text-subtle" aria-hidden="true" />
+                    <p className="text-xs text-subtle">
+                      No se pudieron cargar los consentimientos de esta consulta
+                    </p>
+                  </div>
+                ) : consultationDocuments?.groups.length ? (
+                  <ul className="flex flex-col gap-2">
+                    {consultationDocuments.groups.map(({ document, signatureRequired, treatments }) => (
+                      <li key={document.id} className="rounded-lg border border-hairline p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">{document.title}</p>
+                            <p className="text-xs text-subtle">
+                              {document.status === "SIGNED" ? "Firmado" : "Pendiente de firma"}
+                              {document.signedAt
+                                ? ` · ${new Date(document.signedAt).toLocaleString("es-ES")}`
+                                : ""}
+                              {signatureRequired ? " · Requerido" : " · Opcional"}
+                            </p>
+                            {treatments.length > 0 && (
+                              <p className="mt-1 text-xs text-subtle">
+                                {treatments.length} tratamiento{treatments.length === 1 ? "" : "s"} asociado{treatments.length === 1 ? "" : "s"}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className="inline-flex shrink-0 items-center gap-1 text-xs text-brand hover:underline disabled:opacity-50"
+                            disabled={previewingDocumentId === document.id}
+                            onClick={() => void openDocumentPreview(document.id)}
+                          >
+                            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                            {previewingDocumentId === document.id ? "Abriendo…" : "Ver PDF"}
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    No hay consentimientos asociados a esta consulta.
+                  </p>
+                )}
+              </section>
+              <section>
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <SectionTitle>
                     <span className="flex items-center gap-2">
@@ -338,6 +410,11 @@ export function VisitHistoryDrawer({
           </div>
         )}
       </SheetContent>
+      <PdfPreview
+        blob={documentPreview}
+        title="Consentimiento de la consulta"
+        onClose={() => setDocumentPreview(null)}
+      />
     </Sheet>
   );
 }

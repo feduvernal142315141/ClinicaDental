@@ -85,7 +85,7 @@ describe("document signature fields", () => {
     expect(patientShortcut).toHaveClass("relative", "sm:fixed", "sm:left-[clamp(1rem,12vw,14rem)]");
     expect(patientShortcut).not.toHaveClass("fixed");
     rerender(<SignableDocument document={document} disabled={false} onSign={vi.fn()} />);
-    expect(screen.getByRole("button", { name: "documentation.goToSignature" }).parentElement).toHaveClass("relative", "sm:fixed", "sm:left-6");
+    expect(screen.getByRole("button", { name: "documentation.goToSignature" }).parentElement).toHaveClass("relative", "sm:fixed", "sm:left-[clamp(4rem,13vw,18rem)]");
   });
   it("does not expose signature controls for a different document hash", async () => {
     vi.mocked(documentationService.signingPage).mockResolvedValue({ page: 0, pageCount: 1, width: 600, height: 800, imageDataUrl: "data:image/png;base64,test", documentHash: "other", fields: [] });

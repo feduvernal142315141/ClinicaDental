@@ -4,9 +4,11 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useVisitRecord } from "@/lib/hooks/clinical-history";
 import { useOdontogramVisitSnapshots } from "@/lib/hooks/odontogram/useOdontogramVisitSnapshots";
 import { clinicalHistoryService } from "@/lib/services/clinical-history";
+import { documentationService } from "@/lib/services/documentation/documentation.service";
 import { notifyApiError } from "@/lib/utils/notify-error";
 import type { Appointment } from "@/lib/entity/appointment/appointments";
 import type { PatientAttachment } from "@/lib/entity/patientAttachment";
+import type { VisitDocuments } from "@/lib/entity/documentation";
 
 interface UseVisitHistoryDrawerParams {
   open: boolean;
@@ -48,26 +50,52 @@ export function useVisitHistoryDrawer({
   } = useOdontogramVisitSnapshots();
   const [attachments, setAttachments] = useState<PatientAttachment[]>([]);
   const [attachmentsError, setAttachmentsError] = useState(false);
+  const [consultationDocuments, setConsultationDocuments] =
+    useState<VisitDocuments | null>(null);
+  const [consultationDocumentsError, setConsultationDocumentsError] =
+    useState(false);
 
   useEffect(() => {
     if (!open || !appointmentId) {
       resetOdontogramSnapshots();
+      setConsultationDocuments(null);
+      setConsultationDocumentsError(false);
       return;
     }
 
+    let cancelled = false;
     loadOdontogramSnapshots(appointmentId);
     setAttachmentsError(false);
-    clinicalHistoryService
-      .getVisitAttachments(patientId, appointmentId)
-      .then((data) => {
-        setAttachments(data);
-        setAttachmentsError(false);
-      })
-      .catch((error) => {
-        notifyApiError("No se pudieron cargar los archivos adjuntos", error);
-        setAttachments([]);
-        setAttachmentsError(true);
+    setConsultationDocumentsError(false);
+    setConsultationDocuments(null);
+
+    void Promise.allSettled([
+      clinicalHistoryService.getVisitAttachments(patientId, appointmentId),
+      documentationService.visitDocuments(appointmentId),
+    ])
+      .then(([attachmentsResult, documentsResult]) => {
+        if (cancelled) return;
+        if (attachmentsResult.status === "fulfilled") {
+          setAttachments(attachmentsResult.value);
+          setAttachmentsError(false);
+        } else {
+          setAttachments([]);
+          setAttachmentsError(true);
+          notifyApiError("No se pudieron cargar los archivos adjuntos", attachmentsResult.reason);
+        }
+        if (documentsResult.status === "fulfilled") {
+          setConsultationDocuments(documentsResult.value);
+          setConsultationDocumentsError(false);
+        } else {
+          setConsultationDocuments(null);
+          setConsultationDocumentsError(true);
+          notifyApiError("No se pudieron cargar los consentimientos", documentsResult.reason);
+        }
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     open,
     appointmentId,
@@ -112,6 +140,8 @@ export function useVisitHistoryDrawer({
     formattedVisitDate,
     odontogramSnapshots,
     hasOdontogram,
+    consultationDocuments,
+    consultationDocumentsError,
     handleViewOdontogram,
   };
 }
