@@ -21,6 +21,8 @@ import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { notify } from "@/lib/utils/notify";
 import { applyServerErrorToFields } from "@/lib/validation/server-errors";
 import { useI18n } from "@/lib/contexts/i18n-context";
+import { useClinicModules } from "@/lib/hooks/modules";
+import { CLINIC_MODULES } from "@/lib/modules/clinic-modules";
 
 export type { ServiceFormValues } from "@/lib/hooks/services/service-form.schema";
 
@@ -54,6 +56,7 @@ export function useServiceForm({
   const { t } = useI18n();
   const router = useRouter();
   const { can, isAdmin } = usePermission();
+  const clinicModules = useClinicModules();
 
   const isEdit = useMemo(() => !!serviceId, [serviceId]);
   const serviceFormSchema = useMemo(() => createServiceFormSchema(t), [t]);
@@ -151,7 +154,9 @@ export function useServiceForm({
   }, [type, assistantVisible, form, t]);
 
   const canEditAssistant =
-    (isAdmin || can("service", PermissionAction.EDIT)) && !assistantForbidden;
+    clinicModules.has(CLINIC_MODULES.AI_RECEPTIONIST) &&
+    (isAdmin || can("service", PermissionAction.EDIT)) &&
+    !assistantForbidden;
   const assistantBlock = assistantToggleBlock({ type, active: serviceActive });
 
   const leave = useCallback(() => {

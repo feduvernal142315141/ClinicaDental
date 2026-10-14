@@ -24,6 +24,8 @@ import { useI18n } from "@/lib/contexts/i18n-context";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useBillingSections } from "@/lib/hooks/billing/use-billing-navigation";
 import { useLeadAccess } from "@/lib/hooks/leads/use-lead-module";
+import { useClinicModules } from "@/lib/hooks/modules";
+import { CLINIC_MODULES, type ClinicModuleCode } from "@/lib/modules/clinic-modules";
 
 export interface MenuItem {
   path: string;
@@ -62,39 +64,45 @@ export function useSidebarNavigation() {
   const { t } = useI18n();
   const billingSections = useBillingSections();
   const { visible: leadsVisible } = useLeadAccess();
+  const clinicModules = useClinicModules();
+  const { has: hasClinicModule } = clinicModules;
 
   return useMemo(() => {
-    const hasModule = (moduleKey: string): boolean =>
+    const hasPermission = (moduleKey: string): boolean =>
       isAdmin ||
       can(moduleKey, PermissionAction.CREATE) ||
       can(moduleKey, PermissionAction.EDIT) ||
       can(moduleKey, PermissionAction.DELETE) ||
       can(moduleKey, PermissionAction.BLOCK);
+    const hasAccess = (module: ClinicModuleCode, permission?: string): boolean =>
+      hasClinicModule(module) && (!permission || hasPermission(permission));
 
     // ── Comunicación ────────────────────────────────────────────────────────
     // Agrupa Bandeja, Campañas, Segmentos y Plantillas bajo un solo menú.
     const comunicacionChildren: MenuItem[] = [];
 
-    if (hasModule("whatsapp_inbox")) {
+    if (hasAccess(CLINIC_MODULES.COMMS_WHATSAPP, "whatsapp_inbox")) {
       comunicacionChildren.push({
         path: "/inbox",
         label: t("navigation.inbox"),
         icon: MessageSquare,
       });
     }
-    if (hasModule("campaign")) {
+    if (hasAccess(CLINIC_MODULES.MARKETING_CAMPAIGNS, "campaign")) {
       comunicacionChildren.push({
         path: "/growth/campaigns",
         label: t("navigation.campaigns"),
         icon: Megaphone,
       });
+    }
+    if (hasAccess(CLINIC_MODULES.MARKETING_SEGMENTS, "campaign")) {
       comunicacionChildren.push({
         path: "/growth/segments",
         label: t("navigation.segments"),
         icon: Filter,
       });
     }
-    if (hasModule("notification")) {
+    if (hasAccess(CLINIC_MODULES.CORE_SETTINGS, "notification")) {
       comunicacionChildren.push({
         path: "/settings/notifications",
         label: t("navigation.templates"),
@@ -105,27 +113,31 @@ export function useSidebarNavigation() {
     // ── Configuración ───────────────────────────────────────────────────────
     const settingsChildren: MenuItem[] = (
       [
-        { path: "/settings/general", label: t("navigation.generalSettings"), icon: Sliders, module: "general_option" },
-        { path: "/settings/doctors", label: t("navigation.users"), icon: UserCog, module: "doctor" },
-        { path: "/settings/roles", label: t("navigation.roles"), icon: Shield, module: "role" },
-        { path: "/settings/services", label: t("navigation.services"), icon: Briefcase, module: "service" },
-        { path: "/settings/labels", label: t("navigation.labels"), icon: Tag, module: "appointments" },
-      ] satisfies (MenuItem & { module: string })[]
+        { path: "/settings/general", label: t("navigation.generalSettings"), icon: Sliders, permission: "general_option", commercialModule: CLINIC_MODULES.CORE_SETTINGS },
+        { path: "/settings/doctors", label: t("navigation.users"), icon: UserCog, permission: "doctor", commercialModule: CLINIC_MODULES.CORE_PROFESSIONALS },
+        { path: "/settings/roles", label: t("navigation.roles"), icon: Shield, permission: "role", commercialModule: CLINIC_MODULES.CORE_SETTINGS },
+        { path: "/settings/services", label: t("navigation.services"), icon: Briefcase, permission: "service", commercialModule: CLINIC_MODULES.CORE_SERVICES },
+        { path: "/settings/labels", label: t("navigation.labels"), icon: Tag, permission: "appointments", commercialModule: CLINIC_MODULES.CORE_APPOINTMENTS },
+      ] satisfies (MenuItem & { permission: string; commercialModule: ClinicModuleCode })[]
     )
-      .filter((item) => hasModule(item.module))
+      .filter((item) => hasAccess(item.commercialModule, item.permission))
       .map(({ path, label, icon }) => ({ path, label, icon }));
 
-    settingsChildren.push({ path: "/documentation", label: t("documentation.title"), icon: FileText });
+    if (hasAccess(CLINIC_MODULES.DOCUMENTATION, "documentation")) {
+      settingsChildren.push({ path: "/documentation", label: t("documentation.title"), icon: FileText });
+    }
 
     // ── Menú principal ──────────────────────────────────────────────────────
     const main: MenuItem[] = [];
 
-    main.push({ path: "/dashboard", label: t("navigation.dashboard"), icon: LayoutDashboard });
+    if (hasClinicModule(CLINIC_MODULES.CORE_DASHBOARD)) {
+      main.push({ path: "/dashboard", label: t("navigation.dashboard"), icon: LayoutDashboard });
+    }
 
-    if (hasModule("patients")) {
+    if (hasAccess(CLINIC_MODULES.CORE_PATIENTS, "patients")) {
       main.push({ path: "/patients", label: t("navigation.patients"), icon: Users });
     }
-    if (hasModule("appointments")) {
+    if (hasAccess(CLINIC_MODULES.CORE_APPOINTMENTS, "appointments")) {
       main.push({ path: "/appointments", label: t("navigation.appointments"), icon: Calendar });
     }
     // Finanzas: solo con el módulo FINANCE activo en la clínica y permiso `billing`.
@@ -177,5 +189,5 @@ export function useSidebarNavigation() {
       secondaryMenuItems: [] as MenuItem[],
       isActiveRoute,
     };
-  }, [can, isAdmin, t, billingSections, leadsVisible]);
+  }, [can, isAdmin, t, billingSections, leadsVisible, hasClinicModule]);
 }

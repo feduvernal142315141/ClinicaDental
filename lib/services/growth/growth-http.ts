@@ -1,6 +1,6 @@
 import type { AxiosRequestConfig, Method } from "axios";
 import apiInstance from "@/lib/services/apiConfig";
-import { emitLeadModuleDisabled } from "@/lib/services/leads/leads-errors";
+import { emitClinicModuleDisabled } from "@/lib/modules/module-disabled-events";
 import { toGrowthError } from "./growth-errors";
 
 /**
@@ -32,7 +32,7 @@ export async function growthRequest<T>(
   } catch (err) {
     const response = (err as { response?: { status?: number; data?: unknown } }).response;
     const error = toGrowthError(response?.status, response?.data, fallbackMessage);
-    if (error.errorCode === "MODULE_NOT_ENABLED") emitLeadModuleDisabled();
+    if (error.errorCode === "MODULE_NOT_ENABLED") emitClinicModuleDisabled();
     throw error;
   }
 }

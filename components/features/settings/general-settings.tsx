@@ -11,6 +11,8 @@ import { ScheduleEditor } from "@/components/features/settings/schedule-editor";
 import { PolicyFields } from "@/components/features/settings/policy-fields";
 import { OdontogramFields } from "@/components/features/settings/odontogram-fields";
 import { useI18n } from "@/lib/contexts/i18n-context";
+import { useClinicModules } from "@/lib/hooks/modules";
+import { CLINIC_MODULES } from "@/lib/modules/clinic-modules";
 
 /** Scrollea suavemente hacia el primer campo inválido tras un submit fallido. */
 function scrollToFirstInvalidField() {
@@ -49,6 +51,7 @@ function GeneralSettingsSkeleton() {
 }
 
 export function GeneralSettings() {
+  const clinicModules = useClinicModules();
   const { t } = useI18n();
   const {
     form,
@@ -166,16 +169,20 @@ export function GeneralSettings() {
               title={t("settings.general.policySectionTitle")}
               subtitle={t("settings.general.policySectionSubtitle")}
             />
-            <PolicyFields disabled={disabled} />
+            <PolicyFields
+              disabled={disabled}
+              showReminders={clinicModules.has(CLINIC_MODULES.COMMS_REMINDERS)}
+              showAssistant={clinicModules.has(CLINIC_MODULES.AI_RECEPTIONIST)}
+            />
           </section>
 
-          <section className="bento p-6">
+          {clinicModules.has(CLINIC_MODULES.DENTAL_ODONTOGRAM) && <section className="bento p-6">
             <SectionHeader
               title={t("settings.general.odontogramSectionTitle")}
               subtitle={t("settings.general.odontogramSectionSubtitle")}
             />
             <OdontogramFields disabled={disabled} />
-          </section>
+          </section>}
 
           {/* Barra de acciones sticky ESTÁNDAR del proyecto (FormActionBar). En
               settings usa el patrón "Descartar" (reset) y sólo habilita cuando hay

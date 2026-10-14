@@ -27,6 +27,10 @@ import { useVisitNoteDrafts } from "@/lib/store/useVisitNoteDrafts";
 import { clinicGeneralSettingsService } from "@/lib/services/settings/clinic-general-settings.service";
 import { clearPatientAttachmentsCache } from "@/lib/hooks/patientAttachments/usePatientAttachments";
 import { resolveClinicSlug } from "@/lib/auth/clinic-slug";
+import {
+  clearClinicCapabilitiesSessionId,
+  disconnectClinicCapabilitiesSession,
+} from "@/lib/services/modules/clinic-capabilities-sse.service";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -230,6 +234,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     try {
+      try {
+        await disconnectClinicCapabilitiesSession();
+      } catch {
+        // El cierre local de EventSource continúa aunque el backend ya no responda.
+      }
       await fetch("/api/auth/logout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -239,6 +248,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error during logout:", error);
       clearSessionAndRedirectToLogin();
+    } finally {
+      clearClinicCapabilitiesSessionId();
     }
   };
 

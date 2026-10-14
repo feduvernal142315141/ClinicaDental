@@ -53,6 +53,8 @@ import {
   useSyncMetaTemplates,
 } from "@/lib/hooks/use-sync-meta-templates";
 import { usePermission } from "@/lib/hooks/use-permission";
+import { useClinicModules } from "@/lib/hooks/modules";
+import { CLINIC_MODULES } from "@/lib/modules/clinic-modules";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useI18n } from "@/lib/contexts/i18n-context";
 import {
@@ -64,6 +66,9 @@ import {
 
 export function NotificationsSettings() {
   const { t } = useI18n();
+  const clinicModules = useClinicModules();
+  const whatsappEnabled = clinicModules.has(CLINIC_MODULES.COMMS_WHATSAPP);
+  const remindersEnabled = clinicModules.has(CLINIC_MODULES.COMMS_REMINDERS);
   // Estado para Email general (localStorage, compatible con anterior)
   const [settings, setSettings] = useState<NotificationSettings>(
     getNotificationSettings()
@@ -122,12 +127,14 @@ export function NotificationsSettings() {
     const loadData = async () => {
       setLoading(true);
       try {
-        const [configs, templates] = await Promise.all([
-          reminderConfigService.getReminderConfigs(),
-          clinicTemplateService.getClinicTemplates(),
-        ]);
-        setReminderConfigs(configs);
-        setClinicTemplates(templates);
+        const requests: Promise<void>[] = [];
+        if (remindersEnabled) {
+          requests.push(reminderConfigService.getReminderConfigs().then(setReminderConfigs));
+        }
+        if (whatsappEnabled || remindersEnabled) {
+          requests.push(clinicTemplateService.getClinicTemplates().then(setClinicTemplates));
+        }
+        await Promise.all(requests);
       } catch (error) {
         console.error("Error loading data:", error);
         notify.error(t("settings.notifications.loadError"));
@@ -137,7 +144,7 @@ export function NotificationsSettings() {
     };
 
     loadData();
-  }, []);
+  }, [remindersEnabled, whatsappEnabled, t]);
 
   // Guardar cambios en Email config
   const handleSaveEmailConfig = () => {
@@ -489,24 +496,24 @@ export function NotificationsSettings() {
         </Button>
       </div>
 
-      <Tabs defaultValue="whatsapp" className="space-y-4">
+      <Tabs defaultValue={whatsappEnabled ? "whatsapp" : remindersEnabled ? "reminders" : "email"} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="whatsapp">
+          {whatsappEnabled && <TabsTrigger value="whatsapp">
             <MessageSquare className="w-4 h-4 mr-2" />
             {t("settings.notifications.tabs.whatsapp")}
-          </TabsTrigger>
+          </TabsTrigger>}
           <TabsTrigger value="email">
             <Mail className="w-4 h-4 mr-2" />
             {t("settings.notifications.tabs.email")}
           </TabsTrigger>
-          <TabsTrigger value="reminders">
+          {remindersEnabled && <TabsTrigger value="reminders">
             <Clock className="w-4 h-4 mr-2" />
             {t("settings.notifications.tabs.reminders")}
-          </TabsTrigger>
+          </TabsTrigger>}
         </TabsList>
 
         {/* TAB: WhatsApp Templates */}
-        <TabsContent value="whatsapp">
+        {whatsappEnabled && <TabsContent value="whatsapp">
           <WhatsAppTemplatesPanel
             templates={clinicTemplates}
             loading={loading}
@@ -522,7 +529,7 @@ export function NotificationsSettings() {
           />
           <TemplateRepublishResult result={republishResult} onClose={clearRepublishResult} />
           <TemplateDeleteResult result={deleteResult} onClose={clearDeleteResult} />
-        </TabsContent>
+        </TabsContent>}
 
         {/* TAB: Email */}
         <TabsContent value="email" className="space-y-4">
@@ -721,7 +728,7 @@ export function NotificationsSettings() {
         </TabsContent>
 
         {/* TAB: Recordatorios */}
-        <TabsContent value="reminders">
+        {remindersEnabled && <TabsContent value="reminders">
           <RemindersPanel
             reminders={reminderConfigs}
             templates={clinicTemplates}
@@ -784,7 +791,7 @@ export function NotificationsSettings() {
               }).finally(() => setSavingReminder(false));
             }}
           />
-        </TabsContent>
+        </TabsContent>}
       </Tabs>
     </div>
   );

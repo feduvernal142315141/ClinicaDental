@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/primitives/shadcn/button";
 import { Select } from "@/components/ui/controls/select";
 import { AvatarField } from "@/components/ui/controls/avatar-field";
 import { ServiceDocumentationFields } from "./ServiceDocumentationFields";
+import { useClinicModules } from "@/lib/hooks/modules";
+import { CLINIC_MODULES } from "@/lib/modules/clinic-modules";
 import { useServiceForm } from "@/lib/hooks/services/use-service-form";
 import { useClinicGeneralSettings } from "@/lib/hooks/settings";
 import { DEFAULT_CLINIC_GENERAL_SETTINGS } from "@/lib/entity/settings";
@@ -105,6 +107,7 @@ export function ServiceForm({
   basePath = "/settings/services",
 }: ServiceFormProps) {
   const { t } = useI18n();
+  const clinicModules = useClinicModules();
   const { form, isEdit, loading, handleSubmit, handleCancel, assistant } =
     useServiceForm({
       serviceId,
@@ -364,10 +367,12 @@ export function ServiceForm({
           </div>
         </section>
 
-        <ServiceDocumentationFields form={form} disabled={serviceFieldsDisabled} />
+        {clinicModules.has(CLINIC_MODULES.DOCUMENTATION) && (
+          <ServiceDocumentationFields form={form} disabled={serviceFieldsDisabled} />
+        )}
 
         {/* Odontograma */}
-        <section className="bento p-4 lg:p-6">
+        {clinicModules.has(CLINIC_MODULES.DENTAL_ODONTOGRAM) && <section className="bento p-4 lg:p-6">
           <SectionHeader
             icon={<Stethoscope className="h-5 w-5" />}
             title={t("services.form.odontogramTitle")}
@@ -522,10 +527,10 @@ export function ServiceForm({
               </div>
             </div>
           )}
-        </section>
+        </section>}
 
         {/* Asistente virtual: se guarda con su propio endpoint, después del servicio. */}
-        <section className="bento p-4 lg:p-6">
+        {clinicModules.has(CLINIC_MODULES.AI_RECEPTIONIST) && <section className="bento p-4 lg:p-6">
           <SectionHeader
             icon={<Bot className="h-5 w-5" />}
             title={t("services.form.assistantTitle")}
@@ -632,7 +637,7 @@ export function ServiceForm({
               </Alert>
             </div>
           )}
-        </section>
+        </section>}
 
         {/* Acciones */}
         <FormActionBar

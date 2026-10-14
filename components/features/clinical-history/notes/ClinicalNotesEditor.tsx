@@ -34,6 +34,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/primitives/shadcn/tooltip";
+import { useClinicModules } from "@/lib/hooks/modules";
+import { CLINIC_MODULES } from "@/lib/modules/clinic-modules";
 
 interface ClinicalNotesEditorProps {
   patientId: string;
@@ -95,6 +97,8 @@ export function ClinicalNotesEditor({
   saving,
 }: ClinicalNotesEditorProps) {
   const { user } = useAuth();
+  const clinicModules = useClinicModules();
+  const voiceEnabled = clinicModules.has(CLINIC_MODULES.AI_AUTOMATION);
   const { setDraft, clearDraft } = useVisitNoteDrafts();
   const restoredDraft = readOwnDraft(draftKey, user?.id);
   const [content, setContent] = useState(
@@ -257,13 +261,13 @@ export function ClinicalNotesEditor({
             <Heading2 className="h-3.5 w-3.5" />
           </ToolbarButton>
           <span className="mx-1 h-4 w-px shrink-0 bg-hairline" />
-          <MicButton
+          {voiceEnabled && <MicButton
             isListening={isRecording}
             isSupported={true}
             onToggle={handleMicToggle}
-          />
-          <span className="mx-1 h-4 w-px shrink-0 bg-hairline" />
-          <div className="flex items-center gap-1.5">
+          />}
+          {voiceEnabled && <span className="mx-1 h-4 w-px shrink-0 bg-hairline" />}
+          {voiceEnabled && <div className="flex items-center gap-1.5">
             <Switch
               id="soap-toggle"
               checked={useSoapStructuring}
@@ -297,7 +301,7 @@ export function ClinicalNotesEditor({
                 inserta la transcripción cruda sin error.
               </TooltipContent>
             </Tooltip>
-          </div>
+          </div>}
         </div>
       )}
       {serverDivergence && (

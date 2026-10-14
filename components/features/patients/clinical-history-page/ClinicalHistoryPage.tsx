@@ -66,6 +66,8 @@ import { EvolutionPrintDocument } from "./evolution/EvolutionPrintDocument";
 import { useEvolutionPrint } from "./evolution/use-evolution-print";
 import { useIsWideDesktop } from "@/lib/hooks/use-wide-desktop";
 import { useI18n } from "@/lib/contexts/i18n-context";
+import { useClinicModules } from "@/lib/hooks/modules";
+import { CLINIC_MODULES } from "@/lib/modules/clinic-modules";
 
 type ClinicalHistoryPageProps = UseClinicalHistoryPageParams;
 
@@ -138,11 +140,23 @@ export function ClinicalHistoryPage({
   const financeModule = useFinanceModule();
   const billingPermissions = useBillingPermissions();
   const accountVisible = financeModule.enabled && billingPermissions.canView;
+  const clinicModules = useClinicModules();
+  const odontogramVisible = clinicModules.has(CLINIC_MODULES.DENTAL_ODONTOGRAM);
+  const treatmentPlanVisible =
+    clinicModules.has(CLINIC_MODULES.DENTAL_TREATMENT_PLAN) && canViewTreatmentPlan;
+  // Esta vista documental reutiliza el odontograma del paciente como contexto.
+  const documentationVisible =
+    clinicModules.has(CLINIC_MODULES.DOCUMENTATION) && odontogramVisible;
   useEffect(() => {
-    if (activeTab === PATIENT_TABS.ACCOUNT && !financeModule.loading && !accountVisible) {
+    const unavailable =
+      (activeTab === PATIENT_TABS.ACCOUNT && !financeModule.loading && !accountVisible) ||
+      (activeTab === PATIENT_TABS.ODONTOGRAM && !clinicModules.loading && !odontogramVisible) ||
+      (activeTab === PATIENT_TABS.TREATMENT_PLAN && !clinicModules.loading && !treatmentPlanVisible) ||
+      (activeTab === PATIENT_TABS.DOCUMENTATION && !clinicModules.loading && !documentationVisible);
+    if (unavailable) {
       setActiveTab(PATIENT_TABS.EVOLUTION);
     }
-  }, [activeTab, accountVisible, financeModule.loading, setActiveTab]);
+  }, [activeTab, accountVisible, financeModule.loading, clinicModules.loading, odontogramVisible, treatmentPlanVisible, documentationVisible, setActiveTab]);
 
   const isWideDesktop = useIsWideDesktop();
   const showConsultationPanel = isCurrentlyActiveConsultation;
@@ -442,14 +456,14 @@ export function ClinicalHistoryPage({
               <ClipboardList className="h-4 w-4" />
               {t("clinical.tabs.evolution")}
             </TabsTrigger>
-            <TabsTrigger
+            {odontogramVisible && <TabsTrigger
               value={PATIENT_TABS.ODONTOGRAM}
               className={PATIENT_TAB_TRIGGER_CLASS}
             >
               <Stethoscope className="h-4 w-4" />
               {t("clinical.tabs.odontogram")}
-            </TabsTrigger>
-            {canViewTreatmentPlan && (
+            </TabsTrigger>}
+            {treatmentPlanVisible && (
               <TabsTrigger
                 value={PATIENT_TABS.TREATMENT_PLAN}
                 className={PATIENT_TAB_TRIGGER_CLASS}
@@ -458,10 +472,10 @@ export function ClinicalHistoryPage({
                 {t("clinical.tabs.treatmentPlan")}
               </TabsTrigger>
             )}
-            <TabsTrigger value={PATIENT_TABS.DOCUMENTATION} className={PATIENT_TAB_TRIGGER_CLASS}>
+            {documentationVisible && <TabsTrigger value={PATIENT_TABS.DOCUMENTATION} className={PATIENT_TAB_TRIGGER_CLASS}>
               <FileText className="h-4 w-4" />
               {t("consultationDocuments.tab")}
-            </TabsTrigger>
+            </TabsTrigger>}
             <TabsTrigger
               value={PATIENT_TABS.FILES}
               className={PATIENT_TAB_TRIGGER_CLASS}
@@ -566,7 +580,7 @@ export function ClinicalHistoryPage({
             </div>
           </div>
         </TabsContent>
-        <TabsContent
+        {(odontogramVisible || documentationVisible) && <TabsContent
           forceMount
           value={activeTab === PATIENT_TABS.DOCUMENTATION ? PATIENT_TABS.DOCUMENTATION : PATIENT_TABS.ODONTOGRAM}
           className={cn("flex-1 min-h-0 mt-5 overflow-hidden flex flex-col", activeTab !== PATIENT_TABS.ODONTOGRAM && activeTab !== PATIENT_TABS.DOCUMENTATION && "hidden")}
@@ -613,8 +627,8 @@ export function ClinicalHistoryPage({
               </aside>
             )}
           </div>
-        </TabsContent>
-        {canViewTreatmentPlan && (
+        </TabsContent>}
+        {treatmentPlanVisible && (
           <TabsContent
             value={PATIENT_TABS.TREATMENT_PLAN}
             className="flex-1 min-h-0 mt-5 overflow-hidden flex flex-col"

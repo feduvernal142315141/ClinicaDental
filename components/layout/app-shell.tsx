@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import { AppHeader } from "@/components/layout/app-header";
 import { cn } from "@/lib/utils/utils";
+import { ClinicModuleRouteGate } from "@/components/features/modules/ClinicModuleGate";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -65,7 +66,7 @@ export function AppShell({ children, bleed = false }: AppShellProps) {
             bleed ? "p-0" : "p-4 lg:p-6",
           )}
         >
-          {children}
+          <ClinicModuleRouteGate pathname={pathname}>{children}</ClinicModuleRouteGate>
         </main>
       </div>
     </div>

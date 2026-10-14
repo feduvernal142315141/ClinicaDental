@@ -2,6 +2,10 @@ import axios, { AxiosError, AxiosHeaders, InternalAxiosRequestConfig } from "axi
 import { getAccessToken } from "@/lib/auth/token-client";
 import { getEffectiveClinicLanguageFromToken } from "@/lib/auth/language-preference";
 import { normalizeError } from "@/lib/errors/normalize-error";
+import {
+  emitClinicModuleDisabled,
+  MODULE_NOT_ENABLED_ERROR_CODE,
+} from "@/lib/modules/module-disabled-events";
 
 type InterceptorHandlers = {
   onLoadingStart?: () => void;
@@ -196,7 +200,13 @@ apiInstance.interceptors.response.use(
       const skipForbiddenHandler = (
         error.config as { skipForbiddenHandler?: boolean } | undefined
       )?.skipForbiddenHandler;
-      if (status === 403 && !skipForbiddenHandler) {
+      const responseData = error.response.data as { errorCode?: string; code?: string } | undefined;
+      const moduleDisabled =
+        status === 403 &&
+        (responseData?.errorCode === MODULE_NOT_ENABLED_ERROR_CODE ||
+          responseData?.code === MODULE_NOT_ENABLED_ERROR_CODE);
+      if (moduleDisabled) emitClinicModuleDisabled();
+      if (status === 403 && !skipForbiddenHandler && !moduleDisabled) {
         interceptorHandlers.onForbidden?.();
 
         (error as { _interceptorHandled?: boolean })._interceptorHandled = true;

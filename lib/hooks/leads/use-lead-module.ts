@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { ClinicCapabilities } from "@/lib/entity/billing";
 import { LEAD_CRM_MODULE } from "@/lib/entity/leads";
 import { capabilitiesKey } from "@/lib/hooks/billing/billing-query-keys";
-import { useClinicCapabilities } from "@/lib/hooks/billing/use-finance-module";
+import { useClinicCapabilities } from "@/lib/hooks/modules";
 import { LEAD_MODULE_DISABLED_MESSAGE, onLeadModuleDisabled } from "@/lib/services/leads";
 import { notify } from "@/lib/utils/notify";
 import { leadKeys } from "./lead-query-keys";

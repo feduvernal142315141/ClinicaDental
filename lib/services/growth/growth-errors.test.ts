@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const request = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/services/apiConfig", () => ({ default: { request } }));
 
-import { onLeadModuleDisabled } from "@/lib/services/leads/leads-errors";
+import { onClinicModuleDisabled } from "@/lib/modules/module-disabled-events";
 import {
   GROWTH_MODULE_DISABLED_MESSAGE,
   hasGrowthErrorCode,
@@ -63,7 +63,7 @@ describe("cliente HTTP de segmentos y campañas", () => {
 
   it("un 403 MODULE_NOT_ENABLED con la sesión abierta avisa a la app para refrescar capacidades", async () => {
     const listener = vi.fn();
-    const unsubscribe = onLeadModuleDisabled(listener);
+    const unsubscribe = onClinicModuleDisabled(listener);
     request.mockRejectedValueOnce(httpError(403, { code: "FORBIDDEN", message: "x", errorCode: "MODULE_NOT_ENABLED" }));
 
     await expect(evaluatePatientSegment("segment-1")).rejects.toMatchObject({ errorCode: "MODULE_NOT_ENABLED" });
@@ -73,7 +73,7 @@ describe("cliente HTTP de segmentos y campañas", () => {
 
   it("un 403 de permiso no apaga el módulo", async () => {
     const listener = vi.fn();
-    const unsubscribe = onLeadModuleDisabled(listener);
+    const unsubscribe = onClinicModuleDisabled(listener);
     request.mockRejectedValueOnce(httpError(403, { code: "FORBIDDEN", message: "No tienes permiso para esta acción" }));
 
     await expect(growthRequest("GET", "/patient-segments", "f")).rejects.toMatchObject({ status: 403 });

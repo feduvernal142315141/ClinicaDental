@@ -21,6 +21,8 @@ import { useI18n } from "@/lib/contexts/i18n-context";
 
 interface PolicyFieldsProps {
   disabled?: boolean;
+  showReminders?: boolean;
+  showAssistant?: boolean;
 }
 
 /** Convierte el string de un `<input type="number">` a number|undefined. */
@@ -35,7 +37,7 @@ function toNumberOrUndefined(raw: string): number | undefined {
  * Debe renderizarse dentro del `<Form {...form}>` del padre (usa
  * `useFormContext<GeneralSettingsFormValues>`).
  */
-export function PolicyFields({ disabled = false }: PolicyFieldsProps) {
+export function PolicyFields({ disabled = false, showReminders = true, showAssistant = true }: PolicyFieldsProps) {
   const form = useFormContext<GeneralSettingsFormValues>();
   const { t } = useI18n();
   const sendReminders = form.watch("sendReminders");
@@ -183,7 +185,7 @@ export function PolicyFields({ disabled = false }: PolicyFieldsProps) {
           )}
         />
 
-        <FormField
+        {showReminders && <FormField
           control={form.control}
           name="sendReminders"
           render={({ field }) => (
@@ -203,9 +205,9 @@ export function PolicyFields({ disabled = false }: PolicyFieldsProps) {
               </FormControl>
             </FormItem>
           )}
-        />
+        />}
 
-        <FormField
+        {showAssistant && <FormField
           control={form.control}
           name="assistantSharesPrices"
           render={({ field }) => (
@@ -227,9 +229,9 @@ export function PolicyFields({ disabled = false }: PolicyFieldsProps) {
               </FormControl>
             </FormItem>
           )}
-        />
+        />}
 
-        <FormField
+        {showAssistant && <FormField
           control={form.control}
           name="assistantName"
           render={({ field }) => (
@@ -264,10 +266,10 @@ export function PolicyFields({ disabled = false }: PolicyFieldsProps) {
               )}
             </FormItem>
           )}
-        />
+        />}
       </div>
 
-      {sendReminders && (
+      {showReminders && sendReminders && (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <FormField
             control={form.control}

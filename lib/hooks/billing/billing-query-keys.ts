@@ -8,6 +8,7 @@ import type {
   ReceivableQuery,
   RefundQuery,
 } from "@/lib/entity/billing";
+export { capabilitiesKey } from "@/lib/hooks/modules";
 
 /**
  * Claves de React Query del módulo de Finanzas.
@@ -43,6 +44,3 @@ export const billingKeys = {
   exchangeRate: (target: string) => ["billing", "exchange-rate", target] as const,
   exchangeRates: () => ["billing", "exchange-rate"] as const,
 };
-
-/** Capabilities vive fuera de "billing": sobrevive aunque se descarte el módulo. */
-export const capabilitiesKey = ["clinic", "capabilities"] as const;

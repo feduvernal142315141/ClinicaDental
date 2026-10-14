@@ -37,6 +37,8 @@ import { notify } from "@/lib/utils/notify";
 import { useAutosaveStatus } from "@/lib/store/useAutosaveStatus";
 import type { DentitionType } from "@/lib/odontogram/domain/odontogram/constants/dentition.constants";
 import { useI18n } from "@/lib/contexts/i18n-context";
+import { useClinicModules } from "@/lib/hooks/modules";
+import { CLINIC_MODULES } from "@/lib/modules/clinic-modules";
 
 interface PatientOdontogramPanelProps {
   documentationView?: boolean;
@@ -101,6 +103,11 @@ export function PatientOdontogramPanel({
   const { t } = useI18n();
   const { can, isAdmin } = usePermission();
   const { user } = useAuth();
+  const clinicModules = useClinicModules();
+  const dentalDictationEnabled =
+    clinicModules.has(CLINIC_MODULES.AI_AUTOMATION) &&
+    clinicModules.has(CLINIC_MODULES.DENTAL_DICTATION);
+  const treatmentPlanEnabled = clinicModules.has(CLINIC_MODULES.DENTAL_TREATMENT_PLAN);
 
   const { settings } = useClinicGeneralSettings();
   const { notation } = useToothNotation();
@@ -228,7 +235,7 @@ export function PatientOdontogramPanel({
   // ya se defiende solo con un 503 explicado. Ocultarlo por un fallo transitorio
   // haría desaparecer la función sin que nadie pueda saber por qué.
   const isDictationEnabled = useOdontogramDictationAvailability(
-    !isHistoricMode && canUseClinicalDictation,
+    dentalDictationEnabled && !isHistoricMode && canUseClinicalDictation,
   );
 
   // Solo lectura por: modo histórico, visita finalizada o falta de permiso.
@@ -249,7 +256,7 @@ export function PatientOdontogramPanel({
       can("odontogram", PermissionAction.EDIT) &&
       can("odontogram", PermissionAction.DELETE));
   const planBridge = useOdontogramPlanBridge(patient.id, {
-    enabled: !readOnly && canSyncTreatmentPlan,
+    enabled: treatmentPlanEnabled && !readOnly && canSyncTreatmentPlan,
   });
   const isOutOfConsultationEditing =
     !readOnly && !isHistoricMode && !activeAppointmentId;
@@ -310,7 +317,7 @@ export function PatientOdontogramPanel({
         clinicId={clinicId}
         adapter={adapter}
         dictationAdapter={
-          !isHistoricMode && canUseClinicalDictation && isDictationEnabled
+          dentalDictationEnabled && !isHistoricMode && canUseClinicalDictation && isDictationEnabled
             ? dictationAdapter
             : undefined
         }

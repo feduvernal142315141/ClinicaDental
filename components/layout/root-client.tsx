@@ -25,6 +25,7 @@ import { FeedbackFAB } from "@/components/features/feedback/FeedbackFAB";
 import { QueryProvider } from "@/components/layout/query-provider";
 import { FinanceModuleBridge } from "@/components/features/billing/module/FinanceModuleBridge";
 import { LeadModuleBridge } from "@/components/features/leads/module/LeadModuleBridge";
+import { ClinicModuleBridge } from "@/components/features/modules/ClinicModuleBridge";
 
 interface RootClientProps {
   children: React.ReactNode;
@@ -65,6 +66,7 @@ export function RootClient({ children }: RootClientProps) {
                         <AlertProvider>
                           <FinanceModuleBridge />
                           <LeadModuleBridge />
+                          <ClinicModuleBridge />
                           <GlobalErrorListeners />
                           <PointerEventsGuard />
                           <InterceptorsInitializer />

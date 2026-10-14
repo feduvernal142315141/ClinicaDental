@@ -2,10 +2,10 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/lib/contexts/auth-context";
+import { useQueryClient } from "@tanstack/react-query";
 import { FINANCE_MODULE, type ClinicCapabilities } from "@/lib/entity/billing";
-import { billingService, onFinanceModuleDisabled } from "@/lib/services/billing";
+import { onFinanceModuleDisabled } from "@/lib/services/billing";
+import { useClinicCapabilities } from "@/lib/hooks/modules";
 import { billingKeys, capabilitiesKey } from "./billing-query-keys";
 
 /** Ruta que muestra "Módulo no disponible" cuando Finanzas está apagado. */
@@ -16,16 +16,7 @@ export const FINANCE_HOME_ROUTE = "/billing";
  * Cacheadas ~60 s y refrescadas al volver el foco: si KodeWave enciende o apaga un módulo,
  * la UI lo refleja sin volver a iniciar sesión.
  */
-export function useClinicCapabilities() {
-  const { user } = useAuth();
-  return useQuery({
-    queryKey: capabilitiesKey,
-    queryFn: () => billingService.getCapabilities(),
-    enabled: !!user,
-    staleTime: 60_000,
-    refetchOnWindowFocus: true,
-  });
-}
+export { useClinicCapabilities } from "@/lib/hooks/modules";
 
 export interface FinanceModuleState {
   /** true solo si `modules` incluye "FINANCE". */
