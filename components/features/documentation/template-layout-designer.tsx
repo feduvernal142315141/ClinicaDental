@@ -103,7 +103,7 @@ export function TemplateLayoutDesigner({ input, onChange, onAdd, onRemove, onMov
     onChange(placement.blockIndex, changed);
   };
   const startDrag = (event: PointerEvent<HTMLButtonElement>, placement: DocumentPlacement) => {
-    if (!layout || loading || disabled || placement.type === "TEXT" || event.isPrimary === false || event.button > 0) return;
+    if (!layout || loading || disabled || placement.type === "TEXT" || !event.isPrimary || event.button > 0) return;
     const bounds = pageElement.current?.getBoundingClientRect();
     if (!bounds?.width || !bounds.height) return;
     event.preventDefault();
@@ -148,7 +148,7 @@ export function TemplateLayoutDesigner({ input, onChange, onAdd, onRemove, onMov
     changeBlock(origin.blockIndex, { ...block, width: Math.max(60, changed.width), ...(block.type === "SIGNATURE" ? { height: changed.height } : {}), position: { page: changed.page, x: changed.x, y: changed.y } });
   };
   const startResize = (event: PointerEvent<HTMLButtonElement>, placement: DocumentPlacement, corner: ResizeCorner) => {
-    if (disabled || loading || event.isPrimary === false || event.button > 0) return;
+    if (disabled || loading || !event.isPrimary || event.button > 0) return;
     const bounds = pageElement.current?.getBoundingClientRect();
     if (!bounds?.width || !bounds.height) return;
     event.preventDefault(); event.stopPropagation(); event.currentTarget.focus();
@@ -246,7 +246,7 @@ export function TemplateLayoutDesigner({ input, onChange, onAdd, onRemove, onMov
           {editing !== null && placements.find(item => item.blockIndex === editing && item.page === page) && (() => {
             const area = placements.find(item => item.blockIndex === editing && item.page === page)!;
             return <div className="absolute z-20 flex flex-col rounded border-2 border-blue-600 bg-white shadow-lg" style={{ minHeight: 240, left: `${area.x / layout.width * 100}%`, top: `${Math.min(area.y, layout.height - 220) / layout.height * 100}%`, width: `${area.width / layout.width * 100}%`, height: `${Math.min(Math.max(180, area.height), layout.height - Math.min(area.y, layout.height - 220) - 24) / layout.height * 100}%` }}>
-              <DocumentRichText toolbarTarget={variableToolbar} autoFocus label={`${t("documentation.TEXT")} ${editing + 1}`} disabled={disabled} value={blocks[editing]?.text ?? ""} textStyles={blocks[editing]?.textStyles} alignment={blocks[editing]?.alignment} onChange={(text,textStyles) => changeBlock(editing, { ...blocks[editing], text, textStyles })} textareaClassName="min-h-0 flex-1 resize-none bg-white p-2 font-sans text-sm text-slate-900 outline-none" />
+              <DocumentRichText toolbarTarget={variableToolbar} autoFocus label={`${t("documentation.TEXT")} ${editing + 1}`} disabled={disabled} value={blocks[editing]?.text ?? ""} richTextHtml={blocks[editing]?.richTextHtml} textStyles={blocks[editing]?.textStyles} alignment={blocks[editing]?.alignment} onChange={(text,textStyles,richTextHtml) => changeBlock(editing, { ...blocks[editing], text, textStyles, richTextHtml })} textareaClassName="min-h-0 flex-1 resize-none bg-white p-2 font-sans text-sm text-slate-900 outline-none" />
               <button type="button" onClick={() => setEditing(null)} className="bg-blue-600 px-3 py-2 text-sm text-white">{t("documentation.applyText")}</button>
             </div>;
           })()}
@@ -260,7 +260,7 @@ export function TemplateLayoutDesigner({ input, onChange, onAdd, onRemove, onMov
         </select></label>
         {selectedBlock?.type === "TEXT" ? <div className="space-y-2"><p className="text-xs text-subtle">{t("documentation.variablesHint")}</p><Button type="button" variant="outline" disabled={loading || disabled} onClick={() => { if (selectedPlacement) setPage(selectedPlacement.page); setEditing(selected); }}>{t("documentation.editText")}</Button>
           {editing === selected && !selectedPlacement && <>
-            <DocumentRichText toolbarTarget={variableToolbar} label={`${t("documentation.TEXT")} ${selected + 1}`} disabled={disabled} value={selectedBlock.text ?? ""} textStyles={selectedBlock.textStyles} alignment={selectedBlock.alignment} onChange={(text,textStyles) => changeBlock(selected, { ...selectedBlock, text, textStyles })} textareaClassName="h-64 w-full rounded-lg border border-hairline bg-elevated p-2 text-sm" />
+            <DocumentRichText toolbarTarget={variableToolbar} label={`${t("documentation.TEXT")} ${selected + 1}`} disabled={disabled} value={selectedBlock.text ?? ""} richTextHtml={selectedBlock.richTextHtml} textStyles={selectedBlock.textStyles} alignment={selectedBlock.alignment} onChange={(text,textStyles,richTextHtml) => changeBlock(selected, { ...selectedBlock, text, textStyles, richTextHtml })} textareaClassName="h-64 w-full rounded-lg border border-hairline bg-elevated p-2 text-sm" />
             <Button type="button" variant="outline" onClick={() => setEditing(null)}>{t("documentation.applyText")}</Button>
           </>}
         </div> : selectedBlock?.type === "PAGE_BREAK" ? <p className="text-sm text-subtle">{t("documentation.pageBreakHint")}</p> : selectedBlock && <>

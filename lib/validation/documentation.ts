@@ -7,6 +7,7 @@ export const templateSchema = z.object({
     type: z.enum(["TEXT", "SIGNATURE", "LOGO", "PAGE_BREAK"]),
     page: z.number().int().min(1).max(99).optional(),
     text: z.string().max(100_000).refine(validDocumentVariables, "INVALID_VARIABLE").optional(),
+    richTextHtml: z.string().max(400_000).optional(),
     textStyles: z.array(z.object({
       start: z.number().int().min(0), end: z.number().int().min(1),
       fontFamily: z.enum(["Roboto", "Arial", "Times New Roman", "Courier New"]).optional(),
@@ -29,6 +30,7 @@ export const templateSchema = z.object({
   value.blocks.forEach((block, index) => {
     if (block.alignment === "JUSTIFY" && block.type !== "TEXT") ctx.addIssue({code:"custom",path:["blocks",index,"alignment"],message:"INVALID_ALIGNMENT"});
     if (block.textStyles && block.type !== "TEXT") ctx.addIssue({code:"custom",path:["blocks",index,"textStyles"],message:"INVALID_TEXT_STYLE"});
+    if (block.richTextHtml && block.type !== "TEXT") ctx.addIssue({code:"custom",path:["blocks",index,"richTextHtml"],message:"INVALID_RICH_TEXT"});
     let previousEnd = 0;
     block.textStyles?.forEach((style, styleIndex) => {
       if (block.type !== "TEXT" || style.start < previousEnd || style.end <= style.start || style.end > (block.text?.length ?? 0)) ctx.addIssue({ code: "custom", path: ["blocks", index, "textStyles", styleIndex], message: "INVALID_TEXT_STYLE" });

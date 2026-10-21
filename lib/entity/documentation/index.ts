@@ -17,6 +17,8 @@ export type DocumentBlock = {
   /** PAGE_BREAK: minimum zero-based destination page. */
   page?: number;
   text?: string;
+  /** Canonical rich-text representation. Legacy templates may omit it. */
+  richTextHtml?: string;
   textStyles?: DocumentTextStyle[];
   alignment?: "LEFT" | "CENTER" | "RIGHT" | "JUSTIFY";
   width?: number;

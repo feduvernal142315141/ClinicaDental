@@ -36,19 +36,20 @@ export function Sidebar({
   const router = useRouter();
   const { mainMenuItems, secondaryMenuItems, isActiveRoute } =
     useSidebarNavigation();
-  const [openGroups, setOpenGroups] = useState<string[]>([]);
+  // La ruta activa abre su grupo automáticamente, pero una acción explícita
+  // del usuario debe poder cerrarlo aunque siga dentro de esa ruta.
+  const [groupOpenOverrides, setGroupOpenOverrides] = useState<Record<string, boolean>>({});
   const handleNavigation = (path: string) => {
     router.push(path);
     onClose();
   };
-  const toggleGroup = (path: string) =>
-    setOpenGroups((prev) =>
-      prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path],
-    );
+  const toggleGroup = (path: string, isOpen: boolean) =>
+    setGroupOpenOverrides((prev) => ({ ...prev, [path]: !isOpen }));
 
-  const isGroupOpen = (item: (typeof mainMenuItems)[number]) =>
-    openGroups.includes(item.path) ||
-    (item.children?.some((c) => isActiveRoute(currentPath, c.path)) ?? false);
+  const isGroupOpen = (item: (typeof mainMenuItems)[number]) => {
+    const activeChild = item.children?.some((c) => isActiveRoute(currentPath, c.path)) ?? false;
+    return groupOpenOverrides[item.path] ?? activeChild;
+  };
   const renderItem = (item: (typeof mainMenuItems)[number]) => {
     if (item.children?.length) {
       const children = item.children;
@@ -73,7 +74,7 @@ export function Sidebar({
               isCollapsed
                 ?
                   handleNavigation(children[0].path)
-                : toggleGroup(item.path)
+                : toggleGroup(item.path, open)
             }
           />
           <div

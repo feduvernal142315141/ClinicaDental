@@ -37,10 +37,10 @@ const ParagraphAlignment = Extension.create({
   } } }],
 });
 
-/** Structured text only: no HTML is persisted or sent to the PDF renderer. */
-export function DocumentRichText({ value, textStyles, alignment, onChange, label, disabled = false, textareaClassName, autoFocus = false, toolbarTarget }: {
-  value: string; textStyles?: DocumentTextStyle[]; alignment?: string;
-  onChange: (text: string, styles: DocumentTextStyle[]) => void;
+/** The editor keeps structured text for local layout and persists its canonical HTML for rendering after variable replacement. */
+export function DocumentRichText({ value, richTextHtml, textStyles, alignment, onChange, label, disabled = false, textareaClassName, autoFocus = false, toolbarTarget }: {
+  value: string; richTextHtml?: string; textStyles?: DocumentTextStyle[]; alignment?: string;
+  onChange: (text: string, styles: DocumentTextStyle[], richTextHtml?: string) => void;
   label: string; disabled?: boolean; textareaClassName: string; autoFocus?: boolean; toolbarTarget?: HTMLElement | null;
 }) {
   const { t } = useI18n();
@@ -58,13 +58,13 @@ export function DocumentRichText({ value, textStyles, alignment, onChange, label
   const editor = useEditor({
     immediatelyRender: false, shouldRerenderOnTransaction: true,
     extensions: [StarterKit.configure({ heading: false, bulletList: false, orderedList: false, listItem: false, blockquote: false, code: false, codeBlock: false, horizontalRule: false, strike: false, link: false }), DocumentStyle, ParagraphAlignment, TextLimits],
-    content: textToRichDocument(value,textStyles,alignment), editable: !disabled,
+    content: richTextHtml || textToRichDocument(value,textStyles,alignment), editable: !disabled,
     editorProps: {
       attributes: { role: "textbox", "aria-label": label, "aria-multiline": "true", class: "min-h-full outline-none text-black [&_p]:m-0 [&_p]:min-h-[16pt] [&_p]:leading-[1.45]" },
       handleScrollToSelection: () => preserveScroll.current,
       transformPastedHTML: () => "", // Clipboard text is imported without arbitrary HTML/styles.
     },
-    onUpdate: ({ editor }) => { const next = richDocumentToText(editor.getJSON()); change.current(next.text,next.textStyles); },
+    onUpdate: ({ editor }) => { const next = richDocumentToText(editor.getJSON()); change.current(next.text,next.textStyles,editor.getHTML()); },
   });
   useEffect(() => { editor?.setEditable(!disabled); }, [editor,disabled]);
   useEffect(() => {
@@ -73,9 +73,9 @@ export function DocumentRichText({ value, textStyles, alignment, onChange, label
     if (current.text !== value || JSON.stringify(current.textStyles) !== JSON.stringify(textStyles ?? [])) {
       // Parent updates caused by our own transaction must not reset the selection/history.
       if (current.text === value && (!textStyles || JSON.stringify(current.textStyles) === JSON.stringify(textStyles))) return;
-      editor.commands.setContent(textToRichDocument(value,textStyles,alignment), { emitUpdate: false });
+      editor.commands.setContent(richTextHtml || textToRichDocument(value,textStyles,alignment), { emitUpdate: false });
     }
-  }, [editor,value,textStyles,alignment]);
+  }, [editor,value,richTextHtml,textStyles,alignment]);
   useEffect(() => { if (autoFocus && editor) editor.view.dom.focus({ preventScroll: true }); }, [autoFocus,editor]);
   const run = (action: () => void) => {
     if (!editor || disabled) return;

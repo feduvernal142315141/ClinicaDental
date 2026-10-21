@@ -56,7 +56,9 @@ describe("document text formatting", () => {
     fireEvent.click(await screen.findByRole("option",{name:/documentation\.patientName/}));
     const result=richDocumentToText(richEditor(field).getJSON());
     expect(result.text).toBe("{{paciente.nombre}} del paciente");
-    expect(result.textStyles[0]).toMatchObject({bold:true,alignment:"CENTER"});expect(viewport.scrollTop).toBe(80);
+    expect(result.textStyles[0]).toMatchObject({bold:true,alignment:"CENTER"});
+    expect(richEditor(field).getHTML()).toContain("text-align: center");
+    expect(viewport.scrollTop).toBe(80);
   });
   it("selects a date variable using the shared popup and keeps the text insertion point", async () => {
     render(<Editor />);const field=screen.getByRole("textbox",{name:"Texto"});selectRichText(field,0,6);

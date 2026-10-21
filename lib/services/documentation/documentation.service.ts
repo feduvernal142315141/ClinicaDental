@@ -10,7 +10,7 @@ const pdfConfig = { responseType: "blob" as const };
 
 type TemplateWire = Omit<DocumentationTemplate, "blocks" | "sourceId"> & {
   sourceId?: string | null;
-  blocks: { type: DocumentBlock["type"]; page?: number | null; text?: string | null; textStyles?: DocumentBlock["textStyles"] | null; alignment?: DocumentBlock["alignment"] | null; signerRole?: DocumentBlock["signerRole"] | null; width?: number | null; height?: number | null; position?: DocumentBlock["position"] | null }[];
+  blocks: { type: DocumentBlock["type"]; page?: number | null; text?: string | null; richTextHtml?: string | null; textStyles?: DocumentBlock["textStyles"] | null; alignment?: DocumentBlock["alignment"] | null; signerRole?: DocumentBlock["signerRole"] | null; width?: number | null; height?: number | null; position?: DocumentBlock["position"] | null }[];
 };
 type DocumentWire = Omit<PatientDocument, "signedAt" | "method"> & {
   signedAt?: string | null; method?: PatientDocument["method"] | null;
@@ -18,7 +18,7 @@ type DocumentWire = Omit<PatientDocument, "signedAt" | "method"> & {
 const normalizeTemplate = (value: TemplateWire): DocumentationTemplate => ({
   ...value, sourceId: value.sourceId ?? undefined,
   blocks: value.blocks.map(block => ({
-    type: block.type, page: block.page ?? undefined, text: block.text ?? undefined, textStyles: block.textStyles?.map(style => ({ start:style.start,end:style.end,fontFamily:style.fontFamily ?? undefined,fontSize:style.fontSize ?? undefined,bold:style.bold ?? undefined,italic:style.italic ?? undefined,underline:style.underline ?? undefined,alignment:style.alignment ?? undefined })),
+    type: block.type, page: block.page ?? undefined, text: block.text ?? undefined, richTextHtml: block.richTextHtml ?? undefined, textStyles: block.textStyles?.map(style => ({ start:style.start,end:style.end,fontFamily:style.fontFamily ?? undefined,fontSize:style.fontSize ?? undefined,bold:style.bold ?? undefined,italic:style.italic ?? undefined,underline:style.underline ?? undefined,alignment:style.alignment ?? undefined })),
     signerRole: block.signerRole ?? undefined, alignment: block.alignment ?? undefined, width: block.width ?? undefined, height: block.height ?? undefined,
     position: block.position ?? undefined,
   })),
