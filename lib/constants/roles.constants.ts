@@ -104,6 +104,12 @@ export const PERMISSIONS = {
     description: "Gestión de integraciones",
     category: PERMISSION_CATEGORIES.SETTINGS,
   },
+  DOCUMENTATION: {
+    id: "documentation",
+    name: "Documentación",
+    description: "Gestión de documentos y plantillas",
+    category: PERMISSION_CATEGORIES.SETTINGS,
+  },
   SERVICE: {
     id: "service",
     name: "Servicios",

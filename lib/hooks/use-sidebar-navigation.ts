@@ -23,6 +23,7 @@ import { usePermission } from "./use-permission";
 import { useI18n } from "@/lib/contexts/i18n-context";
 import { PermissionAction } from "@/lib/permissions/permission-actions";
 import { useBillingSections } from "@/lib/hooks/billing/use-billing-navigation";
+import { useFinanceModule } from "@/lib/hooks/billing/use-finance-module";
 import { useLeadAccess } from "@/lib/hooks/leads/use-lead-module";
 import { useClinicModules } from "@/lib/hooks/modules";
 import { CLINIC_MODULES, type ClinicModuleCode } from "@/lib/modules/clinic-modules";
@@ -63,6 +64,7 @@ export function useSidebarNavigation() {
   const { can, isAdmin } = usePermission();
   const { t } = useI18n();
   const billingSections = useBillingSections();
+  const { enabled: financeEnabled } = useFinanceModule();
   const { visible: leadsVisible } = useLeadAccess();
   const clinicModules = useClinicModules();
   const { has: hasClinicModule } = clinicModules;
@@ -141,7 +143,7 @@ export function useSidebarNavigation() {
       main.push({ path: "/appointments", label: t("navigation.appointments"), icon: Calendar });
     }
     // Finanzas: solo con el módulo FINANCE activo en la clínica y permiso `billing`.
-    if (billingSections.length > 0) {
+    if (financeEnabled && billingSections.length > 0) {
       main.push({
         path: "/billing",
         label: t("billing.navigation.finance"),
@@ -189,5 +191,5 @@ export function useSidebarNavigation() {
       secondaryMenuItems: [] as MenuItem[],
       isActiveRoute,
     };
-  }, [can, isAdmin, t, billingSections, leadsVisible, hasClinicModule]);
+  }, [can, isAdmin, t, billingSections, financeEnabled, leadsVisible, hasClinicModule]);
 }
