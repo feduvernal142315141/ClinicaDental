@@ -163,6 +163,9 @@ export function useInboxMessages(
       });
     } catch {
       // Silent — polling/SSE errors should not disrupt the UI
+    } finally {
+      // A refresh that lands during the initial load supersedes it, so it ends the spinner too.
+      if (gen === refreshGenRef.current) setLoading(false);
     }
   }, [conversationId]);
 
